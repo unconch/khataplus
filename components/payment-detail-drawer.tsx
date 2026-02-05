@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import {
     Drawer,
     DrawerContent,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
+import { Loader2 } from "lucide-react"
 import { format, parseISO, startOfWeek } from "date-fns"
 import { DailyReport } from "@/lib/types"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
@@ -26,6 +27,11 @@ interface PaymentDetailDrawerProps {
 }
 
 export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: PaymentDetailDrawerProps) {
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
     // Hooks must always run. 
     // We provide safe defaults if type is null.
 
@@ -98,27 +104,33 @@ export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: Pay
                             <div className="space-y-4">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Weekly Performance</h3>
                                 <div className="h-[250px] w-full bg-white/5 rounded-3xl p-4 border border-white/5">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={weeklyData}>
-                                            <XAxis
-                                                dataKey="name"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: "#71717a", fontSize: 10, fontWeight: "bold" }}
-                                                dy={10}
-                                            />
-                                            <Tooltip
-                                                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                                contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
-                                                formatter={(val: number) => [`₹${val.toLocaleString()}`, "Collected"]}
-                                            />
-                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                                {weeklyData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={highlightColor} fillOpacity={0.8} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    {isMounted ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={weeklyData}>
+                                                <XAxis
+                                                    dataKey="name"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: "#71717a", fontSize: 10, fontWeight: "bold" }}
+                                                    dy={10}
+                                                />
+                                                <Tooltip
+                                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                                    contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                    formatter={(val: number) => [`₹${val.toLocaleString()}`, "Collected"]}
+                                                />
+                                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                                    {weeklyData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={highlightColor} fillOpacity={0.8} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
+                                            <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

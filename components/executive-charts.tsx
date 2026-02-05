@@ -1,6 +1,8 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { Loader2 } from "lucide-react"
 
 interface ExecutiveChartsProps {
     data: Array<{
@@ -11,6 +13,19 @@ interface ExecutiveChartsProps {
 }
 
 export function ExecutiveCharts({ data }: ExecutiveChartsProps) {
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted) {
+        return (
+            <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
+                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+            </div>
+        )
+    }
     return (
         <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>

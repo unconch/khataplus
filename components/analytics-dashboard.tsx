@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { DailyReport } from "@/lib/types"
 import { AccountingSummary } from "@/components/accounting-summary"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -23,7 +23,7 @@ import {
     AreaChart,
     Area
 } from "recharts"
-import { CalendarIcon, FilterIcon } from "lucide-react"
+import { CalendarIcon, FilterIcon, Loader2 } from "lucide-react"
 import { subDays, isAfter, startOfMonth, parseISO, format, endOfMonth, addDays, isBefore } from "date-fns"
 import { DateRange as DayPickerRange } from "react-day-picker"
 
@@ -42,6 +42,11 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
     const [customDate, setCustomDate] = useState<DayPickerRange | undefined>()
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), "yyyy-MM"))
     const [isPickerOpen, setIsPickerOpen] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const filteredReports = useMemo(() => {
         const now = new Date()
@@ -270,61 +275,68 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="h-[300px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="currentColor"
-                                        className="text-muted-foreground/40 font-bold"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tick={{ dy: 10 }}
-                                    />
-                                    <YAxis
-                                        stroke="currentColor"
-                                        className="text-muted-foreground/40 font-bold"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickFormatter={(value) => `₹${value}`}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
-                                        labelStyle={{ color: 'var(--foreground)', fontWeight: 'bold', marginBottom: '4px' }}
-                                    />
-                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="Revenue"
-                                        stroke="#3b82f6"
-                                        strokeWidth={3}
-                                        fillOpacity={1}
-                                        fill="url(#colorRevenue)"
-                                        animationDuration={1500}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="Profit"
-                                        stroke="#10b981"
-                                        strokeWidth={3}
-                                        fillOpacity={1}
-                                        fill="url(#colorProfit)"
-                                        animationDuration={1500}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            {isMounted ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                        {/* ... (rest of chart) ... */}
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="currentColor"
+                                            className="text-muted-foreground/40 font-bold"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tick={{ dy: 10 }}
+                                        />
+                                        <YAxis
+                                            stroke="currentColor"
+                                            className="text-muted-foreground/40 font-bold"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => `₹${value}`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+                                            labelStyle={{ color: 'var(--foreground)', fontWeight: 'bold', marginBottom: '4px' }}
+                                        />
+                                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="Revenue"
+                                            stroke="#3b82f6"
+                                            strokeWidth={3}
+                                            fillOpacity={1}
+                                            fill="url(#colorRevenue)"
+                                            animationDuration={1500}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="Profit"
+                                            stroke="#10b981"
+                                            strokeWidth={3}
+                                            fillOpacity={1}
+                                            fill="url(#colorProfit)"
+                                            animationDuration={1500}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
+                                    <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -337,30 +349,36 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="h-[240px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={paymentData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={65}
-                                        outerRadius={85}
-                                        paddingAngle={8}
-                                        dataKey="value"
-                                        stroke="none"
-                                        animationDuration={1500}
-                                    >
-                                        {paymentData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)" }}
-                                        formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`}
-                                    />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {isMounted ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={paymentData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={65}
+                                            outerRadius={85}
+                                            paddingAngle={8}
+                                            dataKey="value"
+                                            stroke="none"
+                                            animationDuration={1500}
+                                        >
+                                            {paymentData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)" }}
+                                            formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
+                                    <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mt-6">
