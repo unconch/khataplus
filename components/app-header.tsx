@@ -71,12 +71,12 @@ export function AppHeader({ profile, orgName }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/50 shadow-sm">
-      <div className="flex h-14 items-center justify-between px-4">
+      <div className="flex h-12 md:h-14 items-center justify-between px-4">
         <button onClick={handleLogoClick} className="flex items-center gap-3 group cursor-pointer text-left">
           {tenant?.logo_url ? (
             <img src={tenant.logo_url} alt={tenant.name} className="h-8 w-8 object-contain rounded-lg" />
           ) : (
-            <Logo size={32} className="text-primary transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3" />
+            <Logo size={24} className="text-primary transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3 sm:size-[32px]" />
           )}
           <div className="flex flex-col">
             <span className="text-sm font-black tracking-tighter text-foreground leading-none">

@@ -112,8 +112,11 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       redirect("/home")
     }
 
+    const { RealtimeSyncActivator } = await import("@/components/realtime-sync-activator")
+
     return (
       <AuthGuard>
+        <RealtimeSyncActivator orgId={orgId} />
         <BiometricGate isRequired={profile?.biometric_required || false}>
           <TenantProvider tenant={tenant}>
             <AppShell

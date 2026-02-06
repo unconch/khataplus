@@ -10,6 +10,7 @@ import { logHealthMetric, checkForFraud } from "./monitoring";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
 import { cache } from "react";
 import { authorize, audit, generateDiff } from "./security";
+import { triggerSync } from "./sync-notifier";
 
 export async function getInventory(orgId: string) {
     return nextCache(
@@ -46,6 +47,7 @@ export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created
 
     await audit("Added Inventory", "inventory", inventory.id, { name: inventory.name, sku: inventory.sku, stock: inventory.stock }, orgId);
     revalidatePath("/home/inventory", "page");
+    triggerSync(orgId, 'inventory');
 
     return inventory;
 }
@@ -72,6 +74,7 @@ export async function updateInventoryStock(id: string, newStock: number, orgId: 
 
     (revalidateTag as any)(`inventory-${orgId}`);
     revalidatePath("/home/inventory", "page");
+    triggerSync(orgId, 'inventory');
 }
 
 export async function getSales(orgId: string) {
@@ -139,6 +142,7 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
     revalidatePath("/home/sales", "page");
     (revalidateTag as any)("sales");
     (revalidateTag as any)(`inventory-${orgId}`);
+    triggerSync(orgId, 'sale');
 
     return {
         ...finalSale,
@@ -182,6 +186,7 @@ export async function recordBatchSales(sales: Omit<Sale, "id" | "user_id" | "sal
     revalidatePath("/home/sales", "page");
     (revalidateTag as any)("sales");
     (revalidateTag as any)(`inventory-${orgId}`);
+    triggerSync(orgId, 'sale');
 
     return results.map((s: any) => ({
         ...s,
@@ -223,6 +228,7 @@ export async function processReturn(saleId: string, quantity: number, orgId: str
     revalidatePath("/home/sales", "page");
     (revalidateTag as any)("sales");
     (revalidateTag as any)(`inventory-${orgId}`);
+    triggerSync(orgId, 'sale');
 }
 
 export async function updateSale(saleId: string, updates: Partial<Sale>, orgId: string): Promise<void> {
@@ -270,6 +276,7 @@ quantity = COALESCE(${updates.quantity}, quantity),
     (revalidateTag as any)("inventory");
     (revalidateTag as any)("sales");
     revalidatePath("/dashboard/sales", "page");
+    triggerSync(orgId, 'sale');
 }
 
 export async function getProfiles() {
@@ -425,6 +432,7 @@ export async function updateSystemSettings(updates: Partial<SystemSettings>, org
     await audit("Updated Settings", "settings", orgId, updates, orgId);
     (revalidateTag as any)(`settings-${orgId}`);
     revalidatePath("/home/admin", "page");
+    triggerSync(orgId, 'settings');
 }
 
 export async function createAuditLog(log: Omit<AuditLog, "id" | "created_at" | "user_email">): Promise<void> {

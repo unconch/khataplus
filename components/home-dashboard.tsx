@@ -166,8 +166,8 @@ export function HomeDashboard({ profile, settings, onboardingStats }: HomeDashbo
                     </p>
                 </div>
 
-                {/* Key Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Key Metrics Grid - 2x2 on mobile, 4x1 on desktop */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                     <MetricCard
                         title="Today's Sales"
                         value="₹ 0"
@@ -217,7 +217,7 @@ export function HomeDashboard({ profile, settings, onboardingStats }: HomeDashbo
                                 </Button>
                             </div>
 
-                            <div className="h-[300px] w-full">
+                            <div className="h-[200px] md:h-[300px] w-full">
                                 {isMounted ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={mockSalesData}>
@@ -375,18 +375,18 @@ function MetricCard({ title, value, trend, trendUp, icon: Icon, color }: {
     }
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 shadow-sm border border-border/40 hover:shadow-md transition-shadow group">
-            <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${colors[color]}`}>
-                    <Icon size={24} />
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 sm:p-8 shadow-sm border border-border/40 hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${colors[color]}`}>
+                    <Icon size={20} className="sm:size-24" />
                 </div>
-                <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${trendUp ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
+                <div className={`flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 sm:py-1 rounded-full ${trendUp ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
                     }`}>
                     {trend}
                 </div>
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">{title}</p>
-            <p className="text-3xl font-black tracking-tighter">{value}</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 sm:mb-1">{title}</p>
+            <p className="text-xl sm:text-3xl font-black tracking-tighter">{value}</p>
         </div>
     )
 }

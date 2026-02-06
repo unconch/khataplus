@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { motion, useScroll, useTransform, LazyMotion, domAnimation, AnimatePresence } from "framer-motion"
+import { motion, useScroll, useTransform, LazyMotion, domAnimation, AnimatePresence, useInView } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import {
@@ -28,7 +28,7 @@ import { GradientText } from "@/components/gradient-text"
 import { BentoGrid, BentoCard } from "@/components/bento-grid"
 import { useParallax } from "@/hooks/use-parallax"
 import { useMouseParallax } from "@/hooks/use-mouse-parallax"
-import { ShieldCheck, WifiOff, FileText, TrendingUp, Monitor, Smartphone, Zap, Shield } from "lucide-react"
+import { ShieldCheck, WifiOff, FileText, TrendingUp, Monitor, Smartphone, Zap, Shield, Star, Package, ArrowUpRight } from "lucide-react"
 
 export function LandingPage() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -372,6 +372,280 @@ export function LandingPage() {
                     </div>
                 </section>
 
+                {/* Detailed Features Sections */}
+
+                {/* Offline Mode */}
+                <section id="offline" className="py-24 md:py-32 px-6 overflow-hidden">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row-reverse items-center gap-16">
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="slideLeft">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-sm font-semibold mb-6">
+                                        <WifiOff size={16} />
+                                        Works Anywhere
+                                    </div>
+                                    <h2 className="text-3xl md:text-5xl font-bold text-zinc-900 mb-6">Built for the real world.</h2>
+                                    <p className="text-zinc-600 text-xl mb-8 leading-relaxed">
+                                        Don't let patchy internet stop your business. KhataPlus works fully offline and syncs automatically when you're back online.
+                                    </p>
+                                    <ul className="space-y-4">
+                                        {[
+                                            "Continue billing without internet",
+                                            "Seamless background synchronization",
+                                            "Local data storage on your device",
+                                            "Instant performance, zero lag"
+                                        ].map((item, i) => (
+                                            <li key={i} className="flex items-center gap-3 text-zinc-700">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                                                    <Check size={12} className="text-emerald-600" />
+                                                </div>
+                                                {item}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </AdvancedScrollReveal>
+                            </div>
+                            <div className="w-full md:w-1/2 relative">
+                                <AdvancedScrollReveal variant="scaleUp">
+                                    <div className="relative bg-zinc-100 rounded-3xl p-8 aspect-square flex items-center justify-center overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-200/20 to-emerald-200/20" />
+                                        <motion.div
+                                            animate={{
+                                                scale: [1, 1.05, 1],
+                                                rotate: [0, 1, 0]
+                                            }}
+                                            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                                            className="relative z-10 bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
+                                        >
+                                            <div className="flex justify-between items-center mb-6">
+                                                <div className="h-6 w-24 bg-zinc-100 rounded" />
+                                                <div className="flex gap-1">
+                                                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                                                    <span className="text-[10px] font-mono text-zinc-400 tracking-tighter">OFFLINE MODE</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="h-10 bg-zinc-50 rounded-lg flex items-center px-4 border border-zinc-100">
+                                                    <div className="h-2 w-full bg-zinc-200 rounded" />
+                                                </div>
+                                                <div className="h-10 bg-zinc-50 rounded-lg flex items-center px-4 border border-zinc-100">
+                                                    <div className="h-2 w-3/4 bg-zinc-200 rounded" />
+                                                </div>
+                                                <div className="h-10 bg-emerald-50 rounded-lg flex items-center px-4 border border-emerald-100">
+                                                    <div className="h-2 w-full bg-emerald-200 rounded" />
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
+                                        <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Analytics */}
+                <section id="analytics" className="py-24 md:py-32 px-6 bg-zinc-50">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row items-center gap-16">
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="slideRight">
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-sm font-bold mb-6 border border-emerald-100/50 shadow-sm">
+                                        <TrendingUp size={16} />
+                                        Insights
+                                    </div>
+                                    <GradientText className="text-4xl md:text-6xl font-extrabold mb-6" colors={["#059669", "#10b981", "#34d399"]}>
+                                        Know your business pulse.
+                                    </GradientText>
+                                    <p className="text-zinc-500 text-xl mb-10 leading-relaxed max-w-xl">
+                                        Visualize your growth with powerful analytics. Track sales trends, monitor inventory health, and identify your most profitable items.
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-4 md:gap-6">
+                                        {[
+                                            { label: "Daily Sales", value: "Real-time", icon: Zap },
+                                            { label: "Top Items", value: "Automated", icon: Star },
+                                            { label: "Inventory", value: "Live Status", icon: Package },
+                                            { label: "Profit Margin", value: "Calculated", icon: ArrowUpRight }
+                                        ].map((stat, i) => (
+                                            <motion.div
+                                                key={i}
+                                                whileHover={{ y: -5, scale: 1.02 }}
+                                                className="p-5 bg-white rounded-3xl border border-zinc-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_30px_-10px_rgba(16,185,129,0.2)] transition-all duration-300 group"
+                                            >
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
+                                                        <stat.icon size={16} />
+                                                    </div>
+                                                    <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">{stat.label}</div>
+                                                </div>
+                                                <div className="text-emerald-600 font-black text-xl md:text-2xl">{stat.value}</div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="scaleUp">
+                                    <div className="bg-zinc-900 rounded-[2.5rem] p-8 aspect-video relative overflow-hidden flex flex-col justify-end">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
+                                        <div className="relative flex items-end justify-between gap-2 h-32 mb-4">
+                                            {[40, 70, 45, 90, 65, 80, 50, 95, 60, 85].map((h, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    initial={{ height: 0 }}
+                                                    whileInView={{ height: `${h}%` }}
+                                                    transition={{ delay: i * 0.05, duration: 0.8, ease: "easeOut" }}
+                                                    className="flex-1 bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-sm"
+                                                />
+                                            ))}
+                                        </div>
+                                        <div className="flex justify-between items-center text-zinc-400 text-xs font-mono uppercase tracking-widest border-t border-white/5 pt-4">
+                                            <span>Mon</span>
+                                            <span>Tue</span>
+                                            <span>Wed</span>
+                                            <span>Thu</span>
+                                            <span>Fri</span>
+                                            <span>Sat</span>
+                                            <span>Sun</span>
+                                        </div>
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Security */}
+                <section id="security" className="py-24 md:py-32 px-6 overflow-hidden">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row-reverse items-center gap-16">
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="slideLeft">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
+                                        <ShieldCheck size={16} />
+                                        Secure
+                                    </div>
+                                    <h2 className="text-3xl md:text-5xl font-bold text-zinc-900 mb-6">Safe like a bank vault.</h2>
+                                    <p className="text-zinc-600 text-xl mb-8 leading-relaxed">
+                                        Your financial data is private and secure. We use enterprise-grade encryption and automated backups to ensure your records are always safe.
+                                    </p>
+                                    <div className="space-y-6">
+                                        <div className="flex gap-4 p-4 rounded-2xl border border-zinc-100 bg-white shadow-sm">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                                                <Zap size={24} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-zinc-900">Instant Backups</h4>
+                                                <p className="text-zinc-500 text-sm">Every entry is instantly backed up to our secure cloud servers.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-4 p-4 rounded-2xl border border-zinc-100 bg-white shadow-sm">
+                                            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 text-emerald-600">
+                                                <Shield size={24} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-zinc-900">Biometric Access</h4>
+                                                <p className="text-zinc-500 text-sm">Protect your sensitive data with FaceID or Fingerprint lock.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="scaleUp">
+                                    <div className="relative group">
+                                        <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-teal-500/20 rounded-[3rem] blur-2xl group-hover:opacity-100 transition duration-1000" />
+                                        <div className="relative bg-white border border-zinc-100 rounded-[2.5rem] p-12 shadow-xl flex items-center justify-center overflow-hidden">
+                                            <motion.div
+                                                animate={{
+                                                    rotateY: [0, 180, 360],
+                                                }}
+                                                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                                                className="w-48 h-48 rounded-full border-8 border-emerald-500/20 flex items-center justify-center"
+                                            >
+                                                <ShieldCheck size={80} className="text-emerald-500" />
+                                            </motion.div>
+                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent" />
+                                        </div>
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* GST Invoicing */}
+                <section id="gst" className="py-24 md:py-32 px-6 bg-emerald-900 text-white overflow-hidden relative">
+                    <div className="absolute inset-0 opacity-10 pointer-events-none" style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 86c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zm66 3c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zm-46-45c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`
+                    }} />
+
+                    <div className="max-w-7xl mx-auto relative z-10">
+                        <div className="flex flex-col md:flex-row items-center gap-16">
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="slideRight">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-emerald-200 text-sm font-semibold mb-6">
+                                        <FileText size={16} />
+                                        GST Ready
+                                    </div>
+                                    <h2 className="text-3xl md:text-5xl font-bold mb-6">Tax compliance made easy.</h2>
+                                    <p className="text-emerald-100/80 text-xl mb-8 leading-relaxed">
+                                        Generate GST-compliant tax invoices in seconds. Shared instantly via WhatsApp or email, making your business look professional.
+                                    </p>
+                                    <div className="space-y-4">
+                                        {[
+                                            "Customizable GST rates for products",
+                                            "Automatic tax calculations",
+                                            "Professional PDF invoice templates",
+                                            "One-click WhatsApp sharing"
+                                        ].map((item, i) => (
+                                            <div key={i} className="flex items-center gap-3">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                    <Check size={12} className="text-white" />
+                                                </div>
+                                                <span className="text-emerald-50">{item}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                            <div className="w-full md:w-1/2">
+                                <AdvancedScrollReveal variant="scaleUp">
+                                    <div className="relative bg-white text-zinc-900 rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                                        <div className="flex justify-between border-b pb-4 mb-4">
+                                            <div>
+                                                <div className="text-xs uppercase text-zinc-400 font-bold tracking-widest">Tax Invoice</div>
+                                                <div className="font-bold">INV-2026-001</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-lg font-bold text-emerald-600">KhataPlus</div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3 mb-6">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-zinc-500">Subtotal</span>
+                                                <span className="font-medium">₹12,450.00</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-zinc-500">GST (18%)</span>
+                                                <span className="font-medium">₹2,241.00</span>
+                                            </div>
+                                            <div className="flex justify-between border-t border-dashed pt-3">
+                                                <span className="font-bold">Total Amount</span>
+                                                <span className="font-bold text-emerald-600">₹14,691.00</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-sm gap-2">
+                                            <Smartphone size={16} /> Share via WhatsApp
+                                        </div>
+                                    </div>
+                                </AdvancedScrollReveal>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 {/* How it Works */}
                 <section id="how" className="py-24 md:py-32 px-6 bg-zinc-50 relative overflow-hidden">
                     <div className="max-w-6xl mx-auto relative z-10">
@@ -571,9 +845,9 @@ export function LandingPage() {
                                 <span className="font-bold text-xl">KhataPlus</span>
                             </div>
                             <div className="flex gap-8 text-base text-zinc-400">
-                                <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                                <a href="#" className="hover:text-white transition-colors">Terms</a>
-                                <a href="#" className="hover:text-white transition-colors">Contact</a>
+                                <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                                <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+                                <Link href="#" className="hover:text-white transition-colors">Contact</Link>
                             </div>
                             <div className="flex items-center gap-3 text-base text-zinc-500">
                                 <span>© 2026 KhataPlus</span>
@@ -677,15 +951,14 @@ function StepCard({ number, title, description, color }: {
 
 function Counter({ from, to, duration }: { from: number, to: number, duration: number }) {
     const nodeRef = useRef<HTMLSpanElement>(null)
+    const isInView = useInView(nodeRef, { once: true, amount: 0.3 })
 
     useEffect(() => {
+        if (!isInView) return
+
         const node = nodeRef.current
         if (!node) return
 
-        const controls = { value: from }
-        // Simple manual animation for number for now since animate() is complex to type here
-        // In real Framer Motion 10+ we use animate(source, dest, options)
-        // using simple CSS transition approach fallback or basic set for now
         let start = Date.now()
         let timer = setInterval(() => {
             let time = Date.now() - start
@@ -696,7 +969,7 @@ function Counter({ from, to, duration }: { from: number, to: number, duration: n
         }, 16)
 
         return () => clearInterval(timer)
-    }, [from, to, duration])
+    }, [from, to, duration, isInView])
 
-    return <span ref={nodeRef} />
+    return <span ref={nodeRef}>{from}</span>
 }

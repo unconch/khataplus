@@ -245,10 +245,10 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
 
   // Design Helpers
   // Minimalist: Removing uppercase tracking, using standard fonts, lighter borders
-  const sectionTitleClasses = "text-sm font-medium text-foreground mb-3 flex items-center gap-2"
-  const inputContainerClasses = "group relative flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/50 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20"
-  const labelClasses = "text-xs font-medium text-muted-foreground group-focus-within:text-foreground transition-colors"
-  const inputClasses = "h-9 bg-transparent border-none text-base font-medium focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-muted-foreground/40 font-sans"
+  const sectionTitleClasses = "text-sm font-bold text-foreground mb-2 flex items-center gap-2"
+  const inputContainerClasses = "group relative flex flex-col gap-1 p-2 md:p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/50 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20"
+  const labelClasses = "text-[10px] md:text-xs font-medium text-muted-foreground group-focus-within:text-foreground transition-colors"
+  const inputClasses = "h-8 md:h-9 bg-transparent border-none text-sm md:text-base font-medium focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-muted-foreground/40 font-sans"
 
   if (inventory.length === 0) {
     return (
@@ -310,7 +310,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
                   {filteredItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex justify-between items-center p-5 md:p-4 hover:bg-zinc-50 dark:hover:bg-white/5 active:bg-zinc-100 dark:active:bg-white/10 cursor-pointer transition-all border-b border-zinc-100 dark:border-white/5 last:border-0"
+                      className="flex justify-between items-center p-3 md:p-4 hover:bg-zinc-50 dark:hover:bg-white/5 active:bg-zinc-100 dark:active:bg-white/10 cursor-pointer transition-all border-b border-zinc-100 dark:border-white/5 last:border-0"
                       onClick={() => handleSelectItem(item)}
                     >
                       <div className="flex items-center gap-3">
@@ -359,7 +359,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
               </div>
             </div>
 
-            <div className={cn(inputContainerClasses, "p-6")}>
+            <div className={cn(inputContainerClasses, "p-3 md:p-6")}>
               <Label htmlFor="salePrice" className={labelClasses}>
                 Selling Value (Single Unit) {gstEnabled && (gstInclusive ? "[GST Incl.]" : "[GST Excl.]")}
               </Label>
@@ -407,7 +407,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
 
             <div className="space-y-4 mb-10 max-h-[300px] overflow-y-auto no-scrollbar">
               {cart.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 group animate-in slide-in-from-right-2 duration-300">
+                <div key={idx} className="flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/5 group animate-in slide-in-from-right-2 duration-300">
                   <div className="flex-1 min-w-0">
                     <div className="font-black text-sm truncate">{item.inventoryItem.name}</div>
                     <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-0.5">

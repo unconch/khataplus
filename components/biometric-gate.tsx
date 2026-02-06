@@ -12,9 +12,10 @@ interface BiometricGateProps {
 
 export function BiometricGate({ isRequired, children }: BiometricGateProps) {
     const [isVerified, setIsVerified] = useState(false)
-    const [verificationAttempted, setVerificationAttempted] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
 
     useEffect(() => {
+        setIsMounted(true)
         // If not required, skip
         if (!isRequired) {
             setIsVerified(true)
@@ -27,6 +28,8 @@ export function BiometricGate({ isRequired, children }: BiometricGateProps) {
             setIsVerified(true)
         }
     }, [isRequired])
+
+    if (!isMounted) return null
 
     const verify = async () => {
         try {
