@@ -1,23 +1,3 @@
-import { NextResponse } from 'next/server'
-import { createOrganization } from '@/lib/data/organizations'
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json()
-    const { name, userId, gstin, address, phone } = body
-
-    if (!name || !userId) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
-    }
-
-    const org = await createOrganization(name, userId, { gstin, address, phone })
-
-    return NextResponse.json(org)
-  } catch (e: any) {
-    console.error('API create organization error:', e)
-    return NextResponse.json({ error: e.message || 'Failed to create organization' }, { status: 500 })
-  }
-}
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
 import { createOrganization, getUserOrganizations } from "@/lib/data/organizations"
