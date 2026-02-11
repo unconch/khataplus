@@ -26,6 +26,7 @@ export default async function middleware(req: NextRequest) {
         const rewriteUrl = new URL(rewrittenPath, req.url)
         rewriteUrl.search = url.search
 
+        requestHeaders.set("x-guest-mode", "true")
         const response = NextResponse.rewrite(rewriteUrl, {
             request: { headers: requestHeaders }
         })

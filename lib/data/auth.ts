@@ -1,9 +1,10 @@
 "use server"
 
 export async function isGuestMode() {
-    const { cookies } = await import("next/headers")
+    const { cookies, headers } = await import("next/headers")
     const cookieStore = await cookies()
-    return cookieStore.has("guest_mode")
+    const headerList = await headers()
+    return cookieStore.has("guest_mode") || headerList.get("x-guest-mode") === "true"
 }
 
 export async function getCurrentUser(): Promise<{ userId: string, isGuest: boolean } | null> {

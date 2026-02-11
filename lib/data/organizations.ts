@@ -10,20 +10,31 @@ import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
     const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-    const result = await sql`
-        INSERT INTO organizations(name, slug, created_by, gstin, address, phone)
-        VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null}, ${details?.phone || null})
-        RETURNING *
-    `;
-    const org = result[0] as Organization;
+    try {
+        const result = await sql`
+            INSERT INTO organizations(name, slug, created_by, gstin, address, phone)
+            VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null}, ${details?.phone || null})
+            RETURNING *
+        `;
+        const org = result[0] as Organization;
 
-    // Add creator as owner
-    await sql`
-        INSERT INTO organization_members(org_id, user_id, role)
-        VALUES(${org.id}, ${userId}, 'owner')
-    `;
+        // Add creator as owner
+        await sql`
+            INSERT INTO organization_members(org_id, user_id, role)
+            VALUES(${org.id}, ${userId}, 'owner')
+        `;
 
-    return org;
+        // Revalidate paths to ensure layout and dashboard reflect new organization
+        revalidatePath("/", "layout");
+        revalidatePath("/setup-organization");
+        revalidatePath("/dashboard");
+        revalidatePath(`/${slug}/dashboard`);
+
+        return org;
+    } catch (error) {
+        console.error("Database error in createOrganization:", error);
+        throw error;
+    }
 }
 
 export async function getUserOrganizations(userId: string): Promise<(OrganizationMember & { organization: Organization })[]> {
