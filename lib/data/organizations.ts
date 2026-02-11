@@ -8,7 +8,14 @@ import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next
 
 
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
-    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    let slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+
+    // Handle potential slug collisions
+    const existing = await sql`SELECT slug FROM organizations WHERE slug = ${slug}`;
+    if (existing.length > 0) {
+        const suffix = Math.random().toString(36).substring(2, 6);
+        slug = `${slug}-${suffix}`;
+    }
 
     try {
         const result = await sql`
