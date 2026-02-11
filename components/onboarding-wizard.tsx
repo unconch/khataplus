@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod/dist/zod.js"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Loader2, ArrowRight, Check, Building2, MapPin, ReceiptText } from "lucide-react"
 
@@ -87,11 +87,11 @@ export function OnboardingWizard({ userId }: { userId: string }) {
             const targetPath = `/${org.slug}/dashboard`
             console.log("--- [DEBUG] OnboardingWizard: Redirecting to", targetPath, "---")
 
-            // Forced delay to ensure DB transaction stability and cache revalidation propagation
+            // Use a forced delay to ensure the database transaction is fully finalized and cache revalidation propagates
             setTimeout(() => {
-                // Using window.location.href to force a full reload and bypass stale client-side router caches
-                window.location.href = targetPath
-            }, 1200)
+                // Using window.location.assign to force a full reload and bypass stale client-side router caches
+                window.location.assign(targetPath)
+            }, 1000)
         } catch (error) {
             console.error("Failed to create organization", error)
             toast.error("Failed to create organization. Check console for details.")

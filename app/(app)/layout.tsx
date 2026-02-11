@@ -108,8 +108,18 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       profile = migrationResult.profile as Profile
     }
 
+    // Handle missing organization with cache resilience
     if (userOrgs.length === 0) {
-      redirect("/setup-organization")
+      // If we are already on an org-prefixed path, don't redirect back to setup
+      // This handles the race condition during onboarding where the first hit after creation 
+      // might see a stale empty org list while the URL already has the slug.
+      if (!pathPrefix || pathPrefix === "/setup-organization") {
+        console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Setup ---")
+        redirect("/setup-organization")
+      } else {
+        console.log("--- [DEBUG] AppLayout: Stale cache detected (No Orgs but path prefix exists). Waiting for revalidation... ---")
+        // We allow it to proceed; if the tenant fetch fails later, it will hit the catch block.
+      }
     }
 
     // Resolve current organization context
