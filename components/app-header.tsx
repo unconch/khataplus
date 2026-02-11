@@ -54,11 +54,7 @@ export function AppHeader({ profile, orgName }: AppHeaderProps) {
   const { isOnline, isStandalone } = usePWA()
 
   const handleLogoClick = () => {
-    if (isStandalone) {
-      router.push("/dashboard")
-    } else {
-      router.push("/")
-    }
+    router.push("/dashboard")
   }
 
   return (

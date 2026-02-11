@@ -23,26 +23,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   }
   const { userId, isGuest } = user
 
-  // If user hits /dashboard without an org slug in the path, redirect to /{slug}/dashboard
-  const { headers } = await import("next/headers")
-  const headerList = await headers()
-  const tenantSlug = headerList.get("x-tenant-slug")
-
-  if (!tenantSlug && !isGuest) {
-    const userOrgs = await getUserOrganizations(userId)
-    if (userOrgs.length > 0) {
-      const slug = userOrgs[0].organization.slug
-      console.log(`--- [DEBUG] DashboardPage: No org in path, redirecting to /${slug}/dashboard ---`)
-      redirect(`/${slug}/dashboard`)
-    } else {
-      redirect("/setup-organization")
-    }
-  }
-
-  if (isGuest) {
-    console.log("--- [DEBUG] Guest Mode Detected in Dashboard ---")
-  }
-
   let profile;
   if (isGuest) {
     profile = {

@@ -15,7 +15,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (isAuthenticated && !isSessionLoading) {
-      router.replace("/")
+      router.replace("/dashboard")
     }
   }, [isAuthenticated, isSessionLoading, router])
 

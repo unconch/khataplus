@@ -5,7 +5,8 @@ import { NextResponse, NextRequest } from 'next/server'
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite',
     'geoblocked', 'privacy', 'terms', '_next',
-    'dashboard', // direct /dashboard for authenticated users (uses first org)
+    'dashboard', 'demo', 'marketing', 'offline',
+    'pending-approval', 'monitoring',
 ])
 
 export default async function middleware(req: NextRequest) {
@@ -18,6 +19,26 @@ export default async function middleware(req: NextRequest) {
     const segments = pathname.split('/').filter(Boolean)
     const firstSegment = segments[0] || ''
 
+    // Handle demo: /demo or /demo/* → set guest cookie, rewrite to /dashboard/*
+    if (firstSegment === 'demo') {
+        const innerPath = '/' + segments.slice(1).join('/')
+        const rewrittenPath = innerPath === '/' ? '/dashboard' : innerPath
+        const rewriteUrl = new URL(rewrittenPath, req.url)
+        rewriteUrl.search = url.search
+
+        const response = NextResponse.rewrite(rewriteUrl, {
+            request: { headers: requestHeaders }
+        })
+        response.cookies.set("guest_mode", "true", {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 30,
+            sameSite: "lax"
+        })
+        return response
+    }
+
     let orgSlug: string | null = null
     let rewrittenPathname = pathname
 
@@ -29,20 +50,6 @@ export default async function middleware(req: NextRequest) {
         if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'
 
         requestHeaders.set("x-tenant-slug", orgSlug)
-    }
-
-    // Handle demo entry: /demo → set guest cookie, redirect to /demo/dashboard
-    if (pathname === `/${orgSlug}` && orgSlug === 'demo') {
-        const response = NextResponse.redirect(new URL('/demo/dashboard', req.url))
-        response.cookies.set("guest_mode", "true", {
-            path: "/",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 60 * 30, // 30 mins
-            sameSite: "lax"
-        })
-        console.log("--- [DEBUG] Middleware: /demo entry → setting cookie, redirect to /demo/dashboard ---")
-        return response
     }
 
     // Public routes
@@ -59,12 +66,7 @@ export default async function middleware(req: NextRequest) {
         "/terms",
     ]
 
-    // If org is demo, open all dashboard and API routes
-    if (orgSlug === 'demo') {
-        publicRoutes.push("/dashboard")
-        publicRoutes.push("/dashboard/:path*")
-        publicRoutes.push("/api/:path*")
-    }
+
 
     // @ts-ignore
     const descopeMiddleware = authMiddleware({

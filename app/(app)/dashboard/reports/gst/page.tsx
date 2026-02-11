@@ -13,7 +13,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns"
 
 export default async function GstReportPage() {
     const user = await getCurrentUser()
-    if (!user) redirect("/sign-in")
+    if (!user) redirect("/auth/login")
 
     const profile = await getProfile(user.userId)
     if (!profile || !profile.organization_id || (profile.role !== "owner" && profile.role !== "main admin")) {

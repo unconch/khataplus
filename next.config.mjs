@@ -45,14 +45,7 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
-  async rewrites() {
-    return [
-      {
-        source: '/demo/dashboard/:path*',
-        destination: '/dashboard/:path*',
-      },
-    ]
-  },
+
 }
 
 export default withSentryConfig(withPWA(nextConfig), {
