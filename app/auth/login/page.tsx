@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !isSessionLoading) {
-      router.replace("/dashboard")
+      router.replace("/")
     }
   }, [isAuthenticated, isSessionLoading, router])
 
@@ -126,7 +126,7 @@ export default function LoginPage() {
               flowId="sign-up-or-in"
               onSuccess={(e) => {
                 console.log("Logged in!", e.detail.user)
-                router.push("/dashboard")
+                router.push("/")
               }}
               onError={(e) => console.log("Could not log in!", e)}
               theme={window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}

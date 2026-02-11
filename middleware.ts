@@ -6,14 +6,14 @@ export default async function middleware(req: NextRequest) {
     const hostname = req.headers.get("host") || ""
 
     // 1. Subdomain / Tenant Detection
-    const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.vercel.app"]
+    const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.online", "www.khataplus.online", "khataplus.vercel.app"]
     let tenantSlug = null
     const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(hostname)
 
     if (!rootDomains.includes(hostname) && !isIp) {
         // Extract subdomain (e.g., apple.localhost:3000 => apple)
         const parts = hostname.split('.')
-        if (parts.length >= 2) {
+        if (parts.length >= 2 && parts[0] !== 'www') {
             tenantSlug = parts[0]
         }
     }
@@ -23,12 +23,14 @@ export default async function middleware(req: NextRequest) {
     console.log(`--- [DEBUG] Middleware: host=${hostname} tenant=${tenantSlug} isDemo=${isDemo} path=${url.pathname} ---`)
 
     // If on a subdomain (not root) and at the root path "/", redirect to "/dashboard"
-    // This makes sure org.domain.com/ takes you to org.domain.com/dashboard
+    // DESIRED CHANGE: User requested NOT to show dashboard directly.
+    /*
     if (tenantSlug && url.pathname === "/") {
         const dashboardUrl = new URL("/dashboard", req.url)
         console.log(`--- [DEBUG] Middleware: Redirecting subdomain root to /dashboard ---`)
         return NextResponse.redirect(dashboardUrl)
     }
+    */
 
     // Redirect /demo/* (but not /demo itself) to demo.domain/*
     // /demo is the entry point that sets guest cookies
@@ -38,7 +40,8 @@ export default async function middleware(req: NextRequest) {
         if (newUrl.pathname === "" || newUrl.pathname === "/") newUrl.pathname = "/dashboard"
 
         // Handle localhost:3000 => demo.localhost:3000
-        newUrl.hostname = `demo.${url.hostname}`
+        const cleanHost = url.hostname.replace(/^www\./, "")
+        newUrl.hostname = `demo.${cleanHost}`
         console.log(`--- [DEBUG] Middleware: Redirecting /demo path to subdomain: ${newUrl.hostname}${newUrl.pathname} ---`)
         return NextResponse.redirect(newUrl)
     }

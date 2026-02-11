@@ -7,7 +7,9 @@ export async function GET(request: Request) {
     // 1. If we are NOT on the demo subdomain yet, redirect to the demo subdomain's /demo path
     if (!host.startsWith("demo.")) {
         const subdomainUrl = new URL(request.url)
-        subdomainUrl.hostname = `demo.${subdomainUrl.hostname}`
+        // Strip www. if present to avoid demo.www.khataplus.online
+        const cleanHost = host.replace(/^www\./, "")
+        subdomainUrl.hostname = `demo.${cleanHost}`
         console.log("--- [DEBUG] /demo: Redirecting to subdomain entry point", subdomainUrl.toString(), "---")
         return NextResponse.redirect(subdomainUrl)
     }

@@ -6,18 +6,34 @@ import { neon } from '@neondatabase/serverless';
 let prodSqlInstance: any = null;
 let demoSqlInstance: any = null;
 
+// Helper to sanitize connection strings (removes psql '...' wrapper if present)
+const sanitizeConnString = (url: string) => {
+    if (!url) return url;
+    let sanitized = url.trim();
+    // Remove psql '...' wrapper
+    if (sanitized.startsWith("psql '") && sanitized.endsWith("'")) {
+        sanitized = sanitized.substring(6, sanitized.length - 1);
+    }
+    // Remove just '...' if present
+    else if (sanitized.startsWith("'") && sanitized.endsWith("'")) {
+        sanitized = sanitized.substring(1, sanitized.length - 1);
+    }
+    return sanitized;
+}
+
 // Helper to get or create specific connection
 const getClient = (url: string, isGuest: boolean) => {
+    const sanitizedUrl = sanitizeConnString(url);
     if (isGuest) {
         if (!demoSqlInstance) {
             console.log('[DB] Initializing SANDBOX Connection...');
-            demoSqlInstance = neon(url);
+            demoSqlInstance = neon(sanitizedUrl);
         }
         return demoSqlInstance;
     } else {
         if (!prodSqlInstance) {
             console.log('[DB] Initializing PRODUCTION Connection...');
-            prodSqlInstance = neon(url);
+            prodSqlInstance = neon(sanitizedUrl);
         }
         return prodSqlInstance;
     }
@@ -84,7 +100,8 @@ export const getSql = () => {
         throw new Error('DATABASE_URL not set');
     }
     if (!prodSqlInstance) {
-        prodSqlInstance = neon(process.env.DATABASE_URL);
+        const sanitizedUrl = sanitizeConnString(process.env.DATABASE_URL!);
+        prodSqlInstance = neon(sanitizedUrl);
     }
     return prodSqlInstance;
 }

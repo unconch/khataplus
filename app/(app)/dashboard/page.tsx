@@ -24,9 +24,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   const { userId, isGuest } = user
 
   // --- [SUBDOMAIN REDIRECTION LOGIC] ---
+  /*
   const { headers } = await import("next/headers")
   const host = (await headers()).get("host") || ""
-  const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.vercel.app"]
+  const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.online", "www.khataplus.online", "khataplus.vercel.app"]
   const isOnRoot = rootDomains.includes(host)
 
   if (isOnRoot && !isGuest) {
@@ -34,7 +35,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
     if (userOrgs.length > 0) {
       const targetSlug = userOrgs[0].organization.slug
       const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
-      const domain = rootDomains.find(d => host.includes(d)) || "localhost:3000"
+      const rawDomain = rootDomains.find(d => host.includes(d)) || "localhost:3000"
+      const domain = rawDomain.replace(/^www\./, "")
       console.log(`--- [DEBUG] Redirecting root user to subdomain: ${targetSlug}.${domain} ---`)
       redirect(`${protocol}://${targetSlug}.${domain}/dashboard`)
     } else {
@@ -42,6 +44,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
       redirect("/setup-organization")
     }
   }
+  */
   // -------------------------------------
 
   if (isGuest) {
