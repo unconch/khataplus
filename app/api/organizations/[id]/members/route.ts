@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
-import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data"
+import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
 
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -28,8 +28,8 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -63,8 +63,8 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -86,8 +86,8 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

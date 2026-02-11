@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { recordBatchSales } from "@/lib/data"
+import { recordBatchSales } from "@/lib/data/sales"
 
 export async function POST(req: NextRequest) {
     try {

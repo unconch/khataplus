@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { updateOrganization, updateSystemSettings, upsertProfile } from "@/lib/data"
+import { updateOrganization, updateSystemSettings } from "@/lib/data/organizations"
+import { upsertProfile } from "@/lib/data/profiles"
 import { toast } from "sonner"
 import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield } from "lucide-react"
 
@@ -31,8 +32,12 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
 
         setLoading(true)
         try {
+            // Destructure settings out to avoid overwriting them with stale data in updateOrganization
+            // updateSystemSettings manages the settings column exclusively
+            const { settings: _unused, ...orgUpdates } = org
+
             await Promise.all([
-                updateOrganization(org.id, org),
+                updateOrganization(org.id, orgUpdates),
                 updateSystemSettings(settings, org.id),
                 upsertProfile(profile)
             ])

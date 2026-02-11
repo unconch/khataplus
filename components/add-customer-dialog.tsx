@@ -25,7 +25,9 @@ export function AddCustomerDialog({ orgId, onSuccess }: AddCustomerDialogProps) 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!formData.name || !formData.phone) return
+        if (!formData.name || !formData.phone) {
+          return
+        }
 
         setLoading(true)
         setError("")

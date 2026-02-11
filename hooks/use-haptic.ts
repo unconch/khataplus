@@ -6,7 +6,9 @@ type HapticType = "light" | "medium" | "heavy" | "success" | "error" | "warning"
 
 export function useHaptic() {
     const trigger = useCallback((type: HapticType = "light") => {
-        if (typeof window === "undefined" || !navigator.vibrate) return
+        if (typeof window === "undefined" || !navigator.vibrate) {
+          return
+        }
 
         switch (type) {
             case "light":

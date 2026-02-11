@@ -9,6 +9,18 @@
     "start": "next start",
     "debug-ocr": "tsx scripts/debug-ocr.ts"
   },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
   "dependencies": {
     "@descope/nextjs-sdk": "^0.15.7",
     "@ducanh2912/next-pwa": "^10.2.9",

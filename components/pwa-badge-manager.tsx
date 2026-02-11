@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from "react"
 import { usePWA } from "@/components/pwa-provider"
-import { getPendingApprovalsCount } from "@/lib/data"
+import { getPendingApprovalsCount } from "@/lib/data/profiles"
 
 export function PWABadgeManager({ isAdmin }: { isAdmin: boolean }) {
     const { setBadge } = usePWA()

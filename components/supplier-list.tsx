@@ -46,7 +46,7 @@ export function SupplierList({ initialSuppliers, orgId }: SupplierListProps) {
                     </div>
                 ) : (
                     filteredSuppliers.map((supplier) => (
-                        <Link key={supplier.id} href={`/home/suppliers/${supplier.id}`} className="block">
+                        <Link key={supplier.id} href={`/dashboard/suppliers/${supplier.id}`} className="block">
                             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/30 transition-all border-l-4 border-l-transparent hover:border-l-primary group">
                                 <div className="flex items-center gap-3">
                                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xl">

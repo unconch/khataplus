@@ -1,9 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Home, ShoppingCart, Package, PieChart, Building2 } from "lucide-react" // Added missing imports for icons
 
 import { SystemSettings, Profile } from "@/lib/types"
+import { cn } from "@/lib/utils"
+
+// Added navItems array as per instruction's "Code Edit" block
+import { usePathname } from "next/navigation"
+
+const navItems = [
+  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard/sales", label: "Sales", icon: ShoppingCart },
+  { href: "/dashboard/inventory", label: "Items", icon: Package },
+  { href: "/dashboard/reports", label: "Reports", icon: PieChart },
+  { href: "/dashboard/settings", label: "Org", icon: Building2 },
+]
 
 type OrgRole = "admin" | "manager" | "staff"
 
@@ -13,18 +25,61 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ role, settings }: BottomNavProps) {
+  const pathname = usePathname()
   const isStaff = role === "staff"
   const canSell = !isStaff || settings.allow_staff_sales
 
-  if (!canSell) return null
+  /* Logic moved inside component to access hooks */
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <Link href="/home/sales">
-        <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xl shadow-primary/40 active:scale-95 transition-transform hover:scale-105">
-          <Plus className="h-8 w-8" />
-        </div>
-      </Link>
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 h-auto">
+      <div className="max-w-md mx-auto relative">
+
+        {/* Bottom Navigation Bar */}
+        <nav className="flex items-center justify-around glass-sharp rounded-[3rem] shadow-xl px-2 py-3">
+          {navItems.map((item) => {
+            const isAdmin = role === "admin" || role === "main admin" || role === "owner"
+            const isStaff = role === "staff"
+
+            // Filtering logic
+            if (item.href === "/dashboard/sales" && isStaff && !settings.allow_staff_sales) return null
+            if (item.href === "/dashboard/inventory" && isStaff && !settings.allow_staff_inventory) return null
+            if (item.href === "/dashboard/reports" && isStaff && !settings.allow_staff_reports) return null
+            if (item.href === "/dashboard/settings" && !isAdmin) return null
+
+            const href = item.href
+            const isActive = pathname === href
+            const Icon = item.icon
+
+            return (
+              <Link
+                key={item.href}
+                href={href}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-3 py-1 rounded-2xl transition-all duration-300 relative group",
+                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className={cn(
+                  "p-1 rounded-xl transition-all duration-300",
+                  isActive && "bg-primary/10"
+                )}>
+                  <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.5px]" : "stroke-2")} />
+                </div>
+                <span className={cn(
+                  "text-[10px] font-black uppercase tracking-wider transition-all duration-300",
+                  isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0"
+                )}>
+                  {item.label}
+                </span>
+                {isActive && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
+import { session } from "@descope/nextjs-sdk/server"
 import { PendingApprovalView } from "@/components/pending-approval-view"
 import { getProfile, getUserOrganizations } from "@/lib/data"
-import { session } from "@descope/nextjs-sdk/server"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 
@@ -21,13 +21,12 @@ export default function PendingApprovalPage() {
 }
 
 async function PendingApprovalLogic() {
-  const currSession = await session()
+  const sessionRes = await session()
+  const userId = sessionRes?.token?.sub
 
-  if (!currSession) {
+  if (!userId) {
     redirect("/auth/login")
   }
-
-  const userId = (currSession as any)?.token?.sub || (currSession as any)?.user?.userId
 
   // Check if user has an organization - if not, redirect to setup
   const userOrgs = await getUserOrganizations(userId)
@@ -36,6 +35,6 @@ async function PendingApprovalLogic() {
   }
 
   // If has org, go to dashboard
-  redirect("/home")
+  redirect("/dashboard")
   return null
 }

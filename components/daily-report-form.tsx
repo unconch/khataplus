@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { addDailyReport } from "@/lib/data"
+import { addDailyReport } from "@/lib/data/reports"
 import { DailyReport } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -39,7 +39,7 @@ export function DailyReportForm({ initialData, onSuccess, profileId }: DailyRepo
 
     // Load categories on mount
     useEffect(() => {
-        async function loadCategories() {
+        const loadCategories = async () => {
             try {
                 const cats = await getExpenseCategories();
                 setCategories(cats);

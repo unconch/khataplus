@@ -36,7 +36,9 @@ export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: Pay
     // We provide safe defaults if type is null.
 
     const weeklyData = useMemo(() => {
-        if (!type || !reports) return []
+        if (!type || !reports) {
+          return []
+        }
 
         const weeks: { [key: string]: { name: string; value: number } } = {}
 
@@ -55,7 +57,9 @@ export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: Pay
     }, [reports, type])
 
     const dailyList = useMemo(() => {
-        if (!type || !reports) return []
+        if (!type || !reports) {
+          return []
+        }
 
         return reports
             .map(r => ({

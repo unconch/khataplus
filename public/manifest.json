@@ -2,7 +2,7 @@
   "name": "KhataPlus",
   "short_name": "KhataPlus",
   "description": "Simple, powerful billing & khata management for Indian businesses. A modern alternative to Vyapar.",
-  "start_url": "/home",
+  "start_url": "/dashboard",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#09090b",
@@ -28,7 +28,7 @@
   "shortcuts": [
     {
       "name": "New Sale",
-      "url": "/home/sales?action=new",
+      "url": "/dashboard/sales?action=new",
       "icons": [
         {
           "src": "/icon.svg",
@@ -38,7 +38,7 @@
     },
     {
       "name": "Daily Ledger",
-      "url": "/home/reports",
+      "url": "/dashboard/reports",
       "icons": [
         {
           "src": "/icon.svg",

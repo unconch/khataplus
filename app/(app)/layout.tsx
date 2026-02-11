@@ -5,18 +5,14 @@ import { BiometricGate } from "@/components/biometric-gate"
 import type { Profile } from "@/lib/types"
 import { session } from "@descope/nextjs-sdk/server"
 import { Suspense } from "react"
-import { Loader2 } from "lucide-react"
+import { LoadingScreen } from "@/components/loading-screen"
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-sm font-medium text-muted-foreground animate-pulse">Initializing Platinum Environment...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen message="Initializing Platinum Environment..." />}>
       <AppLayoutLogic>
         {children}
       </AppLayoutLogic>
@@ -25,36 +21,103 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
-  const currSession = await session()
-  const userId = (currSession as any)?.token?.sub || (currSession as any)?.user?.userId
+  try {
+    const sessionRes = await session()
+    const userId = sessionRes?.token?.sub
+    const userToken = sessionRes?.token
 
-  const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations } = await import("@/lib/data")
-  const { getTenant } = await import("@/lib/tenant")
-  const { TenantProvider } = await import("@/components/tenant-provider")
+    console.log("--- [DEBUG] AppLayoutLogic Execution: Render Phase - Fixing Stale Cache ---")
+    const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations } = await import("@/lib/data")
+    const { getTenant } = await import("@/lib/tenant")
+    const { TenantProvider } = await import("@/components/tenant-provider")
+    const { redirect } = await import("next/navigation")
+    const { RealtimeSyncActivator } = await import("@/components/realtime-sync-activator")
+    const { migrateOrCreateUser } = await import("@/lib/migrate-user")
 
-  // 1. Resolve Tenant from Subdomain
-  const subdomainTenant = await getTenant()
+    // Parallelize initial critical fetches
+    const [subdomainTenant, profileResult, userOrgsResult] = await Promise.all([
+      getTenant(),
+      userId ? getProfile(userId) : Promise.resolve(null),
+      userId ? getUserOrganizations(userId) : Promise.resolve([])
+    ])
 
-  if (userId) {
-    let profile = await getProfile(userId)
+    if (!userId) {
+      // Check for Guest Mode
+      const { cookies, headers } = await import("next/headers")
+      const cookieStore = await cookies()
+      const headerList = await headers()
 
-    const descopeUser = (currSession as any)?.user || (currSession as any)?.token?.user || {}
-    const token = (currSession as any)?.token || {}
+      const { isGuestMode } = await import("@/lib/data/auth")
+      const isGuest = await isGuestMode()
 
-    const email = descopeUser.email || token.email || (descopeUser as any).loginId || ""
-    const name = descopeUser.name || descopeUser.givenName || descopeUser.fullName || token.name || token.given_name || token.family_name || ""
+      console.log(`--- [DEBUG] Layout: isGuest=${isGuest} (Cookie: ${cookieStore.has("guest_mode")}) ---`)
+
+      if (isGuest) {
+        console.log("--- [DEBUG] Guest Mode Detected: Bypassing AuthGuard ---")
+        const defaultSettings = await getSystemSettings()
+
+        const guestProfile: any = {
+          id: "guest-user",
+          name: "Guest User",
+          email: "guest@khataplus.demo",
+          role: "admin",
+          status: "approved",
+          created_at: new Date().toISOString()
+        }
+
+        const { sql } = await import("@/lib/db")
+        const orgs = await sql`SELECT * FROM organizations LIMIT 1`
+        let demoTenant = orgs[0]
+
+        if (!demoTenant) {
+          demoTenant = {
+            id: "demo-org-id",
+            name: "KhataPlus Demo Shop",
+            slug: "demo-shop"
+          }
+        }
+
+        const demoSettings = await getSystemSettings(demoTenant.id)
+
+        return (
+          <TenantProvider tenant={demoTenant}>
+            <AppShell
+              profile={guestProfile}
+              role="admin"
+              settings={demoSettings}
+              orgId={demoTenant.id}
+              orgName={demoTenant.name}
+            >
+              {children}
+            </AppShell>
+          </TenantProvider>
+        )
+      }
+
+      // Fallback for public or unauthenticated
+      const defaultSettings = await getSystemSettings()
+      return (
+        <AuthGuard>
+          <TenantProvider tenant={subdomainTenant}>
+            <AppShell profile={null} role="staff" settings={defaultSettings}>
+              {children}
+            </AppShell>
+          </TenantProvider>
+        </AuthGuard>
+      )
+    }
+
+    let profile = profileResult
+    const userOrgs = userOrgsResult
+
+    // Handle Profile Creation/Update using Descope user data
+    const email = userToken?.email as string || userToken?.loginId as string || ""
+    const name = userToken?.name as string || ""
 
     if (!profile) {
-      profile = await upsertProfile({
-        id: userId,
-        email: email,
-        name: name,
-        role: "staff" as any,
-        status: "approved",
-        biometric_required: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      // Try migration first, then create if needed
+      const migrationResult = await migrateOrCreateUser(userId, email, name)
+      profile = migrationResult.profile as Profile
     } else if (profile && (name !== profile.name || email !== profile.email)) {
       profile = await upsertProfile({
         ...profile,
@@ -64,58 +127,54 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       })
     }
 
-    // 2. Resolve Organization Membership
-    const { redirect } = await import("next/navigation")
-    const userOrgs = await getUserOrganizations(userId)
+    // Refetch orgs after potential migration
+    const updatedUserOrgs = userOrgs.length === 0 ? await getUserOrganizations(userId) : userOrgs
 
-    if (userOrgs.length === 0) {
-      // No org - redirect to setup
+    if (updatedUserOrgs.length === 0) {
       redirect("/setup-organization")
     }
 
     // Resolve current organization context
-    // If we're on a tenant subdomain, use that. Otherwise use the user's first org.
     let currentOrgMembership = null
 
     if (subdomainTenant) {
-      currentOrgMembership = userOrgs.find(o => o.org_id === subdomainTenant.id)
+      currentOrgMembership = updatedUserOrgs.find((o: any) => o.org_id === subdomainTenant.id)
       if (!currentOrgMembership) {
-        // User is not a member of the organization identified by the subdomain
-        // For now, redirect to their default org or an error page
-        // redirect(`https://${userOrgs[0].organization.slug}.localhost:3000/home`) // In prod: khataplus.com
-        // For this implementation, we'll just show forbidden if they are on the wrong subdomain
         throw new Error(`Forbidden: You are not a member of ${subdomainTenant.name}`)
       }
     } else {
-      currentOrgMembership = userOrgs[0]
+      currentOrgMembership = updatedUserOrgs[0]
     }
 
-    const orgRole = currentOrgMembership.role // admin, manager, or staff
+    const orgRole = currentOrgMembership.role
     const orgId = currentOrgMembership.org_id
     const tenant = currentOrgMembership.organization
 
-    // Fetch per-org settings
+    // Fetch settings for the resolved org
     const settings = await getSystemSettings(orgId)
 
-    // Role-based route protection based on org role
+    // Role-based route protection
     const headersList = await (await import("next/headers")).headers()
     const path = headersList.get("x-invoke-path") || ""
 
     if (orgRole === "staff") {
-      if (path.includes("/home/analytics") && !settings.allow_staff_analytics) redirect("/home")
-      if (path.includes("/home/reports") && !settings.allow_staff_reports) redirect("/home")
-      if (path.includes("/home/sales") && !settings.allow_staff_sales) redirect("/home")
+      if (path.includes("/dashboard/analytics") && !settings.allow_staff_analytics) {
+        redirect("/dashboard")
+      }
+      if (path.includes("/dashboard/reports") && !settings.allow_staff_reports) {
+        redirect("/dashboard")
+      }
+      if (path.includes("/dashboard/sales") && !settings.allow_staff_sales) {
+        redirect("/dashboard")
+      }
     }
 
-    // Only admin can access admin/settings pages
-    if (orgRole !== "admin" && path.includes("/home/admin")) {
-      redirect("/home")
+    if (orgRole !== "admin" && path.includes("/dashboard/admin")) {
+      redirect("/dashboard")
     }
-
-    const { RealtimeSyncActivator } = await import("@/components/realtime-sync-activator")
 
     return (
-      <AuthGuard>
+      <>
         <RealtimeSyncActivator orgId={orgId} />
         <BiometricGate isRequired={profile?.biometric_required || false}>
           <TenantProvider tenant={tenant}>
@@ -130,19 +189,33 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             </AppShell>
           </TenantProvider>
         </BiometricGate>
-      </AuthGuard>
+      </>
+    )
+
+  } catch (error: any) {
+    if (error.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+    console.error("Critical Data Fetch Error in AppLayout:", error);
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-2xl font-bold mb-2">Connection Error</h2>
+        <p className="text-muted-foreground mb-4 max-w-md">
+          We couldn't load your account data. This might be a network issue or a database timeout.
+        </p>
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-mono mb-6 max-w-lg break-all">
+          {String(error)}
+        </div>
+        <form action={async () => {
+          "use server"
+          const { redirect } = await import("next/navigation")
+          redirect("/dashboard")
+        }}>
+          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity font-medium">
+            Retry Connection
+          </button>
+        </form>
+      </div>
     )
   }
-
-  // Fallback for public or unauthenticated (though AuthGuard usually handles this)
-  const defaultSettings = await getSystemSettings()
-  return (
-    <AuthGuard>
-      <TenantProvider tenant={subdomainTenant}>
-        <AppShell profile={null} role="staff" settings={defaultSettings}>
-          {children}
-        </AppShell>
-      </TenantProvider>
-    </AuthGuard>
-  )
 }

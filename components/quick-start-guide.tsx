@@ -23,28 +23,28 @@ export function QuickStartGuide({ orgId, stats }: QuickStartProps) {
             title: "Business Profile",
             description: "Set your GSTIN and address",
             icon: Building2,
-            href: "/home/settings",
+            href: "/dashboard/settings",
             isComplete: stats.isProfileComplete
         },
         {
             title: "Add Products",
             description: "Build your inventory catalog",
             icon: Package,
-            href: "/home/inventory",
+            href: "/dashboard/inventory",
             isComplete: stats.hasInventory
         },
         {
             title: "Add Customers",
             description: "Import or add regular clients",
             icon: Users,
-            href: "/home/customers",
+            href: "/dashboard/customers",
             isComplete: stats.hasCustomers
         },
         {
             title: "First Sale",
             description: "Create your first professional invoice",
             icon: ShoppingCart,
-            href: "/home",
+            href: "/dashboard",
             isComplete: stats.hasSales
         }
     ]
@@ -52,7 +52,9 @@ export function QuickStartGuide({ orgId, stats }: QuickStartProps) {
     const completedCount = steps.filter(s => s.isComplete).length
     const progress = (completedCount / steps.length) * 100
 
-    if (completedCount === steps.length) return null
+    if (completedCount === steps.length) {
+      return null
+    }
 
     return (
         <Card className="border-primary/10 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">

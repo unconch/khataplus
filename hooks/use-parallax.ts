@@ -12,6 +12,5 @@ import { useRef } from "react"
 export function useParallax(distance: number = 100) {
     const { scrollY } = useScroll()
     const transform = useTransform(scrollY, [0, 1000], [0, distance])
-    const smoothTransform = useSpring(transform, { stiffness: 400, damping: 90 })
-    return smoothTransform
+    return useSpring(transform, { stiffness: 400, damping: 90 });
 }

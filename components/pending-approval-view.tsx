@@ -11,7 +11,7 @@ interface PendingApprovalViewProps {
   isDisabled: boolean
 }
 
-import { useDescope } from "@descope/nextjs-sdk/client"
+import { useDescope } from "@descope/react-sdk"
 
 export function PendingApprovalView({ email, isDisabled }: PendingApprovalViewProps) {
   const router = useRouter()

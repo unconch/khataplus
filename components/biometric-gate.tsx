@@ -29,7 +29,9 @@ export function BiometricGate({ isRequired, children }: BiometricGateProps) {
         }
     }, [isRequired])
 
-    if (!isMounted) return null
+    if (!isMounted) {
+      return null
+    }
 
     const verify = async () => {
         try {

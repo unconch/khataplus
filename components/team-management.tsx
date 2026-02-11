@@ -48,7 +48,9 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     }
 
     const handleInvite = async () => {
-        if (!inviteEmail.trim()) return
+        if (!inviteEmail.trim()) {
+          return
+        }
         setSending(true)
 
         try {
@@ -77,7 +79,9 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     }
 
     const handleRemove = async (userId: string) => {
-        if (!confirm("Remove this member?")) return
+        if (!confirm("Remove this member?")) {
+          return
+        }
 
         try {
             await fetch(`/api/organizations/${orgId}/members`, {

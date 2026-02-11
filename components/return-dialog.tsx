@@ -47,7 +47,7 @@ export function ReturnDialog({ sale }: ReturnDialogProps) {
                 quantity,
                 refund_amount: refundAmount,
                 reason
-            }, sale.user_id || "anonymous") // Ideally updated to use current admin ID
+            }, sale.org_id)
 
             toast.success("Return processed successfully")
             setOpen(false)

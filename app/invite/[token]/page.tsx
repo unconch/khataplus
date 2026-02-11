@@ -32,7 +32,7 @@ export default function AcceptInvitePage() {
                 setMessage("You've joined the team!")
 
                 setTimeout(() => {
-                    router.push("/home")
+                    router.push("/dashboard")
                     router.refresh()
                 }, 2000)
             } catch (e: any) {

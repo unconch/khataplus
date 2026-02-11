@@ -27,9 +27,15 @@ export function ActivityLogs({ logs }: ActivityLogsProps) {
     }
 
     const getActionColor = (action: string) => {
-        if (action.includes("Added")) return "bg-green-500/10 text-green-500 border-green-500/20"
-        if (action.includes("Sale")) return "bg-blue-500/10 text-blue-500 border-blue-500/20"
-        if (action.includes("Status") || action.includes("Role")) return "bg-purple-500/10 text-purple-500 border-purple-500/20"
+        if (action.includes("Added")) {
+          return "bg-green-500/10 text-green-500 border-green-500/20"
+        }
+        if (action.includes("Sale")) {
+          return "bg-blue-500/10 text-blue-500 border-blue-500/20"
+        }
+        if (action.includes("Status") || action.includes("Role")) {
+          return "bg-purple-500/10 text-purple-500 border-purple-500/20"
+        }
         return "bg-slate-500/10 text-slate-500 border-slate-500/20"
     }
 

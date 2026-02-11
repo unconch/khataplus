@@ -16,7 +16,7 @@ export function useSync() {
         }
     }, [isOnline])
 
-    async function addToQueue(action: Omit<SyncAction, "id" | "status" | "retryCount" | "createdAt">) {
+    const addToQueue = async (action: Omit<SyncAction, "id" | "status" | "retryCount" | "createdAt">) => {
         await db.actions.add({
             ...action,
             status: "pending",
@@ -26,8 +26,10 @@ export function useSync() {
         toast.info("Saved offline. Will sync when online.")
     }
 
-    async function processQueue() {
-        if (isSyncing) return
+    const processQueue = async () => {
+        if (isSyncing) {
+            return
+        }
         setIsSyncing(true)
 
         try {

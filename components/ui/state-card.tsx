@@ -3,6 +3,7 @@ import { LucideIcon, AlertCircle, FileX, CheckCircle2 } from "lucide-react"
 
 interface StateCardProps {
     title: string
+    value?: string
     description?: string
     icon?: LucideIcon
     children?: React.ReactNode // For buttons/actions
@@ -12,6 +13,7 @@ interface StateCardProps {
 
 export function StateCard({
     title,
+    value,
     description,
     icon: Icon,
     children,
@@ -57,6 +59,12 @@ export function StateCard({
             <h3 className="text-lg font-black tracking-tight text-foreground/80 mb-1">
                 {title}
             </h3>
+
+            {value && (
+                <div className="text-3xl font-black tracking-tighter mb-2">
+                    {value}
+                </div>
+            )}
 
             {description && (
                 <p className="text-sm font-medium text-muted-foreground/60 max-w-xs mx-auto mb-6">

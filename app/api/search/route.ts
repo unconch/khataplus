@@ -5,19 +5,19 @@ import { getCurrentOrgId } from "@/lib/data"
 
 export async function GET(request: NextRequest) {
     try {
-        const currSession = await session()
-        if (!currSession) {
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const userId = (currSession as any)?.token?.sub || (currSession as any)?.user?.userId
         const orgId = await getCurrentOrgId(userId)
 
         if (!orgId) {
             return NextResponse.json({ results: [] })
         }
 
-        const searchParams = request.nextUrl.searchParams
+        const { searchParams } = request.nextUrl
         const query = searchParams.get("q")?.trim()
 
         if (!query || query.length < 2) {
@@ -57,14 +57,14 @@ export async function GET(request: NextRequest) {
                 id: c.id,
                 title: c.name,
                 subtitle: c.phone || "No phone",
-                href: `/home/khata/${c.id}`
+                href: `/dashboard/khata/${c.id}`
             })),
             ...sales.map((s: any) => ({
                 type: "sale" as const,
                 id: s.batch_id,
                 title: s.customer_name || `Bill #${s.batch_id.slice(0, 8)}`,
                 subtitle: `₹${s.total_amount} • ${new Date(s.sale_date).toLocaleDateString("en-IN")}`,
-                href: `/home/sales?batch=${s.batch_id}`
+                href: `/dashboard/sales?batch=${s.batch_id}`
             }))
         ]
 

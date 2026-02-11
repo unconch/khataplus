@@ -26,7 +26,9 @@ export function PwaInstallPrompt() {
 
     const handleInstall = async () => {
         trigger("light")
-        if (!deferredPrompt) return
+        if (!deferredPrompt) {
+          return
+        }
 
         deferredPrompt.prompt()
         const { outcome } = await deferredPrompt.userChoice
@@ -37,7 +39,9 @@ export function PwaInstallPrompt() {
         setDeferredPrompt(null)
     }
 
-    if (!isVisible) return null
+    if (!isVisible) {
+      return null
+    }
 
     return (
         <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 animate-in slide-in-from-bottom-10 fade-in duration-500">

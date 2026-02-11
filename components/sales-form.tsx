@@ -26,7 +26,7 @@ import {
   Download,
   CheckCircle2
 } from "lucide-react"
-import { recordBatchSales } from "@/lib/data"
+import { recordBatchSales } from "@/lib/data/sales"
 import { cn } from "@/lib/utils"
 import { generateInvoice, type GroupedSale } from "@/lib/invoice-utils"
 import { StateCard } from "@/components/ui/state-card"
@@ -120,7 +120,9 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   }
 
   const addToCart = () => {
-    if (!selectedItem || !quantity || !salePrice) return
+    if (!selectedItem || !quantity || !salePrice) {
+      return
+    }
     const qty = Number.parseInt(quantity)
     const price = Number.parseFloat(salePrice)
 
@@ -168,7 +170,9 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (cart.length === 0) return
+    if (cart.length === 0) {
+      return
+    }
 
     setIsLoading(true)
     setError(null)

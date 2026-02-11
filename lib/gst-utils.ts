@@ -23,7 +23,7 @@ export interface Gstr3bSummary {
 }
 
 // B2B: Sales where customer has a GSTIN
-export async function getGstr1B2B(orgId: string, startDate: string, endDate: string) {
+export async function getGstr1B2B(orgId: string, startDate: string, endDate: string): Promise<Gstr1B2BRow[]> {
   const sql = getSql()
 
   // Note: This relies on the new customer_gstin column
@@ -77,7 +77,7 @@ export async function getGstr1B2B(orgId: string, startDate: string, endDate: str
   })
 }
 
-export async function getGstr3bStats(orgId: string, startDate: string, endDate: string) {
+export async function getGstr3bStats(orgId: string, startDate: string, endDate: string): Promise<Gstr3bSummary> {
   const sql = getSql()
 
   const result = await sql`
@@ -91,8 +91,8 @@ export async function getGstr3bStats(orgId: string, startDate: string, endDate: 
        AND created_at <= ${endDate}
   `
 
-  const tax = result[0].total_tax || 0
-  const rev = result[0].total_revenue || 0
+  const tax = parseFloat(result[0].total_tax || "0")
+  const rev = parseFloat(result[0].total_revenue || "0")
 
   return {
     total_taxable: rev - tax,

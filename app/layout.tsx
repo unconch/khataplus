@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { AuthProvider } from "@descope/nextjs-sdk"
+import { AuthProvider } from "@/components/auth-provider"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -22,17 +22,7 @@ export const metadata: Metadata = {
   },
   description: "The simplest billing, inventory, and khata management app designed effectively for Indian shopkeepers. GST-ready, offline-capable, and secure.",
   generator: "v0.app",
-  manifest: "/manifest.json",
   metadataBase: new URL("https://khataplus.com"), // Placeholder production URL
-  icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "KhataPlus",
-  },
   openGraph: {
     type: "website",
     locale: "en_IN",
@@ -70,12 +60,12 @@ export const viewport: Viewport = {
   ],
 }
 
-import { SessionRefresher } from "@/components/session-refresher"
 import { OfflineBanner } from "@/components/offline-banner"
 import { SyncProvider } from "@/components/sync-provider"
 
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
+import { ScrollToTop } from "@/components/scroll-to-top"
 
 export default function RootLayout({
   children,
@@ -89,12 +79,9 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <AuthProvider
-          projectId={process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID || ""}
-          sessionTokenViaCookie={true}
-        >
+        <AuthProvider projectId={process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID!}>
           <SyncProvider>
-            <SessionRefresher />
+            <ScrollToTop />
             <OfflineBanner />
             {children}
           </SyncProvider>

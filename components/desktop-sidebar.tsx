@@ -14,31 +14,41 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ role, settings, className }: DesktopSidebarProps) {
     const pathname = usePathname()
+    console.log(`--- [DEBUG] DesktopSidebar: pathname=${pathname} role=${role} ---`)
+
+    const isAdmin = role === "admin" || role === "main admin" || role === "owner"
 
     const navItems = [
-        { href: "/home", label: "Home", icon: Home, show: true },
-        { href: "/home/sales", label: "Sales", icon: BadgeIndianRupee, show: role === "admin" || settings.allow_staff_sales },
-        { href: "/home/inventory", label: "Inventory", icon: Package, show: role === "admin" || settings.allow_staff_inventory }, // Assuming inventory route exists or mapping it
-        { href: "/home/analytics", label: "Analytics", icon: BarChart3, show: role === "admin" || settings.allow_staff_analytics },
-        { href: "/home/reports", label: "Reports", icon: FileText, show: role === "admin" || settings.allow_staff_reports },
-        { href: "/home/admin", label: "Admin", icon: Settings, show: role === "admin" }, // Admin only
+        { href: `/dashboard`, label: "Home", icon: Home, show: true },
+        { href: `/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
+        { href: `/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
+        { href: `/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics },
+        { href: `/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports },
+        { href: `/dashboard/settings`, label: "Organization", icon: Users, show: isAdmin },
     ]
 
     return (
-        <aside className={cn("hidden md:flex flex-col w-64 border-r border-border bg-card/50 backdrop-blur-xl h-svh sticky top-0", className)}>
-            <div className="p-6">
-                <div className="flex items-center gap-2 font-black text-xl tracking-tighter">
-                    <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-                        <span className="text-primary-foreground text-xs">KP</span>
+        <aside className={cn("hidden lg:flex flex-col w-80 border-r border-border/40 bg-card/20 backdrop-blur-3xl h-svh sticky top-0 transition-all duration-500 ease-in-out z-40", className)}>
+            <div className="p-10">
+                <div
+                    className="flex items-center gap-4 group cursor-pointer"
+                    onClick={() => window.location.href = "/dashboard"}
+                >
+                    <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500">
+                        <span className="text-primary-foreground font-black text-lg tracking-tighter">KP</span>
                     </div>
-                    KhataPlus
+                    <div className="flex flex-col">
+                        <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">KhataPlus</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">Platinum</span>
+                    </div>
                 </div>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2">
+            <nav className="flex-1 px-6 space-y-2 mt-4">
                 {navItems.filter(item => item.show).map((item) => {
-                    const isActive = item.href === "/home"
-                        ? pathname === "/home"
+                    // Exact match for root dashboard, startsWith for sub-routes
+                    const isActive = item.href === `/dashboard`
+                        ? pathname === `/dashboard`
                         : pathname.startsWith(item.href)
 
                     return (
@@ -46,26 +56,33 @@ export function DesktopSidebar({ role, settings, className }: DesktopSidebarProp
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden",
+                                "flex items-center gap-4 px-5 py-4 rounded-2xl text-[15px] font-bold transition-all duration-300 group relative",
                                 isActive
-                                    ? "bg-primary text-primary-foreground shadow-md"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    ? "bg-primary text-primary-foreground shadow-xl shadow-primary/20 scale-[1.02]"
+                                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:translate-x-1"
                             )}
                         >
-                            <item.icon className={cn("h-4 w-4", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                            {item.label}
+                            <item.icon className={cn("h-[20px] w-[20px] transition-transform duration-300 group-hover:scale-110", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                            <span className="tracking-tight">{item.label}</span>
                             {isActive && (
-                                <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20" />
+                                <div className="absolute inset-y-3 left-0 w-1.5 bg-white/30 rounded-r-full animate-in fade-in slide-in-from-left-2 duration-500" />
                             )}
                         </Link>
                     )
                 })}
             </nav>
 
-            <div className="p-4 border-t border-border">
-                <div className="p-4 bg-muted/50 rounded-xl space-y-1">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pro Plan</p>
-                    <p className="text-[10px] text-muted-foreground/60">Organization: KhataPlus</p>
+            <div className="p-8">
+                <div className="relative group overflow-hidden p-6 bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 rounded-3xl space-y-3 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5">
+                    <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
+                    <div className="flex items-center justify-between relative z-10">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">System Status</p>
+                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    </div>
+                    <p className="text-xs font-bold text-foreground/80 leading-relaxed relative z-10">
+                        Enterprise Grade <br />
+                        Retail Infrastructure
+                    </p>
                 </div>
             </div>
         </aside>

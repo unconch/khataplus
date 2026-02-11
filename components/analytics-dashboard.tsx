@@ -23,7 +23,7 @@ import {
     AreaChart,
     Area
 } from "recharts"
-import { CalendarIcon, FilterIcon, Loader2 } from "lucide-react"
+import { CalendarIcon, FilterIcon, Loader2, TrendingUp } from "lucide-react"
 import { subDays, isAfter, startOfMonth, parseISO, format, endOfMonth, addDays, isBefore } from "date-fns"
 import { DateRange as DayPickerRange } from "react-day-picker"
 
@@ -262,79 +262,91 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
             </div>
 
             {/* Summary Cards */}
-            <AccountingSummary summaries={filteredReports} />
+            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+                <AccountingSummary summaries={filteredReports} />
+            </div>
 
             {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8 lg:gap-10">
 
                 {/* Trend Chart */}
-                <Card className="lg:col-span-2 shadow-xl glass-card bg-card/40 border-white/10 overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xl font-bold tracking-tight">Revenue & Profit Trend</CardTitle>
-                        <CardDescription className="text-muted-foreground/60 font-medium">Financial performance over selected period</CardDescription>
+                <Card className="lg:col-span-2 xl:col-span-3 shadow-2xl glass-card bg-card/40 border-white/10 overflow-hidden group/chart transform transition-all duration-500 hover:shadow-primary/5">
+                    <CardHeader className="pb-6 px-8 pt-8 border-b border-white/5 bg-white/5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-2xl font-black tracking-tighter italic">Revenue & Profit Engine</CardTitle>
+                                <CardDescription className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] mt-1">Real-time financial performance audit</CardDescription>
+                            </div>
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/10">
+                                <TrendingUp className="text-primary h-5 w-5" />
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full mt-4">
+                    <CardContent className="p-8">
+                        <div className="h-[450px] w-full mt-4">
                             {isMounted ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                        {/* ... (rest of chart) ... */}
+                                    <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
                                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
                                                 <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" vertical={false} />
                                         <XAxis
                                             dataKey="date"
                                             stroke="currentColor"
-                                            className="text-muted-foreground/40 font-bold"
-                                            fontSize={10}
+                                            className="text-muted-foreground/50 font-black"
+                                            fontSize={11}
                                             tickLine={false}
                                             axisLine={false}
-                                            tick={{ dy: 10 }}
+                                            tick={{ dy: 15 }}
                                         />
                                         <YAxis
                                             stroke="currentColor"
-                                            className="text-muted-foreground/40 font-bold"
-                                            fontSize={10}
+                                            className="text-muted-foreground/50 font-black"
+                                            fontSize={11}
                                             tickLine={false}
                                             axisLine={false}
-                                            tickFormatter={(value) => `₹${value}`}
+                                            tickFormatter={(value) => `₹${value.toLocaleString()}`}
                                         />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
-                                            labelStyle={{ color: 'var(--foreground)', fontWeight: 'bold', marginBottom: '4px' }}
+                                            contentStyle={{ backgroundColor: 'rgba(9, 9, 11, 0.95)', backdropFilter: 'blur(16px)', borderRadius: "24px", border: "1px solid rgba(255, 255, 255, 0.1)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" }}
+                                            labelStyle={{ color: 'white', fontWeight: '900', fontSize: '14px', marginBottom: '8px', letterSpacing: '-0.02em' }}
+                                            itemStyle={{ fontWeight: '700', fontSize: '12px' }}
+                                            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                                         />
-                                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
+                                        <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '40px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                                         <Area
                                             type="monotone"
                                             dataKey="Revenue"
                                             stroke="#3b82f6"
-                                            strokeWidth={3}
+                                            strokeWidth={4}
                                             fillOpacity={1}
                                             fill="url(#colorRevenue)"
-                                            animationDuration={1500}
+                                            activeDot={{ r: 8, strokeWidth: 0, fill: '#3b82f6' }}
+                                            animationDuration={2000}
                                         />
                                         <Area
                                             type="monotone"
                                             dataKey="Profit"
                                             stroke="#10b981"
-                                            strokeWidth={3}
+                                            strokeWidth={4}
                                             fillOpacity={1}
                                             fill="url(#colorProfit)"
-                                            animationDuration={1500}
+                                            activeDot={{ r: 8, strokeWidth: 0, fill: '#10b981' }}
+                                            animationDuration={2000}
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
-                                    <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                                <div className="h-full w-full flex items-center justify-center bg-zinc-900/10 rounded-[2.5rem] animate-pulse">
+                                    <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
                                 </div>
                             )}
                         </div>
@@ -342,13 +354,13 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
                 </Card>
 
                 {/* Payment Method Chart */}
-                <Card className="shadow-xl glass-card bg-card/40 border-white/10 overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xl font-bold tracking-tight">Payment Methods</CardTitle>
-                        <CardDescription className="text-muted-foreground/60 font-medium">Cash vs Online splits</CardDescription>
+                <Card className="shadow-2xl glass-card bg-card/40 border-white/10 overflow-hidden group/pie transform transition-all duration-500 hover:shadow-primary/5 flex flex-col">
+                    <CardHeader className="pb-6 px-8 pt-8 border-b border-white/5 bg-white/5">
+                        <CardTitle className="text-xl font-black tracking-tight italic text-center">Liquidity Split</CardTitle>
+                        <CardDescription className="text-muted-foreground font-bold uppercase tracking-widest text-[9px] text-center mt-1">Cash vs Digital distribution</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="h-[240px] w-full mt-4">
+                    <CardContent className="p-8 flex-1 flex flex-col justify-between">
+                        <div className="h-[280px] w-full mt-4">
                             {isMounted ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -356,41 +368,46 @@ export function AnalyticsDashboard({ reports }: AnalyticsDashboardProps) {
                                             data={paymentData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={65}
-                                            outerRadius={85}
-                                            paddingAngle={8}
+                                            innerRadius={75}
+                                            outerRadius={105}
+                                            paddingAngle={10}
                                             dataKey="value"
                                             stroke="none"
-                                            animationDuration={1500}
+                                            animationDuration={2000}
                                         >
                                             {paymentData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'rgba(var(--background), 0.8)', backdropFilter: 'blur(12px)', borderRadius: "12px", border: "1px solid rgba(var(--border), 0.2)" }}
-                                            formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`}
+                                            contentStyle={{ backgroundColor: 'rgba(9, 9, 11, 0.95)', backdropFilter: 'blur(16px)', borderRadius: "20px", border: "1px solid rgba(255, 255, 255, 0.1)" }}
+                                            formatter={(value: number) => [<span className="font-black text-white">₹{value.toLocaleString('en-IN')}</span>, "Volume"]}
                                         />
-                                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl animate-pulse">
-                                    <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                                <div className="h-full w-full flex items-center justify-center bg-zinc-900/10 rounded-[2.5rem] animate-pulse">
+                                    <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
                                 </div>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                            <div className="text-center p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 group hover:bg-emerald-500/10 transition-colors duration-500">
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Cash</p>
-                                <p className="text-2xl font-black text-emerald-600 tracking-tight">
+                        <div className="grid grid-cols-1 gap-4 mt-8">
+                            <div className="flex items-center justify-between p-5 bg-emerald-500/5 rounded-3xl border border-emerald-500/10 group-hover/pie:bg-emerald-500/10 transition-all duration-500">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                                    <p className="text-[10px] text-emerald-600/70 uppercase font-black tracking-widest">Liquid Cash</p>
+                                </div>
+                                <p className="text-2xl font-black text-emerald-600 tracking-tighter">
                                     {Math.round((paymentData[0].value / (paymentData[0].value + paymentData[1].value || 1)) * 100)}%
                                 </p>
                             </div>
-                            <div className="text-center p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 group hover:bg-blue-500/10 transition-colors duration-500">
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Online</p>
-                                <p className="text-2xl font-black text-blue-600 tracking-tight">
+                            <div className="flex items-center justify-between p-5 bg-blue-500/5 rounded-3xl border border-blue-500/10 group-hover/pie:bg-blue-500/10 transition-all duration-500">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-3 w-3 rounded-full bg-blue-500" />
+                                    <p className="text-[10px] text-blue-600/70 uppercase font-black tracking-widest">Digital App</p>
+                                </div>
+                                <p className="text-2xl font-black text-blue-600 tracking-tighter">
                                     {Math.round((paymentData[1].value / (paymentData[0].value + paymentData[1].value || 1)) * 100)}%
                                 </p>
                             </div>

@@ -32,7 +32,7 @@ async function runBackup() {
 
         for (const table of tables) {
             console.log(`Exporting table: ${table}...`);
-            const data = await sql.query(`SELECT * FROM ${table}`);
+            const data = await sql.query(`SELECT * FROM ${table}`) as any;
 
             if (data.rows.length === 0) {
                 fullDump += `-- Table ${table} is empty\n\n`;

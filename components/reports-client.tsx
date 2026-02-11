@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarUI } from "@/components/ui/calendar"
 import { DateRange as DayPickerRange } from "react-day-picker"
-import { getSalesByDate } from "@/lib/data"
+import { getSalesByDate } from "@/lib/data/sales"
 
 type ReportRange = "7D" | "LAST_MONTH" | "THIS_MONTH" | "CUSTOM" | "SPECIFIC_MONTH"
 

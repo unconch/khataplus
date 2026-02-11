@@ -47,7 +47,9 @@ export function ImportDialog({ type, orgId, trigger }: ImportDialogProps) {
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
-        if (!file) return
+        if (!file) {
+          return
+        }
 
         setIsUploading(true)
         setResult(null)
@@ -112,7 +114,9 @@ export function ImportDialog({ type, orgId, trigger }: ImportDialogProps) {
                                     className="mt-2"
                                     onClick={() => {
                                         setResult(null);
-                                        if (fileInputRef.current) fileInputRef.current.value = "";
+                                        if (fileInputRef.current) {
+                                          fileInputRef.current.value = "";
+                                        }
                                     }}
                                 >
                                     Upload Another

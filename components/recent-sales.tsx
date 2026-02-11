@@ -4,7 +4,7 @@ import { ShoppingCartIcon, PencilIcon, ClockIcon, CheckIcon, XIcon, Loader2Icon 
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { updateSale } from "@/lib/data"
+import { updateSale } from "@/lib/data/sales"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -28,11 +28,15 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
   }, [])
 
   const handleUpdate = async (sale: Sale) => {
-    if (!userId) return
+    if (!userId) {
+      return
+    }
     setIsSaving(true)
     try {
       const qty = Number.parseInt(editQty)
-      if (isNaN(qty) || qty <= 0) throw new Error("Please enter a valid quantity")
+      if (isNaN(qty) || qty <= 0) {
+        throw new Error("Please enter a valid quantity")
+      }
 
       // Calculate new totals based on the original sale price and quantity change
       const price = Number(sale.sale_price)

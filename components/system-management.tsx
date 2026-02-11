@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { updateSystemSettings } from "@/lib/data"
+import { updateSystemSettings } from "@/lib/data/organizations"
 import { SystemSettings } from "@/lib/types"
 import { toast } from "sonner"
 

@@ -1,18 +1,9 @@
 "use client"
 
-import { useDescope, useSession } from "@descope/nextjs-sdk/client"
-import { useEffect } from "react"
+// SessionRefresher was previously used for Descope session management.
+// With Clerk, session management is handled automatically by the ClerkProvider.
+// This component is maintained as a no-op for backwards compatibility with any existing imports.
 
 export function SessionRefresher() {
-    const { refresh } = useDescope()
-    const { isSessionLoading } = useSession()
-
-    useEffect(() => {
-        // Only attempt refresh if not loading
-        if (!isSessionLoading) {
-            refresh()
-        }
-    }, [refresh, isSessionLoading])
-
     return null
 }

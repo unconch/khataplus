@@ -20,7 +20,7 @@ import {
   Target,
   Zap
 } from "lucide-react"
-import { addInventoryItem } from "@/lib/data"
+import { addInventoryItem } from "@/lib/data/inventory"
 import { cn } from "@/lib/utils"
 
 export function AddInventoryForm() {

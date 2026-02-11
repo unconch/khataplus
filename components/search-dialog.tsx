@@ -129,7 +129,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
                     <p className="text-xs text-muted-foreground mb-2 px-1">Quick Links</p>
                     <div className="flex gap-2">
                         <Link
-                            href="/home/customers"
+                            href="/dashboard/customers"
                             onClick={handleClose}
                             className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-background border text-sm font-medium hover:bg-muted transition-colors"
                         >
@@ -137,7 +137,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
                             Customers
                         </Link>
                         <Link
-                            href="/home/sales"
+                            href="/dashboard/sales"
                             onClick={handleClose}
                             className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-background border text-sm font-medium hover:bg-muted transition-colors"
                         >

@@ -8,20 +8,27 @@ interface AuthGuardProps {
 }
 
 export async function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
-  const currSession = await session()
+  const { isGuestMode } = await import("@/lib/data")
+  const isGuest = await isGuestMode()
 
-  if (!currSession) {
+  if (isGuest) {
+    return <>{children}</>
+  }
+
+  const sessionRes = await session()
+  const userId = sessionRes?.token?.sub
+
+  if (!userId) {
     redirect("/auth/login")
   }
 
   if (requireAdmin) {
-    // Descope roles can be in different properties depending on the version/config
-    const roles = (currSession as any).token?.roles ||
-      (currSession as any).sessionToken?.roles ||
-      (currSession as any).user?.roleNames || []
+    // For Descope, we check roles from the database profile
+    const { getProfile } = await import("@/lib/data")
+    const profile = await getProfile(userId)
 
-    if (!roles.includes("main admin")) {
-      redirect("/home")
+    if (!profile || profile.role !== "main admin") {
+      redirect("/dashboard")
     }
   }
 

@@ -56,7 +56,9 @@ function loadKey(): Buffer {
 // We wrap it to allow importing this file even if env is missing during dev (e.g. for generating keys)
 let _key: Buffer | null = null;
 const getKey = () => {
-    if (!_key) _key = loadKey();
+    if (!_key) {
+      _key = loadKey();
+    }
     return _key;
 };
 

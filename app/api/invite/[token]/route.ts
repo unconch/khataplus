@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
-import { getInviteByToken, acceptInvite, getOrganization } from "@/lib/data"
+import { getInviteByToken, acceptInvite, getOrganization } from "@/lib/data/organizations"
 
 export async function GET(
     request: Request,
@@ -31,8 +31,8 @@ export async function POST(
     { params }: { params: Promise<{ token: string }> }
 ) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Please login first" }, { status: 401 })

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
-import { createOrganization, getUserOrganizations } from "@/lib/data"
+import { createOrganization, getUserOrganizations } from "@/lib/data/organizations"
 
 export async function POST(request: Request) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub || (currSession as any)?.user?.userId
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -32,8 +32,8 @@ export async function POST(request: Request) {
 
 export async function GET() {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub || (currSession as any)?.user?.userId
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

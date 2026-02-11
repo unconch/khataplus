@@ -160,49 +160,40 @@
 
 @layer utilities {
 
-  /* 6️⃣ Glass Usage Governance */
-  /* Level 1: Subtle Controls (Inputs, Buttons) */
-  .glass-control {
-    background: color-mix(in srgb, var(--background), transparent 20%);
-    border: 1px solid color-mix(in srgb, var(--border), transparent 40%);
-    backdrop-filter: blur(4px);
-  }
-
-  /* Level 2: Panels & Cards (Standard) */
-  .glass-panel {
-    background: color-mix(in srgb, var(--card), transparent 10%);
-    border: 1px solid var(--border);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-  }
-
-  /* Level 3: Modal Sheets & Overlays (Heavy) */
-  .glass-sheet {
-    background: color-mix(in srgb, var(--background), transparent 5%);
-    /* Mostly solid */
-    border-top: 1px solid color-mix(in srgb, var(--foreground), transparent 90%);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 -10px 40px -10px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Explicit GPU Layer Promotion for glass performance */
-  .glass-control,
+  /* 6️⃣ CORE UI COMPONENTS - ZERO GRAIN SYSTEM */
+  .glass,
+  .glass-sharp,
   .glass-panel,
-  .glass-sheet {
-    transform: translateZ(0);
-    will-change: backdrop-filter;
+  .glass-sheet,
+  .glass-control {
+    background-color: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transform: none !important;
   }
 
-  /* Explicit GPU Layer Promotion */
+  .dark .glass,
+  .dark .glass-sharp,
+  .dark .glass-panel,
+  .dark .glass-sheet,
+  .dark .glass-control {
+    background-color: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   .gpu-layer {
     transform: translateZ(0);
+    will-change: transform;
     backface-visibility: hidden;
-    perspective: 1000px;
   }
 
   .solid-ui {
     background: var(--background) !important;
-    backdrop-filter: none !important;
     border-color: var(--border) !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
   }
@@ -415,5 +406,15 @@
 
   .min-h-safe {
     min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  /* 7️⃣ UTILITIES - SCROLLBAR HIDING */
+  .scrollbar-none {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
   }
 }

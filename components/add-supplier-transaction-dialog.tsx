@@ -28,7 +28,9 @@ export function AddSupplierTransactionDialog({ type, supplierId, supplierName, o
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+          return
+        }
 
         setLoading(true)
         setError("")

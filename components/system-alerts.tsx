@@ -12,7 +12,7 @@ export function SystemAlerts() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        async function loadAlerts() {
+        const loadAlerts = async () => {
             try {
                 const data = await getSystemAlerts()
                 setAlerts(data)

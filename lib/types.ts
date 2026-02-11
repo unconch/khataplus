@@ -18,6 +18,8 @@ export interface InventoryItem {
   gst_percentage: number
   stock: number
   hsn_code?: string
+  min_stock?: number // Minimum stock threshold for alerts
+  org_id?: string
   created_at: string
   updated_at: string
 }
@@ -38,6 +40,7 @@ export interface Sale {
   inventory?: InventoryItem
   customer_gstin?: string
   hsn_code?: string
+  org_id?: string
 }
 
 export interface DailySummary {
@@ -66,6 +69,7 @@ export interface AuditLog {
   org_id?: string
   user_id: string
   user_email: string
+  user_name?: string // Added for joined queries
   action: string
   entity_type: string
   entity_id?: string
@@ -83,6 +87,7 @@ export interface DailyReport {
   online_sale: number
   online_cost: number
   expense_breakdown?: { category: string; amount: number }[]
+  org_id?: string
   created_at: string
   updated_at: string
 }
@@ -109,6 +114,7 @@ export interface Customer {
   phone: string
   address?: string
   balance?: number
+  org_id?: string
   created_at: string
   updated_at: string
 }
@@ -186,6 +192,7 @@ export interface SupplierTransaction {
   type: "purchase" | "payment"
   amount: number
   note: string | null
+  invoice_no?: string | null
   created_by: string | null
   org_id: string
   created_at: string

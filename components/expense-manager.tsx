@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
@@ -39,7 +38,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { addExpense, getExpenses, deleteExpense } from "@/lib/data"
+import { addExpense, getExpenses, deleteExpense } from "@/lib/data/expenses"
 import type { Expense, ExpenseCategory } from "@/lib/types"
 
 const DEFAULT_CATEGORIES = ["Rent", "Electricity", "Staff Wages", "Tea & Snacks", "Maintenance", "Transport", "Internet", "Water", "Cleaning", "Other"]
@@ -109,7 +108,9 @@ export function ExpenseManager({ userId }: { userId: string }) {
     }
 
     const handleDelete = async (id: string, amount: number) => {
-        if (!confirm(`Delete expense of ₹${amount}?`)) return;
+        if (!confirm(`Delete expense of ₹${amount}?`)) {
+            return;
+        }
         try {
             await deleteExpense(id, userId)
             toast.success("Expense deleted")

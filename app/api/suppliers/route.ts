@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
-import { addSupplier, getCurrentOrgId } from "@/lib/data"
+import { addSupplier } from "@/lib/data/suppliers"
+import { getCurrentOrgId } from "@/lib/data/auth"
 
 export async function POST(request: Request) {
     try {
-        const currSession = await session()
-        const userId = (currSession as any)?.token?.sub
+        const sessionRes = await session()
+        const userId = sessionRes?.token?.sub
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

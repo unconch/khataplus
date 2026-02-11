@@ -54,7 +54,7 @@ export function CustomerList({ customers: initialCustomers, orgId }: CustomerLis
                     </div>
                 ) : (
                     filteredCustomers.map((customer) => (
-                        <Link key={customer.id} href={`/home/khata/${customer.id}`}>
+                        <Link key={customer.id} href={`/dashboard/khata/${customer.id}`}>
                             <Card className="hover:bg-muted/50 transition-colors border-none shadow-none bg-muted/20">
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-3">

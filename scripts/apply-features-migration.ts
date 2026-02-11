@@ -36,7 +36,7 @@ async function main() {
         for (const statement of statements) {
             if (statement.startsWith('--')) continue; // specific comment skipping if mostly comments
             // Basic execution
-            await sql(statement);
+            await sql([statement] as any);
         }
 
         console.log("Migration applied successfully.");

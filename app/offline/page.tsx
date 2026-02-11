@@ -28,13 +28,13 @@ export default function OfflinePage() {
 
                 <div className="grid grid-cols-1 gap-2 pt-6">
                     <Button asChild variant="default" className="h-12 font-bold shadow-lg shadow-primary/20">
-                        <Link href="/home">
+                        <Link href="/dashboard">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Return to Dashboard
                         </Link>
                     </Button>
                     <Button asChild variant="ghost" className="h-12 text-muted-foreground hover:text-foreground">
-                        <Link href="/home/sales">
+                        <Link href="/dashboard/sales">
                             View Cached Sales
                         </Link>
                     </Button>

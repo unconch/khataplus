@@ -28,26 +28,28 @@ export function AppShell({ children, profile, role, settings, orgId, orgName }: 
     <PWAProvider>
       <PWABadgeManager isAdmin={isAdmin} />
 
-      {/* Container: Flex Row for Desktop (Sidebar | Content), Flex Col for Mobile (Header / Content / Nav) */}
-      <div className="flex min-h-svh bg-background text-foreground">
+      <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
 
-        {/* Desktop Sidebar: Visible only on md+ */}
+        {/* Desktop Sidebar: Visible only on lg+ */}
         <DesktopSidebar role={role} settings={settings} />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
           <AppHeader profile={profile} orgName={orgName} />
 
-          <main className="flex-1 pb-24 md:pb-8 p-4 md:p-8 overflow-auto gpu-layer relative" style={{ contentVisibility: "auto" }}>
-            {children}
+          <main className="flex-1 pb-32 lg:pb-12 p-4 lg:p-12 xl:p-16 2xl:p-20 overflow-auto gpu-layer relative scroll-smooth" style={{ contentVisibility: "auto" }}>
+            <div className="mx-auto w-full max-w-[1800px] 2xl:max-w-[2000px] animate-in fade-in slide-in-from-bottom-4 duration-700">
+              {children}
+            </div>
           </main>
         </div>
 
         {/* Bottom Nav: Visible only on mobile */}
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <BottomNav role={role} settings={settings} />
         </div>
       </div>
+
     </PWAProvider>
   )
 }

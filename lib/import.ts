@@ -17,7 +17,9 @@ export async function importInventory(csvContent: string, orgId: string) {
         trim: true
     }) as any[]
 
-    if (records.length === 0) throw new Error("No valid records found in CSV")
+    if (records.length === 0) {
+      throw new Error("No valid records found in CSV")
+    }
 
     let importedCount = 0
 
@@ -30,7 +32,9 @@ export async function importInventory(csvContent: string, orgId: string) {
         const gst = parseFloat(record.gst || record.GST || record.tax || "0")
         const stock = parseFloat(record.stock || record.Stock || record.Quantity || "0")
 
-        if (!name) continue // Skip invalid rows
+        if (!name) {
+          continue // Skip invalid rows
+        }
 
         await sql`
             INSERT INTO inventory (sku, name, buy_price, gst_percentage, stock, org_id)
@@ -45,10 +49,10 @@ export async function importInventory(csvContent: string, orgId: string) {
         importedCount++
     }
 
-    await audit("Imported Inventory", "inventory", orgId, { count: importedCount }, orgId)
+    await audit("Imported Inventory", "inventory", orgId, { count: importedCount }, orgId);
 
-    revalidateTag(`inventory-${orgId}`)
-    revalidatePath("/home/inventory", "page")
+    (revalidateTag as any)(`inventory-${orgId}`)
+    revalidatePath("/dashboard/inventory", "page")
 
     return { success: true, count: importedCount }
 }
@@ -65,7 +69,9 @@ export async function importCustomers(csvContent: string, orgId: string) {
         trim: true
     }) as any[]
 
-    if (records.length === 0) throw new Error("No valid records found in CSV")
+    if (records.length === 0) {
+      throw new Error("No valid records found in CSV")
+    }
 
     let importedCount = 0
 
@@ -74,7 +80,9 @@ export async function importCustomers(csvContent: string, orgId: string) {
         const phone = record.phone || record.Phone || record.Mobile || ""
         const address = record.address || record.Address || ""
 
-        if (!name || !phone) continue
+        if (!name || !phone) {
+          continue
+        }
 
         await sql`
             INSERT INTO customers (name, phone, address, org_id)
@@ -87,10 +95,10 @@ export async function importCustomers(csvContent: string, orgId: string) {
         importedCount++
     }
 
-    await audit("Imported Customers", "customer", orgId, { count: importedCount }, orgId)
+    await audit("Imported Customers", "customer", orgId, { count: importedCount }, orgId);
 
-    revalidateTag(`customers-${orgId}`)
-    revalidatePath("/home/customers", "page")
+    (revalidateTag as any)(`customers-${orgId}`)
+    revalidatePath("/dashboard/customers", "page")
 
     return { success: true, count: importedCount }
 }

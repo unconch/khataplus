@@ -43,7 +43,9 @@ export function GstBills({ sales, org }: GstBillsProps) {
       new Date(b.createdat).getTime() - new Date(a.createdat).getTime()
     )
 
-    if (!searchQuery) return sorted
+    if (!searchQuery) {
+      return sorted
+    }
 
     const query = searchQuery.toLowerCase()
     return sorted.filter(group => {
