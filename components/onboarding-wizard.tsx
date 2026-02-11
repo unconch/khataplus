@@ -81,13 +81,17 @@ export function OnboardingWizard({ userId }: { userId: string }) {
                 throw new Error(org?.error || 'Failed to create organization')
             }
 
-            toast.success("Organization created successfully!")
+            toast.success("Organization created successfully! Initializing your dashboard...")
 
             // Redirect to org-specific dashboard path
             const targetPath = `/${org.slug}/dashboard`
             console.log("--- [DEBUG] OnboardingWizard: Redirecting to", targetPath, "---")
 
-            window.location.href = targetPath
+            // Forced delay to ensure DB transaction stability and cache revalidation propagation
+            setTimeout(() => {
+                // Using window.location.href to force a full reload and bypass stale client-side router caches
+                window.location.href = targetPath
+            }, 1200)
         } catch (error) {
             console.error("Failed to create organization", error)
             toast.error("Failed to create organization. Check console for details.")

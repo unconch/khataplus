@@ -40,7 +40,10 @@ export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
             if (item.href.includes("/settings") && !isAdmin) return null
 
             const href = item.href
-            const isActive = pathname === href
+            const isHome = href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")
+            const isActive = isHome
+              ? (pathname === href || pathname === (pathPrefix || "/"))
+              : pathname.startsWith(href)
             const Icon = item.icon
 
             return (

@@ -42,9 +42,15 @@ export function AuthProvider({ children, projectId }: AuthProviderProps) {
                 <div className="text-destructive font-bold text-xl">Authentication Service Blocked</div>
                 <p className="text-muted-foreground max-w-sm">
                     It looks like your browser (Brave, or one with rigid privacy settings) is blocking the authentication service.
+                    This is often caused by 3rd-party cookie blocking or tracker prevention.
                 </p>
-                <div className="bg-muted/50 p-4 rounded-lg text-xs font-mono text-left w-full max-w-md overflow-auto">
-                    Potential Solution: Disable "Brave Shields" for this site or allow 3rd-party cookies.
+                <div className="bg-muted/50 p-4 rounded-lg text-xs font-mono text-left w-full max-w-md overflow-auto border border-border/50">
+                    <p className="font-bold mb-2 text-foreground">Recommended Fixes:</p>
+                    <ul className="space-y-1 list-disc list-inside text-muted-foreground">
+                        <li>Disable "Brave Shields" for this site</li>
+                        <li>Allow 3rd-party cookies in browser settings</li>
+                        <li>Try a different browser (Chrome/Edge/Safari)</li>
+                    </ul>
                 </div>
                 {/* Fallback to children for non-auth functionality if possible (descope might be needed though) */}
                 {/* For now, just show children but Auth won't work? No, context is missing. Just show error. */}

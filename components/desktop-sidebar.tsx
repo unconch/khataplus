@@ -47,9 +47,11 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: D
 
             <nav className="flex-1 px-6 space-y-2 mt-4">
                 {navItems.filter(item => item.show).map((item) => {
-                    // Exact match for root dashboard, startsWith for sub-routes
-                    const isActive = item.href === `/dashboard`
-                        ? pathname === `/dashboard`
+                    // Exact match for the root dashboard link, startsWith for sub-pages
+                    // Exact match for the root dashboard link, or matching the base path prefix
+                    const isHome = item.href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")
+                    const isActive = isHome
+                        ? (pathname === item.href || pathname === (pathPrefix || "/"))
                         : pathname.startsWith(item.href)
 
                     return (
