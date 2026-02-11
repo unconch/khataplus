@@ -23,29 +23,21 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   }
   const { userId, isGuest } = user
 
-  // --- [SUBDOMAIN REDIRECTION LOGIC] ---
-  /*
+  // If user hits /dashboard without an org slug in the path, redirect to /{slug}/dashboard
   const { headers } = await import("next/headers")
-  const host = (await headers()).get("host") || ""
-  const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.online", "www.khataplus.online", "khataplus.vercel.app"]
-  const isOnRoot = rootDomains.includes(host)
+  const headerList = await headers()
+  const tenantSlug = headerList.get("x-tenant-slug")
 
-  if (isOnRoot && !isGuest) {
+  if (!tenantSlug && !isGuest) {
     const userOrgs = await getUserOrganizations(userId)
     if (userOrgs.length > 0) {
-      const targetSlug = userOrgs[0].organization.slug
-      const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
-      const rawDomain = rootDomains.find(d => host.includes(d)) || "localhost:3000"
-      const domain = rawDomain.replace(/^www\./, "")
-      console.log(`--- [DEBUG] Redirecting root user to subdomain: ${targetSlug}.${domain} ---`)
-      redirect(`${protocol}://${targetSlug}.${domain}/dashboard`)
+      const slug = userOrgs[0].organization.slug
+      console.log(`--- [DEBUG] DashboardPage: No org in path, redirecting to /${slug}/dashboard ---`)
+      redirect(`/${slug}/dashboard`)
     } else {
-      // User has no organizations yet
       redirect("/setup-organization")
     }
   }
-  */
-  // -------------------------------------
 
   if (isGuest) {
     console.log("--- [DEBUG] Guest Mode Detected in Dashboard ---")
