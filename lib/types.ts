@@ -157,7 +157,7 @@ export interface OrganizationMember {
   id: string
   org_id: string
   user_id: string
-  role: "admin" | "manager" | "staff"
+  role: "admin" | "manager" | "staff" | "owner"
   created_at: string
   user?: Profile
   organization?: Organization

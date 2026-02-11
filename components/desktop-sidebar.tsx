@@ -10,21 +10,22 @@ interface DesktopSidebarProps {
     role: string | undefined
     settings: SystemSettings
     className?: string
+    pathPrefix?: string
 }
 
-export function DesktopSidebar({ role, settings, className }: DesktopSidebarProps) {
+export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: DesktopSidebarProps) {
     const pathname = usePathname()
-    console.log(`--- [DEBUG] DesktopSidebar: pathname=${pathname} role=${role} ---`)
+    console.log(`--- [DEBUG] DesktopSidebar: pathname=${pathname} role=${role} prefix=${pathPrefix} ---`)
 
     const isAdmin = role === "admin" || role === "main admin" || role === "owner"
 
     const navItems = [
-        { href: `/dashboard`, label: "Home", icon: Home, show: true },
-        { href: `/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
-        { href: `/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
-        { href: `/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics },
-        { href: `/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports },
-        { href: `/dashboard/settings`, label: "Organization", icon: Users, show: isAdmin },
+        { href: `${pathPrefix}/dashboard`, label: "Home", icon: Home, show: true },
+        { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
+        { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
+        { href: `${pathPrefix}/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics },
+        { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports },
+        { href: `${pathPrefix}/dashboard/settings`, label: "Organization", icon: Users, show: isAdmin },
     ]
 
     return (

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { createOrganization } from "@/lib/data/organizations"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -69,14 +68,17 @@ export function OnboardingWizard({ userId }: { userId: string }) {
         setLoading(true)
         console.log("--- [DEBUG] OnboardingWizard: Submitting form data", data, "---")
         try {
-            const org = await createOrganization(data.name, userId, {
-                gstin: data.gstin,
-                address: data.address,
-                phone: data.phone,
+            const resp = await fetch('/api/organizations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: data.name, userId, gstin: data.gstin, address: data.address, phone: data.phone }),
             })
 
-            if (!org || !org.slug) {
-                throw new Error("Failed to retrieve organization slug after creation.")
+            const org = await resp.json()
+
+            if (!resp.ok || !org || !org.slug) {
+                console.error('Create org failed', org)
+                throw new Error(org?.error || 'Failed to create organization')
             }
 
             toast.success("Organization created successfully!")
@@ -85,7 +87,6 @@ export function OnboardingWizard({ userId }: { userId: string }) {
             const targetPath = `/${org.slug}/dashboard`
             console.log("--- [DEBUG] OnboardingWizard: Redirecting to", targetPath, "---")
 
-            // Using window.location.href to force a full reload and bypass stale client-side router caches for the new organization
             window.location.href = targetPath
         } catch (error) {
             console.error("Failed to create organization", error)

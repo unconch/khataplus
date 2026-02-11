@@ -30,6 +30,13 @@ export async function createOrganization(name: string, userId: string, details?:
         revalidatePath("/dashboard");
         revalidatePath(`/${slug}/dashboard`);
 
+        // Explicitly revalidate the slug cache tag if it exists
+        try {
+            (revalidateTag as any)(`org-slug-${slug}`);
+        } catch (e) {
+            console.warn("revalidateTag failed, non-critical:", e);
+        }
+
         return org;
     } catch (error) {
         console.error("Database error in createOrganization:", error);

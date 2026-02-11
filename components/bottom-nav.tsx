@@ -1,51 +1,43 @@
 "use client"
 
 import Link from "next/link"
-import { Home, ShoppingCart, Package, PieChart, Building2 } from "lucide-react" // Added missing imports for icons
-
+import { Home, ShoppingCart, Package, PieChart, Building2 } from "lucide-react"
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
-
-// Added navItems array as per instruction's "Code Edit" block
 import { usePathname } from "next/navigation"
-
-const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/dashboard/sales", label: "Sales", icon: ShoppingCart },
-  { href: "/dashboard/inventory", label: "Items", icon: Package },
-  { href: "/dashboard/reports", label: "Reports", icon: PieChart },
-  { href: "/dashboard/settings", label: "Org", icon: Building2 },
-]
 
 type OrgRole = "admin" | "manager" | "staff"
 
 interface BottomNavProps {
   role: OrgRole | Profile["role"]
   settings: SystemSettings
+  pathPrefix?: string
 }
 
-export function BottomNav({ role, settings }: BottomNavProps) {
+export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
   const pathname = usePathname()
-  const isStaff = role === "staff"
-  const canSell = !isStaff || settings.allow_staff_sales
 
-  /* Logic moved inside component to access hooks */
+  const navItems = [
+    { href: `${pathPrefix}/dashboard`, label: "Home", icon: Home },
+    { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: ShoppingCart },
+    { href: `${pathPrefix}/dashboard/inventory`, label: "Items", icon: Package },
+    { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: PieChart },
+    { href: `${pathPrefix}/dashboard/settings`, label: "Org", icon: Building2 },
+  ]
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 h-auto">
       <div className="max-w-md mx-auto relative">
-
-        {/* Bottom Navigation Bar */}
         <nav className="flex items-center justify-around glass-sharp rounded-[3rem] shadow-xl px-2 py-3">
           {navItems.map((item) => {
             const isAdmin = role === "admin" || role === "main admin" || role === "owner"
             const isStaff = role === "staff"
 
             // Filtering logic
-            if (item.href === "/dashboard/sales" && isStaff && !settings.allow_staff_sales) return null
-            if (item.href === "/dashboard/inventory" && isStaff && !settings.allow_staff_inventory) return null
-            if (item.href === "/dashboard/reports" && isStaff && !settings.allow_staff_reports) return null
-            if (item.href === "/dashboard/settings" && !isAdmin) return null
+            if (item.href.includes("/sales") && isStaff && !settings.allow_staff_sales) return null
+            if (item.href.includes("/inventory") && isStaff && !settings.allow_staff_inventory) return null
+            if (item.href.includes("/reports") && isStaff && !settings.allow_staff_reports) return null
+            if (item.href.includes("/settings") && !isAdmin) return null
 
             const href = item.href
             const isActive = pathname === href

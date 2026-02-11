@@ -27,6 +27,7 @@ export default async function middleware(req: NextRequest) {
         rewriteUrl.search = url.search
 
         requestHeaders.set("x-guest-mode", "true")
+        requestHeaders.set("x-path-prefix", "/demo")
         const response = NextResponse.rewrite(rewriteUrl, {
             request: { headers: requestHeaders }
         })
@@ -51,6 +52,7 @@ export default async function middleware(req: NextRequest) {
         if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'
 
         requestHeaders.set("x-tenant-slug", orgSlug)
+        requestHeaders.set("x-path-prefix", `/${orgSlug}`)
     }
 
     // Public routes
