@@ -128,7 +128,7 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                            Your app is at <span className="text-primary font-bold">{org.slug}.khataplus.com</span>
+                            Your app is at <span className="text-primary font-bold">khataplus.online/{org.slug}/dashboard</span>
                         </p>
                     </div>
 

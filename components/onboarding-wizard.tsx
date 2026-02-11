@@ -75,14 +75,9 @@ export function OnboardingWizard({ userId }: { userId: string }) {
             })
             toast.success("Organization created successfully!")
 
-            // Redirect to subdomain
-            const protocol = window.location.protocol
-            const host = window.location.host // e.g. localhost:3000
-            const rootDomain = host.replace(/^(demo\.|www\.)/, '') // remove demo or www if present
-
-            const targetUrl = `${protocol}//${org.slug}.${rootDomain}/dashboard`
-            console.log("--- [DEBUG] OnboardingWizard: Redirecting to", targetUrl, "---")
-            window.location.href = targetUrl
+            // Redirect to org-specific dashboard path
+            console.log("--- [DEBUG] OnboardingWizard: Org created, redirecting to", `/${org.slug}/dashboard`, "---")
+            window.location.href = `/${org.slug}/dashboard`
         } catch (error) {
             console.error("Failed to create organization", error)
             toast.error("Failed to create organization. Please try again.")

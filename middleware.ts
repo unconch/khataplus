@@ -1,82 +1,71 @@
 import { authMiddleware } from '@descope/nextjs-sdk/server'
 import { NextResponse, NextRequest } from 'next/server'
 
+// Routes that should NOT be treated as org slugs
+const SYSTEM_PREFIXES = new Set([
+    'auth', 'api', 'setup-organization', 'invite',
+    'geoblocked', 'privacy', 'terms', '_next',
+    'dashboard', // direct /dashboard for authenticated users (uses first org)
+])
+
 export default async function middleware(req: NextRequest) {
     const url = req.nextUrl
-    const hostname = req.headers.get("host") || ""
-
-    // 1. Subdomain / Tenant Detection
-    const rootDomains = ["localhost:3000", "khataplus.com", "www.khataplus.com", "khataplus.online", "www.khataplus.online", "khataplus.vercel.app"]
-    let tenantSlug = null
-    const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(hostname)
-
-    if (!rootDomains.includes(hostname) && !isIp) {
-        // Extract subdomain (e.g., apple.localhost:3000 => apple)
-        const parts = hostname.split('.')
-        if (parts.length >= 2 && parts[0] !== 'www') {
-            tenantSlug = parts[0]
-        }
-    }
-
-    const isDemo = tenantSlug === "demo"
-
-    console.log(`--- [DEBUG] Middleware: host=${hostname} tenant=${tenantSlug} isDemo=${isDemo} path=${url.pathname} ---`)
-
-    // If on a subdomain (not root) and at the root path "/", redirect to "/dashboard"
-    // DESIRED CHANGE: User requested NOT to show dashboard directly.
-    /*
-    if (tenantSlug && url.pathname === "/") {
-        const dashboardUrl = new URL("/dashboard", req.url)
-        console.log(`--- [DEBUG] Middleware: Redirecting subdomain root to /dashboard ---`)
-        return NextResponse.redirect(dashboardUrl)
-    }
-    */
-
-    // Redirect /demo/* (but not /demo itself) to demo.domain/*
-    // /demo is the entry point that sets guest cookies
-    if (url.pathname.startsWith("/demo") && url.pathname !== "/demo" && !isDemo) {
-        const newUrl = new URL(req.url)
-        newUrl.pathname = url.pathname.replace(/^\/demo/, "")
-        if (newUrl.pathname === "" || newUrl.pathname === "/") newUrl.pathname = "/dashboard"
-
-        // Handle localhost:3000 => demo.localhost:3000
-        const cleanHost = url.hostname.replace(/^www\./, "")
-        newUrl.hostname = `demo.${cleanHost}`
-        console.log(`--- [DEBUG] Middleware: Redirecting /demo path to subdomain: ${newUrl.hostname}${newUrl.pathname} ---`)
-        return NextResponse.redirect(newUrl)
-    }
-
-    // Inject path and tenant slug for layout detection
+    const pathname = url.pathname
     const requestHeaders = new Headers(req.headers)
-    requestHeaders.set("x-invoke-path", url.pathname)
-    if (tenantSlug) {
-        requestHeaders.set("x-tenant-slug", tenantSlug)
+    requestHeaders.set("x-invoke-path", pathname)
+
+    // Extract first path segment
+    const segments = pathname.split('/').filter(Boolean)
+    const firstSegment = segments[0] || ''
+
+    let orgSlug: string | null = null
+    let rewrittenPathname = pathname
+
+    // If first segment is NOT a system route, treat it as an org slug
+    if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
+        orgSlug = firstSegment
+        // Strip org slug: /orgslug/dashboard → /dashboard
+        rewrittenPathname = '/' + segments.slice(1).join('/')
+        if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'
+
+        requestHeaders.set("x-tenant-slug", orgSlug)
     }
 
-    // 2. Auth Middleware Configuration
+    // Handle demo entry: /demo → set guest cookie, redirect to /demo/dashboard
+    if (pathname === `/${orgSlug}` && orgSlug === 'demo') {
+        const response = NextResponse.redirect(new URL('/demo/dashboard', req.url))
+        response.cookies.set("guest_mode", "true", {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 30, // 30 mins
+            sameSite: "lax"
+        })
+        console.log("--- [DEBUG] Middleware: /demo entry → setting cookie, redirect to /demo/dashboard ---")
+        return response
+    }
+
+    // Public routes
     const publicRoutes = [
         "/",
         "/auth/login",
         "/auth/sign-up",
-        "/demo",
-        "/api/debug-db",
         "/setup-organization",
         "/invite/:path*",
         "/geoblocked",
         "/api/sentry-tunnel",
+        "/api/debug-db",
         "/privacy",
         "/terms",
     ]
 
-    // If on demo subdomain, all dashboard and api routes are public
-    if (isDemo) {
-        console.log("--- [DEBUG] Middleware: Demo Subdomain - Opening /dashboard and /api ---")
+    // If org is demo, open all dashboard and API routes
+    if (orgSlug === 'demo') {
         publicRoutes.push("/dashboard")
         publicRoutes.push("/dashboard/:path*")
         publicRoutes.push("/api/:path*")
     }
 
-    // Wrap authMiddleware
     // @ts-ignore
     const descopeMiddleware = authMiddleware({
         projectId: process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID,
@@ -84,34 +73,30 @@ export default async function middleware(req: NextRequest) {
         redirectUrl: "/auth/login",
     })
 
-    // Create a new request with the updated headers
-    const newReq = new NextRequest(req.url, {
-        headers: requestHeaders,
-    })
+    // If we have an org slug, rewrite the URL (strip slug prefix)
+    if (orgSlug) {
+        const rewriteUrl = new URL(rewrittenPathname, req.url)
+        rewriteUrl.search = url.search
 
-    // Execute authMiddleware
-    const response = await descopeMiddleware(newReq as any)
+        // Auth check against the rewritten path
+        const authReq = new NextRequest(rewriteUrl, { headers: requestHeaders })
+        const authResponse = await descopeMiddleware(authReq as any)
+        if (authResponse) return authResponse
 
-    if (response) {
-        // If authMiddleware returned a response (like a redirect), we return it
-        // but we still want to make sure our headers are there if it's a "next" response
-        return response
+        // Rewrite to internal path
+        return NextResponse.rewrite(rewriteUrl, {
+            request: { headers: requestHeaders }
+        })
     }
 
-    // If no response from authMiddleware, we continue with our updated headers
-    const finalResponse = NextResponse.next({
-        request: {
-            headers: requestHeaders,
-        }
+    // No org slug — normal request
+    const newReq = new NextRequest(req.url, { headers: requestHeaders })
+    const authResponse = await descopeMiddleware(newReq as any)
+    if (authResponse) return authResponse
+
+    return NextResponse.next({
+        request: { headers: requestHeaders }
     })
-
-    // Ensure headers are also in the final response
-    if (tenantSlug) {
-        finalResponse.headers.set("x-tenant-slug", tenantSlug)
-    }
-    finalResponse.headers.set("x-invoke-path", url.pathname)
-
-    return finalResponse
 }
 
 export const config = {
