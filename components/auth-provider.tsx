@@ -55,12 +55,24 @@ export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps
                 </div>
                 {/* Fallback to children for non-auth functionality if possible (descope might be needed though) */}
                 {/* For now, just show children but Auth won't work? No, context is missing. Just show error. */}
-                <button
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
-                >
-                    Reload Page
-                </button>
+                <div className="flex gap-4 justify-center w-full">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
+                    >
+                        Reload Page
+                    </button>
+                    {/* Developer Bypass */}
+                    <button
+                        onClick={() => window.location.assign('/')}
+                        className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/90"
+                    >
+                        Try to Render App
+                    </button>
+                    <div className="text-[10px] text-muted-foreground mt-2 w-full text-center">
+                        Note: App may crash if Auth is required.
+                    </div>
+                </div>
             </div>
         }>
             <DescopeAuthProvider
