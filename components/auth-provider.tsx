@@ -17,32 +17,46 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps) {
     const [mounted, setMounted] = useState(false)
+    const [authBlocked, setAuthBlocked] = useState(false)
 
     useEffect(() => {
         setMounted(true)
-    }, [])
 
+        // Check if our proxy is reachable (not api.descope.com directly)
+        const checkProxy = async () => {
+            try {
+                const proxyUrl = baseUrl ? `${baseUrl}/v1/health` : "https://api.descope.com/v1/health"
+                const res = await fetch(proxyUrl, { method: "GET", signal: AbortSignal.timeout(5000) })
+                // Any response (even 404) means the proxy is reachable
+                if (!res) setAuthBlocked(true)
+            } catch {
+                // Only block if it's truly unreachable
+                if (baseUrl) {
+                    // Proxy exists but failed — don't block, let SDK try
+                    setAuthBlocked(false)
+                } else {
+                    setAuthBlocked(true)
+                }
+            }
+        }
+
+        checkProxy()
+    }, [baseUrl])
 
     if (!projectId) {
-        console.error("Descope Project ID is missing. AuthProvider will not function correctly.")
+        console.error("Descope Project ID is missing.")
         return <>{children}</>
     }
 
-    // Prevent SSR issues with the SDK
-    // if (!mounted) {
-    //     return <div style={{ visibility: 'hidden' }}>{children}</div>
-    // }
+    if (!mounted) return null
 
-    if (!mounted) {
-        return null
-    }
-
-    return (
-        <ErrorBoundary fallback={
+    // Only show blocked screen if no proxy is configured AND auth is blocked
+    if (authBlocked && !baseUrl) {
+        return (
             <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground p-6 text-center space-y-4">
                 <div className="text-destructive font-bold text-xl">Authentication Service Blocked</div>
                 <p className="text-muted-foreground max-w-sm">
-                    It looks like your browser (Brave, or one with rigid privacy settings) is blocking the authentication service.
+                    It looks like your browser is blocking the authentication service.
                     This is often caused by 3rd-party cookie blocking or tracker prevention.
                 </p>
                 <div className="bg-muted/50 p-4 rounded-lg text-xs font-mono text-left w-full max-w-md overflow-auto border border-border/50">
@@ -53,26 +67,29 @@ export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps
                         <li>Try a different browser (Chrome/Edge/Safari)</li>
                     </ul>
                 </div>
-                {/* Fallback to children for non-auth functionality if possible (descope might be needed though) */}
-                {/* For now, just show children but Auth won't work? No, context is missing. Just show error. */}
-                <div className="flex gap-4 justify-center w-full">
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
-                    >
-                        Reload Page
-                    </button>
-                    {/* Developer Bypass */}
-                    <button
-                        onClick={() => window.location.assign('/')}
-                        className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/90"
-                    >
-                        Try to Render App
-                    </button>
-                    <div className="text-[10px] text-muted-foreground mt-2 w-full text-center">
-                        Note: App may crash if Auth is required.
-                    </div>
-                </div>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
+                >
+                    Reload Page
+                </button>
+            </div>
+        )
+    }
+
+    return (
+        <ErrorBoundary fallback={
+            <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground p-6 text-center space-y-4">
+                <div className="text-destructive font-bold text-xl">Authentication Unavailable</div>
+                <p className="text-muted-foreground max-w-sm">
+                    Something went wrong loading the authentication service. Please try reloading.
+                </p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
+                >
+                    Reload Page
+                </button>
             </div>
         }>
             <DescopeAuthProvider
