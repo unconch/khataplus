@@ -6,9 +6,16 @@ import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next
 import { authorize, audit } from "../security";
 
 export async function getDailyReports(orgId: string) {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<DailyReport[]> => {
-            const data = await sql`SELECT * FROM daily_reports WHERE org_id = ${orgId} ORDER BY report_date DESC LIMIT 30`;
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
+            const data = await db`SELECT * FROM daily_reports WHERE org_id = ${orgId} ORDER BY report_date DESC LIMIT 30`;
             return data.map((d: any) => ({
                 ...d,
                 total_sale_gross: parseFloat(d.total_sale_gross),
@@ -20,8 +27,8 @@ export async function getDailyReports(orgId: string) {
                 report_date: d.report_date instanceof Date ? d.report_date.toISOString().split('T')[0] : String(d.report_date),
             })) as DailyReport[];
         },
-        [`reports-list-${orgId}`],
-        { tags: ["reports", `reports-${orgId}`], revalidate: 300 }
+        [`reports-list-${flavor}-${orgId}`],
+        { tags: ["reports", `reports-${orgId}`, `reports-${flavor}`], revalidate: 300 }
     )();
 }
 

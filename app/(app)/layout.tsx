@@ -2,7 +2,7 @@ import type React from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { BiometricGate } from "@/components/biometric-gate"
-import type { Profile } from "@/lib/types"
+import type { Profile, Organization } from "@/lib/types"
 import { session } from "@descope/nextjs-sdk/server"
 import { Suspense } from "react"
 import { LoadingScreen } from "@/components/loading-screen"
@@ -46,44 +46,47 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const pathPrefix = headersList.get("x-path-prefix") || ""
     const xInvokePath = headersList.get("x-invoke-path") || ""
 
-    if (!userId) {
-      // Check for Guest Mode
-      const { isGuestMode } = await import("@/lib/data/auth")
-      const isGuest = await isGuestMode()
+    // Check for Guest Mode
+    const { isGuestMode } = await import("@/lib/data/auth")
+    const isGuest = await isGuestMode()
 
-      if (isGuest) {
-        console.log("--- [DEBUG] Guest Mode Detected: Bypassing AuthGuard ---")
-        const { sql } = await import("@/lib/db")
-        const orgs = await sql`SELECT * FROM organizations LIMIT 1`
-        let demoTenant = orgs[0]
+    if (isGuest) {
+      console.log("--- [DEBUG] Guest Mode Active: Rendering Sandbox Shell ---")
+      const { getDemoSql } = await import("@/lib/db")
+      const demoSql = getDemoSql()
+      const orgsResult = await demoSql`SELECT * FROM organizations WHERE id = 'demo-org' LIMIT 1`
+      let demoTenant = (orgsResult[0] as unknown as Organization) || null
 
-        if (!demoTenant) {
-          demoTenant = {
-            id: "demo-org-id",
-            name: "KhataPlus Demo Shop",
-            slug: "demo-shop"
-          }
-        }
-
-        const demoSettings = await getSystemSettings(demoTenant.id)
-
-        return (
-          <TenantProvider tenant={demoTenant}>
-            <AppShell
-              profile={null}
-              role="admin"
-              settings={demoSettings}
-              orgId={demoTenant.id}
-              orgName={demoTenant.name}
-              pathPrefix={pathPrefix}
-            >
-              {children}
-            </AppShell>
-          </TenantProvider>
-        )
+      if (!demoTenant) {
+        demoTenant = {
+          id: "demo-org",
+          name: "KhataPlus Demo Shop",
+          slug: "demo",
+          created_by: "system",
+          created_at: new Date().toISOString()
+        } as Organization
       }
 
-      // Fallback for public or unauthenticated
+      const demoSettings = await getSystemSettings(demoTenant.id)
+
+      return (
+        <TenantProvider tenant={demoTenant}>
+          <AppShell
+            profile={null}
+            role="admin"
+            settings={demoSettings}
+            orgId={demoTenant.id}
+            orgName={demoTenant.name}
+            pathPrefix={pathPrefix}
+          >
+            {children}
+          </AppShell>
+        </TenantProvider>
+      )
+    }
+
+    if (!userId) {
+      // Internal AuthGuard for production routes if not authenticated
       const defaultSettings = await getSystemSettings()
       return (
         <AuthGuard>

@@ -26,7 +26,12 @@ export function KhataLedger({ customer, transactions: initialTransactions, orgId
     }
 
     const shareOnWhatsApp = () => {
-        const text = `Hi ${customer.name}, your current balance with us is ₹${Math.abs(balance).toLocaleString()}. ${(balance >= 0) ? "Please clear the pending amount." : "Thank you for your business."}`
+        const text = `*Balance Summary from ${customer.name}'s Ledger*\n\n` +
+            `Total Balance: *₹${Math.abs(balance).toLocaleString()}*\n` +
+            `Status: *${balance >= 0 ? "Pending Payment" : "Advance Paid"}*\n\n` +
+            `_Managed via KhataPlus - Your Digital Shop Assistant_\n` +
+            `https://khataplus.online?ref=remind`
+
         window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(text)}`, "_blank")
     }
 
@@ -57,14 +62,14 @@ export function KhataLedger({ customer, transactions: initialTransactions, orgId
             </Card>
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-3">
-                <Button onClick={shareOnWhatsApp} variant="secondary" className="flex-1 gap-2 shadow-sm">
-                    <MessageSquare className="h-4 w-4 text-emerald-500" />
-                    WhatsApp
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Button onClick={shareOnWhatsApp} className="w-full sm:flex-1 h-12 rounded-2xl gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95">
+                    <MessageSquare className="h-4 w-4" />
+                    Share on WhatsApp
                 </Button>
-                <Button variant="secondary" className="flex-1 gap-2 shadow-sm">
+                <Button variant="outline" className="w-full sm:flex-1 h-12 rounded-2xl gap-2 border-2 border-zinc-100 dark:border-white/5 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95">
                     <Share2 className="h-4 w-4 text-blue-500" />
-                    Share PDF
+                    Download PDF
                 </Button>
             </div>
 

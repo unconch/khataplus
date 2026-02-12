@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { session } from "@descope/nextjs-sdk/server"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
-import { getUserOrganizations } from "@/lib/data"
+import { getUserOrganizations, getProfile } from "@/lib/data"
 
 export default async function SetupOrganizationPage() {
     const sessionRes = await session()
@@ -11,7 +11,11 @@ export default async function SetupOrganizationPage() {
         redirect("/auth/login")
     }
 
-    const userOrgs = await getUserOrganizations(userId)
+    const [userOrgs, profile] = await Promise.all([
+        getUserOrganizations(userId),
+        getProfile(userId)
+    ])
+
     if (userOrgs.length > 0) {
         redirect("/dashboard")
     }
@@ -26,7 +30,7 @@ export default async function SetupOrganizationPage() {
             </div>
 
             <div className="w-full max-w-xl relative z-10 py-12">
-                <OnboardingWizard userId={userId} />
+                <OnboardingWizard userId={userId} profile={profile as any} />
             </div>
         </div>
     )

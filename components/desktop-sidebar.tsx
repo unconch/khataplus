@@ -33,7 +33,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: D
             <div className="p-10">
                 <div
                     className="flex items-center gap-4 group cursor-pointer"
-                    onClick={() => window.location.href = "/dashboard"}
+                    onClick={() => window.location.href = "/"}
                 >
                     <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500">
                         <span className="text-primary-foreground font-black text-lg tracking-tighter">KP</span>

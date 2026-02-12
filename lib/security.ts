@@ -52,19 +52,34 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
         throw new Error(`Unauthorized: Account status is ${user.status}`);
     }
 
-    if (requiredRole && user.role !== "main admin" && user.role !== requiredRole) {
-        throw new Error(`Forbidden: Required role ${requiredRole}`);
-    }
-
-    // If orgId is provided, verify user is a member of that organization
+    // If orgId is provided, check organization-specific role
     if (orgId && user.role !== "main admin") {
         const membership = await sql`
             SELECT role FROM organization_members 
             WHERE org_id = ${orgId} AND user_id = ${user.id}
         `;
+
         if (membership.length === 0) {
             throw new Error(`Forbidden: You are not a member of this organization`);
         }
+
+        const orgRole = membership[0].role;
+        // Owners and Admins satisfy the "admin" requirement
+        const isOrgAdmin = orgRole === "admin" || orgRole === "owner";
+
+        if (requiredRole === "admin" && !isOrgAdmin) {
+            throw new Error(`Forbidden: Organization admin privileges required`);
+        }
+
+        if (requiredRole && requiredRole !== "admin" && orgRole !== requiredRole) {
+            throw new Error(`Forbidden: Required organization role ${requiredRole}`);
+        }
+
+        return { ...user, orgRole }; // Return user with org context
+    }
+
+    if (requiredRole && user.role !== "main admin" && user.role !== requiredRole) {
+        throw new Error(`Forbidden: Required role ${requiredRole}`);
     }
 
     return user;

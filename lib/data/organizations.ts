@@ -8,11 +8,17 @@ import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next
 
 
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
+    // Check for existing organization with the same name (case-insensitive)
+    const existingName = await sql`SELECT id FROM organizations WHERE LOWER(name) = LOWER(${name})`;
+    if (existingName.length > 0) {
+        throw new Error(`An organization with the name "${name}" already exists.`);
+    }
+
     let slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-    // Handle potential slug collisions
-    const existing = await sql`SELECT slug FROM organizations WHERE slug = ${slug}`;
-    if (existing.length > 0) {
+    // Handle potential slug collisions (for safety, though name check handles most cases)
+    const existingSlug = await sql`SELECT slug FROM organizations WHERE slug = ${slug}`;
+    if (existingSlug.length > 0) {
         const suffix = Math.random().toString(36).substring(2, 6);
         slug = `${slug}-${suffix}`;
     }
@@ -31,15 +37,21 @@ export async function createOrganization(name: string, userId: string, details?:
             VALUES(${org.id}, ${userId}, 'owner')
         `;
 
+        // Promote user to admin in profiles table for consistent permissions
+        await sql`
+            UPDATE profiles SET role = 'admin' WHERE id = ${userId}
+        `;
+
         // Revalidate paths to ensure layout and dashboard reflect new organization
         revalidatePath("/", "layout");
         revalidatePath("/setup-organization");
         revalidatePath("/dashboard");
         revalidatePath(`/${slug}/dashboard`);
 
-        // Explicitly revalidate the slug cache tag if it exists
+        // Explicitly revalidate the slug cache tag and user organizations
         try {
             (revalidateTag as any)(`org-slug-${slug}`);
+            (revalidateTag as any)(`user-orgs-${userId}`);
         } catch (e) {
             console.warn("revalidateTag failed, non-critical:", e);
         }
@@ -189,9 +201,16 @@ export async function getSystemSettings(orgId?: string) {
         } as SystemSettings;
     }
 
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<SystemSettings> => {
-            const result = await sql`SELECT settings, updated_at FROM organizations WHERE id = ${orgId}`;
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
+            const result = await db`SELECT settings, updated_at FROM organizations WHERE id = ${orgId}`;
             if (result.length === 0 || !result[0].settings) {
                 return {
                     id: orgId,
@@ -213,8 +232,8 @@ export async function getSystemSettings(orgId?: string) {
                 updated_at: result[0].updated_at instanceof Date ? result[0].updated_at.toISOString() : String(result[0].updated_at),
             } as SystemSettings;
         },
-        [`org-settings-${orgId}`],
-        { tags: ["settings", `settings-${orgId}`], revalidate: 3600 }
+        [`org-settings-${flavor}-${orgId}`],
+        { tags: ["settings", `settings-${orgId}`, `settings-${flavor}`], revalidate: 3600 }
     )();
 }
 

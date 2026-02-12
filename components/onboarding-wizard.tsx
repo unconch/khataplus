@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, ArrowRight, Check, Building2, MapPin, ReceiptText } from "lucide-react"
+import { Loader2, ArrowRight, Check, Building2, MapPin, ReceiptText, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 const organizationSchema = z.object({
+    userName: z.string().min(2, "Please enter your name").optional(),
     name: z.string()
         .min(3, "Organization name must be at least 3 characters")
         .refine(val => val.toLowerCase() !== "demo", {
@@ -27,8 +29,10 @@ const organizationSchema = z.object({
 
 type OrganizationFormValues = z.infer<typeof organizationSchema>
 
-export function OnboardingWizard({ userId }: { userId: string }) {
+export function OnboardingWizard({ userId, profile }: { userId: string, profile?: any }) {
+    const hasExistingName = !!(profile?.name && profile.name !== "Anonymous")
     const [step, setStep] = useState(1)
+    const totalSteps = hasExistingName ? 3 : 4
     const [loading, setLoading] = useState(false)
     const router = useRouter()
 
@@ -40,6 +44,7 @@ export function OnboardingWizard({ userId }: { userId: string }) {
     } = useForm<OrganizationFormValues>({
         resolver: zodResolver(organizationSchema),
         defaultValues: {
+            userName: profile?.name || "",
             name: "",
             gstin: "",
             address: "",
@@ -49,7 +54,11 @@ export function OnboardingWizard({ userId }: { userId: string }) {
 
     const nextStep = async () => {
         let isValid = false
-        if (step === 1) {
+        if (!hasExistingName && step === 1) {
+            isValid = await trigger("userName")
+        } else if (hasExistingName && step === 1) {
+            isValid = await trigger("name")
+        } else if (!hasExistingName && step === 2) {
             isValid = await trigger("name")
         } else {
             isValid = true
@@ -71,7 +80,14 @@ export function OnboardingWizard({ userId }: { userId: string }) {
             const resp = await fetch('/api/organizations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: data.name, userId, gstin: data.gstin, address: data.address, phone: data.phone }),
+                body: JSON.stringify({
+                    name: data.name,
+                    userId,
+                    userName: data.userName,
+                    gstin: data.gstin,
+                    address: data.address,
+                    phone: data.phone
+                }),
             })
 
             const org = await resp.json()
@@ -125,34 +141,91 @@ export function OnboardingWizard({ userId }: { userId: string }) {
                 <div className="absolute top-1/2 left-0 w-full h-0.5 bg-zinc-200 dark:bg-zinc-800 -translate-y-1/2 rounded-full overflow-hidden">
                     <motion.div
                         initial={{ width: "0%" }}
-                        animate={{ width: `${((step - 1) / 2) * 100}%` }}
+                        animate={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
                         className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]"
                     />
                 </div>
                 <div className="relative flex justify-between">
-                    {[1, 2, 3].map((s) => (
-                        <div key={s} className="flex flex-col items-center">
-                            <motion.div
-                                animate={{
-                                    scale: s === step ? 1.2 : 1,
-                                    backgroundColor: s <= step ? "var(--primary)" : "var(--zinc-200)",
-                                    color: s <= step ? "white" : "var(--zinc-500)"
-                                }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg z-10 
-                                    ${s < step ? "bg-primary" : s === step ? "bg-primary ring-4 ring-primary/20" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400"}`}
-                            >
-                                {s < step ? <Check size={18} /> : s}
-                            </motion.div>
-                            <span className={`mt-3 text-[10px] uppercase tracking-widest font-bold ${s === step ? "text-primary" : "text-zinc-400"}`}>
-                                {s === 1 ? "Brand" : s === 2 ? "Tax" : "Office"}
-                            </span>
-                        </div>
-                    ))}
+                    {Array.from({ length: totalSteps }).map((_, i) => {
+                        const s = i + 1;
+                        let label = "";
+                        if (hasExistingName) {
+                            label = s === 1 ? "Brand" : s === 2 ? "Tax" : "Office";
+                        } else {
+                            label = s === 1 ? "Owner" : s === 2 ? "Brand" : s === 3 ? "Tax" : "Office";
+                        }
+
+                        return (
+                            <div key={s} className="flex flex-col items-center">
+                                <motion.div
+                                    animate={{
+                                        scale: s === step ? 1.2 : 1,
+                                        backgroundColor: s <= step ? "var(--primary)" : "var(--zinc-200)",
+                                        color: s <= step ? "white" : "var(--zinc-500)"
+                                    }}
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg z-10 
+                                        ${s < step ? "bg-primary" : s === step ? "bg-primary ring-4 ring-primary/20" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400"}`}
+                                >
+                                    {s < step ? <Check size={18} /> : s}
+                                </motion.div>
+                                <span className={`mt-3 text-[10px] uppercase tracking-widest font-bold ${s === step ? "text-primary" : "text-zinc-400"}`}>
+                                    {label}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
             <AnimatePresence mode="wait">
-                {step === 1 && (
+                {/* NEW: Step 1 - User Identity (Conditional) */}
+                {!hasExistingName && step === 1 && (
+                    <motion.div
+                        key="step0"
+                        variants={variants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        transition={{ duration: 0.4, ease: "circOut" }}
+                    >
+                        <Card className="border-border/40 shadow-2xl bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+                            <div className="h-1.5 w-full bg-gradient-to-r from-violet-500/50 via-violet-500 to-violet-500/50" />
+                            <CardHeader className="pt-8 px-8">
+                                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-6 text-violet-500 shadow-inner border border-violet-500/20 rotate-3 hover:rotate-0 transition-transform duration-300">
+                                    <User size={28} />
+                                </div>
+                                <CardTitle className="text-3xl font-black">Personal Identity</CardTitle>
+                                <CardDescription className="text-base">
+                                    Let's start with you. How should we address the visionary behind this business?
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-8 pt-4 space-y-6">
+                                <div className="space-y-3">
+                                    <Label htmlFor="userName" className="text-sm font-bold uppercase tracking-wider text-zinc-500">Your Full Name</Label>
+                                    <Input
+                                        id="userName"
+                                        placeholder="e.g. John Doe"
+                                        {...register("userName")}
+                                        className="h-14 text-xl font-medium bg-zinc-50/50 dark:bg-zinc-900/50 border-border/50 focus:ring-violet-500 transition-all shadow-sm"
+                                        autoFocus
+                                    />
+                                    {errors.userName && (
+                                        <p className="text-sm text-destructive font-bold flex items-center gap-1">
+                                            <span className="w-1 h-1 rounded-full bg-destructive" /> {errors.userName.message}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <Button onClick={nextStep} className="w-full h-14 text-lg font-bold bg-violet-600 hover:bg-violet-700 shadow-xl shadow-violet-500/20 active:scale-95 transition-all outline-none" size="lg">
+                                    Establish Identity <ArrowRight className="ml-2 h-5 w-5" />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+
+                {/* Step: Business Name (Original Step 1, now dynamic) */}
+                {step === (hasExistingName ? 1 : 2) && (
                     <motion.div
                         key="step1"
                         variants={variants}
@@ -167,7 +240,7 @@ export function OnboardingWizard({ userId }: { userId: string }) {
                                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 text-primary shadow-inner border border-primary/20 rotate-3 hover:rotate-0 transition-transform duration-300">
                                     <Building2 size={28} />
                                 </div>
-                                <CardTitle className="text-3xl font-black">Your Identity</CardTitle>
+                                <CardTitle className="text-3xl font-black">Business Brand</CardTitle>
                                 <CardDescription className="text-base">
                                     Define the name that will represent your excellence on every invoice and report.
                                 </CardDescription>
@@ -189,15 +262,23 @@ export function OnboardingWizard({ userId }: { userId: string }) {
                                     )}
                                 </div>
 
-                                <Button onClick={nextStep} className="w-full h-14 text-lg font-bold shadow-xl shadow-primary/20 active:scale-95 transition-all" size="lg">
-                                    Continue <ArrowRight className="ml-2 h-5 w-5" />
-                                </Button>
+                                <div className="flex gap-4 pt-2">
+                                    {!hasExistingName && (
+                                        <Button variant="ghost" onClick={prevStep} className="flex-1 h-14 font-bold border border-border/50">
+                                            Back
+                                        </Button>
+                                    )}
+                                    <Button onClick={nextStep} className={cn("h-14 text-lg font-bold shadow-xl shadow-primary/20 active:scale-95 transition-all", hasExistingName ? "w-full" : "flex-[2]")} size="lg">
+                                        Continue <ArrowRight className="ml-2 h-5 w-5" />
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </motion.div>
                 )}
 
-                {step === 2 && (
+                {/* Step: GSTIN (Original Step 2, now dynamic) */}
+                {step === (hasExistingName ? 2 : 3) && (
                     <motion.div
                         key="step2"
                         variants={variants}
@@ -241,7 +322,8 @@ export function OnboardingWizard({ userId }: { userId: string }) {
                     </motion.div>
                 )}
 
-                {step === 3 && (
+                {/* Step: Address/Phone (Original Step 3, now dynamic) */}
+                {step === (hasExistingName ? 3 : 4) && (
                     <motion.div
                         key="step3"
                         variants={variants}

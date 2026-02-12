@@ -139,11 +139,11 @@ export default function SignUpPage() {
             <Descope
               flowId="sign-up-or-in"
               onSuccess={(e) => {
-                console.log("Logged in!", e.detail.user)
+                console.log("Signed up!", e.detail.user)
                 router.push("/setup-organization")
               }}
-              onError={(e) => console.log("Could not log in!", e)}
-              theme={window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}
+              onError={(e) => console.log("Could not sign up!", e)}
+              theme={typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}
             />
           </div>
 

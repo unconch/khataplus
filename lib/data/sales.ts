@@ -11,10 +11,17 @@ import { syncDailyReport } from "./reports";
 import { getCurrentOrgId } from "./auth";
 
 export async function getSales(orgId: string) {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<(Sale & { inventory?: InventoryItem })[]> => {
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
             const start = Date.now();
-            const data = await sql`
+            const data = await db`
                 SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price
                 FROM sales s
                 LEFT JOIN inventory i ON s.inventory_id = i.id
@@ -37,8 +44,8 @@ export async function getSales(orgId: string) {
                 } : undefined
             })) as any;
         },
-        [`sales-list-${orgId}`],
-        { tags: ["sales", `sales-${orgId}`], revalidate: 3600 }
+        [`sales-list-${flavor}-${orgId}`],
+        { tags: ["sales", `sales-${orgId}`, `sales-${flavor}`], revalidate: 3600 }
     )();
 }
 

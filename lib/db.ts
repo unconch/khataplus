@@ -39,6 +39,17 @@ const getClient = (url: string, isGuest: boolean) => {
     }
 }
 
+// Explicit clients for when auto-detection is not desired or unreliable (e.g. inside nextCache)
+export const getProductionSql = () => {
+    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL not set");
+    return neon(sanitizeConnString(process.env.DATABASE_URL));
+};
+
+export const getDemoSql = () => {
+    if (!process.env.DEMO_DATABASE_URL) throw new Error("DEMO_DATABASE_URL not set");
+    return neon(sanitizeConnString(process.env.DEMO_DATABASE_URL));
+};
+
 /**
  * Main SQL Client execution wrapper.
  * Dynamically selects the database based on the 'guest_mode' cookie.
@@ -47,38 +58,36 @@ export const sql = async (stringsOrQuery: TemplateStringsArray | string, ...valu
     let connectionUrl = process.env.DATABASE_URL;
     let isGuest = false;
 
+    // We use a try/catch block because cookies() and headers() throw if called outside request context
+    let headersList: any = null;
+    let cookieStore: any = null;
+    let userId: string | null = null;
+
     try {
         const { session } = await import('@descope/nextjs-sdk/server');
         const sessionRes = await session();
-        const userId = sessionRes?.token?.sub;
+        userId = (sessionRes?.token?.sub as string) || null;
 
         const { cookies, headers } = await import('next/headers');
-        const cookieStore = await cookies();
-        const headerList = await headers();
-        const path = headerList.get('x-invoke-path') || "";
+        cookieStore = await cookies();
+        headersList = await headers();
+    } catch (e) {
+        // Fallback to PROD if we can't access request context (e.g. build time or scripts)
+    }
 
+    if (headersList && cookieStore) {
+        const path = headersList.get('x-invoke-path') || "";
         const isDemoRoute = path.startsWith('/demo');
         const hasGuestCookie = cookieStore.has('guest_mode');
+        const hasGuestHeader = headersList.get('x-guest-mode') === 'true';
 
-        console.log(`[DB DEBUG] Path: ${path}, UserID: ${userId}, hasGuest: ${hasGuestCookie}, isDemoRoute: ${isDemoRoute}`);
-
-        // Only use Guest Mode if NOT authenticated, OR explicitly on a /demo route
-        if ((!userId && hasGuestCookie) || isDemoRoute) {
+        if ((!userId && hasGuestCookie) || isDemoRoute || hasGuestHeader) {
             isGuest = true;
             if (!process.env.DEMO_DATABASE_URL) {
-                // STRICT SECURITY RULE: Fail if Guest Mode is active but no Demo DB is configured.
-                throw new Error('SECURITY ALERT: Demo Database URL not configured. Guest Session terminated for security.');
+                throw new Error('SECURITY ALERT: Demo Database URL not configured. Guest Session terminated.');
             }
             connectionUrl = process.env.DEMO_DATABASE_URL;
         }
-    } catch (e: any) {
-        console.log(`[DB ERROR] Failed to detect context: ${e.message}. Defaulting to PROD.`);
-        // If we define security error, rethrow it
-        if (e.message && e.message.includes('SECURITY ALERT')) {
-            throw e;
-        }
-        // If cookies() fails (e.g. outside request context), we default to PROD (connectionUrl is already set)
-        // This is standard behavior for scripts/cron jobs which are "system" (production) level.
     }
 
     if (!connectionUrl) {
@@ -91,17 +100,10 @@ export const sql = async (stringsOrQuery: TemplateStringsArray | string, ...valu
     return client(stringsOrQuery, ...values);
 };
 
-// Deprecated: getSql should strictly not be used directly if we want isolation
-// We keep it for legacy compat if strictly needed, but it will only return PROD
-// and warn. Ideally, we remove it.
 export const getSql = () => {
-    console.warn('[DEPRECATED] getSql() called directly. This effectively bypasses Guest Mode isolation check. Defaulting to PROD.');
-    if (!process.env.DATABASE_URL) {
-        throw new Error('DATABASE_URL not set');
-    }
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL not set');
     if (!prodSqlInstance) {
-        const sanitizedUrl = sanitizeConnString(process.env.DATABASE_URL!);
-        prodSqlInstance = neon(sanitizedUrl);
+        prodSqlInstance = neon(sanitizeConnString(process.env.DATABASE_URL!));
     }
     return prodSqlInstance;
 }

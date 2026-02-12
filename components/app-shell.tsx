@@ -36,7 +36,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, pa
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
-          <AppHeader profile={profile} orgName={orgName} />
+          <AppHeader profile={profile} orgName={orgName} role={role} pathPrefix={pathPrefix} />
 
           <main className="flex-1 pb-32 lg:pb-12 p-4 lg:p-12 xl:p-16 2xl:p-20 overflow-auto gpu-layer relative scroll-smooth" style={{ contentVisibility: "auto" }}>
             <div className="mx-auto w-full max-w-[1800px] 2xl:max-w-[2000px] animate-in fade-in slide-in-from-bottom-4 duration-700">

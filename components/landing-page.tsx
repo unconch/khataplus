@@ -29,7 +29,7 @@ import { GradientText } from "@/components/gradient-text"
 import { BentoGrid, BentoCard } from "@/components/bento-grid"
 import { useParallax } from "@/hooks/use-parallax"
 import { useMouseParallax } from "@/hooks/use-mouse-parallax"
-import { ShieldCheck, WifiOff, FileText, TrendingUp, Monitor, Smartphone, Zap, Shield, Star, Package, ArrowUpRight } from "lucide-react"
+import { ShieldCheck, WifiOff, FileText, TrendingUp, Monitor, Smartphone, Zap, Shield, Star, Package, ArrowUpRight, IndianRupee, Calculator, Tag } from "lucide-react"
 
 import { useSession, useUser } from "@descope/react-sdk"
 import { createGuestSession } from "@/app/actions/guest"
@@ -78,8 +78,13 @@ export function LandingPage() {
 
                         <div className={`hidden md:flex items-center gap-10 text-base font-medium ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
                             <NavLink href="#features" label="Features" />
-                            <NavLink href="#how" label="How it works" />
                             <NavLink href="#pricing" label="Pricing" />
+                            <Link href="/tools/gst-calculator" className={`hover:underline transition-colors ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
+                                GST Tool
+                            </Link>
+                            <Link href="/tools/business-card" className={`hover:underline transition-colors ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
+                                Card Maker
+                            </Link>
                             <a href="/demo" className={`hidden md:block hover:underline font-bold transition-colors ${scrolled ? "text-emerald-600" : "text-emerald-100"}`}>
                                 Demo
                             </a>
@@ -139,7 +144,6 @@ export function LandingPage() {
                         >
                             <div className="px-6 py-5 space-y-2">
                                 <a href="#features" className="block px-4 py-3 text-lg text-zinc-700 font-medium rounded-xl hover:bg-zinc-50" onClick={() => setMobileMenuOpen(false)}>Features</a>
-                                <a href="#how" className="block px-4 py-3 text-lg text-zinc-700 font-medium rounded-xl hover:bg-zinc-50" onClick={() => setMobileMenuOpen(false)}>How it works</a>
                                 <a href="#pricing" className="block px-4 py-3 text-lg text-zinc-700 font-medium rounded-xl hover:bg-zinc-50" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
                             </div>
                             <div className="border-t border-zinc-100 px-6 py-5 space-y-4">
@@ -203,16 +207,16 @@ export function LandingPage() {
                             </p>
                         </AdvancedScrollReveal>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                             <AdvancedScrollReveal variant="slideLeft" delay={1000}>
                                 <Link href={isAuthenticated ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
                                     <MagneticButton className="w-full sm:w-auto">
                                         <motion.button
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
-                                            className="w-full sm:w-auto h-16 px-10 bg-white text-emerald-700 hover:bg-emerald-50 rounded-full text-xl font-semibold shadow-xl group flex items-center justify-center gap-2"
+                                            className="w-full sm:w-auto h-16 px-10 bg-white text-emerald-700 hover:bg-emerald-50 rounded-full text-xl font-black shadow-2xl group flex items-center justify-center gap-2 uppercase tracking-tight"
                                         >
-                                            {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
+                                            {isAuthenticated ? "Go to Dashboard" : "Start Free Now"}
                                             <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                                         </motion.button>
                                     </MagneticButton>
@@ -220,9 +224,9 @@ export function LandingPage() {
                             </AdvancedScrollReveal>
                             {!isAuthenticated && (
                                 <AdvancedScrollReveal variant="slideRight" delay={1200}>
-                                    <Link href="/auth/login" className="w-full sm:w-auto">
-                                        <Button size="lg" variant="ghost" className="w-full sm:w-auto h-16 px-8 text-white text-xl border-2 border-white/30 hover:bg-white/10 rounded-full hover:border-white transition-all">
-                                            Sign in
+                                    <Link href="/demo" className="w-full sm:w-auto">
+                                        <Button size="lg" variant="ghost" className="w-full sm:w-auto h-16 px-8 text-white text-xl border-2 border-white/30 hover:bg-white/10 rounded-full hover:border-white transition-all font-bold">
+                                            Instant Demo
                                         </Button>
                                     </Link>
                                 </AdvancedScrollReveal>
@@ -240,6 +244,69 @@ export function LandingPage() {
                     </div>
                 </section>
 
+
+
+
+                {/* Free Tools Section */}
+                <section className="py-24 bg-white relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto px-6 relative z-10">
+                        <div className="grid lg:grid-cols-2 gap-16 items-center">
+                            <div className="space-y-8">
+                                <AdvancedScrollReveal variant="slideRight">
+                                    <div className="space-y-4">
+                                        <span className="text-emerald-600 font-bold text-xs tracking-widest uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">Growth Tools</span>
+                                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black italic tracking-tighter text-zinc-900 leading-tight">
+                                            Free tools for <br />
+                                            <span className="text-emerald-500">Every Business.</span>
+                                        </h2>
+                                        <p className="text-zinc-500 text-xl font-medium leading-relaxed max-w-lg">
+                                            We believe in empowering local merchants. Use our professional tools for free, no account needed.
+                                        </p>
+                                    </div>
+                                </AdvancedScrollReveal>
+
+                                <div className="grid sm:grid-cols-2 gap-6">
+                                    <Link href="/tools/gst-calculator" className="group p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100 hover:border-emerald-500/50 hover:bg-white hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 group-hover:rotate-6 transition-transform">
+                                            <Calculator className="text-emerald-600" />
+                                        </div>
+                                        <h3 className="text-xl font-black italic mb-2">GST Finder</h3>
+                                        <p className="text-zinc-500 text-sm font-medium">Find HSN codes and calculate taxes in seconds.</p>
+                                    </Link>
+                                    <Link href="/tools/business-card" className="group p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100 hover:border-emerald-500/50 hover:bg-white hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 group-hover:rotate-6 transition-transform">
+                                            <Tag className="text-emerald-600" />
+                                        </div>
+                                        <h3 className="text-xl font-black italic mb-2">Card Maker</h3>
+                                        <p className="text-zinc-500 text-sm font-medium">Create professional visiting cards for your shop.</p>
+                                    </Link>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-emerald-500/20 blur-[120px] rounded-full" />
+                                <div className="relative bg-zinc-900 rounded-[3rem] p-4 shadow-2xl overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900" />
+                                    <div className="relative border border-white/10 rounded-[2.5rem] overflow-hidden">
+                                        <img
+                                            src="https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&q=80&w=1000"
+                                            alt="Merchant using KhataPlus"
+                                            className="w-full h-auto opacity-80 group-hover:scale-105 transition-transform duration-1000"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
+                                        <div className="absolute bottom-10 left-10 space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                                <span className="text-white font-black text-xs uppercase tracking-widest">Live in Guwahati</span>
+                                            </div>
+                                            <p className="text-white text-2xl font-black italic">"KhataPlus changed how I track credit."</p>
+                                            <p className="text-zinc-400 text-sm font-bold">— Rahul, New Market</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 {/* Features */}
                 <section id="features" className="py-24 md:py-32 px-6">

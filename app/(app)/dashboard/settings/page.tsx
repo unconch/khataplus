@@ -1,4 +1,4 @@
-import { getOrganization, getSystemSettings } from "@/lib/data/organizations"
+import { getOrganization, getSystemSettings, getUserOrganizations } from "@/lib/data/organizations"
 import { getCurrentOrgId } from "@/lib/data/auth"
 import { getProfile } from "@/lib/data/profiles"
 import { redirect } from "next/navigation"
@@ -50,16 +50,19 @@ export default async function SettingsPage() {
 }
 
 async function SettingsContent({ orgId, userId }: { orgId: string, userId: string }) {
-    const [org, settings, profile] = await Promise.all([
+    const [org, settings, profile, userOrgs] = await Promise.all([
         getOrganization(orgId),
         getSystemSettings(orgId),
-        getProfile(userId)
+        getProfile(userId),
+        getUserOrganizations(userId)
     ])
 
     if (!org) return <div>Organization not found</div>
     if (!profile) return <div>Identity not found</div>
 
-    const isAdmin = profile?.role === "main admin" || profile?.role === "owner"
+    const membership = userOrgs.find((o: any) => o.org_id === orgId)
+    const orgRole = membership?.role || "staff"
+    const isAdmin = orgRole === "admin" || orgRole === "owner" || profile?.role === "main admin"
 
     return (
         <Tabs defaultValue="profile" className="w-full">
@@ -82,6 +85,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             initialSettings={settings}
                             initialProfile={profile}
                             isAdmin={isAdmin}
+                            orgRole={orgRole}
                         />
                     </CardContent>
                 </Card>

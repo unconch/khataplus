@@ -44,6 +44,10 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { setupDemoOrganization } from "@/lib/demo-data"
 import { LowStockWidget } from "@/components/low-stock-widget"
+import { ReferralCard } from "@/components/referral-card"
+import { ImportWizard } from "@/components/import-wizard"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Download } from "lucide-react"
 import {
     LineChart,
     Line,
@@ -146,6 +150,7 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
         { name: 'Online', value: lastReport.online_sale ?? 0 }
     ]
     const PIE_COLORS = ["#10B981", "#3B82F6"]
+    const gradientId = isMounted ? "perfPulse" : "perfPulse-hidden"
 
     return (
         <div className="min-h-full bg-transparent pb-32 lg:pb-12 pt-4 lg:pt-0">
@@ -159,11 +164,17 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                     </div>
                     <div className="relative z-10 space-y-1">
                         <p className="text-emerald-100/80 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Command Center</p>
-                        <h1 className="text-xl font-black italic tracking-tighter">Hello, {firstName}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-xl font-black italic tracking-tighter">Hello, {firstName}</h1>
+                            <div className="px-1.5 py-0.5 bg-emerald-400/20 rounded-md border border-emerald-400/20 flex items-center gap-1 scale-90">
+                                <Shield size={8} className="text-emerald-200 fill-emerald-200" />
+                                <span className="text-[7px] font-black uppercase text-emerald-100">Founding Member</span>
+                            </div>
+                        </div>
                         <div className="flex items-center gap-2 pt-1">
                             <div className="px-2 py-0.5 bg-white/10 rounded-full border border-white/10 flex items-center gap-1.5">
                                 <Calendar size={10} className="text-emerald-200" />
-                                <span className="text-[9px] font-bold text-white/90">Feb 06, 2026</span>
+                                <span className="text-[9px] font-bold text-white/90">{new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
                             </div>
                         </div>
                     </div>
@@ -183,13 +194,33 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                                 <Store className="text-emerald-600" size={20} />
                             </div>
                             <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-none italic">
-                                KhataPlus Platinum
+                                Dashboard
                             </h1>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="h-10 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest border-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 transition-all"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Import Data
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl p-0 bg-transparent border-none">
+                                    <ImportWizard />
+                                </DialogContent>
+                            </Dialog>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-white text-xl lg:text-2xl font-bold">
-                                Hello, {firstName}
-                            </p>
+                            <div className="flex items-center gap-3">
+                                <p className="text-white text-xl lg:text-2xl font-bold">
+                                    Hello, {firstName}
+                                </p>
+                                <div className="px-2 py-0.5 bg-emerald-400/20 rounded-lg border border-emerald-400/20 flex items-center gap-2">
+                                    <Shield size={12} className="text-emerald-200 fill-emerald-200" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-100">Founding Member</span>
+                                </div>
+                            </div>
                             <p className="text-emerald-100/70 text-sm font-semibold tracking-wider uppercase">
                                 Welcome back to your command center
                             </p>
@@ -288,7 +319,7 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                         {/* 2. Main Performance Charts */}
                         <div className="order-2 lg:order-1 grid grid-cols-1 xl:grid-cols-3 gap-8 px-4 lg:px-0">
                             {/* Revenue & Profit Area Chart */}
-                            <div className="xl:col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 lg:p-12 shadow-sm lg:shadow-2xl border border-border/40 relative overflow-hidden group/analytics">
+                            <div className="xl:col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 lg:p-12 shadow-sm lg:shadow-2xl border border-border/40 relative overflow-hidden group/analytics min-h-[300px] flex flex-col">
                                 <div className="flex items-center justify-between mb-8 lg:mb-10">
                                     <div className="space-y-1">
                                         <h2 className="text-xl lg:text-3xl font-black tracking-tighter italic">Performance Pulse</h2>
@@ -297,16 +328,16 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                                     <div className="hidden lg:block h-1 w-20 bg-emerald-500 rounded-full" />
                                 </div>
 
-                                <div className="h-[220px] lg:h-[350px] w-full mt-4">
+                                <div className="w-full mt-4 flex flex-col items-center justify-center min-h-[350px] overflow-hidden">
                                     {isMounted ? (
-                                        <ResponsiveContainer width="100%" height="100%">
+                                        <ResponsiveContainer width="100%" height={350}>
                                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                                 <defs>
-                                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                    <linearGradient id={`${gradientId}-revenue`} x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
                                                         <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                                     </linearGradient>
-                                                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                                    <linearGradient id={`${gradientId}-profit`} x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
                                                         <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                                                     </linearGradient>
@@ -338,8 +369,8 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                                                     dataKey="Revenue"
                                                     stroke="#10B981"
                                                     strokeWidth={3}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorRevenue)"
+                                                    fillOpacity={0.2}
+                                                    fill="#10B981"
                                                     animationDuration={2000}
                                                 />
                                                 <Area
@@ -347,8 +378,8 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                                                     dataKey="Profit"
                                                     stroke="#3B82F6"
                                                     strokeWidth={3}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorProfit)"
+                                                    fillOpacity={0.2}
+                                                    fill="#3B82F6"
                                                     animationDuration={2000}
                                                 />
                                             </AreaChart>
@@ -362,13 +393,13 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                             </div>
 
                             {/* Liquidity Split Pie Chart */}
-                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 lg:p-12 shadow-sm lg:shadow-2xl border border-border/40 flex flex-col items-center justify-between group/liquidity">
+                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 lg:p-12 shadow-sm lg:shadow-2xl border border-border/40 flex flex-col items-center justify-between group/liquidity min-h-[300px]">
                                 <div className="text-center space-y-1 mb-4 lg:mb-6">
                                     <h3 className="text-lg lg:text-xl font-black tracking-tight italic">Liquidity Split</h3>
                                     <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px]">Last Closed Report</p>
                                 </div>
-                                <div className="h-[200px] lg:h-[260px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                <div className="w-full flex items-center justify-center min-h-[260px] overflow-hidden">
+                                    <ResponsiveContainer width="100%" height={260}>
                                         <PieChart>
                                             <Pie
                                                 data={paymentSplit}
@@ -410,6 +441,8 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                     <div className="lg:col-span-4 xl:col-span-5 h-full space-y-8">
 
                         <LowStockWidget items={lowStockItems} />
+
+                        <ReferralCard />
 
                         <div className="flex flex-col h-full bg-white dark:bg-zinc-900 border border-border/40 rounded-[2rem] lg:rounded-[3rem] shadow-2xl overflow-hidden sticky top-32">
                             <div className="p-6 lg:p-10 border-b border-border/40 bg-zinc-50/50 dark:bg-zinc-950/20 flex items-center justify-between">

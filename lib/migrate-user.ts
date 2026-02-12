@@ -58,7 +58,7 @@ export async function migrateOrCreateUser(clerkUserId: string, email: string, na
 
         const result = await sql`
             INSERT INTO profiles (id, email, name, role, status, biometric_required) 
-            VALUES (${clerkUserId}, ${email}, ${name || ""}, 'staff', 'pending', false)
+            VALUES (${clerkUserId}, ${email}, ${name || ""}, 'admin', 'pending', false)
             RETURNING *
         `;
 

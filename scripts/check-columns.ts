@@ -10,13 +10,15 @@ async function checkColumns() {
 
     console.log(`Checking DB: ${url.split('@')[1]}`);
 
+    const tableName = process.argv[2] || 'organizations';
+
     const result = await sql`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'organizations'
+        WHERE table_name = ${tableName}
     `;
 
-    console.log('Columns in organizations table:');
+    console.log(`Columns in ${tableName} table:`);
     console.log(result.map((r: any) => r.column_name).join(', '));
 }
 

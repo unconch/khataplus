@@ -31,7 +31,7 @@ export async function getCurrentOrgId(explicitUserId?: string): Promise<string |
         userId = user?.userId;
     }
 
-    if (!userId || userId === "guest-user") return "demo-org";
+    if (await isGuestMode() || !userId || userId === "guest-user") return "demo-org";
 
     const orgs = await getUserOrganizations(userId);
     return orgs[0]?.org_id || null;

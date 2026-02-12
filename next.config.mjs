@@ -45,6 +45,14 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/auth-api/:path*',
+        destination: 'https://api.descope.com/:path*',
+      },
+    ]
+  },
 
 }
 

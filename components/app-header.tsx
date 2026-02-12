@@ -18,13 +18,15 @@ import { cn } from "@/lib/utils"
 interface AppHeaderProps {
   profile: Profile | null
   orgName?: string
+  role?: string
+  pathPrefix?: string
 }
 
 import { useDescope, useUser } from "@descope/react-sdk"
 import { SettingsIcon } from "lucide-react"
 import { useTenant } from "@/components/tenant-provider"
 
-export function AppHeader({ profile, orgName }: AppHeaderProps) {
+export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = "" }: AppHeaderProps) {
   const router = useRouter()
   const { logout } = useDescope()
   const { user, isUserLoading } = useUser()
@@ -38,7 +40,7 @@ export function AppHeader({ profile, orgName }: AppHeaderProps) {
     user?.email ||
     (!isUserLoading ? "Guest User" : "Loading...")
 
-  const displayRole = profile?.role || ""
+  const displayRole = currentRole || profile?.role || ""
 
   const formattedRole = displayRole === "main admin" ? "Main Admin" :
     displayRole === "owner" ? "Owner" :
@@ -54,7 +56,7 @@ export function AppHeader({ profile, orgName }: AppHeaderProps) {
   const { isOnline, isStandalone } = usePWA()
 
   const handleLogoClick = () => {
-    router.push("/dashboard")
+    router.push("/")
   }
 
   return (

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   description: "The simplest billing, inventory, and khata management app designed effectively for Indian shopkeepers. GST-ready, offline-capable, and secure.",
   generator: "v0.app",
-  metadataBase: new URL("https://khataplus.com"), // Placeholder production URL
+  metadataBase: new URL("https://khataplus.com"),
   openGraph: {
     type: "website",
     locale: "en_IN",
@@ -62,10 +62,12 @@ export const viewport: Viewport = {
 
 import { OfflineBanner } from "@/components/offline-banner"
 import { SyncProvider } from "@/components/sync-provider"
+import { SystemAnnouncement } from "@/components/system-announcement"
 
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
 import { ScrollToTop } from "@/components/scroll-to-top"
+import { Toaster } from "sonner"
 
 export default function RootLayout({
   children,
@@ -82,6 +84,7 @@ export default function RootLayout({
         <AuthProvider projectId={process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID!}>
           <SyncProvider>
             <ScrollToTop />
+            <SystemAnnouncement />
             <OfflineBanner />
             {children}
           </SyncProvider>
@@ -89,6 +92,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <PwaInstallPrompt />
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   )

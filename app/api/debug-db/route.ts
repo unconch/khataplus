@@ -1,9 +1,23 @@
 import { sql } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { revalidateTag } from 'next/cache';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const searchParams = req.nextUrl.searchParams;
+        const revalidate = searchParams.get('revalidate');
+
+        if (revalidate === 'all') {
+            const tags = ['inventory', 'sales', 'reports', 'settings', 'analytics', 'customers', 'inventory-demo', 'sales-demo', 'reports-demo', 'settings-demo', 'analytics-demo', 'customers-demo'];
+            for (const tag of tags) {
+                // @ts-ignore
+                revalidateTag(tag);
+            }
+            console.log('--- [DEBUG] All tags revalidated via API ---');
+        }
+
         const reports = await sql`SELECT * FROM daily_reports ORDER BY report_date DESC LIMIT 5`;
+        // ... rest of the existing GET logic
         const sales = await sql`SELECT * FROM sales ORDER BY created_at DESC LIMIT 5`;
         const user = await sql`SELECT current_user, current_role`;
         const salesCount = await sql`SELECT count(*) FROM sales`;

@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { CheckCircle2, Share2, Printer, ArrowRight } from "lucide-react"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 import { useHaptic } from "@/hooks/use-haptic"
 
@@ -122,6 +124,18 @@ export function SignatureReceipt({
                     >
                         Start New Sale <ArrowRight className="h-3 w-3 ml-2" />
                     </Button>
+
+                    {/* Viral Branding */}
+                    <div className="pt-2 border-t border-zinc-100 dark:border-white/5 w-full">
+                        <Link
+                            href="https://khataplus.online?ref=receipt"
+                            target="_blank"
+                            className="text-[10px] font-bold text-muted-foreground/40 hover:text-emerald-500 transition-colors flex items-center justify-center gap-1.5 grayscale hover:grayscale-0"
+                        >
+                            <Logo size={12} />
+                            POWERED BY KHATAPLUS
+                        </Link>
+                    </div>
 
                 </div>
             </div>

@@ -8,10 +8,17 @@ import { authorize, audit } from "../security";
 import { triggerSync } from "../sync-notifier";
 
 export async function getInventory(orgId: string) {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<InventoryItem[]> => {
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
             const start = Date.now();
-            const data = await sql`SELECT * FROM inventory WHERE org_id = ${orgId} ORDER BY name ASC`;
+            const data = await db`SELECT * FROM inventory WHERE org_id = ${orgId} ORDER BY name ASC`;
             await logHealthMetric(Date.now() - start, "getInventory");
 
             return data.map((item: any) => ({
@@ -21,8 +28,8 @@ export async function getInventory(orgId: string) {
                 min_stock: item.min_stock || 5
             })) as InventoryItem[];
         },
-        [`inventory-list-${orgId}`],
-        { tags: ["inventory", `inventory-${orgId}`], revalidate: 3600 }
+        [`inventory-list-${flavor}-${orgId}`],
+        { tags: ["inventory", `inventory-${orgId}`, `inventory-${flavor}`], revalidate: 3600 }
     )();
 }
 

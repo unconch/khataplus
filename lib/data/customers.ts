@@ -6,9 +6,16 @@ import { authorize, audit } from "../security";
 import { unstable_cache as nextCache } from "next/cache";
 
 export async function getCustomers(orgId: string) {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<Customer[]> => {
-            const data = await sql`
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
+            const data = await db`
                 SELECT c.*, 
                     COALESCE(SUM(CASE WHEN k.type = 'credit' THEN k.amount ELSE -k.amount END), 0) as balance
                 FROM customers c
@@ -22,8 +29,8 @@ export async function getCustomers(orgId: string) {
                 balance: parseFloat(row.balance)
             })) as Customer[];
         },
-        [`customers-list-${orgId}`],
-        { tags: ["customers", `customers-${orgId}`], revalidate: 300 }
+        [`customers-list-${flavor}-${orgId}`],
+        { tags: ["customers", `customers-${orgId}`, `customers-${flavor}`], revalidate: 300 }
     )();
 }
 

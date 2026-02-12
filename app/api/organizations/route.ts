@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { session } from "@descope/nextjs-sdk/server"
 import { createOrganization, getUserOrganizations } from "@/lib/data/organizations"
+import { getProfile, upsertProfile } from "@/lib/data/profiles"
 
 export async function POST(request: Request) {
     try {
@@ -11,7 +12,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const { name, gstin, address, phone } = await request.json()
+        const { name, userName, gstin, address, phone } = await request.json()
+
+        // If userName is provided, update the user's profile
+        if (userName && typeof userName === "string" && userName.trim().length >= 2) {
+            const profile = await getProfile(userId);
+            if (profile) {
+                await upsertProfile({
+                    ...profile,
+                    name: userName.trim()
+                });
+            }
+        }
 
         if (!name || typeof name !== "string" || name.trim().length < 2) {
             return NextResponse.json({ error: "Business name must be at least 2 characters" }, { status: 400 })

@@ -16,9 +16,10 @@ interface SettingsFormProps {
     initialSettings: SystemSettings
     initialProfile: Profile
     isAdmin: boolean
+    orgRole?: string
 }
 
-export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAdmin }: SettingsFormProps) {
+export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAdmin, orgRole }: SettingsFormProps) {
     const [org, setOrg] = useState(initialOrg)
     const [settings, setSettings] = useState(initialSettings)
     const [profile, setProfile] = useState(initialProfile)
@@ -85,17 +86,21 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
                             <Shield className="h-3 w-3" /> System Role
                         </Label>
-                        <p className="text-sm font-bold capitalize">{profile.role}</p>
+                        <p className="text-sm font-bold capitalize">{orgRole || profile.role}</p>
                     </div>
 
                     <div className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                            <Fingerprint className="h-3 w-3" /> Status
+                            <BadgeCheck className="h-3 w-3 text-emerald-500" /> Member Since
                         </Label>
-                        <p className={`text-sm font-bold capitalize ${profile.status === 'approved' ? 'text-emerald-500' : 'text-orange-500'}`}>
-                            {profile.status}
+                        <p className="text-sm font-bold">
+                            {new Date(profile.created_at).toLocaleDateString('en-IN', {
+                                month: 'long',
+                                year: 'numeric'
+                            })}
                         </p>
                     </div>
+
                 </div>
             </section>
 

@@ -129,7 +129,7 @@ export default function LoginPage() {
                 router.push("/dashboard")
               }}
               onError={(e) => console.log("Could not log in!", e)}
-              theme={window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}
+              theme={typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}
             />
           </div>
 

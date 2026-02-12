@@ -3,7 +3,8 @@ import * as dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 
-const sql = neon(process.env.DATABASE_URL!);
+const connectionString = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL;
+const sql = neon(connectionString!);
 
 async function applyCustomersMigration() {
     console.log('Applying customers migration...');
@@ -14,8 +15,9 @@ async function applyCustomersMigration() {
             CREATE TABLE IF NOT EXISTS customers (
                 id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 name TEXT NOT NULL,
-                phone TEXT NOT NULL,
+                phone TEXT UNIQUE NOT NULL,
                 address TEXT,
+                org_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
