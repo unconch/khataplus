@@ -12,9 +12,10 @@ const DescopeAuthProvider = dynamic(
 interface AuthProviderProps {
     children: ReactNode;
     projectId: string;
+    baseUrl?: string;
 }
 
-export function AuthProvider({ children, projectId }: AuthProviderProps) {
+export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps) {
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -64,6 +65,7 @@ export function AuthProvider({ children, projectId }: AuthProviderProps) {
         }>
             <DescopeAuthProvider
                 projectId={projectId}
+                baseUrl={baseUrl}
                 sessionTokenViaCookie={{ sameSite: "Lax" }}
                 refreshTokenViaCookie={{ sameSite: "Lax" }}
             >
