@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import {
     IndianRupee, Percent, Plus, Minus, History, Trash2,
     Smartphone, Receipt, ShieldCheck, Share2, FileDown,
     Calculator, Info, Search, AlertCircle, TrendingDown,
     ChevronDown, ChevronUp, Copy, Check, ExternalLink,
-    HelpCircle, Tag
+    HelpCircle, Tag, ArrowLeftRight, RotateCcw, Save
 } from "lucide-react"
 import { hsnMasterData as hsnData, HSN_CATEGORIES } from "@/lib/hsn-master"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,16 @@ import { PriceDisplay } from "@/components/ui/price-display"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
+
+// --- Types ---
 
 interface GSTItem {
     id: string
@@ -27,17 +37,36 @@ interface GSTItem {
     discountType: "percentage" | "flat"
 }
 
+interface HistoryItem {
+    id: string
+    date: string
+    items: GSTItem[]
+    totalAmt: number
+    totalTax: number
+    type: "inclusive" | "exclusive"
+}
+
+// --- Constants ---
+const GST_RATES = [0, 3, 5, 12, 18, 28]
+
 export function GSTCalculator() {
     // Basic States
     const [activeTab, setActiveTab] = useState("calculator")
+    const [calcMode, setCalcMode] = useState<"quick" | "detailed">("detailed")
     const [tradeType, setTradeType] = useState<"intra" | "inter">("intra")
     const [calculationType, setCalculationType] = useState<"exclusive" | "inclusive">("exclusive")
-    const [history, setHistory] = useState<any[]>([])
 
-    // Calculator Items
+    // Quick Mode State
+    const [quickAmount, setQuickAmount] = useState("")
+    const [quickRate, setQuickRate] = useState(18)
+
+    // Detailed Mode State
     const [items, setItems] = useState<GSTItem[]>([
         { id: "1", name: "", amount: "", gstRate: 18, quantity: 1, discount: "", discountType: "percentage" }
     ])
+
+    // History
+    const [history, setHistory] = useState<HistoryItem[]>([])
 
     // Compliance States
     const [taxLiability, setTaxLiability] = useState({ output: "", input: "" })
@@ -48,14 +77,51 @@ export function GSTCalculator() {
     const [selectedCategory, setSelectedCategory] = useState("All")
     const [selectedRate, setSelectedRate] = useState<number | null>(null)
 
-    const rates = [0, 5, 12, 18, 28, 40]
+    // --- Effects ---
 
-    // Memoized Results
+    // Load History
+    useEffect(() => {
+        const saved = localStorage.getItem("khata_gst_history")
+        if (saved) {
+            try { setHistory(JSON.parse(saved)) } catch (e) { console.error("History load failed", e) }
+        }
+    }, [])
+
+    // --- Logic ---
+
     const results = useMemo(() => {
         let totalBase = 0
         let totalGST = 0
         let totalTaxable = 0
 
+        // Quick Mode Logic
+        if (calcMode === "quick") {
+            const amt = parseFloat(quickAmount) || 0
+            if (calculationType === "exclusive") {
+                totalBase = amt
+                totalGST = (amt * quickRate) / 100
+                totalTaxable = amt + totalGST
+            } else {
+                // Inclusive (Reverse Calculation)
+                totalTaxable = amt
+                totalBase = (amt * 100) / (100 + quickRate)
+                totalGST = amt - totalBase
+            }
+            const roundedTotal = Math.round(totalTaxable)
+            return {
+                items: [{ id: 'quick', name: 'Quick Item', amount: quickAmount, gstRate: quickRate, quantity: 1, base: totalBase, gst: totalGST, total: totalTaxable }] as any[],
+                totalBase,
+                totalGST,
+                totalTaxable,
+                roundedTotal,
+                roundDiff: roundedTotal - totalTaxable,
+                cgst: tradeType === "intra" ? totalGST / 2 : 0,
+                sgst: tradeType === "intra" ? totalGST / 2 : 0,
+                igst: tradeType === "inter" ? totalGST : 0
+            }
+        }
+
+        // Detailed Mode Logic
         const itemBreakdowns = items.map(item => {
             const price = parseFloat(item.amount) || 0
             const qty = item.quantity || 1
@@ -67,7 +133,7 @@ export function GSTCalculator() {
                 discVal = item.discountType === "percentage" ? (rawSubtotal * dv) / 100 : dv
             }
 
-            const subtotalAfterDiscount = rawSubtotal - discVal
+            const subtotalAfterDiscount = Math.max(0, rawSubtotal - discVal)
             let base, gst
 
             if (calculationType === "exclusive") {
@@ -92,7 +158,6 @@ export function GSTCalculator() {
         })
 
         const roundedTotal = Math.round(totalTaxable)
-        const roundDiff = roundedTotal - totalTaxable
 
         return {
             items: itemBreakdowns,
@@ -100,624 +165,367 @@ export function GSTCalculator() {
             totalGST,
             totalTaxable,
             roundedTotal,
-            roundDiff,
+            roundDiff: roundedTotal - totalTaxable,
             cgst: tradeType === "intra" ? totalGST / 2 : 0,
             sgst: tradeType === "intra" ? totalGST / 2 : 0,
             igst: tradeType === "inter" ? totalGST : 0
         }
-    }, [items, calculationType, tradeType])
+    }, [items, calculationType, tradeType, calcMode, quickAmount, quickRate])
 
-    // Actions
-    const addItem = () => {
-        setItems([...items, { id: Date.now().toString(), name: "", amount: "", gstRate: 18, quantity: 1, discount: "", discountType: "percentage" }])
-    }
+    // --- Actions ---
 
-    const removeItem = (id: string) => {
-        if (items.length > 1) {
-            setItems(items.filter(i => i.id !== id))
+    const addToHistory = () => {
+        if (results.totalBase === 0) return
+        const newItem: HistoryItem = {
+            id: Date.now().toString(),
+            date: new Date().toLocaleString(),
+            items: calcMode === 'quick' ? results.items : items,
+            totalAmt: results.roundedTotal,
+            totalTax: results.totalGST,
+            type: calculationType
         }
+        const newHistory = [newItem, ...history].slice(0, 10) // Keep last 10
+        setHistory(newHistory)
+        localStorage.setItem("khata_gst_history", JSON.stringify(newHistory))
+        toast.success("Saved to History")
     }
 
-    const updateItem = (id: string, updates: Partial<GSTItem>) => {
-        setItems(items.map(i => i.id === id ? { ...i, ...updates } : i))
-    }
-
-    const handleShare = () => {
-        const text = `*GST Quote Breakdown*\n\n` +
-            results.items.map(i => `${i.name || 'Item'}: ₹${i.total.toFixed(2)} (${i.gstRate}%)`).join('\n') +
-            `\n\nTotal Base: ₹${results.totalBase.toFixed(2)}` +
-            `\nTotal GST: ₹${results.totalGST.toFixed(2)}` +
-            `\n*Grand Total: ₹${results.roundedTotal}*` +
-            `\n\nGenerated via KhataPlus`
-
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
-    }
-
-    const generatePDF = async () => {
-        try {
-            const { jsPDF } = await import('jspdf')
-            const autoTable = (await import('jspdf-autotable')).default
-
-            const doc = new jsPDF()
-
-            // Header
-            doc.setFontSize(22)
-            doc.setTextColor(16, 185, 129) // Emerald-500
-            doc.text('GST ESTIMATE', 105, 20, { align: 'center' })
-
-            doc.setFontSize(10)
-            doc.setTextColor(100)
-            doc.text('Generated via KhataPlus Professional GST Tool', 105, 28, { align: 'center' })
-
-            // Date
-            doc.setFontSize(10)
-            doc.setTextColor(0)
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 45)
-            doc.text(`Type: ${tradeType === 'intra' ? 'Intra-State (CGST/SGST)' : 'Inter-State (IGST)'}`, 14, 52)
-
-            // Table
-            const tableData = results.items.map((item, idx) => [
-                idx + 1,
-                item.name || 'General Item',
-                item.quantity,
-                `INR ${parseFloat(item.amount).toFixed(2)}`,
-                `${item.gstRate}%`,
-                `INR ${item.gst.toFixed(2)}`,
-                `INR ${item.total.toFixed(2)}`
-            ])
-
-            autoTable(doc, {
-                startY: 60,
-                head: [['#', 'Item Description', 'Qty', 'Unit Price', 'GST%', 'GST Amt', 'Total']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [16, 185, 129] }
-            })
-
-            const finalY = (doc as any).lastAutoTable.finalY + 10
-
-            // Totals
-            doc.setFontSize(11)
-            doc.text(`Total Base: INR ${results.totalBase.toFixed(2)}`, 140, finalY)
-            doc.text(`Total GST: INR ${results.totalGST.toFixed(2)}`, 140, finalY + 7)
-
-            doc.setLineWidth(0.5)
-            doc.line(140, finalY + 10, 196, finalY + 10)
-
-            doc.setFontSize(14)
-            doc.setFont('helvetica', 'bold')
-            doc.text(`GRAND TOTAL: INR ${results.roundedTotal.toLocaleString()}`, 140, finalY + 18)
-
-            // Footer
-            doc.setFontSize(8)
-            doc.setFont('helvetica', 'normal')
-            doc.setTextColor(150)
-            doc.text('This is a computer generated document and does not require a signature.', 105, 280, { align: 'center' })
-
-            doc.save(`GST_Estimate_${Date.now()}.pdf`)
-            toast.success("PDF Generated Successfully!")
-        } catch (error) {
-            console.error(error)
-            toast.error("Failed to generate PDF")
+    const restoreHistory = (h: HistoryItem) => {
+        if (h.items.length === 1 && h.items[0].id === 'quick') {
+            setCalcMode('quick')
+            setQuickAmount(h.items[0].amount)
+            setQuickRate(h.items[0].gstRate)
+        } else {
+            setCalcMode('detailed')
+            setItems(h.items)
         }
+        setCalculationType(h.type)
+        toast.info("Restored from history")
     }
 
-    const copyToClipboard = () => {
-        const text = `Total: ₹${results.roundedTotal} | GST: ₹${results.totalGST.toFixed(2)}`
-        navigator.clipboard.writeText(text)
-        toast.success("Copied to clipboard!")
+    const clearHistory = () => {
+        setHistory([])
+        localStorage.removeItem("khata_gst_history")
+        toast("History Cleared")
     }
+
+    const handleCopy = () => {
+        const lines = [
+            `*GST Calculation* (${calculationType.toUpperCase()})`,
+            `Base Amount: ₹${results.totalBase.toFixed(2)}`,
+            `GST (${tradeType === 'intra' ? 'CGST+SGST' : 'IGST'}): ₹${results.totalGST.toFixed(2)}`,
+            `*Grand Total: ₹${results.roundedTotal}*`
+        ]
+        navigator.clipboard.writeText(lines.join('\n'))
+        toast.success("Summary Copied!")
+    }
+
+    // --- Render ---
 
     return (
-        <div className="w-full max-w-5xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+        <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-8 font-sans bg-zinc-50 dark:bg-zinc-950 min-h-screen">
+
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-500">
-                        GST PRO <span className="text-emerald-500">CALCULATOR</span>
-                    </h2>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-70">
-                        2025/2026 Compliant • Multi-Item • India Edition
+                    <h1 className="text-3xl md:text-5xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                        GST <span className="text-emerald-500">PRO</span>
+                    </h1>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                        Detailed Breakdown & Compliance Tools
                     </p>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-                    <TabsList className="grid grid-cols-3 h-12 bg-zinc-100 dark:bg-white/5 p-1 rounded-2xl border border-zinc-200 dark:border-white/10">
-                        <TabsTrigger value="calculator" className="rounded-xl text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm">
-                            Quote
-                        </TabsTrigger>
-                        <TabsTrigger value="compliance" className="rounded-xl text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm">
-                            Tax Law
-                        </TabsTrigger>
-                        <TabsTrigger value="hsn" className="rounded-xl text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm">
-                            HSN Finder
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                <div className="flex bg-zinc-100 dark:bg-white/5 p-1 rounded-xl">
+                    <button onClick={() => setActiveTab("calculator")} className={cn("px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all", activeTab === "calculator" ? "bg-white dark:bg-zinc-800 shadow text-emerald-600" : "text-zinc-400")}>Calculator</button>
+                    <button onClick={() => setActiveTab("compliance")} className={cn("px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all", activeTab === "compliance" ? "bg-white dark:bg-zinc-800 shadow text-emerald-600" : "text-zinc-400")}>Tax Tools</button>
+                    <button onClick={() => setActiveTab("hsn")} className={cn("px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all", activeTab === "hsn" ? "bg-white dark:bg-zinc-800 shadow text-emerald-600" : "text-zinc-400")}>HSN Finder</button>
+                </div>
             </div>
 
+            {/* Main Content */}
             <AnimatePresence mode="wait">
                 {activeTab === "calculator" && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
-                    >
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
                         {/* LEFT: Inputs */}
                         <div className="lg:col-span-7 space-y-6">
-                            {/* Controls */}
-                            <div className="bg-white dark:bg-zinc-950 p-6 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-white/5 grid grid-cols-2 gap-4">
+
+                            {/* Mode Switcher */}
+                            <div className="bg-white dark:bg-zinc-900 p-2 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex">
+                                <button onClick={() => setCalcMode("quick")} className={cn("flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2", calcMode === "quick" ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200" : "text-zinc-400 hover:bg-zinc-50")}>
+                                    <Calculator size={16} /> Quick Check
+                                </button>
+                                <button onClick={() => setCalcMode("detailed")} className={cn("flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2", calcMode === "detailed" ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200" : "text-zinc-400 hover:bg-zinc-50")}>
+                                    <Receipt size={16} /> Detailed Quote
+                                </button>
+                            </div>
+
+                            {/* Global Controls */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Supply Type</label>
-                                    <div className="flex p-1 bg-zinc-100 dark:bg-white/5 rounded-xl">
-                                        <button
-                                            onClick={() => setTradeType("intra")}
-                                            className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all", tradeType === "intra" ? "bg-white text-emerald-600 shadow-sm" : "text-muted-foreground")}
-                                        >Intra-State</button>
-                                        <button
-                                            onClick={() => setTradeType("inter")}
-                                            className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all", tradeType === "inter" ? "bg-white text-emerald-600 shadow-sm" : "text-muted-foreground")}
-                                        >Inter-State</button>
+                                    <label className="text-[10px] font-bold uppercase text-zinc-400 pl-1">GST Type</label>
+                                    <div className="flex bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1">
+                                        <button onClick={() => setTradeType("intra")} className={cn("flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", tradeType === "intra" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400")}>Intra-State</button>
+                                        <button onClick={() => setTradeType("inter")} className={cn("flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", tradeType === "inter" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400")}>Inter-State</button>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Pricing Mode</label>
-                                    <div className="flex p-1 bg-zinc-100 dark:bg-white/5 rounded-xl">
-                                        <button
-                                            onClick={() => setCalculationType("exclusive")}
-                                            className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all", calculationType === "exclusive" ? "bg-white text-emerald-600 shadow-sm" : "text-muted-foreground")}
-                                        >Excl. GST</button>
-                                        <button
-                                            onClick={() => setCalculationType("inclusive")}
-                                            className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all", calculationType === "inclusive" ? "bg-white text-emerald-600 shadow-sm" : "text-muted-foreground")}
-                                        >Incl. GST</button>
+                                    <label className="text-[10px] font-bold uppercase text-zinc-400 pl-1">Calculation Logic</label>
+                                    <div className="flex bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1">
+                                        <button onClick={() => setCalculationType("exclusive")} className={cn("flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", calculationType === "exclusive" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400")}>Excl. GST</button>
+                                        <button onClick={() => setCalculationType("inclusive")} className={cn("flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", calculationType === "inclusive" ? "bg-zinc-100 text-zinc-900" : "text-zinc-400")}>Incl. GST</button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Item List */}
-                            <div className="space-y-4">
-                                {items.map((item, idx) => (
-                                    <motion.div
-                                        layout
-                                        key={item.id}
-                                        className="bg-white dark:bg-zinc-950 p-5 rounded-[2rem] shadow-md border border-zinc-100 dark:border-white/5 group relative"
-                                    >
-                                        <div className="grid grid-cols-12 gap-4 items-end">
-                                            <div className="col-span-12 md:col-span-4 space-y-2">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Item Name {idx + 1}</label>
-                                                <Input
-                                                    value={item.name}
-                                                    onChange={(e) => updateItem(item.id, { name: e.target.value })}
-                                                    placeholder="e.g. Computer Hardware"
-                                                    className="h-10 text-xs font-bold rounded-xl border-zinc-200 dark:border-white/10"
-                                                />
-                                            </div>
-                                            <div className="col-span-12 md:col-span-3 space-y-2">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Price (₹)</label>
-                                                <Input
-                                                    type="number"
-                                                    value={item.amount}
-                                                    onChange={(e) => updateItem(item.id, { amount: e.target.value })}
-                                                    placeholder="0.00"
-                                                    className="h-10 text-xs font-bold rounded-xl border-zinc-200 dark:border-white/10"
-                                                />
-                                            </div>
-                                            <div className="col-span-6 md:col-span-2 space-y-2">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">GST %</label>
-                                                <select
-                                                    value={item.gstRate}
-                                                    onChange={(e) => updateItem(item.id, { gstRate: parseInt(e.target.value) })}
-                                                    className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-white/10 bg-transparent focus:ring-emerald-500"
-                                                >
-                                                    {rates.map(r => <option key={r} value={r}>{r}%</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="col-span-6 md:col-span-3 space-y-2">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Discount</label>
-                                                <div className="flex gap-1">
-                                                    <Input
-                                                        value={item.discount}
-                                                        onChange={(e) => updateItem(item.id, { discount: e.target.value })}
-                                                        placeholder="0"
-                                                        className="h-10 text-xs font-bold rounded-xl border-zinc-200 dark:border-white/10"
-                                                    />
-                                                    <button
-                                                        onClick={() => updateItem(item.id, { discountType: item.discountType === 'percentage' ? 'flat' : 'percentage' })}
-                                                        className="w-10 h-10 flex items-center justify-center bg-zinc-100 dark:bg-white/5 rounded-xl text-xs font-black"
+                            {/* INPUT AREA */}
+                            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-zinc-800 p-6 md:p-8 relative overflow-hidden">
+                                {calcMode === "quick" ? (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-zinc-400">Amount (₹)</label>
+                                            <Input
+                                                type="number"
+                                                value={quickAmount}
+                                                onChange={(e) => setQuickAmount(e.target.value)}
+                                                className="h-20 text-4xl font-black rounded-2xl border-2 focus:border-emerald-500"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-zinc-400">GST Rate</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {GST_RATES.map(r => (
+                                                    <button key={r} onClick={() => setQuickRate(r)}
+                                                        className={cn("h-12 w-16 rounded-xl font-black text-sm border-2 transition-all",
+                                                            quickRate === r ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-zinc-100 hover:border-zinc-300")}
                                                     >
-                                                        {item.discountType === 'percentage' ? '%' : '₹'}
+                                                        {r}%
                                                     </button>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => removeItem(item.id)}
-                                            className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                        >
-                                            <Minus size={14} />
-                                        </button>
-                                    </motion.div>
-                                ))}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {items.map((item, idx) => (
+                                            <div key={item.id} className="relative bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 group">
+                                                <div className="grid grid-cols-12 gap-3 items-end">
+                                                    <div className="col-span-12 md:col-span-4 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase text-zinc-400">Item Name</label>
+                                                        <Input value={item.name} onChange={(e) => {
+                                                            const newItems = [...items]; newItems[idx].name = e.target.value; setItems(newItems);
+                                                        }} className="h-10 text-xs font-bold" placeholder="e.g. Laptop" />
+                                                    </div>
+                                                    <div className="col-span-6 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase text-zinc-400">Price/Unit</label>
+                                                        <Input type="number" value={item.amount} onChange={(e) => {
+                                                            const newItems = [...items]; newItems[idx].amount = e.target.value; setItems(newItems);
+                                                        }} className="h-10 text-xs font-bold" placeholder="0.00" />
+                                                    </div>
+                                                    <div className="col-span-3 md:col-span-2 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase text-zinc-400">Qty</label>
+                                                        <Input type="number" value={item.quantity} onChange={(e) => {
+                                                            const newItems = [...items]; newItems[idx].quantity = parseInt(e.target.value) || 1; setItems(newItems);
+                                                        }} className="h-10 text-xs font-bold" />
+                                                    </div>
+                                                    <div className="col-span-3 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase text-zinc-400">GST %</label>
+                                                        <select value={item.gstRate} onChange={(e) => {
+                                                            const newItems = [...items]; newItems[idx].gstRate = parseInt(e.target.value); setItems(newItems);
+                                                        }} className="w-full h-10 px-2 rounded-md border text-xs font-bold bg-transparent">
+                                                            {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                {items.length > 1 && (
+                                                    <button onClick={() => {
+                                                        setItems(items.filter(i => i.id !== item.id))
+                                                    }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <Button variant="outline" onClick={() => setItems([...items, { id: Date.now().toString(), name: "", amount: "", gstRate: 18, quantity: 1, discount: "", discountType: "percentage" }])}
+                                            className="w-full border-dashed border-2 py-6 text-zinc-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50">
+                                            <Plus size={16} className="mr-2" /> Add Another Item
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
-
-                            <Button
-                                onClick={addItem}
-                                variant="outline"
-                                className="w-full h-14 border-dashed border-2 rounded-[2rem] hover:bg-emerald-50 group transition-all"
-                            >
-                                <Plus size={18} className="mr-2 text-emerald-500 group-hover:scale-125 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Add Row to Quote</span>
-                            </Button>
                         </div>
 
-                        {/* RIGHT: Results */}
-                        <div className="lg:col-span-5 h-full sticky top-8">
-                            <div className="bg-emerald-600 dark:bg-emerald-950 text-white p-8 md:p-10 rounded-[3rem] shadow-2xl relative overflow-hidden space-y-8">
-                                <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12 -mr-10 -mt-10">
-                                    <IndianRupee size={180} strokeWidth={3} />
+                        {/* RIGHT: Results & Receipt */}
+                        <div className="lg:col-span-5 relative space-y-6">
+
+                            {/* The Receipt Card */}
+                            <div className="bg-white text-zinc-900 rounded-3xl shadow-xl overflow-hidden border border-zinc-200 relative">
+                                {/* Receipt Header */}
+                                <div className="bg-zinc-900 text-white p-6 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-8 opacity-10"><Receipt size={120} /></div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1">
+                                        {calculationType === 'inclusive' ? 'REVERSE CALCULATION' : 'FORWARD CALCULATION'}
+                                    </p>
+                                    <h2 className="text-3xl font-black italic tracking-tighter">ESTIMATE</h2>
                                 </div>
 
-                                <div className="space-y-1 relative z-10">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-100 opacity-70">Payable Amount (Rounded)</p>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl md:text-5xl font-black italic tracking-tighter">₹{results.roundedTotal.toLocaleString()}</span>
-                                        <PriceDisplay amount={results.roundedTotal} size="sm" className="opacity-0" />
+                                {/* Receipt Body */}
+                                <div className="p-6 space-y-4">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-bold text-zinc-500">Base Amount</span>
+                                        <span className="font-mono font-bold">₹{results.totalBase.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                     </div>
-                                </div>
-
-                                <div className="space-y-4 relative z-10 pt-6 border-t border-white/10">
-                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-80">
-                                        <span>Items Count</span>
-                                        <span>{items.length} Units</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-lg font-black italic">
-                                        <span className="text-emerald-200">Total Taxable</span>
-                                        <span>₹{results.totalBase.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-lg font-black italic">
-                                        <span className="text-emerald-200">Total GST ({items.length > 1 ? 'Mix' : `${items[0].gstRate}%`})</span>
-                                        <span>₹{results.totalGST.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-bold text-emerald-600">Total GST ({quickRate}%)</span>
+                                        <span className="font-mono font-bold text-emerald-600">+ ₹{results.totalGST.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4 mt-4">
-                                        {tradeType === "intra" ? (
+                                    {/* Detailed Breakdown */}
+                                    <div className="bg-zinc-50 p-4 rounded-xl space-y-2 border border-zinc-100 text-xs">
+                                        <p className="text-[10px] font-bold uppercase text-zinc-400 mb-2">Tax Breakdown</p>
+                                        {tradeType === 'intra' ? (
                                             <>
-                                                <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-200 mb-1">CGST Breakdown</p>
-                                                    <p className="font-black italic">₹{results.cgst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                                <div className="flex justify-between">
+                                                    <span>CGST ({(results.items[0]?.gstRate || 0) / 2}%)</span>
+                                                    <span>₹{results.cgst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                                 </div>
-                                                <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-200 mb-1">SGST Breakdown</p>
-                                                    <p className="font-black italic">₹{results.sgst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                                <div className="flex justify-between">
+                                                    <span>SGST ({(results.items[0]?.gstRate || 0) / 2}%)</span>
+                                                    <span>₹{results.sgst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="col-span-2 bg-white/10 rounded-2xl p-4 border border-white/10">
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-emerald-200 mb-1">IGST (Integrated Tax)</p>
-                                                <p className="font-black italic text-xl">₹{results.igst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                                            <div className="flex justify-between">
+                                                <span>IGST ({results.items[0]?.gstRate}%)</span>
+                                                <span>₹{results.igst.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Final Total */}
+                                    <div className="pt-4 border-t-2 border-dashed border-zinc-200 flex justify-between items-baseline">
+                                        <span className="text-sm font-black uppercase tracking-widest text-zinc-900">Grand Total</span>
+                                        <span className="text-4xl font-black tracking-tighter text-zinc-900">₹{results.roundedTotal.toLocaleString()}</span>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 relative z-10 pt-4">
-                                    <Button
-                                        onClick={handleShare}
-                                        className="h-14 bg-white text-emerald-700 hover:bg-emerald-50 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
-                                    >
-                                        <Smartphone size={16} /> WhatsApp
-                                    </Button>
-                                    <Button
-                                        onClick={generatePDF}
-                                        className="h-14 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 border border-white/10"
-                                    >
-                                        <FileDown size={16} /> Save PDF
-                                    </Button>
-                                    <Button
-                                        onClick={copyToClipboard}
-                                        variant="ghost"
-                                        className="col-span-2 h-12 text-white/60 hover:text-white hover:bg-white/5 rounded-xl font-black text-[9px] uppercase tracking-[.2em]"
-                                    >
-                                        Copy Short Summary
-                                    </Button>
+                                {/* Actions */}
+                                <div className="bg-zinc-50 p-4 grid grid-cols-2 gap-3 border-t border-zinc-100">
+                                    <Button onClick={handleCopy} variant="outline" className="h-10 text-xs font-bold uppercase"><Copy size={14} className="mr-2" /> Copy</Button>
+                                    <Button onClick={addToHistory} className="h-10 bg-zinc-900 text-white text-xs font-bold uppercase hover:bg-zinc-800"><Save size={14} className="mr-2" /> Save</Button>
+                                    <Sheet>
+                                        <SheetTrigger asChild>
+                                            <Button variant="ghost" className="col-span-2 h-8 text-[10px] uppercase font-bold text-zinc-400 hover:text-zinc-900"><History size={12} className="mr-1" /> View History</Button>
+                                        </SheetTrigger>
+                                        <SheetContent>
+                                            <SheetHeader>
+                                                <SheetTitle>Calculation History</SheetTitle>
+                                                <SheetDescription>Recent calculations saved to this device.</SheetDescription>
+                                            </SheetHeader>
+                                            <div className="mt-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                                                {history.length === 0 && <p className="text-center text-sm text-zinc-400 py-10">No history yet.</p>}
+                                                {history.map(h => (
+                                                    <div key={h.id} onClick={() => restoreHistory(h)} className="p-4 rounded-xl border hover:border-emerald-500 cursor-pointer transition-all bg-zinc-50 hover:bg-white group relative">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="text-[10px] font-bold uppercase text-zinc-400">{h.date}</span>
+                                                            <span className={cn("text-[9px] px-2 py-0.5 rounded font-bold uppercase", h.type === 'inclusive' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700')}>{h.type}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-end">
+                                                            <div>
+                                                                <p className="text-xs font-bold text-zinc-500">{h.items.length} Item(s)</p>
+                                                                <p className="text-xs font-bold text-zinc-500">Tax: ₹{h.totalTax.toFixed(2)}</p>
+                                                            </div>
+                                                            <p className="text-lg font-black">₹{h.totalAmt}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {history.length > 0 && (
+                                                    <Button onClick={clearHistory} variant="ghost" className="w-full text-red-500 text-xs">Clear History</Button>
+                                                )}
+                                            </div>
+                                        </SheetContent>
+                                    </Sheet>
                                 </div>
                             </div>
                         </div>
+
                     </motion.div>
                 )}
 
                 {activeTab === "compliance" && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        className="space-y-8"
-                    >
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Late Fee Card */}
-                            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-white/5 space-y-6">
-                                <div className="flex items-center gap-4 text-amber-500">
-                                    <div className="p-3 bg-amber-500/10 rounded-2xl">
-                                        <AlertCircle size={24} />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                        {/* 1. Late Fee */}
+                        <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-white/5 space-y-4">
+                            <h3 className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><AlertCircle className="text-amber-500 fill-amber-100 dark:fill-amber-900/20" /> Late Fee</h3>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-bold uppercase text-zinc-400">Days Delayed</label>
+                                <Input placeholder="0" value={lateFeeDays} onChange={(e) => setLateFeeDays(e.target.value)} type="number" className="h-10 text-xs font-bold" />
+                                <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-bold text-amber-700">Penalty</span>
+                                        <span className="font-black text-amber-700 text-lg">₹{(parseInt(lateFeeDays || '0') * 50).toLocaleString()}</span>
                                     </div>
-                                    <h3 className="text-xl font-black italic tracking-tight">Late Fee</h3>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Days of Delay</label>
-                                        <Input
-                                            type="number"
-                                            value={lateFeeDays}
-                                            onChange={(e) => setLateFeeDays(e.target.value)}
-                                            placeholder="Enter days"
-                                            className="h-12 rounded-xl"
-                                        />
-                                    </div>
-                                    {lateFeeDays && (
-                                        <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/20 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">Total Penalty</span>
-                                                <span className="text-xl font-black text-amber-700 dark:text-amber-400">₹{(parseInt(lateFeeDays) * 50).toLocaleString()}</span>
-                                            </div>
-                                            <p className="text-[8px] font-bold text-amber-600/60 uppercase tracking-widest leading-normal">
-                                                Based on ₹50/day (₹25 CGST + ₹25 SGST) for delay in GSTR-3B filing.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Interest Calculator Card */}
-                            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-white/5 space-y-6">
-                                <div className="flex items-center gap-4 text-rose-500">
-                                    <div className="p-3 bg-rose-500/10 rounded-2xl">
-                                        <Percent size={24} />
-                                    </div>
-                                    <h3 className="text-xl font-black italic tracking-tight">Interest (18%)</h3>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Tax Amount Due (₹)</label>
-                                        <Input
-                                            type="number"
-                                            value={taxLiability.output}
-                                            onChange={(e) => setTaxLiability({ ...taxLiability, output: e.target.value })}
-                                            placeholder="Tax amount"
-                                            className="h-12 rounded-xl"
-                                        />
-                                    </div>
-                                    {taxLiability.output && lateFeeDays && (
-                                        <div className="p-5 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/20 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black uppercase text-rose-700 dark:text-rose-400">Interest Owed</span>
-                                                <span className="text-xl font-black text-rose-700 dark:text-rose-400">
-                                                    ₹{((parseFloat(taxLiability.output) * 0.18 * parseInt(lateFeeDays)) / 365).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                            <p className="text-[8px] font-bold text-rose-600/60 uppercase tracking-widest">Calculated at 18% per annum for {lateFeeDays} days</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* ITC Card */}
-                            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-white/5 space-y-6">
-                                <div className="flex items-center gap-4 text-emerald-500">
-                                    <div className="p-3 bg-emerald-500/10 rounded-2xl">
-                                        <TrendingDown size={24} />
-                                    </div>
-                                    <h3 className="text-xl font-black italic tracking-tight">Net Tax (ITC)</h3>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Input Tax Credit (₹)</label>
-                                        <Input
-                                            value={taxLiability.input}
-                                            onChange={(e) => setTaxLiability({ ...taxLiability, input: e.target.value })}
-                                            placeholder="Tax paid on purchases"
-                                            className="h-12 rounded-xl"
-                                        />
-                                    </div>
-                                    {taxLiability.output && taxLiability.input && (
-                                        <div className="p-5 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/20 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">Tax Liability</span>
-                                                <span className="text-xl font-black text-emerald-700 dark:text-emerald-400">
-                                                    ₹{Math.max(0, (parseFloat(taxLiability.output) - parseFloat(taxLiability.input))).toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <p className="text-[8px] font-bold text-emerald-600/60 uppercase tracking-widest">Reduced by Input Tax Credit</p>
-                                        </div>
-                                    )}
+                                    <p className="text-[8px] mt-1 text-amber-600/60 font-medium">@ ₹50/day (CGST+SGST)</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 dark:bg-white/5 p-6 rounded-3xl border border-zinc-100 dark:border-white/10 flex items-start gap-3">
-                            <Info size={18} className="text-zinc-400 mt-1 flex-shrink-0" />
-                            <p className="text-[10px] font-bold text-zinc-500 leading-relaxed uppercase tracking-wider">
-                                <b>Disclaimer:</b> These calculations are estimates for educational purposes. GST laws change frequently (Source: CBIC/GST Council 2025). Please consult a CA or authorized Tax Professional for official filings.
-                            </p>
+                        {/* 2. Interest */}
+                        <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-white/5 space-y-4">
+                            <h3 className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Percent className="text-rose-500 fill-rose-100 dark:fill-rose-900/20" /> Interest Calc</h3>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-bold uppercase text-zinc-400">Tax Due</label>
+                                <Input type="number" value={taxLiability.output} onChange={(e) => setTaxLiability({ ...taxLiability, output: e.target.value })} placeholder="Amount" className="h-10 text-xs font-bold" />
+                                <div className="p-4 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/20">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-bold text-rose-700">Interest (18%)</span>
+                                        <span className="font-black text-rose-700 text-lg">
+                                            ₹{((parseFloat(taxLiability.output || '0') * 0.18 * parseInt(lateFeeDays || '0')) / 365).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                    <p className="text-[8px] mt-1 text-rose-600/60 font-medium">For {lateFeeDays || 0} days delay</p>
+                                </div>
+                            </div>
                         </div>
-                    </motion.div>
+
+                        {/* 3. ITC */}
+                        <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-white/5 space-y-4">
+                            <h3 className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><TrendingDown className="text-emerald-500 fill-emerald-100 dark:fill-emerald-900/20" /> Net Liability</h3>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-bold uppercase text-zinc-400">Input Credit (ITC)</label>
+                                <Input type="number" value={taxLiability.input} onChange={(e) => setTaxLiability({ ...taxLiability, input: e.target.value })} placeholder="ITC Amount" className="h-10 text-xs font-bold" />
+                                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-bold text-emerald-700">Net Payable</span>
+                                        <span className="font-black text-emerald-700 text-lg">
+                                            ₹{Math.max(0, (parseFloat(taxLiability.output || '0') - parseFloat(taxLiability.input || '0'))).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <p className="text-[8px] mt-1 text-emerald-600/60 font-medium">After deducting ITC</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {activeTab === "hsn" && (
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="bg-white dark:bg-zinc-950 rounded-[3rem] p-8 md:p-12 shadow-sm border border-zinc-100 dark:border-white/5 space-y-8"
-                    >
-                        <div className="max-w-xl mx-auto space-y-6 text-center">
-                            <div className="space-y-2">
-                                <h3 className="text-3xl font-black italic tracking-tight">HSN Code & Rate Finder</h3>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Search common items to find their standard GST rates</p>
-                            </div>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                                <Input
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search by name or code (e.g. Mobile, 3004)"
-                                    className="h-16 pl-12 pr-6 rounded-2xl text-lg font-bold border-2 focus:border-emerald-500"
-                                />
-                            </div>
-
-                            <div className="flex flex-wrap justify-center gap-2">
-                                {HSN_CATEGORIES.map(cat => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setSelectedCategory(cat)}
-                                        className={cn(
-                                            "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border",
-                                            selectedCategory === cat
-                                                ? "bg-emerald-500 text-white border-emerald-500 shadow-md scale-105"
-                                                : "bg-zinc-100 dark:bg-white/5 text-muted-foreground border-transparent hover:border-zinc-300"
-                                        )}
-                                    >
-                                        {cat}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex flex-wrap justify-center gap-2 pt-2 border-t border-zinc-100 dark:border-white/5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground self-center mr-2">Tax Slab:</span>
-                                {[0, 3, 5, 12, 18, 28].map(r => (
-                                    <button
-                                        key={r}
-                                        onClick={() => setSelectedRate(selectedRate === r ? null : r)}
-                                        className={cn(
-                                            "w-12 h-8 rounded-lg text-[10px] font-black tracking-widest transition-all border",
-                                            selectedRate === r
-                                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent shadow-sm"
-                                                : "bg-white dark:bg-white/5 text-muted-foreground border-zinc-200 dark:border-white/10 hover:border-zinc-400"
-                                        )}
-                                    >
-                                        {r}%
-                                    </button>
-                                ))}
-                                {selectedRate !== null && (
-                                    <button
-                                        onClick={() => setSelectedRate(null)}
-                                        className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:underline"
-                                    >
-                                        Clear
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="flex flex-wrap justify-center gap-4 text-center">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Popular:</span>
-                                {["Rice", "Mobile", "Cement", "Shirt", "Medicine", "Gold"].map(pop => (
-                                    <button
-                                        key={pop}
-                                        onClick={() => {
-                                            setSearchTerm(pop);
-                                            setSelectedCategory("All");
-                                            setSelectedRate(null);
-                                        }}
-                                        className="text-[10px] font-bold text-zinc-500 hover:text-emerald-500 transition-colors"
-                                    >
-                                        {pop}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {hsnData
-                                .filter(item => {
-                                    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        item.code.includes(searchTerm);
-                                    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-                                    const matchesRate = selectedRate === null || item.rate === selectedRate;
-                                    return matchesSearch && matchesCategory && matchesRate;
-                                })
-                                .map(item => (
-                                    <div
-                                        key={item.code + item.name}
-                                        className="p-6 rounded-3xl bg-zinc-50 dark:bg-white/5 border border-zinc-100 dark:border-white/10 hover:border-emerald-500/50 transition-all cursor-default group"
-                                    >
-                                        <div className="flex justify-between items-start mb-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-emerald-500 transition-colors">HSN {item.code}</div>
-                                            <div className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-800 rounded text-[8px] font-black uppercase tracking-tighter opacity-60">
-                                                {item.category}
-                                            </div>
-                                        </div>
-                                        <div className="text-base font-black italic mb-3 leading-tight min-h-[40px]">{item.name}</div>
-                                        <div className="flex items-center justify-between mt-auto">
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 rounded-full border shadow-sm">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                <span className="text-xs font-black">{item.rate}% GST</span>
-                                            </div>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => {
-                                                    // Add to calculator logic
-                                                    const newItem = {
-                                                        id: Date.now().toString(),
-                                                        name: item.name,
-                                                        amount: "",
-                                                        gstRate: item.rate,
-                                                        quantity: 1,
-                                                        discount: "",
-                                                        discountType: "percentage" as const
-                                                    };
-                                                    setItems([...items, newItem]);
-                                                    setActiveTab("calculator");
-                                                    toast.success(`Pre-filled ${item.name} in calculator!`);
-                                                }}
-                                                className="h-8 w-8 p-0 rounded-full hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
-                                                title="Apply to Calculator"
-                                            >
-                                                <Plus size={14} />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
-                            }
-                        </div>
-
-                        {hsnData.filter(item => {
-                            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                item.code.includes(searchTerm);
-                            const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-                            const matchesRate = selectedRate === null || item.rate === selectedRate;
-                            return matchesSearch && matchesCategory && matchesRate;
-                        }).length === 0 && (
-                                <div className="text-center py-20 space-y-4">
-                                    <div className="p-4 bg-zinc-100 dark:bg-white/5 rounded-full w-fit mx-auto">
-                                        <Search size={32} className="text-muted-foreground opacity-20" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-lg font-black italic tracking-tight">No results found</p>
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Try searching with a different keyword or category</p>
-                                    </div>
+                    /* HSN Finder (Kept mostly same but cleaner) */
+                    <div className="bg-white p-8 rounded-3xl border shadow-sm space-y-6">
+                        <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search HSN Codes..." className="h-14 text-lg font-bold" />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {hsnData.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8).map(i => (
+                                <div key={i.code} className="p-4 border rounded-xl hover:bg-zinc-50 cursor-pointer" onClick={() => { setCalcMode('quick'); setQuickRate(i.rate); setActiveTab('calculator'); toast.success(`Applied ${i.rate}% rate`); }}>
+                                    <div className="flex justify-between"><span className="text-xs font-bold text-zinc-400">{i.code}</span><span className="text-xs font-bold bg-zinc-100 px-1 rounded">{i.rate}%</span></div>
+                                    <p className="font-medium mt-1 truncate">{i.name}</p>
                                 </div>
-                            )}
-                    </motion.div>
+                            ))}
+                        </div>
+                    </div>
                 )}
             </AnimatePresence>
 
-            {/* KhataPlus Branding Call to Action */}
-            <div className="mt-16 p-8 md:p-12 bg-zinc-900 rounded-[3rem] text-white relative overflow-hidden group">
-                <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-700">
-                    <Smartphone size={160} />
-                </div>
-                <div className="max-w-2xl relative z-10 space-y-6">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 rounded-full border border-emerald-500/20">
-                        <ShieldCheck size={14} className="text-emerald-400" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Integrated Billing</span>
-                    </div>
-                    <h3 className="text-3xl md:text-5xl font-black tracking-tight italic">Need more than a calculator?</h3>
-                    <p className="text-zinc-400 text-lg font-medium leading-relaxed">
-                        KhataPlus automates these math puzzles for you. Generate GST bills, track payments, and get automated inventory alerts in one secure app.
-                    </p>
-                </div>
-            </div>
         </div>
     )
 }

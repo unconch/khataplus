@@ -45,18 +45,6 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
-  async headers() {
-    return [
-      {
-        source: "/auth-api/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Origin", value: "https://www.khataplus.online" },
-          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,PATCH,OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
-        ],
-      },
-    ]
-  },
 
 }
 

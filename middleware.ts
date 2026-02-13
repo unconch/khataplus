@@ -12,6 +12,10 @@ const SYSTEM_PREFIXES = new Set([
 export default async function middleware(req: NextRequest) {
     const url = req.nextUrl
     const pathname = url.pathname
+
+    if (pathname.startsWith("/auth-api")) {
+        return NextResponse.next()
+    }
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set("x-invoke-path", pathname)
 

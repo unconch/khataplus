@@ -51,7 +51,11 @@ export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps
     if (!mounted) return null
 
     // Only show blocked screen if no proxy is configured AND auth is blocked
-    if (authBlocked && !baseUrl) {
+    // AND we are not on a public tool page
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+    const isPublicTool = pathname.startsWith('/tools') || pathname.startsWith('/share')
+
+    if (authBlocked && !baseUrl && !isPublicTool) {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground p-6 text-center space-y-4">
                 <div className="text-destructive font-bold text-xl">Authentication Service Blocked</div>
