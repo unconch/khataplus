@@ -16,6 +16,8 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, projectId, baseUrl }: AuthProviderProps) {
+    const [mounted, setMounted] = useState(false)
+
     useEffect(() => {
         setMounted(true)
     }, [])
