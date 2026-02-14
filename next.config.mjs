@@ -45,7 +45,36 @@ const nextConfig = {
   experimental: {
     viewTransition: true,
   },
-
+  async rewrites() {
+    return [
+      // Proxy Descope CDN scripts through your domain
+      {
+        source: "/descope-cdn/:path*",
+        destination: "https://static.descope.com/:path*",
+      },
+    ]
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.descope.com https://descopecdn.com https://cdn.jsdelivr.net",
+              "style-src 'self' 'unsafe-inline' https://static.descope.com https://descopecdn.com",
+              "connect-src 'self' https://api.descope.com https://static.descope.com https://descopecdn.com",
+              "frame-src 'self' https://static.descope.com https://descopecdn.com",
+              "img-src 'self' data: https://static.descope.com https://descopecdn.com",
+              "font-src 'self' data: https://static.descope.com https://descopecdn.com",
+            ].join("; "),
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default withSentryConfig(withPWA(nextConfig), {
