@@ -96,3 +96,39 @@ export async function updateUserRole(userId: string, role: string, orgId?: strin
     await sql`UPDATE profiles SET role = ${role}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
     await audit("Updated User Role", "profile", userId, { role }, orgId);
 }
+
+/**
+ * Ensures user profile exists and is synced with Auth data.
+ * Call this on each authenticated request or on sign-in.
+ */
+export async function ensureProfile(userId: string, email: string, name?: string): Promise<Profile> {
+    const existing = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
+
+    if (existing.length > 0) {
+        // Update name if changed
+        if (name && existing[0].name !== name) {
+            await sql`UPDATE profiles SET name = ${name}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
+            const updated = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
+            return updated[0] as Profile;
+        }
+        return existing[0] as Profile;
+    }
+
+    // Check by email for potential migration or duplicate account prevention
+    const byEmail = await sql`SELECT * FROM profiles WHERE email = ${email} LIMIT 1`;
+    if (byEmail.length > 0) {
+        // Update ID to new Descope ID (if it was different for some reason)
+        await sql`UPDATE profiles SET id = ${userId}, name = ${name || byEmail[0].name}, updated_at = CURRENT_TIMESTAMP WHERE email = ${email}`;
+        const updated = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
+        return updated[0] as Profile;
+    }
+
+    // Create new profile
+    const result = await sql`
+        INSERT INTO profiles (id, email, name, role, status, biometric_required) 
+        VALUES (${userId}, ${email}, ${name || ""}, 'admin', 'pending', false)
+        RETURNING *
+    `;
+
+    return result[0] as Profile;
+}

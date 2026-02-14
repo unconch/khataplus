@@ -10,7 +10,7 @@ export { getInventory, addInventoryItem, updateInventoryStock, getLowStockItems 
 export { getSales, recordSale, recordBatchSales, processReturn, updateSale, getSalesByDate } from "./data/sales";
 
 // Profile functions
-export { getProfiles, getPendingApprovalsCount, upsertProfile, getProfile, updateProfileBiometricStatus, updateUserStatus, updateUserRole } from "./data/profiles";
+export { getProfiles, getPendingApprovalsCount, upsertProfile, getProfile, ensureProfile, updateProfileBiometricStatus, updateUserStatus, updateUserRole } from "./data/profiles";
 
 // Analytics functions
 export { getDailyPulse, getExecutiveAnalytics } from "./data/analytics";

@@ -134,7 +134,7 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          {/* Clerk SignUp Component */}
+          {/* Authentication Component */}
           <div className="w-full rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-zinc-900">
             <Descope
               flowId="sign-up-or-in"

@@ -29,11 +29,10 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const userToken = sessionRes?.token
 
     console.log("--- [DEBUG] AppLayoutLogic Execution: Render Phase - Fixing Stale Cache ---")
-    const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations } = await import("@/lib/data")
+    const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations, ensureProfile } = await import("@/lib/data")
     const { getTenant } = await import("@/lib/tenant")
     const { TenantProvider } = await import("@/components/tenant-provider")
     const { RealtimeSyncActivator } = await import("@/components/realtime-sync-activator")
-    const { migrateOrCreateUser } = await import("@/lib/migrate-user")
 
     // Parallelize initial critical fetches
     const [subdomainTenant, profileResult, userOrgsResult] = await Promise.all([
@@ -107,8 +106,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const name = userToken?.name as string || ""
 
     if (!profile) {
-      const migrationResult = await migrateOrCreateUser(userId, email, name)
-      profile = migrationResult.profile as Profile
+      profile = await ensureProfile(userId, email, name)
     }
 
     // Handle missing organization with cache resilience

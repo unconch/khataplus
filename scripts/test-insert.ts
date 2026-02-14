@@ -11,13 +11,13 @@ async function testInsert() {
     console.log(`Testing Insert on DEMO DB: ${url.split('@')[1]}`);
 
     try {
-        const clerkUserId = 'test-user-' + Date.now();
+        const userId = 'test-user-' + Date.now();
         const email = 'test@example.com';
         const name = 'Test User';
 
         const result = await sql`
             INSERT INTO profiles (id, email, name, role, status, biometric_required) 
-            VALUES (${clerkUserId}, ${email}, ${name}, 'staff', 'pending', false)
+            VALUES (${userId}, ${email}, ${name}, 'staff', 'pending', false)
             RETURNING *
         `;
         console.log('✓ Success! Inserted:', result[0].id);
