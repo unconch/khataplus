@@ -83,7 +83,6 @@ export default function RootLayout({
         </div>
         <AuthProvider
           projectId={process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID!}
-          baseUrl="https://auth.khataplus.online"
         >
           <SyncProvider>
             <ScrollToTop />
