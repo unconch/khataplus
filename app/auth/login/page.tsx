@@ -22,7 +22,15 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.replace("/dashboard")
+        // Fetch user orgs to redirect to correct slug
+        const { getUserOrganizations } = await import("@/lib/data/organizations")
+        const userOrgs = await getUserOrganizations(session.user.id).catch(() => [])
+
+        if (userOrgs && userOrgs.length > 0) {
+          router.replace(`/${userOrgs[0].organization.slug}/dashboard`)
+        } else {
+          router.replace("/setup-organization")
+        }
       }
     }
     checkUser()
@@ -137,7 +145,25 @@ export default function LoginPage() {
     }
 
     toast.success("Welcome back!")
-    router.push("/dashboard")
+
+    // Fetch user orgs to redirect to correct slug
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { getUserOrganizations } = await import("@/lib/data/organizations")
+        const userOrgs = await getUserOrganizations(user.id)
+
+        if (userOrgs && userOrgs.length > 0) {
+          router.push(`/${userOrgs[0].organization.slug}/dashboard`)
+          return
+        }
+      }
+    } catch (e) {
+      console.error("Failed to resolve org for redirect:", e)
+    }
+
+    // Fallback if no orgs found or error
+    router.push("/setup-organization")
   }
 
   return (

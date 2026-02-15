@@ -108,12 +108,12 @@ export default async function middleware(req: NextRequest) {
     // --------------------------------------------------------------------------
     const cspHeader = `
         default-src 'self';
-        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://accounts.google.com;
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' blob: data: https://*.supabase.co https://*.googleusercontent.com;
-        font-src 'self' data:;
+        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com;
+        style-src 'self' 'unsafe-inline' https://accounts.google.com https://grainy-gradients.vercel.app https://fonts.googleapis.com;
+        img-src 'self' blob: data: https://*.supabase.co https://*.googleusercontent.com https://images.unsplash.com https://grainy-gradients.vercel.app https://accounts.google.com;
+        font-src 'self' data: https://fonts.gstatic.com;
         frame-src 'self' https://accounts.google.com;
-        connect-src 'self' https://*.supabase.co https://accounts.google.com;
+        connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com;
         object-src 'none';
         base-uri 'self';
         form-action 'self';

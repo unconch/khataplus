@@ -55,10 +55,10 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://accounts.google.com/gsi/client https://*.vercel-scripts.com",
-              "style-src 'self' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://fonts.googleapis.com https://grainy-gradients.vercel.app",
               "connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com",
               "frame-src 'self' https://*.supabase.co https://accounts.google.com",
-              "img-src 'self' data: https://*.supabase.co https://*.googleusercontent.com https://images.unsplash.com",
+              "img-src 'self' data: https://*.supabase.co https://*.googleusercontent.com https://images.unsplash.com https://grainy-gradients.vercel.app https://accounts.google.com",
               "font-src 'self' data: https://*.supabase.co https://fonts.gstatic.com",
               "worker-src 'self' blob:",
             ].join("; "),

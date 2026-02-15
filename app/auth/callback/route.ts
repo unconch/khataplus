@@ -41,6 +41,17 @@ export async function GET(request: Request) {
                 // REGISTER SESSION for Governance (ASVS Level 3)
                 const { registerSession } = await import('@/lib/session-governance');
                 await registerSession(data.user.id, data.session.access_token.slice(-16)); // Use a snippet of the token or session ID as key
+
+                // Fetch user orgs to redirect to correct slug
+                const { getUserOrganizations } = await import('@/lib/data/organizations');
+                const userOrgs = await getUserOrganizations(data.user.id);
+
+                if (userOrgs && userOrgs.length > 0) {
+                    return NextResponse.redirect(`${origin}/${userOrgs[0].organization.slug}/dashboard`);
+                }
+
+                return NextResponse.redirect(`${origin}/setup-organization`);
+
             } catch (syncErr) {
                 console.error("[AuthCallback] Session logic failed:", syncErr);
             }

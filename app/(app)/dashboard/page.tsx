@@ -56,8 +56,24 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   }
 
   const settings = await getSystemSettings(profile.organization_id || "")
-
   const orgId = profile.organization_id || ""
+
+  // Self-Correction: If we are at /dashboard (no slug) but have an org, redirect to the slug URL
+  // We check if the current path lacks the slug prefix. 
+  // Since we can't easily check the URL here in a server component without headers, 
+  // we rely on the fact that if we are running this code, the middleware might not have rewritten it 
+  // OR we just want to enforce the canonical URL.
+  // Actually, we can check the x-tenant-slug header.
+  const { headers } = await import("next/headers")
+  const headersList = await headers()
+  const slug = headersList.get("x-tenant-slug")
+
+  if (!slug && !isGuest && profile.organization_id) {
+    const org = await getOrganization(profile.organization_id)
+    if (org && org.slug) {
+      redirect(`/${org.slug}/dashboard`)
+    }
+  }
 
   // Fetch stats for onboarding guide
   const [inventory, customers, sales, org, reports, lowStockItems] = await Promise.all([
