@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import { getSession } from './session'
+
 
 const redis = Redis.fromEnv()
 const MAX_CONCURRENT_SESSIONS = 3

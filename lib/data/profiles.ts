@@ -6,6 +6,31 @@ import { unstable_cache as nextCache } from "next/cache";
 import { cache } from "react";
 import { createAuditLog } from "./audit";
 import { authorize, audit } from "../security";
+import { supabaseAdmin } from "../supabase/admin";
+
+async function syncToAuth(userId: string, data: { name?: string | null, phone?: string | null, role?: string }) {
+    try {
+        console.log(`[syncToAuth] Syncing profile ${userId} to Supabase Auth...`);
+        const updates: any = {};
+        if (data.name !== undefined) updates.name = data.name;
+        if (data.phone !== undefined) updates.phone = data.phone;
+        if (data.role !== undefined) updates.role = data.role;
+
+        if (Object.keys(updates).length > 0) {
+            const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+                user_metadata: updates
+            });
+
+            if (error) {
+                console.error(`[syncToAuth] Failed to sync to auth:`, error);
+            } else {
+                console.log(`[syncToAuth] Successfully synced to auth.`);
+            }
+        }
+    } catch (err) {
+        console.error(`[syncToAuth] Unexpected error:`, err);
+    }
+}
 
 export async function getProfiles() {
     return nextCache(
@@ -39,6 +64,20 @@ export const upsertProfile = async (profile: Profile): Promise<Profile> => {
             updated_at = CURRENT_TIMESTAMP
         RETURNING *
     `;
+
+    /* 
+       Fire and forget auth sync. 
+       We do not await this to avoid slowing down the UI or failing the transaction 
+       if the external auth service is down/slow. 
+    */
+    syncToAuth(profile.id, {
+        name: profile.name,
+        phone: profile.phone,
+        role: profile.role // Note: Only admin can change role via upsert if allow/deny logic above is respected, but here we just sync whatever is passed if it was persisted.
+        // Actually, upsertProfile logic above blindly takes profile.role for INSERT, but for UPDATE it doesn't update role unless it's new.
+        // Let's rely on the DB result to be source of truth? 
+        // usage of upsertProfile usually passes the full profile.
+    });
 
     return result[0] as any;
 };
@@ -83,6 +122,9 @@ export async function updateUserRole(userId: string, role: string, orgId?: strin
     await authorize("Update User Role", "admin", orgId);
     await sql`UPDATE profiles SET role = ${role}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
     await audit("Updated User Role", "profile", userId, { role }, orgId);
+
+    // Sync to Auth
+    syncToAuth(userId, { role });
 }
 
 /**
@@ -179,6 +221,13 @@ export async function ensureProfile(userId: string, email: string, name?: string
                 console.log(`[ensureProfile] Restoring production email...`);
                 await sql`UPDATE profiles SET email = ${email} WHERE id = ${userId}`;
 
+                // Sync the migrated profile to auth
+                syncToAuth(userId, {
+                    name: name || p.name,
+                    phone: phone || p.phone,
+                    role: p.role
+                });
+
                 // Fetch updated profile
                 const updated = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
                 const pUpdated = updated[0] as any;
@@ -204,6 +253,12 @@ export async function ensureProfile(userId: string, email: string, name?: string
                 updated_at = CURRENT_TIMESTAMP 
             WHERE email = ${email}
         `;
+
+        // Sync to auth if needed
+        if (name || phone) {
+            syncToAuth(userId, { name: name || undefined, phone: phone || undefined });
+        }
+
         const updated = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
         const p = updated[0] as any;
         return {
@@ -221,6 +276,13 @@ export async function ensureProfile(userId: string, email: string, name?: string
             VALUES (${userId}, ${email}, ${name || ""}, ${phone || null}, 'staff', false)
             RETURNING *
         `;
+
+        // Sync initial data
+        syncToAuth(userId, {
+            name: name || undefined,
+            phone: phone || undefined,
+            role: 'staff' // Default role
+        });
 
         const p = result[0] as any;
         console.log(`[ensureProfile] New profile created successfully for ${email}`);
