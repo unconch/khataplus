@@ -3,7 +3,6 @@ import { AuthGuard } from "@/components/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { BiometricGate } from "@/components/biometric-gate"
 import type { Profile, Organization } from "@/lib/types"
-import { session } from "@descope/nextjs-sdk/server"
 import { Suspense } from "react"
 import { LoadingScreen } from "@/components/loading-screen"
 import { headers } from "next/headers"
@@ -14,7 +13,7 @@ export const revalidate = 0
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<LoadingScreen message="Initializing Platinum Environment..." />}>
+    <Suspense fallback={<LoadingScreen message="Initializing KhataPlus..." />}>
       <AppLayoutLogic>
         {children}
       </AppLayoutLogic>
@@ -24,9 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
   try {
-    const sessionRes = await session()
-    const userId = sessionRes?.token?.sub
-    const userToken = sessionRes?.token
+    const { getSession } = await import("@/lib/session")
+    const sessionRes = await getSession()
+    const userId = sessionRes?.userId
 
     console.log("--- [DEBUG] AppLayoutLogic Execution: Render Phase - Fixing Stale Cache ---")
     const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations, ensureProfile } = await import("@/lib/data")
@@ -102,8 +101,9 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const userOrgs = userOrgsResult
 
     // Handle Profile Creation/Update
-    const email = userToken?.email as string || userToken?.loginId as string || ""
-    const name = userToken?.name as string || ""
+    const user = sessionRes?.user
+    const email = sessionRes?.email || user?.email || ""
+    const name = (user?.user_metadata?.full_name as string) || (user?.user_metadata?.name as string) || ""
 
     if (!profile) {
       profile = await ensureProfile(userId, email, name)
@@ -180,12 +180,9 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
         <p className="text-muted-foreground mb-4 max-w-md">
           {String(error)}
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity font-medium"
-        >
-          Retry Connection
-        </button>
+        <p className="text-sm text-muted-foreground italic">
+          Please refresh the page to retry.
+        </p>
       </div>
     )
   }

@@ -31,16 +31,130 @@ import { useParallax } from "@/hooks/use-parallax"
 import { useMouseParallax } from "@/hooks/use-mouse-parallax"
 import { ShieldCheck, WifiOff, FileText, TrendingUp, Monitor, Smartphone, Zap, Shield, Star, Package, ArrowUpRight, IndianRupee, Calculator, Tag } from "lucide-react"
 
-import { useSession, useUser } from "@descope/react-sdk"
-import { createGuestSession } from "@/app/actions/guest"
+import { createClient } from "@/lib/supabase/client"
+
+function NavLink({ href, label }: { href: string; label: string }) {
+    return (
+        <a href={href} className="relative group overflow-hidden py-1">
+            <span className="hover:text-emerald-500 transition-colors">{label}</span>
+        </a>
+    )
+}
+
+function FeatureCard({ icon: Icon, title, description, color }: {
+    icon: any
+    title: string
+    description: string
+    color: string
+}) {
+    const colorMap: Record<string, { bg: string; icon: string; border: string }> = {
+        emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "border-emerald-100" },
+        amber: { bg: "bg-amber-50", icon: "text-amber-600", border: "border-amber-100" },
+        blue: { bg: "bg-blue-50", icon: "text-blue-600", border: "border-blue-100" },
+        violet: { bg: "bg-violet-50", icon: "text-violet-600", border: "border-violet-100" },
+    }
+
+    const c = colorMap[color]
+
+    return (
+        <motion.div
+            whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}
+            className={`${c.bg} ${c.border} border rounded-3xl p-6 md:p-8 transition-all duration-300 cursor-default group`}
+        >
+            <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                <Icon size={28} className={c.icon} />
+            </div>
+            <h3 className="font-bold text-xl md:text-2xl mb-2 group-hover:text-zinc-900 transition-colors">{title}</h3>
+            <p className="text-zinc-500 text-base md:text-lg group-hover:text-zinc-600 transition-colors">{description}</p>
+        </motion.div>
+    )
+}
+
+function StepCard({ number, title, description, color }: {
+    number: string
+    title: string
+    description: string
+    color: string
+}) {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+        emerald: { bg: "bg-emerald-100", text: "text-emerald-600" },
+        amber: { bg: "bg-amber-100", text: "text-amber-600" },
+        blue: { bg: "bg-blue-100", text: "text-blue-600" },
+    }
+
+    const c = colorMap[color]
+
+    return (
+        <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="bg-white rounded-3xl p-8 md:p-10 shadow-lg border border-zinc-100 group relative overflow-hidden"
+        >
+            <div className={`absolute top-0 right-0 w-32 h-32 ${c.bg} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700`} />
+
+            <div className={`w-16 h-16 md:w-20 md:h-20 ${c.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm relative z-10`}>
+                <span className={`text-3xl md:text-4xl font-bold ${c.text}`}>{number}</span>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold mb-3 relative z-10">{title}</h3>
+            <p className="text-zinc-500 text-lg relative z-10">{description}</p>
+
+            {/* Connecting Line (for desktop) */}
+            <div className="hidden md:block absolute top-1/2 -right-8 w-16 h-0.5 bg-gradient-to-r from-zinc-200 to-transparent z-0" />
+        </motion.div>
+    )
+}
+
+function Counter({ from, to, duration }: { from: number; to: number; duration: number }) {
+    const nodeRef = useRef<HTMLSpanElement>(null)
+    const isInView = useInView(nodeRef, { once: true, amount: 0.3 })
+
+    useEffect(() => {
+        if (!isInView) {
+            return
+        }
+
+        const node = nodeRef.current
+        if (!node) {
+            return
+        }
+
+        let start = Date.now()
+        let timer = setInterval(() => {
+            let time = Date.now() - start
+            let progress = Math.min(time / (duration * 1000), 1)
+            let current = Math.floor(from + (to - from) * progress)
+            node.textContent = current.toString()
+            if (progress >= 1) {
+                clearInterval(timer)
+            }
+        }, 16)
+
+        return () => clearInterval(timer)
+    }, [from, to, duration, isInView])
+
+    return <span ref={nodeRef}>{from}</span>
+}
 
 export function LandingPage() {
-    const { isAuthenticated, isSessionLoading } = useSession()
-    const { user } = useUser()
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [scrolled, setScrolled] = useState(false)
     const [activeTab, setActiveTab] = useState<"desktop" | "pwa">("desktop")
-    // Removed pageLoaded state to improve LCP - background renders immediately
+
+    const supabase = createClient()
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            setIsAuthenticated(!!session)
+        }
+        checkAuth()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsAuthenticated(!!session)
+        })
+
+        return () => subscription.unsubscribe()
+    }, [supabase])
 
     // Parallax & Mouse Effects
     const heroParallax = useParallax(150) // Background moves slower
@@ -62,33 +176,34 @@ export function LandingPage() {
                     initial={{ y: -100 }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
-                    className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-                        ? "bg-white/90 backdrop-blur-lg border-b border-zinc-200/80 shadow-sm"
+                    className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
+                        ? "bg-white/60 dark:bg-zinc-950/60 backdrop-blur-xl border-b border-white/20 dark:border-zinc-800/20 shadow-xl shadow-black/5"
                         : "bg-transparent"
                         }`}
                 >
-                    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
                         <Link href="/" className="flex items-center gap-3 group">
                             <motion.div whileHover={{ rotate: 15 }} transition={{ type: "spring", stiffness: 300 }}>
-                                <Logo size={32} className={scrolled ? "text-emerald-600" : "text-white"} />
+                                <Logo size={36} className={scrolled ? "text-emerald-600" : "text-white"} />
                             </motion.div>
-                            <span className={`font-bold text-xl tracking-tight ${scrolled ? "text-zinc-900" : "text-white"}`}>KhataPlus</span>
-                            <span className="text-xs font-bold bg-amber-400 text-amber-900 px-2 py-1 rounded animate-pulse">BETA</span>
+                            <span className={`font-black text-2xl tracking-tighter ${scrolled ? "text-zinc-900" : "text-white"}`}>KhataPlus</span>
+                            <span className="text-[10px] font-black bg-emerald-400 text-emerald-950 px-2 py-0.5 rounded shadow-lg shadow-emerald-400/20">PIONEER ACCESS</span>
                         </Link>
 
-                        <div className={`hidden md:flex items-center gap-10 text-base font-medium ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
-                            <NavLink href="#features" label="Features" />
-                            <NavLink href="#pricing" label="Pricing" />
-                            <Link href="/tools/gst-calculator" className={`hover:underline transition-colors ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
-                                GST Tool
-                            </Link>
-                            <Link href="/tools/business-card" className={`hover:underline transition-colors ${scrolled ? "text-zinc-600" : "text-white/90"}`}>
-                                Card Maker
-                            </Link>
-                            <a href="/demo" className={`hidden md:block hover:underline font-bold transition-colors ${scrolled ? "text-emerald-600" : "text-emerald-100"}`}>
-                                Demo
-                            </a>
-                        </div>
+                        <motion.div
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                visible: { transition: { staggerChildren: 0.1, delayChildren: 0.5 } }
+                            }}
+                            className={`hidden lg:flex items-center gap-10 text-sm font-bold tracking-tight ${scrolled ? "text-zinc-600" : "text-white/90"}`}
+                        >
+                            <motion.div variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}><NavLink href="#features" label="Features" /></motion.div>
+                            <motion.div variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}><NavLink href="#pricing" label="Pricing" /></motion.div>
+                            <motion.div variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}><Link href="/tools/gst-calculator" className="hover:text-emerald-500 transition-colors">GST Tool</Link></motion.div>
+                            <motion.div variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}><Link href="/tools/business-card" className="hover:text-emerald-500 transition-colors">Card Maker</Link></motion.div>
+                            <motion.div variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}><a href="/demo" className="font-black text-emerald-400 hover:text-emerald-300 transition-colors">Demo</a></motion.div>
+                        </motion.div>
 
                         <div className="hidden md:flex items-center gap-3">
                             {isAuthenticated ? (
@@ -118,7 +233,7 @@ export function LandingPage() {
                                                 whileTap={{ scale: 0.95 }}
                                                 className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-8 py-3 text-base font-medium shadow-lg shadow-emerald-500/20"
                                             >
-                                                Start Free
+                                                Join Early Member Program
                                             </motion.button>
                                         </MagneticButton>
                                     </Link>
@@ -158,7 +273,7 @@ export function LandingPage() {
                                         </a>
                                         <Link href="/auth/login" className="block text-center py-3 text-lg text-zinc-900 font-semibold">Sign in</Link>
                                         <Link href="/auth/sign-up" className="block">
-                                            <Button size="lg" className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-lg">Start Free</Button>
+                                            <Button size="lg" className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-lg">Join Early Member Program</Button>
                                         </Link>
                                     </>
                                 )}
@@ -167,79 +282,111 @@ export function LandingPage() {
                     )}
                 </motion.nav>
 
-                {/* Hero */}
-                <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
-                    {/* Parallax Background */}
-                    <motion.div style={{ y: heroParallax }} className="absolute inset-0 z-0">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500" />
-                        <div className="absolute inset-0 opacity-[0.08]" style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-                        }} />
-                    </motion.div>
+                <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-zinc-950">
+                    {/* Animated Silk Mesh Background */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        <motion.div
+                            animate={{
+                                x: [0, 50, 0],
+                                y: [0, 30, 0],
+                                scale: [1, 1.1, 1],
+                            }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/30 rounded-full blur-[120px]"
+                        />
+                        <motion.div
+                            animate={{
+                                x: [0, -40, 0],
+                                y: [0, -50, 0],
+                                scale: [1, 1.2, 1],
+                            }}
+                            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                            className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/30 rounded-full blur-[140px]"
+                        />
+                        <motion.div
+                            animate={{
+                                x: [0, 60, 0],
+                                y: [0, -40, 0],
+                                scale: [1.2, 1, 1.2],
+                            }}
+                            transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+                            className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-amber-500/20 rounded-full blur-[100px]"
+                        />
+                        <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[2px]" />
 
-                    {/* Floating Shapes with Mouse Parallax */}
-                    <motion.div style={{ x: mousePos.x, y: mousePos.y }} className="absolute inset-0 pointer-events-none z-0">
-                        <div className="absolute top-1/4 left-[5%] w-80 h-80 bg-white/10 rounded-full blur-3xl animate-float-slow" />
-                        <div className="absolute bottom-1/4 right-[5%] w-96 h-96 bg-teal-300/15 rounded-full blur-3xl animate-float-slower" />
-                    </motion.div>
 
-                    <div className="relative z-10 max-w-5xl mx-auto px-6 py-32 text-center">
-                        {/* Badge */}
-                        <AdvancedScrollReveal variant="scaleUp">
-                            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-base font-medium border border-white/25 mb-10 hover:bg-white/30 transition-colors cursor-default">
-                                <Sparkles size={16} className="text-amber-300" />
-                                <span>Early Access</span>
-                            </div>
-                        </AdvancedScrollReveal>
+                        {/* Noise Texture Overlay */}
+                        <div className="absolute inset-0 opacity-[0.15] mix-blend-overlay" style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }} />
+                    </div>
 
-                        {/* Headline */}
-                        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] mb-8 tracking-tight drop-shadow-sm">
-                            <SplitText text="Run your shop" className="block" delay={0.2} />
-                            <span className="text-emerald-200 inline-block hover:scale-105 transition-transform duration-300 cursor-default">
-                                <SplitText text="like a pro." delay={0.6} />
+                    <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 text-center">
+
+                        {/* Ultra-Modern Headline with Character Reveal */}
+                        <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-[10rem] font-black text-white leading-[0.85] mb-12 tracking-[-0.05em] drop-shadow-2xl">
+                            <motion.span
+                                initial="hidden"
+                                animate="visible"
+                                variants={{
+                                    hidden: { opacity: 0 },
+                                    visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.8 } }
+                                }}
+                                className="block opacity-90"
+                            >
+                                {"Run your shop".split(" ").map((word, i) => (
+                                    <motion.span key={i} className="inline-block mr-4" variants={{ hidden: { opacity: 0, scale: 0.8, filter: "blur(10px)" }, visible: { opacity: 1, scale: 1, filter: "blur(0px)" } }}>
+                                        {word}
+                                    </motion.span>
+                                ))}
+                            </motion.span>
+                            <span className="relative">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400 animate-gradient-x">
+                                    like a pro.
+                                </span>
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: "100%" }}
+                                    transition={{ delay: 1, duration: 1.5, ease: "circOut" }}
+                                    className="absolute -bottom-2 left-0 h-2 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-full blur-[1px] opacity-50"
+                                />
                             </span>
                         </h1>
 
-                        {/* Subheadline */}
+                        {/* Refined Subheadline */}
                         <AdvancedScrollReveal variant="fadeIn" delay={800}>
-                            <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-12 leading-relaxed">
-                                Billing, inventory, and credit management — all in one simple app.
+                            <p className="text-xl md:text-2xl text-zinc-400 max-w-3xl mx-auto mb-16 leading-relaxed font-medium">
+                                Empowering Bharat's local retailers with world-class <span className="text-white font-bold">Billing</span>, <span className="text-white font-bold">Inventory</span>, and <span className="text-white font-bold">Credit Intelligence</span>.
                             </p>
                         </AdvancedScrollReveal>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                            <AdvancedScrollReveal variant="slideLeft" delay={1000}>
-                                <Link href={isAuthenticated ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
-                                    <MagneticButton className="w-full sm:w-auto">
-                                        <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            className="w-full sm:w-auto h-16 px-10 bg-white text-emerald-700 hover:bg-emerald-50 rounded-full text-xl font-black shadow-2xl group flex items-center justify-center gap-2 uppercase tracking-tight"
-                                        >
-                                            {isAuthenticated ? "Go to Dashboard" : "Start Free Now"}
-                                            <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                                        </motion.button>
-                                    </MagneticButton>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
+                            <AdvancedScrollReveal variant="slideUp" delay={1000}>
+                                <Link href={isAuthenticated ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto mt-4 px-4">
+                                    <div className="relative group">
+                                        <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse" />
+                                        <button className="relative w-full sm:w-auto h-18 px-12 bg-white text-zinc-950 rounded-full text-xl font-black shadow-2xl flex items-center justify-center gap-3 uppercase tracking-tighter hover:scale-[1.02] transition-all active:scale-95">
+                                            {isAuthenticated ? "Go to Dashboard" : "Secure Early Member Spot"}
+                                            <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                                        </button>
+                                    </div>
                                 </Link>
                             </AdvancedScrollReveal>
                             {!isAuthenticated && (
-                                <AdvancedScrollReveal variant="slideRight" delay={1200}>
-                                    <Link href="/demo" className="w-full sm:w-auto">
-                                        <Button size="lg" variant="ghost" className="w-full sm:w-auto h-16 px-8 text-white text-xl border-2 border-white/30 hover:bg-white/10 rounded-full hover:border-white transition-all font-bold">
+                                <AdvancedScrollReveal variant="slideUp" delay={1200}>
+                                    <Link href="/demo" className="w-full sm:w-auto mt-4 px-4">
+                                        <button className="w-full sm:w-auto h-18 px-10 bg-white/5 backdrop-blur-xl text-white text-xl border border-white/20 hover:bg-white/10 rounded-full transition-all font-black uppercase tracking-tighter hover:border-white/40 shadow-xl">
                                             Instant Demo
-                                        </Button>
+                                        </button>
                                     </Link>
                                 </AdvancedScrollReveal>
                             )}
                         </div>
-
-
                     </div>
 
-                    {/* Wave Divider */}
-                    <div className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 z-10 pointer-events-none">
-                        <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" preserveAspectRatio="none">
-                            <path d="M0 100L60 90C120 80 240 60 360 50C480 40 600 40 720 45C840 50 960 60 1080 65C1200 70 1320 70 1380 70L1440 70V100H0V100Z" fill="white" />
+
+                    {/* Premium Curve Divider */}
+                    <div className="absolute bottom-0 left-0 right-0 h-32 z-10 pointer-events-none">
+                        <svg viewBox="0 0 1440 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" preserveAspectRatio="none">
+                            <path d="M0 200L1440 200V0C1440 0 1080 120 720 120C360 120 0 0 0 0V200Z" fill="white" />
                         </svg>
                     </div>
                 </section>
@@ -284,22 +431,22 @@ export function LandingPage() {
                             </div>
                             <div className="relative">
                                 <div className="absolute inset-0 bg-emerald-500/20 blur-[120px] rounded-full" />
-                                <div className="relative bg-zinc-900 rounded-[3rem] p-4 shadow-2xl overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900" />
-                                    <div className="relative border border-white/10 rounded-[2.5rem] overflow-hidden">
+                                <div className="relative bg-zinc-950/90 backdrop-blur-3xl rounded-[3rem] p-4 shadow-2xl overflow-hidden group border border-white/10">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-transparent to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                                    <div className="relative border border-white/5 rounded-[2.5rem] overflow-hidden">
                                         <img
                                             src="https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&q=80&w=1000"
                                             alt="Merchant using KhataPlus"
-                                            className="w-full h-auto opacity-80 group-hover:scale-105 transition-transform duration-1000"
+                                            className="w-full h-auto opacity-80 group-hover:scale-110 transition-transform duration-1000 grayscale group-hover:grayscale-0"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
                                         <div className="absolute bottom-10 left-10 space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                                <span className="text-white font-black text-xs uppercase tracking-widest">Live in Guwahati</span>
+                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,1)]" />
+                                                <span className="text-white font-black text-[10px] uppercase tracking-[0.3em] opacity-60">Live in Guwahati</span>
                                             </div>
-                                            <p className="text-white text-2xl font-black italic">"KhataPlus changed how I track credit."</p>
-                                            <p className="text-zinc-400 text-sm font-bold">— Rahul, New Market</p>
+                                            <p className="text-white text-3xl font-black tracking-tight leading-none italic">"KhataPlus changed how<br />I track credit."</p>
+                                            <p className="text-emerald-400 text-xs font-black uppercase tracking-widest">— Rahul, New Market</p>
                                         </div>
                                     </div>
                                 </div>
@@ -989,13 +1136,13 @@ export function LandingPage() {
                         <AdvancedScrollReveal variant="scaleUp">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-700 text-base font-semibold mb-6">
                                 <Sparkles size={16} />
-                                BETA OFFER
+                                LEGACY PRIVILEGE
                             </div>
                             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-                                Free for <span className="text-emerald-600">founding members</span>
+                                Lifetime Privilege for <span className="text-emerald-600">Early Members</span>
                             </h2>
                             <p className="text-zinc-500 text-xl mb-12">
-                                Join beta and get lifetime free access.
+                                Join our first 1,000 members and secure legacy access.
                             </p>
 
                             <motion.div
@@ -1005,12 +1152,12 @@ export function LandingPage() {
                                 <div className="absolute top-0 right-0 p-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
                                 <div className="absolute bottom-0 left-0 p-32 bg-black/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
 
-                                <p className="text-emerald-100 text-lg font-medium mb-2 relative z-10">Beta Access</p>
+                                <p className="text-emerald-100 text-lg font-medium mb-2 relative z-10">Pioneer Program</p>
                                 <div className="text-6xl font-bold mb-3 relative z-10 flex items-center justify-center gap-1">
                                     <span>₹</span>
                                     <Counter from={999} to={0} duration={2} />
                                 </div>
-                                <p className="text-emerald-100 text-lg mb-8 relative z-10">Forever, for early adopters</p>
+                                <p className="text-emerald-100 text-lg mb-8 relative z-10">Lifetime Value for Early Members</p>
                                 <Link href="/auth/sign-up" className="relative z-10 block">
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
@@ -1052,122 +1199,20 @@ export function LandingPage() {
                     </div>
                 </footer>
 
-                {/* Global Animations CSS */}
                 <style jsx global>{`
-                @keyframes float-slow {
-                    0%, 100% { transform: translate(0, 0); }
-                    50% { transform: translate(20px, -20px); }
-                }
-                @keyframes float-slower {
-                    0%, 100% { transform: translate(0, 0); }
-                    50% { transform: translate(-25px, 25px); }
-                }
-                .animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
-                .animate-float-slower { animation: float-slower 12s ease-in-out infinite; }
-            `}</style>
-            </div >
-        </LazyMotion >
-    )
-}
-
-function NavLink({ href, label }: { href: string, label: string }) {
-    return (
-        <a href={href} className="relative group overflow-hidden py-1">
-            <span className="hover:text-emerald-500 transition-colors">{label}</span>
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
-        </a>
-    )
-}
-
-function FeatureCard({ icon: Icon, title, description, color }: {
-    icon: any
-    title: string
-    description: string
-    color: string
-}) {
-    const colorMap: Record<string, { bg: string, icon: string, border: string }> = {
-        emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "border-emerald-100" },
-        amber: { bg: "bg-amber-50", icon: "text-amber-600", border: "border-amber-100" },
-        blue: { bg: "bg-blue-50", icon: "text-blue-600", border: "border-blue-100" },
-        violet: { bg: "bg-violet-50", icon: "text-violet-600", border: "border-violet-100" },
-    }
-
-    const c = colorMap[color]
-
-    return (
-        <motion.div
-            whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
-            className={`${c.bg} ${c.border} border rounded-3xl p-6 md:p-8 transition-all duration-300 cursor-default group`}
-        >
-            <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300">
-                <Icon size={28} className={c.icon} />
+                    @keyframes float-slow {
+                        0%, 100% { transform: translate(0, 0); }
+                        50% { transform: translate(20px, -20px); }
+                    }
+                    @keyframes float-slower {
+                        0%, 100% { transform: translate(0, 0); }
+                        50% { transform: translate(-25px, 25px); }
+                    }
+                    .animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
+                    .animate-float-slower { animation: float-slower 12s ease-in-out infinite; }
+                `}</style>
             </div>
-            <h3 className="font-bold text-xl md:text-2xl mb-2 group-hover:text-zinc-900 transition-colors">{title}</h3>
-            <p className="text-zinc-500 text-base md:text-lg group-hover:text-zinc-600 transition-colors">{description}</p>
-        </motion.div>
+        </LazyMotion>
     )
 }
 
-function StepCard({ number, title, description, color }: {
-    number: string
-    title: string
-    description: string
-    color: string
-}) {
-    const colorMap: Record<string, { bg: string, text: string }> = {
-        emerald: { bg: "bg-emerald-100", text: "text-emerald-600" },
-        amber: { bg: "bg-amber-100", text: "text-amber-600" },
-        blue: { bg: "bg-blue-100", text: "text-blue-600" },
-    }
-
-    const c = colorMap[color]
-
-    return (
-        <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-3xl p-8 md:p-10 shadow-lg border border-zinc-100 group relative overflow-hidden"
-        >
-            <div className={`absolute top-0 right-0 w-32 h-32 ${c.bg} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700`} />
-
-            <div className={`w-16 h-16 md:w-20 md:h-20 ${c.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm relative z-10`}>
-                <span className={`text-3xl md:text-4xl font-bold ${c.text}`}>{number}</span>
-            </div>
-            <h3 className="text-2xl md:text-3xl font-bold mb-3 relative z-10">{title}</h3>
-            <p className="text-zinc-500 text-lg relative z-10">{description}</p>
-
-            {/* Connecting Line (for desktop) */}
-            <div className="hidden md:block absolute top-1/2 -right-8 w-16 h-0.5 bg-gradient-to-r from-zinc-200 to-transparent z-0" />
-        </motion.div>
-    )
-}
-
-function Counter({ from, to, duration }: { from: number, to: number, duration: number }) {
-    const nodeRef = useRef<HTMLSpanElement>(null)
-    const isInView = useInView(nodeRef, { once: true, amount: 0.3 })
-
-    useEffect(() => {
-        if (!isInView) {
-            return
-        }
-
-        const node = nodeRef.current
-        if (!node) {
-            return
-        }
-
-        let start = Date.now()
-        let timer = setInterval(() => {
-            let time = Date.now() - start
-            let progress = Math.min(time / (duration * 1000), 1)
-            let current = Math.floor(from + (to - from) * progress)
-            node.textContent = current.toString()
-            if (progress >= 1) {
-                clearInterval(timer)
-            }
-        }, 16)
-
-        return () => clearInterval(timer)
-    }, [from, to, duration, isInView])
-
-    return <span ref={nodeRef}>{from}</span>
-}

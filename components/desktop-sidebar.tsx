@@ -40,7 +40,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: D
                     </div>
                     <div className="flex flex-col">
                         <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">KhataPlus</span>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">Platinum</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">Online</span>
                     </div>
                 </div>
             </div>
@@ -75,19 +75,6 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: D
                 })}
             </nav>
 
-            <div className="p-8">
-                <div className="relative group overflow-hidden p-6 bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 rounded-3xl space-y-3 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5">
-                    <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
-                    <div className="flex items-center justify-between relative z-10">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">System Status</p>
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    </div>
-                    <p className="text-xs font-bold text-foreground/80 leading-relaxed relative z-10">
-                        Enterprise Grade <br />
-                        Retail Infrastructure
-                    </p>
-                </div>
-            </div>
         </aside>
     )
 }

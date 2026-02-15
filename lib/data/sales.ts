@@ -1,8 +1,9 @@
 "use server"
 
 import { sql } from "../db";
-import type { Sale, InventoryItem } from "../types";
+import type { Sale, InventoryItem, AuditLog, Organization } from "../types";
 import { logHealthMetric } from "../monitoring";
+import { SaleSchema, BatchSalesSchema, ReturnSchema } from "../validation";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
 import { cache } from "react";
 import { authorize, audit, generateDiff } from "../security";
@@ -28,7 +29,7 @@ export async function getSales(orgId: string) {
                 WHERE s.org_id = ${orgId}
                 ORDER BY s.created_at DESC
             `;
-            await logHealthMetric(Date.now() - start, "getSales");
+            await logHealthMetric(Date.now() - start, "getSales", db);
 
             return data.map((row: any) => ({
                 ...row,
@@ -44,12 +45,17 @@ export async function getSales(orgId: string) {
                 } : undefined
             })) as any;
         },
-        [`sales-list-${flavor}-${orgId}`],
-        { tags: ["sales", `sales-${orgId}`, `sales-${flavor}`], revalidate: 3600 }
+        [`sales - list - ${flavor} -${orgId} `],
+        { tags: ["sales", `sales - ${orgId} `, `sales - ${flavor} `], revalidate: 3600 }
     )();
 }
 
 export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | "created_at">, orgId: string): Promise<Sale> {
+    const validation = SaleSchema.safeParse(sale);
+    if (!validation.success) {
+        throw new Error(`Invalid Sale Data: ${validation.error.message}`);
+    }
+
     const user = await authorize("Record Sale", undefined, orgId);
 
     // Get product to calculate cost and profit
@@ -60,15 +66,15 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
     const product = productResult[0];
 
     if (product.stock < sale.quantity) {
-        throw new Error(`Insufficient stock. Available: ${product.stock} `);
+        throw new Error(`Insufficient stock.Available: ${product.stock} `);
     }
 
     const profit = (sale.sale_price - parseFloat(product.buy_price)) * sale.quantity;
 
     const result = await sql`
         INSERT INTO sales(inventory_id, user_id, org_id, quantity, sale_price, total_amount, gst_amount, profit, payment_method, batch_id, sale_date)
-        VALUES(${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, ${sale.batch_id || null}, ${sale.sale_date})
-        RETURNING *
+VALUES(${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, ${sale.batch_id || null}, ${sale.sale_date})
+RETURNING *
     `;
 
     // Update stock
@@ -85,7 +91,7 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
     revalidatePath("/dashboard", "page");
     revalidatePath("/dashboard/sales", "page");
     (revalidateTag as any)("sales");
-    (revalidateTag as any)(`inventory-${orgId}`);
+    (revalidateTag as any)(`inventory - ${orgId} `);
     triggerSync(orgId, 'sale');
 
     return {
@@ -98,49 +104,81 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
 }
 
 export async function recordBatchSales(sales: Omit<Sale, "id" | "user_id" | "sale_date" | "created_at">[], orgId: string): Promise<Sale[]> {
+    // 1. Validate Input Structure
+    const validation = BatchSalesSchema.safeParse(sales);
+    if (!validation.success) {
+        throw new Error(`Invalid Sales Data: ${validation.error.message} `);
+    }
+
+    // 2. Authorize
     const user = await authorize("Record Batch Sales", undefined, orgId);
     const batchId = crypto.randomUUID();
 
-    const results = await Promise.all(sales.map(async (sale) => {
-        // Get product to calculate profit and fetch HSN
-        const productResult = await sql`SELECT name, buy_price, stock, hsn_code FROM inventory WHERE id = ${sale.inventory_id} AND org_id = ${orgId} `;
-        if (productResult.length === 0) {
-            throw new Error(`Item ${sale.inventory_id} not found`);
-        }
-        const product = productResult[0];
+    const { getDemoSql, getProductionSql } = await import("../db");
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const db = isGuest ? getDemoSql() : getProductionSql();
 
-        const profit = (sale.sale_price - parseFloat(product.buy_price)) * sale.quantity;
+    // Prepare atomic transaction queries
+    const queries: any[] = [];
 
-        // Use provided HSN or fallback to product's HSN
-        const hsnCode = sale.hsn_code || product.hsn_code;
+    // We need to fetch current prices/stock inside the transaction context?
+    // Neon transaction batch doesn't allow read-then-write logic across steps.
+    // We must use "INSERT ... SELECT" and "UPDATE ... WHERE" logic to carry data.
 
-        const result = await sql`
-            INSERT INTO sales(inventory_id, user_id, org_id, quantity, sale_price, total_amount, gst_amount, profit, payment_method, batch_id, customer_gstin, hsn_code)
-            VALUES(${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null}, ${hsnCode || null})
-            RETURNING *
-        `;
+    for (const sale of sales) {
+        // Query 1: Deduct Stock (Abort if insufficient)
+        // We use a PL/pgSQL block to raise exception if stock is low
+        queries.push(db`
+            DO $$
+BEGIN
+                UPDATE inventory 
+                SET stock = stock - ${sale.quantity} 
+                WHERE id = ${sale.inventory_id} AND org_id = ${orgId} AND stock >= ${sale.quantity};
+                
+                IF NOT FOUND THEN
+                    RAISE EXCEPTION 'Insufficient stock for item %', ${sale.inventory_id};
+                END IF;
+            END $$;
+`);
 
-        // Update stock
-        await sql`UPDATE inventory SET stock = stock - ${sale.quantity} WHERE id = ${sale.inventory_id} AND org_id = ${orgId} `;
+        // Query 2: Insert Sale (calculating profit on the fly from inventory)
+        queries.push(db`
+            INSERT INTO sales(
+    inventory_id, user_id, org_id, quantity, sale_price,
+    total_amount, gst_amount, profit, payment_method,
+    batch_id, customer_gstin, hsn_code
+)
+SELECT 
+                ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
+                ${sale.total_amount}, ${sale.gst_amount},
+(${sale.sale_price} - buy_price) * ${sale.quantity}, 
+                ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null},
+COALESCE(${sale.hsn_code || null}, hsn_code)
+            FROM inventory
+            WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
+`);
+    }
 
-        return result[0];
-    }));
+    // Execute Atomically
+    try {
+        await db.transaction(queries);
+    } catch (error) {
+        throw new Error(`Batch Transaction Failed: ${error} `);
+    }
 
     await audit("Recorded Batch Sales", "sale", batchId, { count: sales.length, org_id: orgId }, orgId);
 
     revalidatePath("/dashboard", "page");
     revalidatePath("/dashboard/sales", "page");
     (revalidateTag as any)("sales");
-    (revalidateTag as any)(`inventory-${orgId}`);
+    (revalidateTag as any)(`inventory - ${orgId} `);
     triggerSync(orgId, 'sale');
 
-    return results.map((s: any) => ({
-        ...s,
-        sale_price: parseFloat(s.sale_price),
-        total_amount: parseFloat(s.total_amount),
-        gst_amount: parseFloat(s.gst_amount),
-        profit: parseFloat(s.profit),
-    })) as Sale[];
+    // Return empty array or fetch inserted sales? 
+    // Since transaction doesn't return rows easily in this batch mode without more queries, we return basic confirmation.
+    // The original code returned objects. We'll return partials.
+    return sales.map(s => ({ ...s, batch_id: batchId } as any));
 }
 
 export async function processReturn(
@@ -153,6 +191,11 @@ export async function processReturn(
     },
     orgId?: string
 ): Promise<void> {
+    const validation = ReturnSchema.safeParse(data);
+    if (!validation.success) {
+        throw new Error(`Invalid Return Data: ${validation.error.message}`);
+    }
+
     const saleId = data.original_sale_id;
     const quantity = data.quantity;
     const actualOrgId = orgId || await getCurrentOrgId();
@@ -160,7 +203,7 @@ export async function processReturn(
 
     await authorize("Process Return", undefined, actualOrgId);
 
-    const saleResult = await sql`SELECT * FROM sales WHERE id = ${saleId} AND org_id = ${actualOrgId}`;
+    const saleResult = await sql`SELECT * FROM sales WHERE id = ${saleId} AND org_id = ${actualOrgId} `;
     if (saleResult.length === 0) {
         throw new Error("Sale not found");
     }
@@ -170,33 +213,58 @@ export async function processReturn(
         throw new Error("Return quantity exceeds sale quantity");
     }
 
-    // Update sale or delete if fully returned
-    if (sale.quantity === quantity) {
-        await sql`DELETE FROM sales WHERE id = ${saleId} AND org_id = ${actualOrgId}`;
-    } else {
-        await sql`
-            UPDATE sales 
-            SET quantity = quantity - ${quantity}, 
-                total_amount = total_amount - (total_amount / quantity * ${quantity}),
-                gst_amount = gst_amount - (gst_amount / quantity * ${quantity}),
-                profit = profit - (profit / quantity * ${quantity}),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${saleId} AND org_id = ${actualOrgId}
-        `;
+    // NUCLEAR: Immutability Enforcement
+    // We do NOT delete or update the original sale. We create a contra-entry (Refund/Return).
+
+    // Calculate negative values
+    const negQuantity = -quantity;
+    const negTotal = -(sale.total_amount / sale.quantity * quantity);
+    const negGst = -(sale.gst_amount / sale.quantity * quantity);
+    const negProfit = -(sale.profit / sale.quantity * quantity);
+
+    const { getDemoSql, getProductionSql } = await import("../db");
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const db = isGuest ? getDemoSql() : getProductionSql();
+
+    const queries: any[] = [];
+
+    // Query 1: Insert Return Record
+    queries.push(db`
+        INSERT INTO sales(
+    inventory_id, user_id, org_id,
+    quantity, sale_price, total_amount, gst_amount, profit,
+    payment_method, batch_id, sale_date,
+    is_return, original_sale_id
+)
+VALUES(
+    ${sale.inventory_id}, ${sale.user_id}, ${actualOrgId},
+    ${negQuantity}, ${sale.sale_price}, ${negTotal}, ${negGst}, ${negProfit},
+    ${sale.payment_method}, ${sale.batch_id}, ${new Date().toISOString()},
+    true, ${saleId}
+)
+    `);
+
+    // Query 2: Return stock to inventory
+    // We use a transaction-like update to ensure we don't proceed if inventory is gone (unlikely for return)
+    queries.push(db`UPDATE inventory SET stock = stock + ${quantity} WHERE id = ${sale.inventory_id} AND org_id = ${actualOrgId} `);
+
+    // Execute Atomically
+    try {
+        await db.transaction(queries);
+    } catch (error) {
+        throw new Error(`Process Return Transaction Failed: ${error} `);
     }
 
-    // Return stock to inventory
-    await sql`UPDATE inventory SET stock = stock + ${quantity} WHERE id = ${sale.inventory_id} AND org_id = ${actualOrgId}`;
-
-    await audit("Processed Return", "sale", saleId, { quantity }, actualOrgId);
+    await audit("Processed Return (Immutable)", "sale", saleId, { quantity, refund: data.refund_amount }, actualOrgId);
     revalidatePath("/dashboard/sales", "page");
     (revalidateTag as any)("sales");
-    (revalidateTag as any)(`inventory-${actualOrgId}`);
+    (revalidateTag as any)(`inventory - ${actualOrgId} `);
     triggerSync(actualOrgId, 'sale');
 }
 
 export async function updateSale(saleId: string, updates: Partial<Sale>, orgId?: string): Promise<void> {
-    const prevResult = await sql`SELECT * FROM sales WHERE id = ${saleId}`;
+    const prevResult = await sql`SELECT * FROM sales WHERE id = ${saleId} `;
     if (prevResult.length === 0) {
         throw new Error("Sale not found");
     }
@@ -218,23 +286,23 @@ export async function updateSale(saleId: string, updates: Partial<Sale>, orgId?:
             UPDATE inventory 
             SET stock = stock - ${diffQty}, updated_at = CURRENT_TIMESTAMP
             WHERE id = ${prev.inventory_id} AND org_id = ${actualOrgId}
-        `;
+`;
     }
 
     const diff = await generateDiff(prev, updates);
 
     await sql`
         UPDATE sales
-        SET
-            quantity = COALESCE(${updates.quantity}, quantity),
-            sale_price = COALESCE(${updates.sale_price}, sale_price),
-            total_amount = COALESCE(${updates.total_amount}, total_amount),
-            gst_amount = COALESCE(${updates.gst_amount}, gst_amount),
-            profit = COALESCE(${updates.profit}, profit),
-            payment_method = COALESCE(${updates.payment_method}, payment_method),
-            updated_at = CURRENT_TIMESTAMP
+SET
+quantity = COALESCE(${updates.quantity}, quantity),
+    sale_price = COALESCE(${updates.sale_price}, sale_price),
+    total_amount = COALESCE(${updates.total_amount}, total_amount),
+    gst_amount = COALESCE(${updates.gst_amount}, gst_amount),
+    profit = COALESCE(${updates.profit}, profit),
+    payment_method = COALESCE(${updates.payment_method}, payment_method),
+    updated_at = CURRENT_TIMESTAMP
         WHERE id = ${saleId} AND org_id = ${actualOrgId}
-    `;
+`;
 
     // Re-sync daily report
     await syncDailyReport(new Date(prev.sale_date).toISOString().split('T')[0]);
@@ -271,7 +339,7 @@ export const getSalesByDate = cache(async (date: string): Promise<(Sale & { inve
                 } : undefined
             })) as any;
         },
-        [`sales-by-date-${date}`],
-        { tags: ["sales", `sales-${date}`] }
+        [`sales - by - date - ${date} `],
+        { tags: ["sales", `sales - ${date} `] }
     )(date);
 });

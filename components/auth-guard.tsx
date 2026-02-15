@@ -1,6 +1,5 @@
 import type React from "react"
 import { redirect } from "next/navigation"
-import { session } from "@descope/nextjs-sdk/server"
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -15,8 +14,9 @@ export async function AuthGuard({ children, requireAdmin = false }: AuthGuardPro
     return <>{children}</>
   }
 
-  const sessionRes = await session()
-  const userId = sessionRes?.token?.sub
+  const { getSession } = await import("@/lib/session")
+  const session = await getSession()
+  const userId = session?.userId
 
   if (!userId) {
     redirect("/auth/login")

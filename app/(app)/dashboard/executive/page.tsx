@@ -19,7 +19,7 @@ export default async function ExecutiveDashboard() {
     }
     const { userId, isGuest } = user
 
-    const profile = isGuest ? { role: "admin" } : await getProfile(userId)
+    const profile = isGuest ? { role: "owner" } : await getProfile(userId)
 
     // Only Owner and Main Admin can see this (Guest is mapped to admin role in mock)
     if (profile?.role !== "owner" && profile?.role !== "main admin" && profile?.role !== "admin") {
@@ -27,7 +27,14 @@ export default async function ExecutiveDashboard() {
         return null
     }
 
-    const data = await getExecutiveAnalytics()
+    const { getCurrentOrgId } = await import("@/lib/data/auth")
+    const orgId = await getCurrentOrgId(userId)
+    if (!orgId) {
+        redirect("/dashboard")
+        return null
+    }
+
+    const data = await getExecutiveAnalytics(orgId)
 
     return (
         <div className="p-4 space-y-6">

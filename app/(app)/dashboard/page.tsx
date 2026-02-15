@@ -37,12 +37,22 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
       biometric_required: false
     } as any;
   } else {
-    profile = await getProfile(userId)
+    const { ensureProfile } = await import("@/lib/data/profiles")
+    profile = await ensureProfile(userId, (user as any).email)
   }
 
   if (!profile) {
     redirect("/auth/login")
     return null
+  }
+
+  // Redirect to setup-organization if user has no org and is not a guest
+  if (!isGuest && !profile.organization_id) {
+    const orgs = await getUserOrganizations(userId)
+    if (orgs.length === 0) {
+      redirect("/setup-organization")
+      return null
+    }
   }
 
   const settings = await getSystemSettings(profile.organization_id || "")

@@ -19,7 +19,7 @@ export async function getInventory(orgId: string) {
 
             const start = Date.now();
             const data = await db`SELECT * FROM inventory WHERE org_id = ${orgId} ORDER BY name ASC`;
-            await logHealthMetric(Date.now() - start, "getInventory");
+            await logHealthMetric(Date.now() - start, "getInventory", db);
 
             return data.map((item: any) => ({
                 ...item,
@@ -87,10 +87,17 @@ export async function updateInventoryStock(id: string, newStock: number, orgId: 
 }
 
 export async function getLowStockItems(orgId: string): Promise<InventoryItem[]> {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<InventoryItem[]> => {
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
             // Fetch items where stock is less than or equal to min_stock
-            const data = await sql`
+            const data = await db`
                 SELECT * FROM inventory 
                 WHERE org_id = ${orgId} 
                 AND stock <= min_stock 
@@ -104,7 +111,7 @@ export async function getLowStockItems(orgId: string): Promise<InventoryItem[]> 
                 min_stock: item.min_stock || 5
             })) as InventoryItem[];
         },
-        [`inventory-low-stock-${orgId}`],
-        { tags: ["inventory", `inventory-${orgId}`, "low-stock"], revalidate: 600 }
+        [`inventory-low-stock-${flavor}-${orgId}`],
+        { tags: ["inventory", `inventory-${orgId}`, "low-stock", `inventory-${flavor}`], revalidate: 600 }
     )();
 }

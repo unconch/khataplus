@@ -1,102 +1,224 @@
 "use client"
 
-import { Descope } from "@descope/react-sdk"
-import { useSession, useUser } from "@descope/react-sdk"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Logo } from "@/components/ui/logo"
 import { motion } from "framer-motion"
-import { ArrowRight, ShieldCheck, Sparkles, Zap } from "lucide-react"
+import { ArrowRight, ShieldCheck, Zap, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
+import Script from "next/script"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, isSessionLoading } = useSession()
+  const supabase = createClient()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated && !isSessionLoading) {
-      router.replace("/dashboard")
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace("/dashboard")
+      }
     }
-  }, [isAuthenticated, isSessionLoading, router])
+    checkUser()
+  }, [router, supabase.auth])
+
+  // Handle GIS Credential Response
+  const handleCredentialResponse = async (response: any) => {
+    setLoading(true);
+    try {
+      let { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.credential,
+      });
+
+      // Fail-safe: If we get a generic error but the session actually worked (common with GIS/GoTrue Handshakes)
+      if (error) {
+        console.warn("[GIS] Supabase returned error, checking session fallback...", error);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("[GIS] Session found despite error, proceeding.");
+          data = { user: session.user, session } as any;
+          error = null;
+        }
+      }
+
+      if (error) throw error;
+
+      if (data?.user) {
+        // Parallelize profile sync and org fetch for maximum speed
+        try {
+          const [{ ensureProfile, getUserOrganizations }] = await Promise.all([
+            import("@/lib/data"),
+          ]);
+
+          // Fire and forget profile sync if it's slow, or wait if needed
+          // For now, let's run them in parallel to be safe but fast
+          const [userOrgs] = await Promise.all([
+            getUserOrganizations(data.user.id),
+            ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name).catch(e => console.error("Sync error:", e))
+          ]);
+
+          if (userOrgs && userOrgs.length > 0) {
+            toast.success("Welcome back!");
+            router.push(`/${userOrgs[0].organization.slug}/dashboard`);
+            return;
+          }
+        } catch (err) {
+          console.error("[GIS Fast-Path Error]:", err);
+        }
+
+        toast.success("Account verified!");
+        router.push("/setup-organization");
+      }
+    } catch (err: any) {
+      console.error("[GIS Error]:", err);
+      // Suppress "Unexpected response" if the user is clearly authenticated
+      if (err.message?.includes("unexpected response")) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          router.push("/setup-organization");
+          return;
+        }
+      }
+      toast.error(err.message || "Google login failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLoad = async () => {
+    if (typeof window !== "undefined" && (window as any).google) {
+      const google = (window as any).google;
+
+      google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+      });
+
+      const buttonDiv = document.getElementById("google-button-login");
+      if (buttonDiv) {
+        google.accounts.id.renderButton(buttonDiv, {
+          theme: "outline",
+          size: "large",
+          width: 320,
+          text: "signin_with",
+          shape: "rectangular"
+        });
+      }
+    }
+  };
+
+  // Re-initialize Google Login if script is already loaded (e.g., navigation back/logout)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleGoogleLoad();
+    }, 500); // Small delay to ensure DOM is ready
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      toast.error(error.message)
+      setLoading(false)
+      return
+    }
+
+    toast.success("Welcome back!")
+    router.push("/dashboard")
+  }
 
   return (
     <div className="min-h-svh w-full flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 overflow-hidden">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-300/20 rounded-full blur-3xl animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-400/10 rounded-full blur-3xl" />
+      <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
+        {/* Mesh Background */}
+        <div className="absolute inset-0 mesh-gradient opacity-60" />
+
+        {/* Overlay for contrast */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
+
+        {/* Animated Overlays */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px] animate-orbit" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px] animate-orbit-slow" />
         </div>
 
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        {/* Pattern Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] z-1" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' fill='%23ffffff' fill-rule='evenodd'/%3E%3C/svg%3E")`,
         }} />
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-between p-12 text-white">
-          <div>
+        <div className="relative z-10 flex flex-col w-full p-16 text-white">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-auto"
+          >
             <Link href="/" className="flex items-center gap-3 group">
-              <motion.div
-                initial={{ rotate: -10 }}
-                animate={{ rotate: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Logo size={40} className="text-white" />
-              </motion.div>
-              <span className="font-bold text-2xl tracking-tight">KhataPlus</span>
+              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
+                <Logo size={32} className="text-white" />
+              </div>
+              <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
             </Link>
-          </div>
+          </motion.div>
 
-          <div className="space-y-8">
+          <div className="space-y-12">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
             >
-              <h1 className="text-4xl xl:text-5xl font-black leading-tight">
-                Run your business,<br />
-                <span className="text-emerald-100">not your paperwork.</span>
+              <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                Enterprise Grade Security
+              </div>
+              <h1 className="text-6xl xl:text-7xl font-black leading-[0.9] tracking-tighter mb-6">
+                Welcome<br />
+                <span className="text-emerald-400">Back.</span>
               </h1>
-              <p className="mt-4 text-lg text-emerald-100/80 max-w-md">
-                Join thousands of Indian businesses managing their inventory, sales, and finances with ease.
+              <p className="text-xl text-white/70 max-w-sm font-medium leading-relaxed">
+                Your business ecosystem is ready. Log in to continue your business growth.
               </p>
             </motion.div>
 
-            {/* Feature Pills */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="flex flex-wrap gap-3"
+              className="flex gap-4"
             >
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-medium">
-                <ShieldCheck className="h-4 w-4" />
-                GST Compliant
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
+                <Zap className="h-4 w-4 text-emerald-300" />
+                Zero Latency
               </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-medium">
-                <Zap className="h-4 w-4" />
-                Offline Ready
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                Protected
               </div>
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="text-sm text-emerald-100/60"
-          >
-            © 2024 KhataPlus. All rights reserved.
-          </motion.div>
+          <div className="mt-auto pt-12 border-t border-white/10">
+            <p className="text-sm text-white/40 font-medium">© 2026 KhataPlus Online. All rights reserved.</p>
+          </div>
         </div>
       </div>
 
       {/* Right Panel - Sign In Form */}
       <div className="flex-1 flex items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950 relative">
-        {/* Mobile Logo */}
         <div className="absolute top-6 left-6 lg:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={32} className="text-emerald-600" />
@@ -110,27 +232,84 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md space-y-8"
         >
-          {/* Header */}
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-black text-zinc-900 dark:text-white">
-              Welcome back
+            <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
+              Welcome <span className="text-emerald-600">Back.</span>
             </h2>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Sign in to continue to your dashboard
+            <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit">
+              Securely access your business ecosystem in the Digital India Era.
             </p>
           </div>
 
-          {/* Authentication Component */}
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-zinc-900">
-            <Descope
-              flowId="sign-up-or-in"
-              onSuccess={(e) => {
-                console.log("Logged in!", e.detail.user)
-                router.push("/dashboard")
-              }}
-              onError={(e) => console.log("Could not log in!", e)}
-              theme={typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}
-            />
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium dark:text-zinc-300">Email Address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium dark:text-zinc-300">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm pr-11"
+                  placeholder="•••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
+            </button>
+          </form>
+
+          <div className="relative mt-16 mb-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+            </div>
+            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+              <span className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/50 px-3 py-1 rounded-full shadow-sm">
+                Instant Login
+              </span>
+            </div>
+          </div>
+
+          {/* Google Login Button Container */}
+          <div className="w-full relative py-2 flex justify-center">
+            <div className="relative w-full flex justify-center items-center">
+              <Script
+                src="https://accounts.google.com/gsi/client"
+                onLoad={handleGoogleLoad}
+                strategy="afterInteractive"
+              />
+              <div id="google-button-login" className="w-full min-h-[44px] flex justify-center items-center py-2" />
+              {loading && (
+                <div className="absolute inset-0 bg-white/50 dark:bg-zinc-950/50 flex items-center justify-center rounded-xl z-20">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sign Up Link */}
@@ -147,7 +326,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Demo Link */}
           <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <Link
               href="/demo"

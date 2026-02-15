@@ -1,17 +1,15 @@
-"use server"
-
-import { session } from "@descope/nextjs-sdk/server";
+import { getSession } from "./session";
 import { sql } from "./db";
 import { AuditLog, Profile } from "./types";
 
 /**
- * Platinum Security Engine
+ * KhataPlus Security Engine
  * Centralized authorization and audit diffing.
  */
 
 export async function getSessionUser() {
-    const sessionRes = await session();
-    const userId = sessionRes?.token?.sub;
+    const sessionRes = await getSession();
+    const userId = sessionRes?.userId;
     if (!userId) {
         return null;
     }
@@ -53,7 +51,7 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
     }
 
     // If orgId is provided, check organization-specific role
-    if (orgId && user.role !== "main admin") {
+    if (orgId && user.role !== "owner") {
         const membership = await sql`
             SELECT role FROM organization_members 
             WHERE org_id = ${orgId} AND user_id = ${user.id}
@@ -71,14 +69,14 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
             throw new Error(`Forbidden: Organization admin privileges required`);
         }
 
-        if (requiredRole && requiredRole !== "admin" && orgRole !== requiredRole) {
+        if (requiredRole && requiredRole !== "admin" && !secureCompare(orgRole, requiredRole)) {
             throw new Error(`Forbidden: Required organization role ${requiredRole}`);
         }
 
         return { ...user, orgRole }; // Return user with org context
     }
 
-    if (requiredRole && user.role !== "main admin" && user.role !== requiredRole) {
+    if (requiredRole && user.role !== "owner" && !secureCompare(user.role, requiredRole)) {
         throw new Error(`Forbidden: Required role ${requiredRole}`);
     }
 
@@ -99,11 +97,30 @@ export async function audit(action: string, entity: string, id: string | undefin
         return;
     }
 
-    // In a real institutional app, we would encrypt 'details' here
-    // For this demo, we'll store as JSONB as per schema
+    // OPTIMIZED AUDIT LOGS: Encrypt sensitive details to prevent DB-level PII leaks
+    // MISSION-CRITICAL: Use Tenant-specific DEK for isolated encryption (ASVS Level 3)
+    const { encrypt } = await import("./crypto");
+    const { getTenantDEK } = await import("./key-management");
+
+    let encryptedDetails: string;
+    try {
+        const orgIdContext = orgId || "system";
+        let encryptionKey: string | undefined;
+
+        if (orgId) {
+            encryptionKey = await getTenantDEK(orgId);
+        }
+
+        encryptedDetails = await encrypt(JSON.stringify(details), orgIdContext, encryptionKey);
+    } catch (err: any) {
+        console.error("[Audit] Failed to encrypt audit details:", err.message);
+        // Fallback to system-level encryption if DEK fails, to ensure audit trail continuity
+        encryptedDetails = await encrypt(JSON.stringify(details), "system-fallback");
+    }
+
     await sql`
         INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, org_id)
-        VALUES (${session.sub}, ${action}, ${entity}, ${id}, ${JSON.stringify(details)}, ${orgId || null})
+        VALUES (${session.sub}, ${action}, ${entity}, ${id}, ${encryptedDetails}, ${orgId || null})
     `;
 }
 
@@ -121,4 +138,23 @@ export async function generateDiff(oldData: any, newData: any) {
         }
     }
     return diff;
+}
+
+/**
+ * Constant-time comparison for secrets to prevent timing attacks.
+ */
+export function secureCompare(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+
+    if (bufA.length !== bufB.length) {
+        return false;
+    }
+
+    // Constant-time comparison to prevent timing attacks
+    let result = 0;
+    for (let i = 0; i < bufA.length; i++) {
+        result |= bufA[i] ^ bufB[i];
+    }
+    return result === 0;
 }

@@ -7,17 +7,18 @@ export async function isGuestMode() {
     return cookieStore.has("guest_mode") || headerList.get("x-guest-mode") === "true"
 }
 
-export async function getCurrentUser(): Promise<{ userId: string, isGuest: boolean } | null> {
-    const { session } = await import("@descope/nextjs-sdk/server")
-    const sessionRes = await session()
-    const userId = sessionRes?.token?.sub
+export async function getCurrentUser(): Promise<{ userId: string, email: string, isGuest: boolean } | null> {
+    const { getSession } = await import("../session")
+    const session = await getSession()
+    const userId = session?.userId
+    const email = session?.email
 
-    if (userId) {
-        return { userId, isGuest: false }
+    if (userId && email) {
+        return { userId, email, isGuest: false }
     }
 
     if (await isGuestMode()) {
-        return { userId: "guest-user", isGuest: true }
+        return { userId: "guest-user", email: "guest@khataplus.demo", isGuest: true }
     }
 
     return null

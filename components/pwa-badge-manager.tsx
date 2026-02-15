@@ -2,7 +2,6 @@
 
 import { useEffect, useCallback } from "react"
 import { usePWA } from "@/components/pwa-provider"
-import { getPendingApprovalsCount } from "@/lib/data/profiles"
 
 export function PWABadgeManager({ isAdmin }: { isAdmin: boolean }) {
     const { setBadge } = usePWA()
@@ -14,8 +13,9 @@ export function PWABadgeManager({ isAdmin }: { isAdmin: boolean }) {
         }
 
         try {
-            const count = await getPendingApprovalsCount()
-            setBadge(count)
+            // const count = await getPendingApprovalsCount()
+            // setBadge(count)
+            setBadge(0) // Logic for pending approvals removed
         } catch (error) {
             console.error("Failed to sync app badge:", error)
         }

@@ -11,7 +11,7 @@ export interface Gstr1B2BRow {
   cgst: number
   sgst: number
   total_value: number
-  pos: string // Place of Supply
+  pos: string
 }
 
 export interface Gstr3bSummary {
@@ -26,53 +26,40 @@ export interface Gstr3bSummary {
 export async function getGstr1B2B(orgId: string, startDate: string, endDate: string): Promise<Gstr1B2BRow[]> {
   const sql = getSql()
 
-  // Note: This relies on the new customer_gstin column
-  // We aggregate grouping by invoice could be done here or in UI. 
-  // For GSTR-1, we list invoices.
-
-  // Checking if columns exist effectively by trying to query them. 
-  // If migration failed, this will error, which is good feedback.
-
   const rows = await sql`
     SELECT 
-      substring(id::text, 0, 8) as invoice_no, -- using ID snippet as invoice no for now
+      substring(id::text, 0, 16) as invoice_no, 
       created_at as invoice_date,
       customer_gstin as gstin,
       total_amount as total_value,
-      gst_amount as total_tax
+      gst_amount as total_tax,
+      taxable_amount,
+      cgst_amount,
+      sgst_amount,
+      igst_amount,
+      place_of_supply
     FROM sales 
     WHERE 
       org_id = ${orgId}
       AND created_at >= ${startDate} 
       AND created_at <= ${endDate}
       AND customer_gstin IS NOT NULL
-      AND length(customer_gstin) > 5 -- Basic filter for valid-ish GSTIN
+      AND length(customer_gstin) > 5 
     ORDER BY created_at DESC
   `
 
-  // Transform to flat rows with tax components
-  // Assuming 18% standard for now or extracting from sale_data if detailed
-
   return rows.map((row: any) => {
-    const total = parseFloat(row.total_value)
-    const tax = parseFloat(row.total_tax)
-    const taxable = total - tax
-
-    // Simple state logic: If GSTIN starts with '18' (Assam) and Org is '18', it's Intra-state (CGST+SGST)
-    // For now assuming all Intra-state (CGST+SGST) as local business focus
-    // TODO: Add Org State Logic
-
     return {
       gstin: row.gstin,
-      customer_name: row.customer_name || 'Business Customer',
+      customer_name: 'Business Customer', // Future: Join with customers table
       invoice_no: row.invoice_no,
-      invoice_date: new Date(row.invoice_date).toISOString().split('T')[0],
-      taxable_value: taxable,
-      igst: 0,
-      cgst: tax / 2,
-      sgst: tax / 2,
-      total_value: total,
-      pos: '18-Assam'
+      invoice_date: new Date(row.invoice_date).toLocaleDateString("en-IN"),
+      taxable_value: parseFloat(row.taxable_amount || "0"),
+      igst: parseFloat(row.igst_amount || "0"),
+      cgst: parseFloat(row.cgst_amount || "0"),
+      sgst: parseFloat(row.sgst_amount || "0"),
+      total_value: parseFloat(row.total_value || "0"),
+      pos: row.place_of_supply || "18"
     }
   })
 }
@@ -83,7 +70,11 @@ export async function getGstr3bStats(orgId: string, startDate: string, endDate: 
   const result = await sql`
      SELECT 
        SUM(total_amount) as total_revenue,
-       SUM(gst_amount) as total_tax
+       SUM(gst_amount) as total_tax,
+       SUM(taxable_amount) as total_taxable,
+       SUM(igst_amount) as total_igst,
+       SUM(cgst_amount) as total_cgst,
+       SUM(sgst_amount) as total_sgst
      FROM sales
      WHERE 
        org_id = ${orgId}
@@ -91,14 +82,13 @@ export async function getGstr3bStats(orgId: string, startDate: string, endDate: 
        AND created_at <= ${endDate}
   `
 
-  const tax = parseFloat(result[0].total_tax || "0")
-  const rev = parseFloat(result[0].total_revenue || "0")
+  const r = result[0]
 
   return {
-    total_taxable: rev - tax,
-    total_tax: tax,
-    total_igst: 0,
-    total_cgst: tax / 2,
-    total_sgst: tax / 2
+    total_taxable: parseFloat(r.total_taxable || "0"),
+    total_tax: parseFloat(r.total_tax || "0"),
+    total_igst: parseFloat(r.total_igst || "0"),
+    total_cgst: parseFloat(r.total_cgst || "0"),
+    total_sgst: parseFloat(r.total_sgst || "0")
   }
 }

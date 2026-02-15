@@ -22,8 +22,8 @@ export default function OfflinePage() {
                 </h1>
 
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                    The Platinum ledger requires a secure link to sync real-time transactions.
-                    Don't worry—cached data is still accessible, and your session is protected.
+                    The secure ledger requires a link to sync real-time transactions.
+                    Don't worry—cached data is still accessible.
                 </p>
 
                 <div className="grid grid-cols-1 gap-2 pt-6">
@@ -43,7 +43,7 @@ export default function OfflinePage() {
 
             <div className="mt-12 flex items-center gap-2 text-[10px] text-muted-foreground/50 font-medium uppercase tracking-[0.2em]">
                 <ShieldAlert className="h-3 w-3" />
-                Institutional Offline Shield Active
+                Secure Offline Mode Active
             </div>
 
             {/* Background Shimmy */}

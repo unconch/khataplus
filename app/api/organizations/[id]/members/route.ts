@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { session } from "@descope/nextjs-sdk/server"
+import { getSession } from "@/lib/session"
 import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
 
 export async function GET(
@@ -7,8 +7,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const sessionRes = await session()
-        const userId = sessionRes?.token?.sub
+        const sessionRes = await getSession()
+        const userId = sessionRes?.userId
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -28,8 +28,8 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const sessionRes = await session()
-        const userId = sessionRes?.token?.sub
+        const sessionRes = await getSession()
+        const userId = sessionRes?.userId
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -63,8 +63,8 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const sessionRes = await session()
-        const userId = sessionRes?.token?.sub
+        const sessionRes = await getSession()
+        const userId = sessionRes?.userId
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -86,8 +86,8 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const sessionRes = await session()
-        const userId = sessionRes?.token?.sub
+        const sessionRes = await getSession()
+        const userId = sessionRes?.userId
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

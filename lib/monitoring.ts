@@ -11,35 +11,54 @@ export interface SystemAlert {
   metadata?: any;
 }
 
-export async function logHealthMetric(durationMs: number, operation: string) {
+export async function logHealthMetric(durationMs: number, operation: string, db?: any) {
   // If latency is over 500ms, we consider it a performance issue
   if (durationMs > 500) {
-    await sql`
+    const query = `
       INSERT INTO system_alerts (type, severity, message, timestamp, metadata)
       VALUES (
         'performance', 
         'medium', 
-        ${`Slow ${operation} detected: ${durationMs}ms`}, 
+        $1, 
         NOW(), 
-        ${JSON.stringify({ durationMs, operation })}
+        $2
       )
     `;
+    const message = `Slow ${operation} detected: ${durationMs}ms`;
+    const metadata = JSON.stringify({ durationMs, operation });
+
+    if (db) {
+      // @ts-ignore
+      await db.query(query, [message, metadata]);
+    } else {
+      // Use a safe production client that doesn't access cookies()
+      const { getProductionSql } = await import("./db");
+      const safeSql = getProductionSql();
+      // @ts-ignore
+      await safeSql.query(query, [message, metadata]);
+    }
   }
 }
 
 export async function checkForFraud(amount: number, userId: string, operation: string) {
   // Simple fraud detection: transactions over 50,000 are flagged
   if (amount > 50000) {
-    await sql`
+    const query = `
       INSERT INTO system_alerts (type, severity, message, timestamp, metadata)
       VALUES (
         'fraud', 
         'high', 
-        ${`High-value transaction flagged: ₹${amount}`}, 
+        $1, 
         NOW(), 
-        ${JSON.stringify({ amount, userId, operation })}
+        $2
       )
     `;
+    const message = `High-value transaction flagged: ₹${amount}`;
+    const metadata = JSON.stringify({ amount, userId, operation });
+
+    // We use the global sql here because checkForFraud is usually called during write operations (non-cached)
+    // But let's use the same safe query pattern to avoid lint issues
+    await (sql as any).query(query, [message, metadata]);
     return true;
   }
   return false;

@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation"
-import { session } from "@descope/nextjs-sdk/server"
+import { getSession } from "@/lib/session"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { getUserOrganizations, getProfile } from "@/lib/data"
 
 export default async function SetupOrganizationPage() {
-    const sessionRes = await session()
-    const userId = sessionRes?.token?.sub
+    const sessionRes = await getSession()
+    const userId = sessionRes?.userId
 
     if (!userId) {
         redirect("/auth/login")
@@ -29,7 +29,7 @@ export default async function SetupOrganizationPage() {
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             </div>
 
-            <div className="w-full max-w-xl relative z-10 py-12">
+            <div className="w-full max-w-xl relative z-10 py-4">
                 <OnboardingWizard userId={userId} profile={profile as any} />
             </div>
         </div>

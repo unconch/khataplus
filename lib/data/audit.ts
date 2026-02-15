@@ -11,17 +11,21 @@ export async function createAuditLog(log: Omit<AuditLog, "id" | "created_at" | "
     `;
 }
 
-export const getAuditLogs = nextCache(
-    async (): Promise<AuditLog[]> => {
-        const data = await sql`
-            SELECT a.*, p.name as user_name, p.email as user_email
-            FROM audit_logs a
-            LEFT JOIN profiles p ON a.user_id = p.id
-            ORDER BY a.created_at DESC
-            LIMIT 100
-        `;
-        return data as AuditLog[];
-    },
-    ["audit-logs-list"],
-    { revalidate: 60 }
-);
+export async function getAuditLogs() {
+    return nextCache(
+        async (): Promise<AuditLog[]> => {
+            const { getProductionSql } = await import("../db");
+            const db = getProductionSql();
+            const data = await db`
+                SELECT a.*, p.name as user_name, p.email as user_email
+                FROM audit_logs a
+                LEFT JOIN profiles p ON a.user_id = p.id
+                ORDER BY a.created_at DESC
+                LIMIT 100
+            `;
+            return data as AuditLog[];
+        },
+        ["audit-logs-list"],
+        { revalidate: 60, tags: ["audit-logs"] }
+    )();
+}

@@ -22,21 +22,31 @@ interface AppHeaderProps {
   pathPrefix?: string
 }
 
-import { useDescope, useUser } from "@descope/react-sdk"
+import { createClient } from "@/lib/supabase/client"
 import { SettingsIcon } from "lucide-react"
 import { useTenant } from "@/components/tenant-provider"
+import { useState, useEffect } from "react"
+import type { User } from "@supabase/supabase-js"
 
 export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = "" }: AppHeaderProps) {
   const router = useRouter()
-  const { logout } = useDescope()
-  const { user, isUserLoading } = useUser()
+  const supabase = createClient()
+  const [user, setUser] = useState<User | null>(null)
+  const [isUserLoading, setIsUserLoading] = useState(true)
   const { tenant } = useTenant()
 
-  const currentOrgName = tenant?.name || orgName || "Platinum"
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      setIsUserLoading(false)
+    }
+    getUser()
+  }, [supabase])
+
+  const currentOrgName = tenant?.name || orgName || "KhataPlus"
 
   const displayName = profile?.name ||
-    user?.name ||
-    profile?.email ||
     user?.email ||
     (!isUserLoading ? "Guest User" : "Loading...")
 
@@ -48,7 +58,7 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
         displayRole || "Viewer"
 
   const handleLogout = async () => {
-    await logout()
+    await supabase.auth.signOut()
     router.push("/auth/login")
     router.refresh()
   }
@@ -72,32 +82,12 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
             <span className="text-sm lg:text-base font-black tracking-tighter text-foreground leading-none">
               {currentOrgName}
             </span>
-            <div className="flex items-center gap-1 mt-1">
-              <span className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-destructive animate-pulse"
-              )} />
-              <span className="text-[9px] font-black uppercase tracking-[0.05em] text-muted-foreground/80">
-                {isOnline ? "Sync Active" : "Offline"}
-              </span>
-            </div>
           </div>
         </button>
 
         <div className="flex items-center gap-2 lg:gap-5">
           <div className="flex items-center">
             {/* Desktop-only detailed status */}
-            <div className="mr-3 hidden lg:flex items-center border-r border-border/40 pr-4">
-              <span className={cn(
-                "h-2 w-2 rounded-full",
-                isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-destructive animate-pulse"
-              )} />
-              <div className="ml-2 text-right">
-                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-emerald-600">
-                  {isOnline ? "Realtime Active" : "Offline"}
-                </p>
-              </div>
-            </div>
 
             <div className="text-right hidden sm:block mr-2 lg:mr-4 border-r border-border/40 pr-2 lg:pr-4">
               <p className="text-xs lg:text-sm font-bold text-foreground leading-none">{displayName}</p>

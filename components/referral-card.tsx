@@ -60,16 +60,6 @@ export function ReferralCard() {
                     </Button>
                 </div>
 
-                <div className="pt-6 flex items-center gap-4 border-t border-white/10">
-                    <div className="flex -space-x-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-8 w-8 rounded-full border-2 border-indigo-600 bg-indigo-500 overflow-hidden" />
-                        ))}
-                    </div>
-                    <p className="text-[10px] font-bold text-blue-200 italic uppercase tracking-widest animate-pulse">
-                        10k+ shops joined this month
-                    </p>
-                </div>
             </div>
         </div>
     )

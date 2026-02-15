@@ -2,9 +2,11 @@ export interface Profile {
   id: string
   email: string
   name?: string
-  role: "main admin" | "owner" | "staff"
+  role: "owner" | "staff"
   status: "pending" | "approved" | "disabled"
+
   biometric_required: boolean
+  phone?: string
   organization_id?: string
   created_at: string
   updated_at: string
@@ -41,6 +43,13 @@ export interface Sale {
   customer_gstin?: string
   hsn_code?: string
   org_id?: string
+  // New GST Fields
+  taxable_amount?: number
+  igst_amount?: number
+  cgst_amount?: number
+  sgst_amount?: number
+  gst_rate?: number
+  place_of_supply?: string
 }
 
 export interface DailySummary {
@@ -157,7 +166,7 @@ export interface OrganizationMember {
   id: string
   org_id: string
   user_id: string
-  role: "admin" | "manager" | "staff" | "owner"
+  role: "owner" | "manager" | "staff"
   created_at: string
   user?: Profile
   organization?: Organization

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/data/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { GstrExportButton } from "@/components/reports/gstr-export-button"
 import { Button } from "@/components/ui/button"
 import { Download, FileText, IndianRupee, BadgeIndianRupee } from "lucide-react"
 import { PriceDisplay } from "@/components/ui/price-display"
@@ -30,10 +31,7 @@ export default async function GstReportPage() {
                     </div>
                     <h1 className="text-4xl font-black tracking-tighter">GST Intelligence</h1>
                 </div>
-                <Button className="rounded-2xl h-12 px-6 font-bold shadow-xl shadow-primary/10">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export GSTR-1 JSON
-                </Button>
+                <GstrExportButton orgId={profile.organization_id!} />
             </div>
 
             <Suspense fallback={<div>Loading GST Data...</div>}>

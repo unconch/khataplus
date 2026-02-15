@@ -16,7 +16,7 @@
 ## Phase 3: Scaling & UX
 - [ ] **Subdomain Routing**: `shop.khataplus.com`.
 - [ ] **Self-Service Onboarding**: Guided tours and data import wizards.
-- [ ] **Partner Portal**: Dashboard for CAs/Accounting firms.
+- [ ] **Early Member Portal**: Dashboard for CAs/Accounting firms.
 - [ ] **Mobile App**: Dedicated Android/iOS shell for PWA.
 
 ## Priority Feature Matrix

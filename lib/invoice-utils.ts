@@ -34,7 +34,7 @@ export const generateInvoice = async (group: GroupedSale, type: 'A4' | 'THERMAL'
             doc.setFontSize(9)
             doc.setFont("helvetica", "normal")
             doc.setTextColor(200, 255, 200)
-            doc.text("Your Business Partner • support@khataplus.in", 105, 27, { align: "center" })
+            doc.text("The Business Operating System • support@khataplus.in", 105, 27, { align: "center" })
             doc.text(`GSTIN: ${businessGstin} | Contact: +91 98765 43210`, 105, 32, { align: "center" })
 
             doc.setDrawColor(230, 230, 230)

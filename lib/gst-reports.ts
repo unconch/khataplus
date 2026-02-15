@@ -3,6 +3,7 @@
 import { sql } from "./db"
 import { unstable_cache as nextCache } from "next/cache"
 import { Sale } from "./types"
+import { authorize } from "./security"
 
 export interface Gstr1Summary {
     b2b: Sale[] // Sales with Customer GSTIN
@@ -19,18 +20,22 @@ export interface Gstr3bSummary {
 }
 
 export async function getGstr1Data(orgId: string, monthStr: string): Promise<Gstr1Summary> {
+    await authorize("View GST Data", undefined, orgId);
     // monthStr format: "YYYY-MM"
     const startDate = `${monthStr}-01`
     const endDate = new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString().split('T')[0];
 
     const sales = await sql`
-        SELECT s.*, i.name as item_name
+        SELECT 
+            s.id, s.created_at, s.total_amount, s.gst_amount, s.customer_gstin, s.hsn_code,
+            s.taxable_amount, s.cgst_amount, s.sgst_amount, s.igst_amount, s.gst_rate,
+            i.name as item_name
         FROM sales s
         LEFT JOIN inventory i ON s.inventory_id = i.id
         WHERE s.org_id = ${orgId}
         AND s.created_at >= ${startDate}
         AND s.created_at < ${endDate}
-    ` as any[]; // Type assertion needed due to join
+    ` as any[];
 
     const b2b = sales.filter(s => s.customer_gstin && s.customer_gstin.length >= 15);
     const b2c = sales.filter(s => !s.customer_gstin || s.customer_gstin.length < 15);
@@ -41,20 +46,26 @@ export async function getGstr1Data(orgId: string, monthStr: string): Promise<Gst
     sales.forEach(s => {
         const code = s.hsn_code || "UNKNOWN";
         const entry = hsnMap.get(code) || { hsn_code: code, description: s.item_name || "Item", total_value: 0, total_tax: 0 };
-        entry.total_value += Number(s.total_amount) - Number(s.gst_amount); // Taxable Value
-        entry.total_tax += Number(s.gst_amount);
+
+        // Use new columns if available, fallback to calculated
+        const taxable = s.taxable_amount ? Number(s.taxable_amount) : (Number(s.total_amount) - Number(s.gst_amount));
+        const tax = s.gst_amount ? Number(s.gst_amount) : 0;
+
+        entry.total_value += taxable;
+        entry.total_tax += tax;
         hsnMap.set(code, entry);
     });
 
     return {
         b2b: b2b.map(mapSale),
-        b2c_large: [], // Placeholder logic
+        b2c_large: [],
         b2c_small: b2c.map(mapSale),
         hsn_summary: Array.from(hsnMap.values())
     }
 }
 
 export async function getGstr3bSummary(orgId: string, monthStr: string): Promise<Gstr3bSummary> {
+    await authorize("View GST Data", undefined, orgId);
     const startDate = `${monthStr}-01`
     const endDate = new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString().split('T')[0];
 

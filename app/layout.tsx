@@ -81,10 +81,7 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <AuthProvider
-          projectId={process.env.NEXT_PUBLIC_DESCOPE_PROJECT_ID!}
-          baseUrl={process.env.NODE_ENV === "production" ? "/auth-api" : undefined}
-        >
+        <AuthProvider>
           <SyncProvider>
             <ScrollToTop />
             <SystemAnnouncement />

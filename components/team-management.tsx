@@ -18,7 +18,7 @@ interface TeamPageProps {
 interface Member {
     id: string
     user_id: string
-    role: "admin" | "manager" | "staff"
+    role: "owner" | "manager" | "staff"
     user?: { name: string; email: string }
 }
 
@@ -49,7 +49,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
 
     const handleInvite = async () => {
         if (!inviteEmail.trim()) {
-          return
+            return
         }
         setSending(true)
 
@@ -80,7 +80,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
 
     const handleRemove = async (userId: string) => {
         if (!confirm("Remove this member?")) {
-          return
+            return
         }
 
         try {
@@ -96,7 +96,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     }
 
     const roleColors = {
-        admin: "bg-amber-500/10 text-amber-500",
+        owner: "bg-amber-500/10 text-amber-500",
         manager: "bg-blue-500/10 text-blue-500",
         staff: "bg-zinc-500/10 text-zinc-400"
     }
@@ -131,7 +131,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="owner">Owner</SelectItem>
                                     <SelectItem value="manager">Manager</SelectItem>
                                     <SelectItem value="staff">Staff</SelectItem>
                                 </SelectContent>
@@ -189,7 +189,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
                                         <Badge className={cn("capitalize", roleColors[member.role])}>
                                             {member.role}
                                         </Badge>
-                                        {member.role !== "admin" && (
+                                        {member.role !== "owner" && (
                                             <Button variant="ghost" size="icon" onClick={() => handleRemove(member.user_id)}>
                                                 <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                             </Button>

@@ -19,6 +19,23 @@ export async function GET(req: NextRequest) {
         return new Response('orgId is required', { status: 400 });
     }
 
+    // SECURITY HARDENING: Authorize SSE Stream (ASVS Level 3)
+    // Prevent metadata leakage by verifying user membership in the organization
+    const { getSession } = await import('@/lib/session');
+    const session = await getSession();
+    if (!session) {
+        return new Response('Unauthorized: Session required', { status: 401 });
+    }
+
+    const { getUserOrganizations } = await import('@/lib/data/organizations');
+    const userOrgs = await getUserOrganizations(session.user.id);
+    const isMember = userOrgs.some(o => o.org_id === orgId);
+
+    if (!isMember) {
+        console.error(`[SSE/Auth] Unauthorized stream attempt for org: ${orgId} by user: ${session.user.id}`);
+        return new Response('Forbidden: Access denied to this organization', { status: 403 });
+    }
+
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({

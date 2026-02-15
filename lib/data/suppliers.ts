@@ -7,9 +7,16 @@ import { unstable_cache as nextCache } from "next/cache";
 import { getCurrentOrgId } from "./auth";
 
 export async function getSuppliers(orgId: string) {
+    const { isGuestMode } = await import("./auth");
+    const isGuest = await isGuestMode();
+    const flavor = isGuest ? "demo" : "prod";
+
     return nextCache(
         async (): Promise<Supplier[]> => {
-            const data = await sql`
+            const { getDemoSql, getProductionSql } = await import("../db");
+            const db = isGuest ? getDemoSql() : getProductionSql();
+
+            const data = await db`
                 SELECT s.*, 
                     COALESCE(SUM(CASE WHEN st.type = 'purchase' THEN st.amount ELSE -st.amount END), 0) as balance
                 FROM suppliers s
@@ -23,8 +30,8 @@ export async function getSuppliers(orgId: string) {
                 balance: parseFloat(row.balance)
             })) as Supplier[];
         },
-        [`suppliers-list-${orgId}`],
-        { tags: ["suppliers", `suppliers-${orgId}`], revalidate: 300 }
+        [`suppliers-list-${flavor}-${orgId}`],
+        { tags: ["suppliers", `suppliers-${orgId}`, `suppliers-${flavor}`], revalidate: 300 }
     )();
 }
 

@@ -1,10 +1,14 @@
 "use server"
 
+import { randomHex, generateUUID } from '../universal-crypto';
+
 import { sql } from "../db";
 import type { Organization, OrganizationMember, OrganizationInvite, SystemSettings } from "../types";
 import { authorize, audit } from "../security";
 import { cache } from "react";
 import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next/cache";
+import { sendWelcomeEmail } from "../mail";
+import { getProfile } from "./profiles";
 
 
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
@@ -16,20 +20,36 @@ export async function createOrganization(name: string, userId: string, details?:
 
     let slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-    // Handle potential slug collisions (for safety, though name check handles most cases)
+    // Handle potential slug collisions
     const existingSlug = await sql`SELECT slug FROM organizations WHERE slug = ${slug}`;
     if (existingSlug.length > 0) {
-        const suffix = Math.random().toString(36).substring(2, 6);
+        const suffix = randomHex(4);
         slug = `${slug}-${suffix}`;
     }
 
+    console.log("[DB/Orgs] Generated slug:", slug);
+
     try {
+        console.log("[DB/Orgs] Inserting into organizations table...");
         const result = await sql`
             INSERT INTO organizations(name, slug, created_by, gstin, address, phone)
             VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null}, ${details?.phone || null})
             RETURNING *
         `;
-        const org = result[0] as Organization;
+
+        console.log("[DB/Orgs] result set:", result);
+        const orgRaw = result[0] as any;
+
+        if (!orgRaw) {
+            console.error("[DB/Orgs] INSERT succeeded but returned no rows!");
+            throw new Error("Failed to retrieve created organization data");
+        }
+
+        const org = {
+            ...orgRaw,
+            created_at: orgRaw.created_at instanceof Date ? orgRaw.created_at.toISOString() : String(orgRaw.created_at),
+            updated_at: orgRaw.updated_at instanceof Date ? orgRaw.updated_at.toISOString() : String(orgRaw.updated_at),
+        } as Organization;
 
         // Add creator as owner
         await sql`
@@ -37,9 +57,9 @@ export async function createOrganization(name: string, userId: string, details?:
             VALUES(${org.id}, ${userId}, 'owner')
         `;
 
-        // Promote user to admin in profiles table for consistent permissions
+        // Promote user to main admin in profiles table for consistent permissions
         await sql`
-            UPDATE profiles SET role = 'admin' WHERE id = ${userId}
+            UPDATE profiles SET role = 'owner' WHERE id = ${userId}
         `;
 
         // Revalidate paths to ensure layout and dashboard reflect new organization
@@ -55,6 +75,14 @@ export async function createOrganization(name: string, userId: string, details?:
         } catch (e) {
             console.warn("revalidateTag failed, non-critical:", e);
         }
+
+        // Fire-and-forget welcome email
+        getProfile(userId).then(profile => {
+            if (profile && profile.email) {
+                sendWelcomeEmail(profile.email, profile.name || "User", org.name)
+                    .catch(e => console.error("[DB/Orgs] Failed to send welcome email:", e));
+            }
+        });
 
         return org;
     } catch (error) {
@@ -93,7 +121,7 @@ export async function getUserOrganizations(userId: string): Promise<(Organizatio
 }
 
 export async function updateOrganization(orgId: string, updates: Partial<Organization>): Promise<void> {
-    await authorize("Update Organization", "admin", orgId);
+    await authorize("Update Organization", "owner", orgId);
 
     await sql`
         UPDATE organizations
@@ -112,7 +140,9 @@ export async function updateOrganization(orgId: string, updates: Partial<Organiz
 export const getOrganizationBySlug = cache(async (slug: string): Promise<Organization | null> => {
     return nextCache(
         async (): Promise<Organization | null> => {
-            const result = await sql`SELECT * FROM organizations WHERE slug = ${slug}`;
+            const { getProductionSql } = await import("../db");
+            const db = getProductionSql();
+            const result = await db`SELECT * FROM organizations WHERE slug = ${slug}`;
             return (result[0] as Organization) || null;
         },
         [`org-slug-${slug}`],
@@ -132,11 +162,18 @@ export async function getOrganizationMembers(orgId: string): Promise<Organizatio
         JOIN profiles p ON om.user_id = p.id
         WHERE om.org_id = ${orgId}
     `;
-    return data as OrganizationMember[];
+    return data.map((row: any) => ({
+        ...row,
+        user: {
+            name: row.user_name,
+            email: row.user_email
+        }
+    })) as OrganizationMember[];
+
 }
 
 export async function createInvite(orgId: string, email: string, role: string): Promise<OrganizationInvite> {
-    const token = crypto.randomUUID();
+    const token = generateUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
@@ -160,6 +197,14 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
     const invite = await getInviteByToken(token);
     if (!invite) return false;
 
+    // SECURITY HARDENING: Prevent Invitation Hijacking
+    // Verify that the accepting user's email matches the invited email
+    const profile = await getProfile(userId);
+    if (!profile || !profile.email || profile.email.toLowerCase() !== invite.email.toLowerCase()) {
+        console.error(`[AcceptInvite] Hijack Attempt? Invited: ${invite.email}, Accepting: ${profile?.email}`);
+        throw new Error("This invitation was sent to a different email address.");
+    }
+
     await sql`
         INSERT INTO organization_members(org_id, user_id, role)
         VALUES(${invite.org_id}, ${userId}, ${invite.role})
@@ -171,18 +216,39 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
 }
 
 export async function updateMemberRole(orgId: string, userId: string, newRole: string): Promise<void> {
-    await authorize("Update Role", "admin", orgId);
+    await authorize("Update Role", "owner", orgId);
 
     await sql`
         UPDATE organization_members
         SET role = ${newRole}, updated_at = CURRENT_TIMESTAMP
         WHERE org_id = ${orgId} AND user_id = ${userId}
     `;
+
+    // FORCED LOGOUT on Role Change (ASVS Level 3)
+    try {
+        const { revokeAllSessions } = await import("../session-governance");
+        await revokeAllSessions(userId);
+    } catch (err) {
+        console.error("[OrgMembers] Session revocation failed:", err);
+    }
 }
 
 export async function removeMember(orgId: string, userId: string): Promise<void> {
-    await authorize("Remove Member", "admin", orgId);
+    await authorize("Remove Member", "owner", orgId);
     await sql`DELETE FROM organization_members WHERE org_id = ${orgId} AND user_id = ${userId}`;
+}
+
+export async function deleteOrganization(orgId: string): Promise<void> {
+    await authorize("Delete Organization", "owner", orgId);
+
+    // MISSION-CRITICAL: Crypto-shredding (ASVS Level 3)
+    // Deleting the organization record also deletes the 'encrypted_dek'.
+    // Any data in audit_logs or backups encrypted with this DEK becomes mathematically unrecoverable.
+    await sql`DELETE FROM organizations WHERE id = ${orgId}`;
+
+    await audit("Deleted Organization (Crypto-Shredded)", "organization", orgId, { orgId }, "system");
+
+    revalidatePath("/", "layout");
 }
 
 export async function getSystemSettings(orgId?: string) {
@@ -242,7 +308,7 @@ export async function updateSystemSettings(updates: Partial<SystemSettings>, org
     const actualOrgId = orgId || await getCurrentOrgId();
     if (!actualOrgId) throw new Error("Organization ID required");
 
-    await authorize("Update Settings", "admin", actualOrgId);
+    await authorize("Update Settings", "owner", actualOrgId);
 
     await sql`
         UPDATE organizations
@@ -254,5 +320,3 @@ export async function updateSystemSettings(updates: Partial<SystemSettings>, org
     (revalidateTag as any)(`settings-${actualOrgId}`);
     revalidatePath("/dashboard/admin", "page");
 }
-
-// getCurrentOrgId moved to auth.ts

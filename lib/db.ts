@@ -64,15 +64,26 @@ export const sql = async (stringsOrQuery: TemplateStringsArray | string, ...valu
     let userId: string | null = null;
 
     try {
-        const { session } = await import('@descope/nextjs-sdk/server');
-        const sessionRes = await session();
-        userId = (sessionRes?.token?.sub as string) || null;
+        const { getSession } = await import('@/lib/session');
+        // If we are inside unstable_cache, this will throw or behave unexpectedly in Next.js 15
+        const sessionRes = await getSession();
+        userId = (sessionRes?.userId as string) || null;
 
         const { cookies, headers } = await import('next/headers');
+
+        // This is the critical line that throws inside unstable_cache
         cookieStore = await cookies();
         headersList = await headers();
     } catch (e) {
-        // Fallback to PROD if we can't access request context (e.g. build time or scripts)
+        // Fallback to PROD if we can't access request context (e.g. build time, scripts, or CACHE SCOPE)
+        console.log("[SQL] Request context unavailable (might be cache scope). Falling back to Production DB.");
+        const client = getProductionSql();
+        if (typeof stringsOrQuery === 'string') {
+            return await (client as any).query(stringsOrQuery as string, values);
+        } else {
+            // @ts-ignore
+            return await client(stringsOrQuery, ...values);
+        }
     }
 
     if (headersList && cookieStore) {
@@ -83,6 +94,7 @@ export const sql = async (stringsOrQuery: TemplateStringsArray | string, ...valu
 
         if ((!userId && hasGuestCookie) || isDemoRoute || hasGuestHeader) {
             isGuest = true;
+            console.log("[SQL] Switching to Sandbox/Demo connection");
             if (!process.env.DEMO_DATABASE_URL) {
                 throw new Error('SECURITY ALERT: Demo Database URL not configured. Guest Session terminated.');
             }
@@ -96,8 +108,14 @@ export const sql = async (stringsOrQuery: TemplateStringsArray | string, ...valu
 
     const client = getClient(connectionUrl, isGuest);
 
-    // @ts-ignore
-    return client(stringsOrQuery, ...values);
+    console.log(`[SQL] Executing query on ${isGuest ? 'Sandbox' : 'Production'}`);
+
+    if (typeof stringsOrQuery === 'string') {
+        return await (client as any).query(stringsOrQuery as string, values);
+    } else {
+        // @ts-ignore
+        return await client(stringsOrQuery, ...values);
+    }
 };
 
 export const getSql = () => {

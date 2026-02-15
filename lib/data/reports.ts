@@ -77,7 +77,7 @@ export async function syncDailyReport(date: string, orgId?: string): Promise<voi
         return;
     }
 
-    // 2. Fetch sales aggregation for this date
+    // 2. Fetch sales aggregation for this date (Scoped to Organization)
     const salesAgg = await sql`
         SELECT
             SUM(total_amount) as total_gross,
@@ -85,7 +85,7 @@ export async function syncDailyReport(date: string, orgId?: string): Promise<voi
             SUM(CASE WHEN payment_method = 'Cash' THEN total_amount ELSE 0 END) as cash_total,
             SUM(CASE WHEN payment_method = 'UPI' THEN total_amount ELSE 0 END) as upi_total
         FROM sales
-        WHERE sale_date = ${date}
+        WHERE sale_date = ${date} AND org_id = ${actualOrgId}
     `;
 
     const totalGross = parseFloat(salesAgg[0]?.total_gross || "0");

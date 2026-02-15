@@ -36,10 +36,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useDescope, useUser } from "@descope/react-sdk"
+import { createClient } from "@/lib/supabase/client"
 import { Profile, SystemSettings, DailyReport, InventoryItem } from "@/lib/types"
 import { SearchDialog } from "@/components/search-dialog"
 import { QuickStartGuide } from "@/components/quick-start-guide"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { setupDemoOrganization } from "@/lib/demo-data"
@@ -101,9 +102,17 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
     const [isMounted, setIsMounted] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
     const [isEnteringDemo, setIsEnteringDemo] = useState(false)
+    const [user, setUser] = useState<SupabaseUser | null>(null)
     const router = useRouter()
-    const { logout } = useDescope()
-    const { user } = useUser()
+    const supabase = createClient()
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            setUser(user)
+        }
+        getUser()
+    }, [supabase])
 
     useEffect(() => {
         setIsMounted(true)
@@ -124,8 +133,8 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
         }
     }
 
-    const firstName = user?.name?.split(" ")[0] || "User"
-    const displayName = profile?.name || user?.name || "User"
+    const firstName = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "User"
+    const displayName = profile?.name || user?.user_metadata?.full_name || "User"
 
     // Prepare Chart Data from Reports
     const chartData = reports
@@ -164,13 +173,7 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                     </div>
                     <div className="relative z-10 space-y-1">
                         <p className="text-emerald-100/80 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Command Center</p>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-black italic tracking-tighter">Hello, {firstName}</h1>
-                            <div className="px-1.5 py-0.5 bg-emerald-400/20 rounded-md border border-emerald-400/20 flex items-center gap-1 scale-90">
-                                <Shield size={8} className="text-emerald-200 fill-emerald-200" />
-                                <span className="text-[7px] font-black uppercase text-emerald-100">Founding Member</span>
-                            </div>
-                        </div>
+                        <h1 className="text-xl font-black italic tracking-tighter">Hello, {firstName}</h1>
                         <div className="flex items-center gap-2 pt-1">
                             <div className="px-2 py-0.5 bg-white/10 rounded-full border border-white/10 flex items-center gap-1.5">
                                 <Calendar size={10} className="text-emerald-200" />
@@ -216,10 +219,6 @@ export function HomeDashboard({ profile, settings, onboardingStats, reports, unp
                                 <p className="text-white text-xl lg:text-2xl font-bold">
                                     Hello, {firstName}
                                 </p>
-                                <div className="px-2 py-0.5 bg-emerald-400/20 rounded-lg border border-emerald-400/20 flex items-center gap-2">
-                                    <Shield size={12} className="text-emerald-200 fill-emerald-200" />
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-100">Founding Member</span>
-                                </div>
                             </div>
                             <p className="text-emerald-100/70 text-sm font-semibold tracking-wider uppercase">
                                 Welcome back to your command center

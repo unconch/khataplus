@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
-import { session } from "@descope/nextjs-sdk/server"
+import { getSession } from "@/lib/session"
 import { getCurrentOrgId } from "@/lib/data"
 
 export async function GET(request: NextRequest) {
     try {
-        const sessionRes = await session()
-        const userId = sessionRes?.token?.sub
+        const sessionRes = await getSession()
+        const userId = sessionRes?.userId
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
