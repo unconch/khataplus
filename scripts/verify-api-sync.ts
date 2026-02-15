@@ -9,6 +9,10 @@ async function main() {
     console.log("Verifying API-based Sync...");
 
     // 1. Get a user
+    if (!supabaseAdmin) {
+        console.error("Supabase Admin client is null. Missing environment variables.");
+        return;
+    }
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
     if (error || !users || users.length === 0) {
         console.error("Failed to list users or no users found:", error);

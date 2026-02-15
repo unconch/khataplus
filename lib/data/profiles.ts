@@ -17,6 +17,11 @@ async function syncToAuth(userId: string, data: { name?: string | null, phone?: 
         if (data.role !== undefined) updates.role = data.role;
 
         if (Object.keys(updates).length > 0) {
+            if (!supabaseAdmin) {
+                console.warn("[syncToAuth] Supabase Admin not initialized. Skipping auth sync.");
+                return;
+            }
+
             const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
                 user_metadata: updates
             });
