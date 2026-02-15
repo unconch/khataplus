@@ -16,30 +16,40 @@ export default async function middleware(req: NextRequest) {
         },
     })
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return req.cookies.getAll()
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => req.cookies.set(name, value))
-                    response = NextResponse.next({
-                        request: {
-                            headers: req.headers,
-                        },
-                    })
-                    cookiesToSet.forEach(({ name, value, options }: { name: string, value: string, options: CookieOptions }) =>
-                        response.cookies.set(name, value, options)
-                    )
-                },
-            },
-        }
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    const { data: { user } } = await supabase.auth.getUser()
+    let user = null
+    let supabase: any = null
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn("Middleware: Missing Supabase Env Vars. Skipping Auth.")
+    } else {
+        supabase = createServerClient(
+            supabaseUrl,
+            supabaseAnonKey,
+            {
+                cookies: {
+                    getAll() {
+                        return req.cookies.getAll()
+                    },
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) => req.cookies.set(name, value))
+                        response = NextResponse.next({
+                            request: {
+                                headers: req.headers,
+                            },
+                        })
+                        cookiesToSet.forEach(({ name, value, options }: { name: string, value: string, options: CookieOptions }) =>
+                            response.cookies.set(name, value, options)
+                        )
+                    },
+                },
+            }
+        )
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+    }
 
     // --------------------------------------------------------------------------
     // SESSION GOVERNANCE: Check Revocation / Concurrent Limits (ASVS Level 3)
@@ -55,7 +65,9 @@ export default async function middleware(req: NextRequest) {
                 const isValid = await isSessionValid(user.id, sessionId);
                 if (!isValid) {
                     // Sign out and redirect to login if session is revoked
-                    await supabase.auth.signOut();
+                    if (supabase) {
+                        await supabase.auth.signOut();
+                    }
                     return NextResponse.redirect(new URL('/auth/login?message=session_revoked', req.url));
                 }
             }

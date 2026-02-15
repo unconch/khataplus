@@ -1,7 +1,22 @@
 import { Redis } from '@upstash/redis'
 
 
-const redis = Redis.fromEnv()
+let redisClient: Redis | null = null;
+
+function getRedis() {
+    if (redisClient) return redisClient;
+
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (url && token) {
+        redisClient = new Redis({ url, token });
+        return redisClient;
+    }
+    console.warn("[SessionGovernance] Missing Upstash Redis env vars. Session checks will be skipped.");
+    return null;
+}
+
 const MAX_CONCURRENT_SESSIONS = 3
 
 /**
@@ -14,6 +29,9 @@ const MAX_CONCURRENT_SESSIONS = 3
  * If the limit is exceeded, the oldest session is flagged for revocation.
  */
 export async function registerSession(userId: string, sessionId: string) {
+    const redis = getRedis();
+    if (!redis) return;
+
     const key = `user:sessions:${userId}`
 
     // Add new session ID to the set
@@ -35,6 +53,9 @@ export async function registerSession(userId: string, sessionId: string) {
  * Used on password or role change.
  */
 export async function revokeAllSessions(userId: string) {
+    const redis = getRedis();
+    if (!redis) return;
+
     const key = `user:sessions:${userId}`
     const sessions = await redis.smembers(key)
 
@@ -51,6 +72,9 @@ export async function revokeAllSessions(userId: string) {
  * Checks if a session is valid and not revoked.
  */
 export async function isSessionValid(userId: string, sessionId: string, iat?: number): Promise<boolean> {
+    const redis = getRedis();
+    if (!redis) return true; // Fail open if Redis is down/missing
+
     // 1. Check if explicitly revoked
     const isRevoked = await redis.get(`revoked:session:${sessionId}`)
     if (isRevoked) return false
