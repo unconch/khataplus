@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Share2, Users, Smartphone, Check, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 
 export function ReferralCard() {

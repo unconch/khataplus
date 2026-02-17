@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft, Shield, Lock, Eye, Database, Globe, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,10 +25,8 @@ export default function PrivacyPolicy() {
 
             <main className="pt-32 pb-24 px-6">
                 <div className="max-w-3xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-16 text-center md:text-left"
+                    <div
+                        className="mb-16 text-center md:text-left animate-in fade-in slide-up duration-500"
                     >
                         <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mb-8 text-emerald-600 mx-auto md:mx-0 shadow-sm border border-emerald-100/50">
                             <Shield size={40} />
@@ -40,7 +37,7 @@ export default function PrivacyPolicy() {
                             <ClockIcon className="w-4 h-4" />
                             <span>Effective Date: February 15, 2026</span>
                         </div>
-                    </motion.div>
+                    </div>
 
                     <div className="space-y-16">
                         {/* 1. Introduction */}

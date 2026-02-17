@@ -13,7 +13,6 @@ import {
     Rocket
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
 import Link from "next/link"
 import { Logo } from "@/components/ui/logo"
 
@@ -48,37 +47,27 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                 <div className="absolute inset-0 bg-emerald-500/5 -z-10" />
                 <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
                     <div className="space-y-8">
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/10 text-emerald-600 font-black text-[10px] uppercase tracking-widest"
+                        <div
+                            className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/10 text-emerald-600 font-black text-[10px] uppercase tracking-widest animate-in fade-in slide-in-from-left-4 duration-500"
                         >
                             <MapPin size={12} />
                             Best in {formattedCity}
-                        </motion.div>
+                        </div>
 
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-5xl md:text-7xl font-black italic tracking-tighter leading-tight"
+                        <h1
+                            className="text-5xl md:text-7xl font-black italic tracking-tighter leading-tight animate-in fade-in slide-up duration-700"
                         >
                             THE #1 BILLING APP FOR <span className="text-emerald-500 underline decoration-emerald-500/30 underline-offset-8">{formattedCategory.endsWith('y') ? formattedCategory.slice(0, -1).toUpperCase() + 'IES' : formattedCategory.toUpperCase() + 'S'}</span> IN {formattedCity.toUpperCase()}
-                        </motion.h1>
+                        </h1>
 
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-xl text-muted-foreground leading-relaxed max-w-xl"
+                        <p
+                            className="text-xl text-muted-foreground leading-relaxed max-w-xl animate-in fade-in slide-up duration-700 delay-100"
                         >
                             Specifically designed for {category} businesses in {city}. Manage your GST invoices, track Udhaar, and grow your sales 2x faster.
-                        </motion.p>
+                        </p>
 
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="flex flex-col sm:flex-row gap-4 pt-4"
+                        <div
+                            className="flex flex-col sm:flex-row gap-4 pt-4 animate-in fade-in slide-up duration-700 delay-200"
                         >
                             <Link href="/auth/sign-up" className="flex-1">
                                 <Button className="w-full h-16 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3">
@@ -90,7 +79,7 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                                     View Live Demo
                                 </Button>
                             </Link>
-                        </motion.div>
+                        </div>
 
                         <div className="flex items-center gap-8 pt-8 border-t border-zinc-100 dark:border-white/5 opacity-60">
                             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -105,10 +94,8 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                         </div>
                     </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, rotateY: 20 }}
-                        animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                        className="relative hidden md:block"
+                    <div
+                        className="relative hidden md:block animate-in fade-in scale-in duration-1000 origin-right transition-transform"
                     >
                         <div className="absolute inset-0 bg-emerald-500/20 blur-[120px] rounded-full -z-10" />
                         <div className="bg-white dark:bg-zinc-900 rounded-[3rem] p-12 shadow-3xl border border-zinc-100 dark:border-white/5 space-y-10">
@@ -147,7 +134,7 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             </section>
 

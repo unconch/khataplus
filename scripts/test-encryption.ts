@@ -20,10 +20,10 @@ async function testSuccess() {
     const secret = "This is a super secret message 123!";
 
     try {
-        const encrypted = encrypt(secret);
+        const encrypted = await encrypt(secret);
         console.log('   [Encrypt] Output:', encrypted);
 
-        const decrypted = decrypt(encrypted);
+        const decrypted = await decrypt(encrypted);
         console.log('   [Decrypt] Output:', decrypted);
 
         if (decrypted === secret) {
@@ -42,7 +42,7 @@ async function testSuccess() {
 async function testTampering() {
     console.log('👉 Test 2: Integrity/Tamper Check');
     const secret = "Don't touch this!";
-    const encrypted = encrypt(secret);
+    const encrypted = await encrypt(secret);
     const parsed = JSON.parse(encrypted);
 
     // Tamper with the data (change last char of base64)
@@ -56,7 +56,7 @@ async function testTampering() {
     console.log('   [Tamper] Modified ciphertext directly.');
 
     try {
-        decrypt(tamperedJson);
+        await decrypt(tamperedJson);
         console.error('   ❌ FAIL: Decryption should have failed but succeeded!');
         process.exit(1);
     } catch (e: any) {

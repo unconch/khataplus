@@ -15,9 +15,9 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { Logo } from "@/components/ui/logo"
+import { cn } from "@/lib/utils"
 
 export function BetaEnrollment() {
     const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle")
@@ -39,32 +39,24 @@ export function BetaEnrollment() {
         <div className="w-full max-w-4xl mx-auto px-4 py-12 md:py-24 space-y-20">
             {/* Hero Section */}
             <div className="text-center space-y-8">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/10 text-emerald-600 font-black text-[10px] uppercase tracking-widest"
+                <div
+                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/10 text-emerald-600 font-black text-[10px] uppercase tracking-widest animate-in fade-in scale-in duration-500"
                 >
                     <Rocket size={14} className="animate-bounce" />
                     Limited Beta Enrollment Open
-                </motion.div>
+                </div>
 
-                <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="text-5xl md:text-7xl font-black italic tracking-tighter leading-none"
+                <h1
+                    className="text-5xl md:text-7xl font-black italic tracking-tighter leading-none animate-in fade-in slide-up duration-500 delay-100"
                 >
                     JOIN THE <span className="text-emerald-500 font-black">FOUNDERS</span> CLUB
-                </motion.h1>
+                </h1>
 
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+                <p
+                    className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-up duration-500 delay-200"
                 >
                     We're looking for 500 ambitious Indian shop owners to shape the future of digital billing.
-                </motion.p>
+                </p>
             </div>
 
             {/* Incentive Cards */}
@@ -86,28 +78,25 @@ export function BetaEnrollment() {
                         desc: "Talk directly to our engineers. Build the features YOU need."
                     }
                 ].map((item, i) => (
-                    <motion.div
+                    <div
                         key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.1 }}
-                        className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-xl border border-zinc-100 dark:border-white/5 space-y-4 hover:scale-[1.02] transition-transform"
+                        className={cn(
+                            "bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-xl border border-zinc-100 dark:border-white/5 space-y-4 hover:scale-[1.02] transition-transform animate-in fade-in slide-up duration-500",
+                            i === 0 ? "delay-300" : i === 1 ? "delay-[400ms]" : "delay-[500ms]"
+                        )}
                     >
                         <div className="h-12 w-12 bg-zinc-50 dark:bg-white/5 rounded-2xl flex items-center justify-center">
                             {item.icon}
                         </div>
                         <h3 className="text-xl font-black italic tracking-tight">{item.title}</h3>
                         <p className="text-sm text-muted-foreground font-medium leading-relaxed">{item.desc}</p>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
             {/* The Hook Form */}
-            <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="bg-zinc-900 rounded-[3.5rem] p-8 md:p-16 text-white relative overflow-hidden group shadow-[0_50px_100px_-20px_rgba(16,185,129,0.3)]"
+            <div
+                className="bg-zinc-900 rounded-[3.5rem] p-8 md:p-16 text-white relative overflow-hidden group shadow-[0_50px_100px_-20px_rgba(16,185,129,0.3)] animate-in fade-in slide-up duration-700 delay-[600ms]"
             >
                 <div className="absolute top-0 right-0 p-20 opacity-10 rotate-12 -mr-20 -mt-20">
                     <Logo size={300} color="white" />
@@ -119,50 +108,43 @@ export function BetaEnrollment() {
                         <p className="text-zinc-400 font-medium">Be part of the digital revolution for small businesses. We launch publicly in 30 days.</p>
                     </div>
 
-                    <AnimatePresence mode="wait">
-                        {status !== "success" ? (
-                            <motion.form
-                                key="form"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onSubmit={handleSubmit}
-                                className="flex flex-col sm:flex-row gap-4"
+                    {status !== "success" ? (
+                        <form
+                            key="form"
+                            onSubmit={handleSubmit}
+                            className="flex flex-col sm:flex-row gap-4"
+                        >
+                            <Input
+                                type="email"
+                                required
+                                placeholder="Enter your email or phone"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="h-16 rounded-2xl bg-white/10 border-white/10 text-white placeholder:text-white/40 font-bold focus:ring-emerald-500"
+                            />
+                            <Button
+                                disabled={status === "submitting"}
+                                type="submit"
+                                className="h-16 px-10 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 transition-all active:scale-95"
                             >
-                                <Input
-                                    type="email"
-                                    required
-                                    placeholder="Enter your email or phone"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="h-16 rounded-2xl bg-white/10 border-white/10 text-white placeholder:text-white/40 font-bold focus:ring-emerald-500"
-                                />
-                                <Button
-                                    disabled={status === "submitting"}
-                                    type="submit"
-                                    className="h-16 px-10 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 transition-all active:scale-95"
-                                >
-                                    {status === "submitting" ? "Enrolling..." : "Join the Club"}
-                                    <ArrowRight size={18} />
-                                </Button>
-                            </motion.form>
-                        ) : (
-                            <motion.div
-                                key="success"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex items-center gap-6 p-6 bg-emerald-500/20 border border-emerald-500/20 rounded-3xl"
-                            >
-                                <div className="h-14 w-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
-                                    <CheckCircle2 size={32} />
-                                </div>
-                                <div>
-                                    <p className="text-xl font-black italic">You're on the list!</p>
-                                    <p className="text-emerald-100/60 text-sm font-bold uppercase tracking-widest">Watch your inbox for the secret link.</p>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                {status === "submitting" ? "Enrolling..." : "Join the Club"}
+                                <ArrowRight size={18} />
+                            </Button>
+                        </form>
+                    ) : (
+                        <div
+                            key="success"
+                            className="flex items-center gap-6 p-6 bg-emerald-500/20 border border-emerald-500/20 rounded-3xl animate-in fade-in scale-in duration-500"
+                        >
+                            <div className="h-14 w-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
+                                <CheckCircle2 size={32} />
+                            </div>
+                            <div>
+                                <p className="text-xl font-black italic">You're on the list!</p>
+                                <p className="text-emerald-100/60 text-sm font-bold uppercase tracking-widest">Watch your inbox for the secret link.</p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex items-center gap-6 pt-4">
                         <div className="flex -space-x-3">
@@ -177,7 +159,7 @@ export function BetaEnrollment() {
                         </p>
                     </div>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Social Proof Section */}
             <div className="text-center space-y-12">

@@ -62,7 +62,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
 
     const membership = userOrgs.find((o: any) => o.org_id === orgId)
     const orgRole = membership?.role || "staff"
-    const isAdmin = orgRole === "admin" || orgRole === "owner" || profile?.role === "main admin"
+    const isAdmin = orgRole === "owner" || String(profile?.role) === "main admin"
 
     return (
         <Tabs defaultValue="profile" className="w-full">

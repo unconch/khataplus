@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,17 +25,15 @@ export default function TermsOfService() {
 
             <main className="pt-32 pb-24 px-6">
                 <div className="max-w-3xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-12"
+                    <div
+                        className="mb-12 animate-in fade-in slide-up duration-500"
                     >
                         <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 text-emerald-600">
                             <FileText size={32} />
                         </div>
                         <h1 className="text-4xl md:text-5xl font-bold mb-4">Terms of Service</h1>
                         <p className="text-zinc-500 text-lg">Last updated: February 6, 2026</p>
-                    </motion.div>
+                    </div>
 
                     <div className="prose prose-zinc prose-lg max-w-none space-y-12 text-zinc-700">
                         <section>

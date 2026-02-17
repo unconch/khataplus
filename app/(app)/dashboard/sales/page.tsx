@@ -81,10 +81,10 @@ async function SalesContent({ autoOpen }: { autoOpen: boolean }) {
   yesterday.setHours(0, 0, 0, 0)
 
   const recentTransactions = allSales.filter(sale => {
-    const saleDate = new Date(sale.created_at)
+    const saleDate = new Date(sale.sale_date)
     saleDate.setHours(0, 0, 0, 0) // Compare dates only
     return saleDate.getTime() === today.getTime() || saleDate.getTime() === yesterday.getTime()
-  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }).sort((a, b) => new Date(b.sale_date).getTime() - new Date(a.sale_date).getTime())
 
   return (
     <>

@@ -311,10 +311,15 @@ function getTypeMatchBonus(field: string, dataType: string): number {
         phone: ["phone", "number"], gstin: ["gstin", "code", "text"],
         sku: ["code", "text"], hsn_code: ["code", "number", "text"],
         expense_date: ["date"], sale_date: ["date"],
+        name: ["text"], name_contact: ["text"]
     }
     const exp = expected[field]
     if (!exp) return 0
-    return exp.includes(dataType) ? 0.15 : -0.15
+
+    // Hard penalty if name is mapped to a pure number column
+    if ((field === "name" || field === "name_contact") && dataType === "number") return -0.4
+
+    return exp.includes(dataType) ? 0.2 : -0.15
 }
 
 function findBestColumnMatch(

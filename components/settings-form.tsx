@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Organization, SystemSettings, Profile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,10 @@ import { Switch } from "@/components/ui/switch"
 import { updateOrganization, updateSystemSettings } from "@/lib/data/organizations"
 import { upsertProfile } from "@/lib/data/profiles"
 import { toast } from "sonner"
-import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield, MessageCircle } from "lucide-react"
+import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield, MessageCircle,
+    Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, Users, ShieldAlert, RefreshCw, Loader2
+} from "lucide-react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 interface SettingsFormProps {
@@ -25,6 +28,15 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
     const [settings, setSettings] = useState(initialSettings)
     const [profile, setProfile] = useState(initialProfile)
     const [loading, setLoading] = useState(false)
+
+    const router = useRouter()
+    const [deleteConfirmText, setDeleteConfirmText] = useState("")
+    const [showDeleteSection, setShowDeleteSection] = useState(false)
+    const [isRequesting, setIsRequesting] = useState(false)
+    const [isCancelling, setIsCancelling] = useState(false)
+    const [deletionStatus, setDeletionStatus] = useState<any>(null)
+    const [statusLoading, setStatusLoading] = useState(false)
+    const isCreator = initialOrg.created_by === initialProfile.id
 
     const handleSave = async () => {
         if (!isAdmin) {
@@ -51,7 +63,84 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
         }
     }
 
-    return (
+        const fetchDeletionStatus = useCallback(async () => {
+            if (!isCreator || !isAdmin) return
+            setStatusLoading(true)
+            try {
+                const res = await fetch(`/api/organizations/deletion/status?orgId=${initialOrg.id}`)
+                if (!res.ok) throw new Error("Status fetch failed")
+                const data = await res.json()
+                setDeletionStatus(data)
+            } catch (e) {
+                console.error("[DeletionStatus] fetch failed:", e)
+                // Don't show error toast — this is background polling
+            } finally {
+                setStatusLoading(false)
+            }
+        }, [initialOrg.id, isCreator, isAdmin])
+
+        // Fetch status on mount and poll every 30s if pending
+        useEffect(() => {
+            fetchDeletionStatus()
+            let interval: NodeJS.Timeout | null = null
+            if (deletionStatus?.hasPendingRequest) {
+                interval = setInterval(fetchDeletionStatus, 30000)
+            }
+            return () => { if (interval) clearInterval(interval) }
+        }, [fetchDeletionStatus, deletionStatus?.hasPendingRequest])
+
+        const handleRequestDeletion = async () => {
+            if (deleteConfirmText.trim() !== org.name.trim()) {
+                toast.error("Organization name doesn't match — type it exactly")
+                return
+            }
+            setIsRequesting(true)
+            try {
+                const res = await fetch("/api/organizations/deletion/request", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orgId: org.id })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error)
+
+                if (data.deleted) {
+                    toast.success("Organization permanently deleted")
+                    router.push("/setup-organization")
+                    return
+                }
+
+                toast.success(`Deletion request sent to ${data.pendingOwners} owner(s) for approval`)
+                setShowDeleteSection(false)
+                setDeleteConfirmText("")
+                await fetchDeletionStatus()
+            } catch (error: any) {
+                toast.error(error.message)
+            } finally {
+                setIsRequesting(false)
+            }
+        }
+
+        const handleCancelDeletion = async () => {
+            setIsCancelling(true)
+            try {
+                const res = await fetch("/api/organizations/deletion/cancel", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orgId: org.id })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error)
+                toast.success("Deletion request cancelled — your organization is safe")
+                setDeletionStatus({ hasPendingRequest: false })
+            } catch (error: any) {
+                toast.error(error.message)
+            } finally {
+                setIsCancelling(false)
+            }
+        }
+
+        return (
         <div className="space-y-12">
             {/* Owner Identity Section */}
             <section className="space-y-6">
@@ -300,6 +389,188 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                     {!loading && <Save className="ml-2 h-5 w-5" />}
                 </Button>
             </div>
+            {isAdmin && isCreator && (
+                <section className="space-y-4 pt-8 border-t-2 border-red-100 dark:border-red-900/30">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <ShieldAlert className="h-5 w-5 text-red-500" />
+                            <h3 className="text-lg font-bold text-red-600">Danger Zone</h3>
+                        </div>
+                        {isCreator && (
+                            <button
+                                onClick={fetchDeletionStatus}
+                                disabled={statusLoading}
+                                className="text-xs text-zinc-400 hover:text-zinc-600 flex items-center gap-1"
+                            >
+                                <RefreshCw className={`h-3 w-3 ${statusLoading ? "animate-spin" : ""}`} />
+                                Refresh
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ── Pending deletion request status ── */}
+                    {deletionStatus?.hasPendingRequest && (
+                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5 space-y-4">
+                            <div className="flex items-start gap-3">
+                                <Clock className="h-5 w-5 text-amber-600 mt-0.5 shrink-0 animate-pulse" />
+                                <div className="flex-1">
+                                    <p className="font-bold text-amber-900 dark:text-amber-100">
+                                        Deletion Request Pending
+                                    </p>
+                                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                                        Waiting for{" "}
+                                        {(deletionStatus.totalApproversNeeded ?? 0) - (deletionStatus.approvedCount ?? 0)}{" "}
+                                        of {deletionStatus.totalApproversNeeded ?? 0} owner(s) to respond
+                                    </p>
+                                    {deletionStatus.expiresAt && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                            Expires: {new Date(deletionStatus.expiresAt).toLocaleDateString("en-IN", {
+                                                day: "numeric", month: "long", year: "numeric"
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Per-owner approval status */}
+                            {deletionStatus.approvals && deletionStatus.approvals.length > 0 && (
+                                <div className="space-y-2">
+                                    {deletionStatus.approvals.map((approval: any) => (
+                                        <div
+                                            key={approval.ownerId}
+                                            className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-lg px-4 py-3 border border-amber-100 dark:border-amber-900/30"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Users className="h-4 w-4 text-zinc-400" />
+                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                                    {approval.ownerName}
+                                                </span>
+                                            </div>
+                                            {approval.approved === true && (
+                                                <div className="flex items-center gap-1.5 text-emerald-600">
+                                                    <CheckCircle2 className="h-4 w-4" />
+                                                    <span className="text-xs font-bold">Approved</span>
+                                                </div>
+                                            )}
+                                            {approval.approved === false && (
+                                                <div className="flex items-center gap-1.5 text-red-500">
+                                                    <XCircle className="h-4 w-4" />
+                                                    <span className="text-xs font-bold">Rejected</span>
+                                                </div>
+                                            )}
+                                            {approval.approved === null && (
+                                                <div className="flex items-center gap-1.5 text-zinc-400">
+                                                    <Clock className="h-4 w-4" />
+                                                    <span className="text-xs font-bold">Pending</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleCancelDeletion}
+                                disabled={isCancelling}
+                                className="w-full py-2.5 text-sm font-semibold text-amber-800 hover:text-amber-950 dark:text-amber-300 underline disabled:opacity-50 transition-colors"
+                            >
+                                {isCancelling ? "Cancelling..." : "Cancel Deletion Request"}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ── Deletion initiator UI ── */}
+                    {!deletionStatus?.hasPendingRequest && (
+                        <>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                Permanently delete this organization and all its data. This action is irreversible.
+                                {" "}If other owners exist in the organization, <strong>all of them must approve</strong> before deletion proceeds.
+                            </p>
+
+                            {!showDeleteSection ? (
+                                <Button
+                                    variant="outline"
+                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900 dark:hover:bg-red-950/20"
+                                    onClick={() => setShowDeleteSection(true)}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Organization
+                                </Button>
+                            ) : (
+                                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-6 space-y-5">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                                        <div>
+                                            <p className="font-bold text-red-900 dark:text-red-100 mb-2">
+                                                This will permanently delete:
+                                            </p>
+                                            <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
+                                                <li>All products and inventory</li>
+                                                <li>All sales and transaction history</li>
+                                                <li>All customers and supplier records</li>
+                                                <li>All khata ledger entries</li>
+                                                <li>All reports and analytics data</li>
+                                                <li>All team members and invitations</li>
+                                                <li>All encrypted data (crypto-shredded, unrecoverable)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-red-700 dark:text-red-300">
+                                            Type <strong className="font-mono">{org.name}</strong> to confirm:
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={deleteConfirmText}
+                                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                            onPaste={(e) => e.preventDefault()} // Force manual typing
+                                            placeholder={org.name}
+                                            autoComplete="off"
+                                            className="w-full border border-red-300 dark:border-red-800 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-zinc-100"
+                                        />
+                                        <p className="text-[11px] text-red-500">Paste is disabled — type it manually</p>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                setShowDeleteSection(false)
+                                                setDeleteConfirmText("")
+                                            }}
+                                            disabled={isRequesting}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
+                                            onClick={handleRequestDeletion}
+                                            disabled={
+                                                deleteConfirmText.trim() !== org.name.trim() ||
+                                                isRequesting
+                                            }
+                                        >
+                                            {isRequesting ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Processing...
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete Forever
+                                                </span>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </section>
+            )}
         </div>
     )
 }

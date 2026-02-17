@@ -1,7 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import { motion } from "framer-motion"
 import { Check, Shield } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 
@@ -42,10 +41,7 @@ export function InfrastructureSection() {
 
                     <div className="w-full md:w-1/2">
                         <AdvancedScrollReveal variant="scaleUp">
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 1 }}
+                            <div
                                 className="relative w-full aspect-square md:aspect-video group"
                             >
                                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
@@ -65,20 +61,17 @@ export function InfrastructureSection() {
                                         </div>
                                     </div>
 
-                                    <motion.div
-                                        initial={{ y: 20, opacity: 0 }}
-                                        whileInView={{ y: 0, opacity: 1 }}
-                                        transition={{ delay: 0.5 }}
-                                        className="absolute bottom-6 right-6 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 max-w-[200px] hover:bg-white/20 transition-colors shadow-lg"
+                                    <div
+                                        className="absolute bottom-6 right-6 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 max-w-[200px] hover:bg-white/20 transition-colors shadow-lg animate-in fade-in slide-up animation-delay-500"
                                     >
                                         <div className="flex items-center gap-2 mb-1">
                                             <Shield className="w-4 h-4 text-emerald-400" />
                                             <span className="text-xs font-bold text-white uppercase tracking-wider">Secured</span>
                                         </div>
                                         <div className="text-xs text-zinc-300">Enterprise Grade Security Protocol Active</div>
-                                    </motion.div>
+                                    </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         </AdvancedScrollReveal>
                     </div>
                 </div>

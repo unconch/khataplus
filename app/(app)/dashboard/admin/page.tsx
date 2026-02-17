@@ -76,7 +76,7 @@ async function AdminContent({ tab = "users" }: { tab?: string }) {
     getProfiles(),
     getSystemSettings(orgId || undefined),
     getAuditLogs(),
-    getDailyPulse()
+    getDailyPulse(orgId || "")
   ])
 
   return (

@@ -1,7 +1,6 @@
 "use client"
 
-import { useRef } from "react"
-import { motion, useInView, Variant } from "framer-motion"
+import { useRef, useEffect, useState } from "react"
 
 type AnimationVariant = "fadeIn" | "slideUp" | "slideLeft" | "slideRight" | "scaleUp" | "rotate"
 
@@ -24,62 +23,65 @@ export function AdvancedScrollReveal({
     once = true,
     threshold = 0.2
 }: AdvancedScrollRevealProps) {
-    const ref = useRef(null)
-    const isInView = useInView(ref, { amount: threshold, once })
+    const ref = useRef<HTMLDivElement>(null)
+    const [isVisible, setIsVisible] = useState(false)
 
-    const variants: Record<AnimationVariant, { hidden: Variant; visible: Variant }> = {
-        fadeIn: {
-            hidden: { opacity: 0 },
-            visible: { opacity: 1 }
-        },
-        slideUp: {
-            hidden: { opacity: 0, y: 30 }, // Reduced distance
-            visible: { opacity: 1, y: 0 }
-        },
-        slideLeft: {
-            hidden: { opacity: 0, x: -30 }, // Reduced distance
-            visible: { opacity: 1, x: 0 }
-        },
-        slideRight: {
-            hidden: { opacity: 0, x: 30 }, // Reduced distance
-            visible: { opacity: 1, x: 0 }
-        },
-        scaleUp: {
-            hidden: { opacity: 0, scale: 0.95 }, // More subtle scale
-            visible: { opacity: 1, scale: 1 }
-        },
-        rotate: {
-            hidden: { opacity: 0, rotate: -2, scale: 0.95 }, // Subtle rotation
-            visible: { opacity: 1, rotate: 0, scale: 1 }
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true)
+                    if (once && ref.current) {
+                        observer.unobserve(ref.current)
+                    }
+                } else if (!once) {
+                    setIsVisible(false)
+                }
+            },
+            { threshold }
+        )
+
+        if (ref.current) {
+            observer.observe(ref.current)
         }
+
+        return () => {
+            if (ref.current) {
+                observer.unobserve(ref.current)
+            }
+        }
+    }, [once, threshold])
+
+    const variantClasses = {
+        fadeIn: "opacity-0 data-[visible=true]:opacity-100",
+        slideUp: "opacity-0 translate-y-8 data-[visible=true]:opacity-100 data-[visible=true]:translate-y-0",
+        slideLeft: "opacity-0 -translate-x-8 data-[visible=true]:opacity-100 data-[visible=true]:translate-x-0",
+        slideRight: "opacity-0 translate-x-8 data-[visible=true]:opacity-100 data-[visible=true]:translate-x-0",
+        scaleUp: "opacity-0 scale-95 data-[visible=true]:opacity-100 data-[visible=true]:scale-100",
+        rotate: "opacity-0 rotate-[-2deg] scale-95 data-[visible=true]:opacity-100 data-[visible=true]:rotate-0 data-[visible=true]:scale-100"
     }
 
-    const selectedVariant = variants[variant]
-
     return (
-        <motion.div
+        <div
             ref={ref}
-            className={className}
-            initial="hidden"
-            animate={isInView ? "visible" : "hidden"}
-            variants={{
-                hidden: selectedVariant.hidden,
-                visible: {
-                    ...selectedVariant.visible,
-                    transition: {
-                        duration: duration * 1.5, // 50% slower globally
-                        delay: delay / 1000,
-                        ease: [0.25, 0.1, 0.25, 1.0] // "Cinematic" smooth ease-out (cubic-bezier)
-                    }
-                }
-            }}
-            viewport={{ once: true, amount: threshold }} // Improved viewport options
+            data-visible={isVisible}
+            className={cn(
+                "reveal-container transition-all will-change-[transform,opacity]",
+                variantClasses[variant],
+                className
+            )}
             style={{
-                // Will-change hint for browser optimization
-                willChange: "opacity, transform"
+                transitionDuration: `${duration * 1.5}s`,
+                transitionDelay: `${delay}ms`,
+                transitionTimingFunction: "cubic-bezier(0.25, 0.1, 0.25, 1.0)"
             }}
         >
             {children}
-        </motion.div>
+        </div>
     )
+}
+
+// Helper function to handle class merging
+function cn(...classes: (string | boolean | undefined)[]) {
+    return classes.filter(Boolean).join(" ")
 }

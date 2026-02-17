@@ -15,7 +15,6 @@ import {
     ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
 import { Logo } from "@/components/ui/logo"
 import Link from "next/link"
 import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
@@ -61,10 +60,8 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
 
             {/* Shop Hero */}
             <div className="max-w-4xl mx-auto px-6 pt-12 space-y-8">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white dark:bg-zinc-900 rounded-[3rem] p-8 md:p-12 shadow-xl border border-zinc-100 dark:border-white/5 space-y-8 relative overflow-hidden"
+                <div
+                    className="bg-white dark:bg-zinc-900 rounded-[3rem] p-8 md:p-12 shadow-xl border border-zinc-100 dark:border-white/5 space-y-8 relative overflow-hidden animate-in fade-in slide-up duration-700"
                 >
                     <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12 -mr-10 -mt-10">
                         <Store size={180} />
@@ -111,15 +108,12 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
                             <Phone size={20} /> Call Shop
                         </Button>
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Info Grid */}
                 <div className="grid md:grid-cols-2 gap-6">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-md border border-zinc-100 dark:border-white/5 space-y-4"
+                    <div
+                        className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-md border border-zinc-100 dark:border-white/5 space-y-4 animate-in fade-in slide-in-from-left-4 duration-700 delay-100"
                     >
                         <h3 className="text-xl font-black italic tracking-tight flex items-center gap-3">
                             <ShoppingBag className="text-emerald-500" /> Business Details
@@ -138,13 +132,10 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
                                 <span className="text-xs font-black">Available within 5km</span>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group"
+                    <div
+                        className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group animate-in fade-in slide-in-from-right-4 duration-700 delay-200"
                     >
                         <div className="absolute inset-0 bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors" />
                         <div className="relative z-10 space-y-6">
@@ -158,15 +149,12 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
                                 </Button>
                             </Link>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
 
                 {/* Product Teaser/Catalogue Placeholder */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="bg-white dark:bg-zinc-900 p-10 rounded-[3rem] shadow-sm border border-zinc-100 dark:border-white/5 text-center space-y-6"
+                <div
+                    className="bg-white dark:bg-zinc-900 p-10 rounded-[3rem] shadow-sm border border-zinc-100 dark:border-white/5 text-center space-y-6 animate-in fade-in slide-up duration-700 delay-300"
                 >
                     <div className="mx-auto h-16 w-16 bg-zinc-50 dark:bg-white/5 rounded-full flex items-center justify-center text-zinc-300">
                         <ShoppingBag size={32} />
@@ -175,7 +163,7 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
                         <h3 className="text-2xl font-black italic tracking-tight text-zinc-400">Catalogue Coming Soon</h3>
                         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">This merchant is currently setting up their digital store.</p>
                     </div>
-                </motion.div>
+                </div>
             </div>
 
             {/* Footer Attribution */}

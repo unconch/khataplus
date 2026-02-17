@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function checkFileContains(filePath, mustContain, mustNotContain) {
+function checkFileContains(filePath: string, mustContain: string[], mustNotContain: string[]) {
     if (!fs.existsSync(filePath)) {
         // If file doesn't exist, and we expected something, that's a check.
         // If we verify absence, it's good.

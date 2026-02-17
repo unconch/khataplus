@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { ArrowRight, Zap } from "lucide-react"
 import { Navbar } from "./Navbar"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"

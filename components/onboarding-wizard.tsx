@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -152,11 +151,7 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
         }
     }
 
-    const variants = {
-        hidden: { opacity: 0, y: 10, scale: 0.98 },
-        visible: { opacity: 1, y: 0, scale: 1 },
-        exit: { opacity: 0, y: -10, scale: 0.98 },
-    }
+
 
     return (
         <div className="w-full max-w-lg mx-auto p-2 sm:p-4 h-full flex flex-col justify-center">
@@ -172,22 +167,19 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
             </div>
 
             <div className="text-center mb-6 relative z-10 animate-float">
-                <motion.h1
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-5xl font-black tracking-tighter text-zinc-950 dark:text-white mb-1"
+                <h1
+                    className="text-5xl font-black tracking-tighter text-zinc-950 dark:text-white mb-1 animate-in fade-in slide-up"
                 >
                     Khata<span className="text-primary italic">Plus</span>
-                </motion.h1>
+                </h1>
             </div>
 
             {/* Dynamic Progress Indicator */}
             <div className="mb-8 relative px-4">
                 <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-zinc-200 dark:bg-zinc-800 -translate-y-1/2 rounded-full overflow-hidden">
-                    <motion.div
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
-                        className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]"
+                    <div
+                        className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] transition-all duration-500 ease-in-out"
+                        style={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
                     />
                 </div>
                 <div className="relative flex justify-between">
@@ -198,17 +190,14 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
 
                         return (
                             <div key={s} className="flex flex-col items-center">
-                                <motion.div
-                                    animate={{
-                                        scale: s === step ? 1.1 : 1,
-                                        backgroundColor: s <= step ? "var(--primary)" : "var(--zinc-200)",
-                                        color: s <= step ? "white" : "var(--zinc-500)"
-                                    }}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-lg z-10 
-                                        ${s < step ? "bg-primary" : s === step ? "bg-primary ring-4 ring-primary/20" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400"}`}
+                                <div
+                                    className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-lg z-10 transition-all duration-300",
+                                        s < step ? "bg-primary text-white" : s === step ? "bg-primary text-white ring-4 ring-primary/20 scale-110" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400"
+                                    )}
                                 >
                                     {s < step ? <Check size={14} /> : s}
-                                </motion.div>
+                                </div>
                                 <span className={`mt-2 text-[9px] uppercase tracking-widest font-bold ${s === step ? "text-primary" : "text-zinc-400"}`}>
                                     {label}
                                 </span>
@@ -218,16 +207,13 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                 </div>
             </div>
 
-            <AnimatePresence mode="wait">
+            {/* Form Steps */}
+            <div className="relative min-h-[400px]">
                 {/* Step 1: Owner Details (Name & Phone) */}
                 {step === 1 && (
-                    <motion.div
+                    <div
                         key="step1"
-                        variants={variants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        transition={{ duration: 0.4, ease: "circOut" }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-400"
                     >
                         <Card className="border-2 border-zinc-200 dark:border-zinc-800 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] bg-white dark:bg-zinc-900 overflow-hidden rounded-[1.5rem]">
                             <div className="h-1.5 w-full bg-gradient-to-r from-violet-600 via-violet-500 to-violet-600" />
@@ -311,18 +297,14 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                 </Button>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 2: Business Brand */}
                 {step === 2 && (
-                    <motion.div
+                    <div
                         key="step2"
-                        variants={variants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        transition={{ duration: 0.4, ease: "circOut" }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-400"
                     >
                         <Card className="border-2 border-zinc-200 dark:border-zinc-800 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] bg-white dark:bg-zinc-900 overflow-hidden rounded-[1.5rem]">
                             <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary to-primary/80" />
@@ -376,18 +358,14 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                 </div>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 3: Tax Presence (GSTIN) */}
                 {step === 3 && (
-                    <motion.div
+                    <div
                         key="step3"
-                        variants={variants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        transition={{ duration: 0.4, ease: "circOut" }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-400"
                     >
                         <Card className="border-2 border-zinc-200 dark:border-zinc-800 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] bg-white dark:bg-zinc-900 overflow-hidden rounded-[1.5rem]">
                             <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600" />
@@ -428,18 +406,14 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                 </div>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 4: Office Address */}
                 {step === 4 && (
-                    <motion.div
+                    <div
                         key="step4"
-                        variants={variants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        transition={{ duration: 0.4, ease: "circOut" }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-400"
                     >
                         <Card className="border-2 border-zinc-200 dark:border-zinc-800 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] bg-white dark:bg-zinc-900 overflow-hidden rounded-[1.5rem]">
                             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600" />
@@ -533,19 +507,16 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                 </div>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
+            </div>
 
             {/* Subtle Footer */}
-            <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-6 text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+            <p
+                className="mt-6 text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest animate-in fade-in duration-700 delay-500"
             >
                 Secure Cloud Infrastructure &bull; End-to-End Encryption
-            </motion.p>
+            </p>
         </div >
     )
 }

@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation"
 import type { InventoryItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  CheckCircleIcon,
   BoxIcon,
   SearchIcon,
   Loader2,
@@ -19,16 +17,10 @@ import {
   Trash2Icon,
   ShoppingCartIcon,
   ArrowRight,
-  Tag,
-  Calculator,
-  Target,
-  Printer,
-  Download,
-  CheckCircle2
 } from "lucide-react"
 import { recordBatchSales } from "@/lib/data/sales"
 import { cn } from "@/lib/utils"
-import { generateInvoice, type GroupedSale } from "@/lib/invoice-utils"
+import { type GroupedSale } from "@/lib/invoice-utils"
 import { StateCard } from "@/components/ui/state-card"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { SignatureReceipt } from "@/components/ui/signature-receipt"
@@ -56,7 +48,9 @@ interface CartItem {
 }
 
 export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, org }: SalesFormProps) {
+  type SaleStep = 1 | 2 | 3 | 4
   const [cart, setCart] = useState<CartItem[]>([])
+  const [step, setStep] = useState<SaleStep>(1)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -69,21 +63,24 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [lastSaleGroup, setLastSaleGroup] = useState<GroupedSale | null>(null)
-  const [isPrinting, setIsPrinting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const filteredItems = searchQuery.length >= 1
-    ? inventory.filter(item =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 8)
-    : []
+  const filteredItems =
+    searchQuery.length >= 1
+      ? inventory
+          .filter(
+            (item) =>
+              item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              item.sku.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+          .slice(0, 8)
+      : []
 
   const handleSelectItem = (item: InventoryItem) => {
     setSelectedItem(item)
     setSearchQuery(item.name)
-    setSalePrice(item.buy_price.toString()) // Pre-fill with buy price as a starting point
+    setSalePrice(item.buy_price.toString())
     setQuantity("1")
     setShowSuggestions(false)
   }
@@ -108,21 +105,24 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
       const totalAmount = qty * price
       const baseAmount = totalAmount / (1 + gstRate)
       const gstAmount = totalAmount - baseAmount
-      const profit = ((price / (1 + gstRate)) - item.buy_price) * qty
-      return { baseAmount, gstAmount, totalAmount, profit }
-    } else {
-      const baseAmount = qty * price
-      const gstAmount = baseAmount * gstRate
-      const totalAmount = baseAmount + gstAmount
-      const profit = (price - item.buy_price) * qty
+      const profit = (price / (1 + gstRate) - item.buy_price) * qty
       return { baseAmount, gstAmount, totalAmount, profit }
     }
+
+    const baseAmount = qty * price
+    const gstAmount = baseAmount * gstRate
+    const totalAmount = baseAmount + gstAmount
+    const profit = (price - item.buy_price) * qty
+    return { baseAmount, gstAmount, totalAmount, profit }
   }
 
+  const isOnline = useOnlineStatus()
+  const { addToQueue } = useSync()
+  const { trigger: haptic } = useHaptic()
+
   const addToCart = () => {
-    if (!selectedItem || !quantity || !salePrice) {
-      return
-    }
+    if (!selectedItem || !quantity || !salePrice) return
+
     const qty = Number.parseInt(quantity)
     const price = Number.parseFloat(salePrice)
 
@@ -133,46 +133,52 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
 
     const { baseAmount, gstAmount, totalAmount, profit } = calculateItemTotals(selectedItem, qty, price)
 
-    const newCartItem: CartItem = {
-      inventoryItem: selectedItem,
-      quantity: qty,
-      salePrice: price,
-      baseAmount,
-      gstAmount,
-      totalAmount,
-      profit
-    }
+    setCart((prev) => [
+      ...prev,
+      {
+        inventoryItem: selectedItem,
+        quantity: qty,
+        salePrice: price,
+        baseAmount,
+        gstAmount,
+        totalAmount,
+        profit,
+      },
+    ])
 
-    setCart(prev => [...prev, newCartItem])
-
-    // Reset inputs
     setSearchQuery("")
     setQuantity("")
     setSalePrice("")
     setSelectedItem(null)
+    setError(null)
     haptic("light")
   }
 
   const removeFromCart = (index: number) => {
-    setCart(cart.filter((_, i) => i !== index))
+    setCart((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      if (next.length === 0) setStep(1)
+      return next
+    })
     haptic("warning")
   }
 
-  const grandTotals = cart.reduce((acc, item) => ({
-    totalAmount: acc.totalAmount + item.totalAmount,
-    gstAmount: acc.gstAmount + item.gstAmount,
-    profit: acc.profit + item.profit
-  }), { totalAmount: 0, gstAmount: 0, profit: 0 })
+  const grandTotals = cart.reduce(
+    (acc, item) => ({
+      totalAmount: acc.totalAmount + item.totalAmount,
+      gstAmount: acc.gstAmount + item.gstAmount,
+      profit: acc.profit + item.profit,
+    }),
+    { totalAmount: 0, gstAmount: 0, profit: 0 }
+  )
 
-  const isOnline = useOnlineStatus()
-  const { addToQueue } = useSync()
-  const { trigger: haptic } = useHaptic()
+  const subtotalAmount = grandTotals.totalAmount - grandTotals.gstAmount
+  const totalUnits = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const canContinue = cart.length > 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (cart.length === 0) {
-      return
-    }
+    if (cart.length === 0) return
 
     setIsLoading(true)
     setError(null)
@@ -184,7 +190,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
     }
 
     try {
-      const salesPayload = cart.map(item => ({
+      const salesPayload = cart.map((item) => ({
         inventory_id: item.inventoryItem.id,
         quantity: item.quantity,
         sale_price: item.salePrice,
@@ -194,39 +200,34 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
         payment_method: paymentMethod,
         customer_gstin: customerGst || undefined,
         customer_name: customerName || undefined,
-        customer_phone: customerPhone || undefined
+        customer_phone: customerPhone || undefined,
       }))
 
       if (!isOnline) {
-        // Offline Mode: Queue it!
         await addToQueue({
           url: "/api/sales",
           method: "POST",
-          body: { sales: salesPayload, orgId }
+          body: { sales: salesPayload, orgId },
         })
 
-        // Fake success state for UX
         setLastSaleGroup({
           id: `TEMP-${Date.now()}`,
-          userId: userId,
+          userId,
           createdat: new Date().toISOString(),
           saledate: new Date().toISOString(),
-          paymentMethod: paymentMethod,
+          paymentMethod,
           items: salesPayload.map((s, idx) => ({
             id: `TEMP-ITEM-${idx}`,
             ...s,
             created_at: new Date().toISOString(),
-            inventory: cart[idx].inventoryItem
-          })) as any
+            inventory: cart[idx].inventoryItem,
+          })) as any,
         })
         setSuccess(true)
         haptic("success")
       } else {
-        // Online Mode: Direct Server Action
         const results = await recordBatchSales(salesPayload, orgId)
-
         if (results && results.length > 0) {
-          // Construct GroupedSale for printing using cart data for inventory details
           setLastSaleGroup({
             id: results[0].batch_id || results[0].id,
             userId: results[0].user_id,
@@ -235,34 +236,30 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
             paymentMethod: results[0].payment_method,
             items: results.map((r, idx) => ({
               ...r,
-              inventory: cart[idx].inventoryItem
-            }))
+              inventory: cart[idx].inventoryItem,
+            })),
           })
           setSuccess(true)
         }
       }
+
       setCart([])
-    } catch (err) {
+    } catch {
       setError("Unable to record sale. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Design Helpers
-  // Minimalist: Removing uppercase tracking, using standard fonts, lighter borders
-  const sectionTitleClasses = "text-sm font-bold text-foreground mb-2 flex items-center gap-2"
-  const inputContainerClasses = "group relative flex flex-col gap-1 p-2 md:p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/50 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20"
-  const labelClasses = "text-[10px] md:text-xs font-medium text-muted-foreground group-focus-within:text-foreground transition-colors"
-  const inputClasses = "h-8 md:h-9 bg-transparent border-none text-sm md:text-base font-medium focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-muted-foreground/40 font-sans"
-
   if (inventory.length === 0) {
     return (
-      <Card className="border-dashed glass-card bg-zinc-50/50">
+      <Card className="border-dashed bg-zinc-50 dark:bg-zinc-900/40">
         <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-          <BoxIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
-          <p className="text-xl font-black tracking-tight text-muted-foreground">Product Hub Empty</p>
-          <p className="text-sm text-muted-foreground/50 max-w-[200px] mx-auto mt-2">Initialize inventory before recording sales.</p>
+          <BoxIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
+          <p className="text-xl font-bold text-muted-foreground">No Inventory Available</p>
+          <p className="text-sm text-muted-foreground/70 max-w-[240px] mx-auto mt-2">
+            Add products first, then create a sale.
+          </p>
         </CardContent>
       </Card>
     )
@@ -291,231 +288,195 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start animate-slide-up pb-6 lg:pb-0">
-      {/* Left Column: Item Selection */}
-      <div className="lg:col-span-7 space-y-6">
-        <section>
-          <div className={sectionTitleClasses}>
-            Search Products
+    <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="sticky top-0 z-20 px-4 md:px-7 pt-3 md:pt-4 pb-3 bg-zinc-50/95 dark:bg-zinc-950/95 border-b border-zinc-200/80 dark:border-zinc-800/80 backdrop-blur">
+          <div className="pr-12 md:pr-14 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:overflow-visible">
+            {[1, 2, 3, 4].map((s) => {
+              const stepNo = s as SaleStep
+              const locked = stepNo > 1 && !canContinue
+              return (
+                <button
+                  key={stepNo}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setStep(stepNo)}
+                  className={cn(
+                    "h-10 min-w-[128px] md:min-w-0 px-3 rounded-lg border text-sm font-semibold whitespace-nowrap flex items-center justify-center transition-colors",
+                    step === stepNo
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-200",
+                    locked && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {stepNo === 1 && "1. Items"}
+                  {stepNo === 2 && "2. Customer"}
+                  {stepNo === 3 && "3. Payment"}
+                  {stepNo === 4 && "4. Review"}
+                </button>
+              )
+            })}
           </div>
-          <div className="space-y-4">
-            <div className={cn(inputContainerClasses, "relative")}>
-              <Label htmlFor="item" className={labelClasses}>Find SKU or Product</Label>
-              <div className="flex items-center gap-2">
-                <SearchIcon className="h-4 w-4 text-primary/30" />
-                <input
-                  id="item"
-                  autoComplete="off"
-                  className={cn(inputClasses, "w-full focus:outline-none")}
-                  placeholder="Type name or SKU..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  onFocus={() => setShowSuggestions(true)}
-                />
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-4 md:px-7 pt-4 md:pt-6 pb-4 md:pb-7 space-y-5">
+          {step === 1 && (
+            <div className="space-y-5">
+              <div className="relative rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                <div className="h-12 px-4 flex items-center gap-2">
+                  <SearchIcon className="h-4 w-4 text-zinc-500" />
+                  <input
+                    id="item"
+                    autoComplete="off"
+                    className="w-full bg-transparent outline-none text-sm"
+                    placeholder="Search product or SKU"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => setShowSuggestions(true)}
+                  />
+                </div>
+                {showSuggestions && filteredItems.length > 0 && (
+                  <div className="absolute z-[120] left-2 right-2 top-full mt-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden max-h-[min(36dvh,320px)] overflow-y-auto">
+                    {filteredItems.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        className="w-full px-4 py-3.5 text-left border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors flex items-center justify-between gap-3"
+                        onClick={() => handleSelectItem(item)}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{item.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.sku}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-semibold">Rs{item.buy_price}</p>
+                          <p className="text-[11px] text-muted-foreground">Stock {item.stock}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {showSuggestions && filteredItems.length > 0 && (
-                <div className="absolute z-[120] left-0 right-0 top-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[300px] md:max-h-[400px] overflow-y-auto animate-in slide-in-from-top-2 duration-300">
-                  {filteredItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex justify-between items-center p-3 md:p-4 hover:bg-zinc-50 dark:hover:bg-white/5 active:bg-zinc-100 dark:active:bg-white/10 cursor-pointer transition-all border-b border-zinc-100 dark:border-white/5 last:border-0"
-                      onClick={() => handleSelectItem(item)}
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/20 p-3 md:p-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                  <div className="md:col-span-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2.5">
+                    <Label htmlFor="quantity" className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Qty
+                    </Label>
+                    <input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      className="w-full bg-transparent outline-none text-lg font-semibold mt-1"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="md:col-span-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2.5">
+                    <Label htmlFor="salePrice" className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Price {gstEnabled ? (gstInclusive ? "(incl GST)" : "(excl GST)") : ""}
+                    </Label>
+                    <input
+                      id="salePrice"
+                      type="number"
+                      step="0.01"
+                      className="w-full bg-transparent outline-none text-lg font-semibold mt-1"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <Button
+                      type="button"
+                      className="w-full h-full min-h-14 rounded-xl font-semibold"
+                      disabled={!selectedItem || !quantity || !salePrice}
+                      onClick={addToCart}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="h-11 w-11 md:h-10 md:w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black">
-                          {item.sku.slice(0, 2)}
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm md:text-sm">{item.name}</div>
-                          <div className="text-xs text-muted-foreground font-medium">{item.sku}</div>
-                        </div>
+                      <PlusIcon className="h-4 w-4 mr-1.5" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950">
+                <div className="h-12 px-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-900/60 grid grid-cols-12 items-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="col-span-6">Item</span>
+                  <span className="col-span-2 text-center">Qty</span>
+                  <span className="col-span-3 text-right">Amount</span>
+                  <span className="col-span-1 text-right"> </span>
+                </div>
+                <div className="max-h-[min(38dvh,320px)] md:max-h-[min(40dvh,360px)] overflow-y-auto">
+                  {cart.length === 0 && (
+                    <div className="p-6">
+                      <StateCard
+                        title="Cart is empty"
+                        description="Search and add at least one product to continue checkout."
+                        variant="empty"
+                        className="border-none bg-transparent py-10"
+                      />
+                    </div>
+                  )}
+                  {cart.map((item, idx) => (
+                    <div key={idx} className="px-4 py-3 grid grid-cols-12 items-center border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                      <div className="col-span-6 min-w-0">
+                        <p className="text-sm font-semibold truncate">{item.inventoryItem.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Rs{item.salePrice} each</p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm md:text-xs font-black font-mono">₹{item.buy_price}</div>
-                        <div className={cn(
-                          "text-[9px] font-black uppercase tracking-tighter",
-                          item.stock < 10 ? 'text-orange-500' : 'text-emerald-500'
-                        )}>
-                          {item.stock} Avail.
-                        </div>
+                      <div className="col-span-2 text-center">
+                        <span className="inline-flex h-7 min-w-7 items-center justify-center px-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-xs font-semibold">
+                          {item.quantity}
+                        </span>
+                      </div>
+                      <div className="col-span-3 text-right">
+                        <PriceDisplay amount={item.totalAmount} size="sm" />
+                      </div>
+                      <div className="col-span-1 text-right">
+                        <button
+                          type="button"
+                          className="h-8 w-8 rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 inline-flex items-center justify-center"
+                          onClick={() => removeFromCart(idx)}
+                        >
+                          <Trash2Icon className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className={cn(inputContainerClasses, "bg-zinc-100/50 cursor-not-allowed opacity-60")}>
-                <Label className={labelClasses}>Registered Cost</Label>
-                <div className="h-10 flex items-center text-xl font-black font-mono tracking-tighter">
-                  {selectedItem ? `₹${selectedItem.buy_price}` : "—"}
-                </div>
               </div>
-              <div className={inputContainerClasses}>
-                <Label htmlFor="quantity" className={labelClasses}>Units</Label>
+
+              <div className="sticky bottom-0 pt-3 flex justify-end bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+                <Button type="button" onClick={() => setStep(2)} disabled={!canContinue} className="rounded-xl">
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-3">
+                <Label className="text-xs font-medium text-muted-foreground">Customer Details (optional)</Label>
                 <input
-                  id="quantity"
-                  type="number"
-                  inputMode="decimal"
-                  min="1"
-                  className={cn(inputClasses, "w-full focus:outline-none")}
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="1"
+                  className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 text-sm"
+                  placeholder="Customer name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
                 />
-              </div>
-            </div>
-
-            <div className={cn(inputContainerClasses, "p-3 md:p-6")}>
-              <Label htmlFor="salePrice" className={labelClasses}>
-                Selling Value (Single Unit) {gstEnabled && (gstInclusive ? "[GST Incl.]" : "[GST Excl.]")}
-              </Label>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xl font-medium text-muted-foreground">₹</span>
-                <input
-                  id="salePrice"
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  className="h-10 bg-transparent border-none text-2xl font-semibold focus:outline-none p-0 placeholder:text-muted-foreground/30 font-sans"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              className="w-full h-14 rounded-2xl bg-zinc-900 text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-[0.2em] group"
-              disabled={!selectedItem || !quantity || !salePrice}
-              onClick={addToCart}
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Stage Item
-              <ArrowRight className="h-3 w-3 ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-            </Button>
-          </div>
-        </section>
-      </div>
-
-      {/* Right Column: Cart & Summary */}
-      <div className="lg:col-span-5 space-y-4 lg:space-y-6">
-        <Card className="glass-panel border-zinc-200/50 dark:border-white/10 text-foreground rounded-[2rem] md:rounded-[2.5rem] overflow-hidden sticky top-4 lg:top-0">
-          <CardContent className="p-6 md:p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex-1">
-                <h4 className="text-lg font-semibold tracking-tight">Current Sale</h4>
-              </div>
-              <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                <ShoppingCartIcon className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-
-            <div className="space-y-4 mb-10 max-h-[300px] overflow-y-auto no-scrollbar">
-              {cart.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl bg-white/5 border border-white/5 group animate-in slide-in-from-right-2 duration-300">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-sm truncate">{item.inventoryItem.name}</div>
-                    <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-0.5">
-                      {item.quantity} units • ₹{item.salePrice}/ea
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <PriceDisplay amount={item.totalAmount} size="sm" />
-                      {item.profit > 0 && (
-                        <div className="text-[9px] text-emerald-400 font-black tracking-widest uppercase">
-                          +₹{item.profit.toFixed(0)}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="h-9 w-9 rounded-lg bg-rose-500/20 text-rose-500 flex items-center justify-center opacity-100 lg:opacity-0 group-hover:opacity-100 transition-all active:scale-95"
-                      onClick={() => removeFromCart(idx)}
-                    >
-                      <Trash2Icon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {cart.length === 0 && (
-                <StateCard
-                  title="Terminal Idle"
-                  description="Scan SKU or Select Item to begin"
-                  variant="empty"
-                  className="py-12 border-none bg-transparent"
-                />
-              )}
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Settlement Method</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "Cash" ? "default" : "outline"}
-                    className={cn(
-                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
-                      paymentMethod === "Cash" ? "border-primary bg-primary/10 text-primary hover:bg-primary/20" : "border-zinc-100 hover:border-zinc-200"
-                    )}
-                    onClick={() => setPaymentMethod("Cash")}
-                  >
-                    <BanknoteIcon className="h-5 w-5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Cash</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "UPI" ? "default" : "outline"}
-                    className={cn(
-                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
-                      paymentMethod === "UPI" ? "border-emerald-500 bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "border-zinc-100 hover:border-zinc-200"
-                    )}
-                    onClick={() => setPaymentMethod("UPI")}
-                  >
-                    <CreditCardIcon className="h-5 w-5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Digital</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "Credit" ? "default" : "outline"}
-                    className={cn(
-                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
-                      paymentMethod === "Credit" ? "border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-100" : "border-zinc-100 hover:border-zinc-200"
-                    )}
-                    onClick={() => setPaymentMethod("Credit")}
-                  >
-                    <ShoppingCartIcon className="h-5 w-5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Credit</span>
-                  </Button>
-                </div>
-              </div>
-
-              {/* B2B / Customer Details Section */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Customer Details (Optional)</Label>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
-                    className={cn(inputClasses, "bg-white/5 border border-white/10 rounded-xl px-4 text-sm text-white focus:bg-white/10 transition-all")}
-                    placeholder="Customer Name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                  <input
-                    className={cn(inputClasses, "bg-white/5 border border-white/10 rounded-xl px-4 text-sm text-white focus:bg-white/10 transition-all")}
-                    placeholder="Phone Number"
+                    className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 text-sm"
+                    placeholder="Phone"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                   />
                   <input
-                    className={cn(inputClasses, "bg-white/5 border border-white/10 rounded-xl px-4 text-sm text-white focus:bg-white/10 transition-all md:col-span-2")}
-                    placeholder="GSTIN (For B2B Credit)"
+                    className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 text-sm"
+                    placeholder="GSTIN"
                     value={customerGst}
                     onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
                     maxLength={15}
@@ -523,46 +484,142 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
                 </div>
               </div>
 
-              <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-3">
-                {gstEnabled && (
-                  <div className="flex justify-between text-xs font-bold text-white/40">
-                    <span className="uppercase tracking-widest">Tax Component</span>
-                    <span className="font-mono">₹{grandTotals.gstAmount.toFixed(0)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-end pt-2">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Total Settlement</span>
-                    <PriceDisplay amount={grandTotals.totalAmount} size="2xl" className="text-foreground" />
-                  </div>
+              <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-xl">
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(3)} className="rounded-xl">
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Payment Method</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "h-11 rounded-xl border text-xs font-semibold",
+                      paymentMethod === "Cash"
+                        ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 text-white hover:bg-zinc-800"
+                        : "border-zinc-200 dark:border-zinc-700"
+                    )}
+                    onClick={() => setPaymentMethod("Cash")}
+                  >
+                    <BanknoteIcon className="h-4 w-4 mr-1.5" />
+                    Cash
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "h-11 rounded-xl border text-xs font-semibold",
+                      paymentMethod === "UPI"
+                        ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500"
+                        : "border-zinc-200 dark:border-zinc-700"
+                    )}
+                    onClick={() => setPaymentMethod("UPI")}
+                  >
+                    <CreditCardIcon className="h-4 w-4 mr-1.5" />
+                    UPI
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "h-11 rounded-xl border text-xs font-semibold",
+                      paymentMethod === "Credit"
+                        ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-400"
+                        : "border-zinc-200 dark:border-zinc-700"
+                    )}
+                    onClick={() => setPaymentMethod("Credit")}
+                  >
+                    <ShoppingCartIcon className="h-4 w-4 mr-1.5" />
+                    Credit
+                  </Button>
                 </div>
               </div>
 
-              {error && <p className="text-xs font-black text-rose-500 bg-rose-500/10 p-4 rounded-2xl text-center uppercase tracking-tight">{error}</p>}
+              <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-xl">
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(4)} className="rounded-xl">
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
 
-              <Button
-                type="submit"
-                className="w-full h-14 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all font-black uppercase tracking-[0.15em] text-xs shadow-lg shadow-primary/20 active:scale-95"
-                disabled={isLoading || cart.length === 0}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  "Complete Sale"
+          {step === 4 && (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/30 p-4 space-y-2.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Items</span>
+                  <span className="font-medium">{cart.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Units</span>
+                  <span className="font-medium">{totalUnits}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Payment</span>
+                  <span className="font-medium">{paymentMethod}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium">Rs{subtotalAmount.toFixed(2)}</span>
+                </div>
+                {gstEnabled && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">GST</span>
+                    <span className="font-medium">Rs{grandTotals.gstAmount.toFixed(2)}</span>
+                  </div>
                 )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Profit</span>
+                  <span className={cn("font-medium", grandTotals.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                    Rs{grandTotals.profit.toFixed(2)}
+                  </span>
+                </div>
+                <div className="h-px bg-zinc-200 dark:bg-zinc-800" />
+                <div className="flex items-end justify-between">
+                  <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground font-semibold">Grand Total</span>
+                  <PriceDisplay amount={grandTotals.totalAmount} size="2xl" className="text-foreground" />
+                </div>
+              </div>
 
-        <div className="p-4 bg-zinc-100 dark:bg-zinc-900/40 rounded-xl space-y-2">
-          <div className="flex items-center gap-2">
-            <h4 className="text-xs font-semibold text-muted-foreground">Note</h4>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Verify SKU authenticity before settlement.
-          </p>
-        </div>
+              {error && (
+                <p className="text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-900/20 p-3 rounded-xl text-center">
+                  {error}
+                </p>
+              )}
+
+              <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+                <Button type="button" variant="outline" onClick={() => setStep(3)} className="rounded-xl">
+                  Back
+                </Button>
+                <Button type="submit" className="h-12 rounded-xl font-semibold text-base" disabled={isLoading || cart.length === 0}>
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Complete Sale
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </form>
       </div>
     </div>
   )

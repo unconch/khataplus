@@ -1,9 +1,27 @@
 "use server"
 
 import { sql } from "../db";
-import { authorize } from "../security";
-import { decrypt } from "../crypto";
-import { getTenantDEK } from "../key-management";
+import { authorize, audit } from "../security";
+import { decrypt, encrypt } from "../crypto";
+import { getTenantDEK, initializeTenantDEKs } from "../key-management";
+import { triggerSync } from "../sync-notifier";
+import { syncDailyReport } from "./reports";
+import { revalidatePath, revalidateTag } from "next/cache";
+
+async function resolveImportDEK(orgId: string, label: "Customers" | "Suppliers"): Promise<string | null> {
+    try {
+        return await getTenantDEK(orgId);
+    } catch {
+        try {
+            console.log(`[Import/${label}] No DEK found, initializing...`);
+            await initializeTenantDEKs();
+            return await getTenantDEK(orgId);
+        } catch (error) {
+            console.warn(`[Import/${label}] Proceeding without encryption for org ${orgId}:`, error);
+            return null;
+        }
+    }
+}
 
 export async function exportData(orgId: string, type: string) {
     await authorize(`Export ${type}`, "manager", orgId);
@@ -81,7 +99,7 @@ export async function importInventory(orgId: string, items: any[]) {
             errors: [] as string[]
         }
 
-        const { revalidateTag, revalidatePath } = await import("next/cache")
+
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -122,6 +140,17 @@ export async function importInventory(orgId: string, items: any[]) {
                         ${sell_price}, ${stock}, ${hsn_code},
                         ${gst_percentage}, ${min_stock}
                     )
+                    ON CONFLICT (id) DO UPDATE SET
+                        org_id = EXCLUDED.org_id,
+                        sku = EXCLUDED.sku,
+                        name = EXCLUDED.name,
+                        buy_price = EXCLUDED.buy_price,
+                        sell_price = EXCLUDED.sell_price,
+                        stock = EXCLUDED.stock,
+                        hsn_code = EXCLUDED.hsn_code,
+                        gst_percentage = EXCLUDED.gst_percentage,
+                        min_stock = EXCLUDED.min_stock,
+                        updated_at = NOW()
                 `
                 results.success++
             } catch (itemError: any) {
@@ -132,18 +161,18 @@ export async function importInventory(orgId: string, items: any[]) {
         }
 
         try {
-            const { audit } = await import("../security")
             await audit("Imported Inventory", "inventory", undefined, { count: results.success }, orgId)
         } catch (auditError) {
             console.error("[Import/Inventory] Audit logging failed (non-fatal):", auditError)
         }
 
         try {
-            await (revalidateTag as any)("inventory");
-            await (revalidateTag as any)(`inventory-${orgId}`);
-            await revalidatePath("/dashboard/inventory", "page");
+            (revalidateTag as any)("inventory");
+            (revalidateTag as any)(`inventory-${orgId}`);
+            revalidatePath("/dashboard/inventory", "page");
+            await triggerSync(orgId, "inventory");
         } catch (e) {
-            console.warn("[Import/Inventory] Cache revalidation failed:", e)
+            console.warn("[Import/Inventory] Cache revalidation or sync failed:", e)
         }
 
         return {
@@ -170,18 +199,7 @@ export async function importCustomers(orgId: string, items: any[]) {
             errors: [] as string[]
         }
 
-        const { encrypt } = await import("../crypto")
-        const { getTenantDEK, initializeTenantDEKs } = await import("../key-management")
-        const { revalidateTag, revalidatePath } = await import("next/cache")
-
-        let dek: string
-        try {
-            dek = await getTenantDEK(orgId)
-        } catch {
-            console.log(`[Import/Customers] No DEK found, initializing...`)
-            await initializeTenantDEKs()
-            dek = await getTenantDEK(orgId)
-        }
+        const dek = await resolveImportDEK(orgId, "Customers")
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -199,17 +217,17 @@ export async function importCustomers(orgId: string, items: any[]) {
                 // ROBUST: Address with fallback
                 const address = item.address || item.Address || item.location || ""
 
-                const encryptedName = await encrypt(name, orgId, dek)
-                const encryptedPhone = await encrypt(phone.toString(), orgId, dek)
-                const encryptedAddress = address ? await encrypt(address, orgId, dek) : null
+                const safePhone = phone.toString()
+                const storedName = dek ? await encrypt(name, orgId, dek) : name
+                const storedPhone = dek ? await encrypt(safePhone, orgId, dek) : safePhone
+                const storedAddress = address
+                    ? (dek ? await encrypt(address, orgId, dek) : address)
+                    : null
 
                 await sql`
                     INSERT INTO customers (id, name, phone, address, org_id)
-                    VALUES (gen_random_uuid(), ${encryptedName}, ${encryptedPhone}, ${encryptedAddress}, ${orgId})
-                    ON CONFLICT (phone) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        address = EXCLUDED.address,
-                        updated_at = CURRENT_TIMESTAMP
+                    VALUES (gen_random_uuid(), ${storedName}, ${storedPhone}, ${storedAddress}, ${orgId})
+                    ON CONFLICT DO NOTHING
                 `
                 results.success++
             } catch (itemError: any) {
@@ -220,10 +238,10 @@ export async function importCustomers(orgId: string, items: any[]) {
         }
 
         try {
-            const { audit } = await import("../security")
-            await audit("Imported Customers", "customer", undefined, { count: results.success }, orgId)
-            await (revalidateTag as any)(`customers-${orgId}`);
-            await revalidatePath("/dashboard/customers", "page");
+            await audit("Imported Customers", "customer", undefined, { count: results.success }, orgId);
+            (revalidateTag as any)(`customers-${orgId}`);
+            revalidatePath("/dashboard/customers", "page");
+            await triggerSync(orgId, "customer");
         } catch (e) {
             console.warn("[Import/Customers] Non-fatal cleanup error:", e)
         }
@@ -239,14 +257,16 @@ export async function importSales(orgId: string, items: any[]) {
     try {
         console.log(`[Import/Sales] Starting import for org ${orgId} with ${items.length} items...`)
         const user = await authorize("Import Sales", "manager", orgId)
+        const { isGuestMode } = await import("./auth")
+        const isGuest = await isGuestMode()
+        const actorUserId = isGuest ? null : user.id
 
         const results = {
             success: 0,
             failed: 0,
             errors: [] as string[]
         }
-
-        const { revalidateTag, revalidatePath } = await import("next/cache")
+        const uniqueDates = new Set<string>()
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -293,8 +313,12 @@ export async function importSales(orgId: string, items: any[]) {
                 const total_amount = parseFloat(item.total_amount || item.total || (sale_price * quantity).toString()) || (sale_price * quantity)
                 const gst_amount = parseFloat(item.gst_amount || item.GST || item.tax || "0") || 0
 
-                // ROBUST: Payment status with fallback
-                const payment_status = item.payment_status || item.payment_method || item.payment || "completed"
+                // Normalize to app schema payment_method values
+                const paymentRaw = String(item.payment_method || item.payment_status || item.payment || "Cash").toLowerCase()
+                const payment_method =
+                    paymentRaw.includes("credit") ? "Credit" :
+                        paymentRaw.includes("upi") || paymentRaw.includes("online") ? "UPI" :
+                            "Cash"
 
                 // ROBUST: Date with fallback to now + Excel serial number conversion
                 const rawDate = item.sale_date || item.date || item.Date || item.created_at || null
@@ -311,24 +335,22 @@ export async function importSales(orgId: string, items: any[]) {
                     sale_date = new Date(rawDate).toISOString() || new Date().toISOString()
                 }
 
+                const dateOnly = sale_date.split('T')[0]
+                uniqueDates.add(dateOnly)
+
                 const buy_price = parseFloat(inventory[0].buy_price) || 0
                 const profit = parseFloat(item.profit?.toString() || "") || ((sale_price - buy_price) * quantity)
-                const taxable_amount = parseFloat(item.taxable_amount?.toString() || "") || (total_amount - gst_amount)
-                const cgst = parseFloat(item.cgst_amount?.toString() || "") || (gst_amount / 2)
-                const sgst = parseFloat(item.sgst_amount?.toString() || "") || (gst_amount / 2)
 
                 await sql`
                     INSERT INTO sales (
                         id, inventory_id, user_id, org_id, quantity, sale_price, 
-                        total_amount, gst_amount, profit, payment_status, 
-                        sale_date, taxable_amount, cgst_amount, sgst_amount,
-                        customer_name, customer_phone
+                        total_amount, gst_amount, profit, payment_method, 
+                        sale_date
                     )
                     VALUES (
-                        gen_random_uuid(), ${inventory[0].id}, ${user.id}, ${orgId}, ${quantity}, ${sale_price}, 
-                        ${total_amount}, ${gst_amount}, ${profit}, ${payment_status}, 
-                        ${sale_date}, ${taxable_amount}, ${cgst}, ${sgst},
-                        ${item.customer_name || item.customer || null}, ${item.customer_phone || item.phone || null}
+                        gen_random_uuid(), ${inventory[0].id}, ${actorUserId}, ${orgId}, ${quantity}, ${sale_price}, 
+                        ${total_amount}, ${gst_amount}, ${profit}, ${payment_method}, 
+                        ${dateOnly}
                     )
                 `
                 results.success++
@@ -340,10 +362,21 @@ export async function importSales(orgId: string, items: any[]) {
         }
 
         try {
-            const { audit } = await import("../security")
             await audit("Imported Sales", "sale", undefined, { count: results.success }, orgId)
-            await revalidatePath("/dashboard/sales", "page");
-            await (revalidateTag as any)("sales");
+
+            // Sync Daily Reports for all affected dates
+            console.log(`[Import/Sales] Syncing daily reports for ${uniqueDates.size} dates...`)
+            for (const date of Array.from(uniqueDates)) {
+                await syncDailyReport(date, orgId)
+            }
+
+            revalidatePath("/dashboard/sales", "page");
+            revalidatePath("/dashboard/reports", "page");
+            (revalidateTag as any)("sales");
+            (revalidateTag as any)(`sales-${orgId}`);
+            (revalidateTag as any)(`reports-${orgId}`);
+            await triggerSync(orgId, "sale");
+            await triggerSync(orgId, "report");
         } catch (e) {
             console.warn("[Import/Sales] Non-fatal cleanup error:", e)
         }
@@ -366,18 +399,7 @@ export async function importSuppliers(orgId: string, items: any[]) {
             errors: [] as string[]
         }
 
-        const { encrypt } = await import("../crypto")
-        const { getTenantDEK, initializeTenantDEKs } = await import("../key-management")
-        const { revalidateTag, revalidatePath } = await import("next/cache")
-
-        let dek: string
-        try {
-            dek = await getTenantDEK(orgId)
-        } catch {
-            console.log(`[Import/Suppliers] No DEK found, initializing...`)
-            await initializeTenantDEKs()
-            dek = await getTenantDEK(orgId)
-        }
+        const dek = await resolveImportDEK(orgId, "Suppliers")
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -395,13 +417,17 @@ export async function importSuppliers(orgId: string, items: any[]) {
                 // ROBUST: Address with fallback
                 const address = item.address || item.Address || item.location || ""
 
-                const encryptedName = await encrypt(name, orgId, dek)
-                const encryptedPhone = await encrypt(phone.toString(), orgId, dek)
-                const encryptedAddress = address ? await encrypt(address, orgId, dek) : null
+                const safePhone = phone.toString()
+                const storedName = dek ? await encrypt(name, orgId, dek) : name
+                const storedPhone = dek ? await encrypt(safePhone, orgId, dek) : safePhone
+                const storedAddress = address
+                    ? (dek ? await encrypt(address, orgId, dek) : address)
+                    : null
 
                 await sql`
                     INSERT INTO suppliers (id, name, phone, address, org_id)
-                    VALUES (gen_random_uuid(), ${encryptedName}, ${encryptedPhone}, ${encryptedAddress}, ${orgId})
+                    VALUES (gen_random_uuid(), ${storedName}, ${storedPhone}, ${storedAddress}, ${orgId})
+                    ON CONFLICT DO NOTHING
                 `
                 results.success++
             } catch (itemError: any) {
@@ -412,10 +438,10 @@ export async function importSuppliers(orgId: string, items: any[]) {
         }
 
         try {
-            const { audit } = await import("../security")
             await audit("Imported Suppliers", "supplier", undefined, { count: results.success }, orgId)
-            await (revalidateTag as any)(`suppliers-${orgId}`);
-            await revalidatePath("/dashboard/suppliers", "page");
+            revalidatePath("/dashboard/suppliers", "page");
+            (revalidateTag as any)(`suppliers-${orgId}`);
+            await triggerSync(orgId, "khata");
         } catch (e) {
             console.warn("[Import/Suppliers] Non-fatal cleanup error:", e)
         }
@@ -431,6 +457,9 @@ export async function importExpenses(orgId: string, items: any[]) {
     try {
         console.log(`[Import/Expenses] Starting import for org ${orgId} with ${items.length} items...`)
         const user = await authorize("Import Expenses", "manager", orgId)
+        const { isGuestMode } = await import("./auth")
+        const isGuest = await isGuestMode()
+        const actorUserId = isGuest ? null : user.id
 
         const results = {
             success: 0,
@@ -438,7 +467,7 @@ export async function importExpenses(orgId: string, items: any[]) {
             errors: [] as string[]
         }
 
-        const { revalidateTag, revalidatePath } = await import("next/cache")
+
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -463,7 +492,7 @@ export async function importExpenses(orgId: string, items: any[]) {
 
                 await sql`
                     INSERT INTO expenses (id, category, amount, description, expense_date, created_by, org_id)
-                    VALUES (gen_random_uuid(), ${category}, ${amount}, ${description}, ${expense_date}, ${user.id}, ${orgId})
+                    VALUES (gen_random_uuid(), ${category}, ${amount}, ${description}, ${expense_date}, ${actorUserId}, ${orgId})
                 `
                 results.success++
             } catch (itemError: any) {
@@ -474,10 +503,10 @@ export async function importExpenses(orgId: string, items: any[]) {
         }
 
         try {
-            const { audit } = await import("../security")
             await audit("Imported Expenses", "expense", undefined, { count: results.success }, orgId)
-            await revalidatePath("/dashboard/reports", "page");
-            await (revalidateTag as any)(`reports-${orgId}`);
+            revalidatePath("/dashboard/reports", "page");
+            (revalidateTag as any)(`reports-${orgId}`);
+            await triggerSync(orgId, "report");
         } catch (e) {
             console.warn("[Import/Expenses] Non-fatal cleanup error:", e)
         }

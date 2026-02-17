@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "framer-motion"
+
 
 interface GradientTextProps {
     children: React.ReactNode
@@ -21,36 +21,22 @@ export function GradientText({
 
     return (
         <div className={`relative flex items-center max-w-fit mx-auto md:mx-0 ${className}`}>
-            <motion.div
-                className="relative z-10 bg-clip-text text-transparent bg-[length:300%_auto]"
+            <div
+                className="relative z-10 bg-clip-text text-transparent bg-[length:300%_auto] animate-gradient-x"
                 style={{
-                    backgroundImage: `linear-gradient(to right, ${gradientColors})`
-                }}
-                animate={{
-                    backgroundPosition: ["0% center", "200% center"]
-                }}
-                transition={{
-                    duration: animationSpeed,
-                    ease: "linear",
-                    repeat: Infinity,
+                    backgroundImage: `linear-gradient(to right, ${gradientColors})`,
+                    animationDuration: `${animationSpeed}s`
                 }}
             >
                 {children}
-            </motion.div>
+            </div>
 
             {showBorder && (
-                <motion.div
-                    className="absolute -inset-2 rounded-lg z-0 opacity-20 blur-xl bg-[length:300%_auto]"
+                <div
+                    className="absolute -inset-2 rounded-lg z-0 opacity-20 blur-xl bg-[length:300%_auto] animate-gradient-x"
                     style={{
-                        backgroundImage: `linear-gradient(to right, ${gradientColors})`
-                    }}
-                    animate={{
-                        backgroundPosition: ["0% center", "200% center"]
-                    }}
-                    transition={{
-                        duration: animationSpeed,
-                        ease: "linear",
-                        repeat: Infinity,
+                        backgroundImage: `linear-gradient(to right, ${gradientColors})`,
+                        animationDuration: `${animationSpeed}s`
                     }}
                 />
             )}

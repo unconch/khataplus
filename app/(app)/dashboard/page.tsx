@@ -62,12 +62,19 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   // Self-Correction: If we are at /dashboard (no slug) but have an org, redirect to the slug URL
   const { headers } = await import("next/headers")
   const headersList = await headers()
-  const slug = headersList.get("x-tenant-slug")
+  const currentSlug = headersList.get("x-tenant-slug")
 
-  if (!slug && !isGuest && profile.organization_id) {
-    const org = await getOrganization(profile.organization_id)
-    if (org && org.slug) {
-      redirect(`/${org.slug}/dashboard`)
+  if (!currentSlug && !isGuest && profile.organization_id) {
+    // Force a fresh fetch from DB directly to bypass any Next.js caching issues for the slug
+    // This ensures that if an org was renamed/slug changed, we don't serve a stale /dashboard
+    const { getSql } = await import("@/lib/db")
+    const db = getSql()
+    const orgResult = await db`SELECT slug FROM organizations WHERE id = ${profile.organization_id}`
+    const dbSlug = orgResult[0]?.slug
+
+    if (dbSlug) {
+      console.log(`[Dashboard] Redirecting to slugged URL: /${dbSlug}/dashboard`);
+      redirect(`/${dbSlug}/dashboard`)
     }
   }
 

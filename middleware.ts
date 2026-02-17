@@ -101,6 +101,19 @@ export default async function middleware(req: NextRequest) {
 
         requestHeaders.set("x-tenant-slug", orgSlug)
         requestHeaders.set("x-path-prefix", `/${orgSlug}`)
+
+        // Resolve Org ID for Schema Isolation
+        if (supabase) {
+            const { data: orgData } = await supabase
+                .from('organizations')
+                .select('id')
+                .eq('slug', orgSlug)
+                .single()
+
+            if (orgData?.id) {
+                requestHeaders.set("x-org-id", orgData.id)
+            }
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -148,7 +161,7 @@ export default async function middleware(req: NextRequest) {
         activeResponse.cookies.set("guest_mode", "true", {
             path: "/",
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
             maxAge: 60 * 30,
             sameSite: "lax"
         })

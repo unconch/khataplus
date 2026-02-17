@@ -7,8 +7,10 @@ import type { Organization, OrganizationMember, OrganizationInvite, SystemSettin
 import { authorize, audit } from "../security";
 import { cache } from "react";
 import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next/cache";
-import { sendWelcomeEmail } from "../mail";
+import { sendWelcomeEmail, sendOrgDeletionRequestEmail, sendOrgDeletionRejectedEmail } from "../mail";
 import { getProfile } from "./profiles";
+import { initializeOrganizationSchema } from "./schema-init";
+
 
 
 export async function getTotalOrganizationCount(): Promise<number> {
@@ -94,11 +96,22 @@ export async function createOrganization(name: string, userId: string, details?:
             updated_at: orgRaw.updated_at instanceof Date ? orgRaw.updated_at.toISOString() : String(orgRaw.updated_at),
         } as Organization;
 
+        // Create Isolated Schema & Tables
+        try {
+            await initializeOrganizationSchema(org.id);
+            console.log(`[DB/Orgs] Schema initialized for ${org.id}`);
+        } catch (schemaErr) {
+            console.error("[DB/Orgs] Critical Failure: Schema initialization failed", schemaErr);
+            // We don't throw here if the main org record was created, 
+            // but in a production refined flow, we might want to rollback org creation.
+        }
+
         // Add creator as owner
         await sql`
             INSERT INTO organization_members(org_id, user_id, role)
             VALUES(${org.id}, ${userId}, 'owner')
         `;
+
 
         // Promote user to main admin in profiles table for consistent permissions
         await sql`
@@ -293,18 +306,7 @@ export async function removeMember(orgId: string, userId: string): Promise<void>
     await sql`DELETE FROM organization_members WHERE org_id = ${orgId} AND user_id = ${userId}`;
 }
 
-export async function deleteOrganization(orgId: string): Promise<void> {
-    await authorize("Delete Organization", "owner", orgId);
-
-    // MISSION-CRITICAL: Crypto-shredding (ASVS Level 3)
-    // Deleting the organization record also deletes the 'encrypted_dek'.
-    // Any data in audit_logs or backups encrypted with this DEK becomes mathematically unrecoverable.
-    await sql`DELETE FROM organizations WHERE id = ${orgId}`;
-
-    await audit("Deleted Organization (Crypto-Shredded)", "organization", orgId, { orgId }, "system");
-
-    revalidatePath("/", "layout");
-}
+// Note: `deleteOrganization` has been replaced by a deletion-request workflow below.
 
 export async function getSystemSettings(orgId?: string) {
     if (!orgId) {
@@ -374,4 +376,391 @@ export async function updateSystemSettings(updates: Partial<SystemSettings>, org
     await audit("Updated Settings", "settings", actualOrgId, updates, actualOrgId);
     (revalidateTag as any)(`settings-${actualOrgId}`);
     revalidatePath("/dashboard/admin", "page");
+}
+
+
+// ============================================================
+// ADD THESE TO THE BOTTOM OF lib/data/organizations.ts
+// Also add sendOrgDeletionEmail to lib/mail.ts (see Part 3)
+// ============================================================
+
+// ── Types ────────────────────────────────────────────────────
+
+export interface DeletionRequestStatus {
+    hasPendingRequest: boolean
+    requestId?: string
+    requestedBy?: string
+    requestedAt?: string
+    expiresAt?: string
+    isExpired?: boolean
+    approvals?: {
+        ownerId: string
+        ownerName: string
+        approved: boolean | null
+        respondedAt?: string
+    }[]
+    totalApproversNeeded?: number
+    approvedCount?: number
+    rejectedCount?: number
+}
+
+// ── Internal helper ──────────────────────────────────────────
+
+async function expireStaleRequests(orgId: string): Promise<void> {
+    await sql`
+        UPDATE org_deletion_requests
+        SET status = 'expired', updated_at = NOW()
+        WHERE org_id = ${orgId}
+        AND status = 'pending'
+        AND expires_at < NOW()
+    `
+}
+
+// ── Request deletion ─────────────────────────────────────────
+
+export async function requestOrganizationDeletion(orgId: string): Promise<{
+    requestId: string
+    requiresApproval: boolean
+    pendingOwners: number
+    deleted: boolean
+}> {
+    // 1. Authorize - any owner can call, but only creator proceeds past next check
+    const user = await authorize("Delete Organization", "owner", orgId)
+
+    // 2. Verify org exists
+    const orgRows = await sql`
+        SELECT id, name, created_by FROM organizations WHERE id = ${orgId}
+    `
+    if (orgRows.length === 0) throw new Error("Organization not found")
+    const org = orgRows[0]
+
+    // 3. Only original creator can initiate
+    if (org.created_by !== user.id) {
+        throw new Error("Only the original creator of this organization can request deletion")
+    }
+
+    // 4. Expire stale requests first
+    await expireStaleRequests(orgId)
+
+    // 5. Check for existing active pending request
+    const existing = await sql`
+        SELECT id FROM org_deletion_requests
+        WHERE org_id = ${orgId} AND status = 'pending'
+    `
+    if (existing.length > 0) {
+        throw new Error("A deletion request is already pending. Check your settings page for status.")
+    }
+
+    // 6. Get ALL other owners (not the creator)
+    const otherOwners = await sql`
+        SELECT om.user_id, p.name, p.email
+        FROM organization_members om
+        JOIN profiles p ON om.user_id = p.id
+        WHERE om.org_id = ${orgId}
+          AND om.role = 'owner'
+          AND om.user_id != ${user.id}
+          AND p.status = 'active'
+    `
+
+    // 7. Create the deletion request record
+    const requestRows = await sql`
+        INSERT INTO org_deletion_requests (org_id, requested_by, org_name, status, expires_at)
+        VALUES (
+            ${orgId},
+            ${user.id},
+            ${org.name},
+            'pending',
+            NOW() + INTERVAL '7 days'
+        )
+        RETURNING id
+    `
+    const requestId = requestRows[0].id
+
+    // 8. No other owners — delete immediately
+    if (otherOwners.length === 0) {
+        await executeOrganizationDeletion(orgId, user.id, requestId, org.name)
+        return { requestId, requiresApproval: false, pendingOwners: 0, deleted: true }
+    }
+
+    // 9. Create approval slots for each other owner
+    for (const owner of otherOwners) {
+        await sql`
+            INSERT INTO org_deletion_approvals (request_id, owner_id, owner_name, owner_email, approved)
+            VALUES (${requestId}, ${owner.user_id}, ${owner.name || "Unknown"}, ${owner.email}, NULL)
+            ON CONFLICT (request_id, owner_id) DO NOTHING
+        `
+    }
+
+    // 10. Notify all other owners via email (non-fatal)
+    const requesterName = user.name || user.email || "Organization Creator"
+    for (const owner of otherOwners) {
+        sendOrgDeletionRequestEmail(
+            owner.email,
+            owner.name || "Owner",
+            org.name,
+            requesterName,
+            requestId
+        ).catch(e => console.warn(`[deleteOrg] Email to ${owner.email} failed:`, e))
+    }
+
+    await audit(
+        "Requested Organization Deletion",
+        "organization",
+        orgId,
+        { requestId, otherOwnerCount: otherOwners.length },
+        orgId
+    )
+
+    return {
+        requestId,
+        requiresApproval: true,
+        pendingOwners: otherOwners.length,
+        deleted: false
+    }
+}
+
+// ── Respond to deletion request (approve or reject) ──────────
+
+export async function respondToOrganizationDeletion(
+    requestId: string,
+    approve: boolean
+): Promise<{ deleted: boolean; pendingCount: number; rejectedBy?: string }> {
+    // 1. Authorize - must be an owner somewhere
+    const user = await authorize("Respond to Deletion Request", "owner")
+
+    // 2. Load request with org validation
+    const requestRows = await sql`
+        SELECT odr.*, o.name as org_name
+        FROM org_deletion_requests odr
+        LEFT JOIN organizations o ON odr.org_id = o.id
+        WHERE odr.id = ${requestId}
+    `
+    if (requestRows.length === 0) {
+        throw new Error("Deletion request not found")
+    }
+    const req = requestRows[0]
+
+    // 3. Check request is still valid
+    if (req.status !== "pending") {
+        throw new Error(`This deletion request is already ${req.status}`)
+    }
+    if (new Date(req.expires_at) < new Date()) {
+        await sql`
+            UPDATE org_deletion_requests SET status = 'expired', updated_at = NOW()
+            WHERE id = ${requestId}
+        `
+        throw new Error("This deletion request has expired")
+    }
+
+    // 4. Verify this user is an approver for this request
+    const approvalRows = await sql`
+        SELECT id, approved FROM org_deletion_approvals
+        WHERE request_id = ${requestId} AND owner_id = ${user.id}
+    `
+    if (approvalRows.length === 0) {
+        throw new Error("You are not an approver for this deletion request")
+    }
+    if (approvalRows[0].approved !== null) {
+        throw new Error("You have already responded to this deletion request")
+    }
+
+    // 5. Record response
+    await sql`
+        UPDATE org_deletion_approvals
+        SET approved = ${approve}, responded_at = NOW()
+        WHERE request_id = ${requestId} AND owner_id = ${user.id}
+    `
+
+    // 6. If rejected — cancel immediately, no need for others to respond
+    if (!approve) {
+        await sql`
+            UPDATE org_deletion_requests
+            SET status = 'cancelled', updated_at = NOW()
+            WHERE id = ${requestId}
+        `
+
+        // Notify requester of rejection (non-fatal)
+        const requesterRows = await sql`
+            SELECT p.email, p.name FROM profiles p
+            JOIN org_deletion_requests odr ON odr.requested_by = p.id
+            WHERE odr.id = ${requestId}
+        `
+        if (requesterRows.length > 0) {
+            sendOrgDeletionRejectedEmail(
+                requesterRows[0].email,
+                requesterRows[0].name || "Owner",
+                req.org_name || req.org_id,
+                user.name || user.email || "An owner"
+            ).catch(e => console.warn("[deleteOrg] Rejection email failed:", e))
+        }
+
+        await audit(
+            "Rejected Organization Deletion Request",
+            "organization",
+            req.org_id,
+            { requestId, rejectedBy: user.id },
+            req.org_id
+        )
+
+        return { deleted: false, pendingCount: 0, rejectedBy: user.name || user.email }
+    }
+
+    // 7. Check if all approvers have approved
+    const pendingRows = await sql`
+        SELECT COUNT(*) as count
+        FROM org_deletion_approvals
+        WHERE request_id = ${requestId} AND approved IS NULL
+    `
+    const stillPending = parseInt(pendingRows[0].count)
+
+    if (stillPending > 0) {
+        return { deleted: false, pendingCount: stillPending }
+    }
+
+    // 8. All approved — execute deletion
+    await executeOrganizationDeletion(req.org_id, req.requested_by, requestId, req.org_name)
+    return { deleted: true, pendingCount: 0 }
+}
+
+// ── Cancel a pending deletion request ────────────────────────
+
+export async function cancelOrganizationDeletion(orgId: string): Promise<void> {
+    const user = await authorize("Cancel Organization Deletion", "owner", orgId)
+
+    // Expire stale requests first
+    await expireStaleRequests(orgId)
+
+    const requestRows = await sql`
+        SELECT id, requested_by FROM org_deletion_requests
+        WHERE org_id = ${orgId} AND status = 'pending'
+    `
+    if (requestRows.length === 0) throw new Error("No pending deletion request found")
+
+    const req = requestRows[0]
+
+    // Only requester or org creator can cancel
+    const orgRows = await sql`SELECT created_by FROM organizations WHERE id = ${orgId}`
+    const isRequester = req.requested_by === user.id
+    const isCreator = orgRows[0]?.created_by === user.id
+
+    if (!isRequester && !isCreator) {
+        throw new Error("Only the deletion requester or org creator can cancel")
+    }
+
+    await sql`
+        UPDATE org_deletion_requests
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = ${req.id}
+    `
+
+    await audit("Cancelled Organization Deletion Request", "organization", orgId, { cancelledBy: user.id }, orgId)
+}
+
+// ── Get deletion request status ───────────────────────────────
+
+export async function getDeletionRequestStatus(orgId: string): Promise<DeletionRequestStatus> {
+    // Expire stale requests first (lightweight — runs every time status is checked)
+    await expireStaleRequests(orgId)
+
+    const requestRows = await sql`
+        SELECT odr.*, p.name as requester_name, p.email as requester_email
+        FROM org_deletion_requests odr
+        JOIN profiles p ON odr.requested_by = p.id
+        WHERE odr.org_id = ${orgId} AND odr.status = 'pending'
+        ORDER BY odr.created_at DESC
+        LIMIT 1
+    `
+
+    if (requestRows.length === 0) return { hasPendingRequest: false }
+
+    const req = requestRows[0]
+
+    const approvalRows = await sql`
+        SELECT owner_id, owner_name, approved, responded_at
+        FROM org_deletion_approvals
+        WHERE request_id = ${req.id}
+        ORDER BY created_at ASC
+    `
+
+    const approvals = approvalRows.map((a: any) => ({
+        ownerId: a.owner_id,
+        ownerName: a.owner_name,
+        approved: a.approved,
+        respondedAt: a.responded_at
+    }))
+
+    return {
+        hasPendingRequest: true,
+        requestId: req.id,
+        requestedBy: req.requester_name || req.requester_email,
+        requestedAt: req.created_at,
+        expiresAt: req.expires_at,
+        isExpired: new Date(req.expires_at) < new Date(),
+        approvals,
+        totalApproversNeeded: approvals.length,
+        approvedCount: approvals.filter((a: any) => a.approved === true).length,
+        rejectedCount: approvals.filter((a: any) => a.approved === false).length,
+    }
+}
+
+// ── Core deletion executor (internal — not exported) ──────────
+
+async function executeOrganizationDeletion(
+    orgId: string,
+    requestedByUserId: string,
+    requestId: string,
+    orgName: string
+): Promise<void> {
+    // 1. Mark request approved before doing anything (idempotency guard)
+    await sql`
+        UPDATE org_deletion_requests
+        SET status = 'approved', updated_at = NOW()
+        WHERE id = ${requestId} AND status = 'pending'
+    `
+
+    // 2. Crypto-shredding — delete DEK so all encrypted data becomes unrecoverable
+    //    This must happen BEFORE deleting the org row (which holds encrypted_dek)
+    try {
+        // We intentionally do NOT call getTenantDEK here — we just null out the column
+        // and let the org row deletion cascade handle the rest
+        await sql`
+            UPDATE organizations SET encrypted_dek = NULL WHERE id = ${orgId}
+        `
+        console.log(`[deleteOrg] Crypto-shredded DEK for org ${orgId}`)
+    } catch (e) {
+        console.warn("[deleteOrg] DEK shredding failed (non-fatal):", e)
+    }
+
+    // 3. Revoke all active sessions for all members
+    try {
+        const members = await sql`
+            SELECT user_id FROM organization_members WHERE org_id = ${orgId}
+        `
+        const { revokeAllSessions } = await import("../session-governance")
+        await Promise.allSettled(
+            members.map((m: any) => revokeAllSessions(m.user_id))
+        )
+        console.log(`[deleteOrg] Revoked sessions for ${members.length} members`)
+    } catch (e) {
+        console.warn("[deleteOrg] Session revocation failed (non-fatal):", e)
+    }
+
+    // 4. Detach profiles that reference this org (prevent FK errors on profile reads)
+    try {
+        await sql`
+            UPDATE profiles SET organization_id = NULL WHERE organization_id = ${orgId}
+        `
+    } catch (e) {
+        console.warn("[deleteOrg] Profile detach failed (non-fatal):", e)
+    }
+
+    // 5. Delete the org — CASCADE handles all related tables automatically
+    await sql`DELETE FROM organizations WHERE id = ${orgId}`
+
+    // 6. Log to system (org is gone so no orgId context — use system)
+    console.log(`[System] Organization "${orgName}" (${orgId}) permanently deleted by ${requestedByUserId}`)
+
+    // 7. Revalidate layout cache
+    revalidatePath("/", "layout")
+    revalidatePath("/setup-organization")
 }

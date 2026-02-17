@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { Check, WifiOff } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 
@@ -40,13 +39,8 @@ export function OfflineModeSection() {
                         <AdvancedScrollReveal variant="scaleUp">
                             <div className="relative bg-zinc-100 rounded-3xl p-8 aspect-square flex items-center justify-center overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-200/20 to-emerald-200/20" />
-                                <motion.div
-                                    animate={{
-                                        scale: [1, 1.05, 1],
-                                        rotate: [0, 1, 0]
-                                    }}
-                                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                                    className="relative z-10 bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
+                                <div
+                                    className="relative z-10 bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-pulse-subtle"
                                 >
                                     <div className="flex justify-between items-center mb-6">
                                         <div className="h-6 w-24 bg-zinc-100 rounded" />
@@ -66,7 +60,7 @@ export function OfflineModeSection() {
                                             <div className="h-2 w-full bg-emerald-200 rounded" />
                                         </div>
                                     </div>
-                                </motion.div>
+                                </div>
                                 <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
                                 <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl" />
                             </div>

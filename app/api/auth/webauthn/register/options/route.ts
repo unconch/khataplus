@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const options = await getWebAuthnRegistrationOptions(session.userId, session.email);
+        const options = await getWebAuthnRegistrationOptions(session.userId, session.email || "");
 
         // Store challenge for verification
         (await cookies()).set('reg_challenge', options.challenge, {

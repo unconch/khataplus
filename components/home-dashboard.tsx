@@ -65,7 +65,6 @@ import {
     PieChart,
     Pie
 } from "recharts"
-import { motion, AnimatePresence } from "framer-motion"
 import { ErrorBoundary } from "@/components/error-boundary"
 
 interface HomeDashboardProps {
@@ -164,7 +163,7 @@ export function HomeDashboard({
                 idx: s.id,
                 type: 'sale',
                 title: s.customer_name || s.inventory?.name || 'Sale',
-                time: new Date(s.created_at),
+                time: new Date(s.sale_date),
                 amount: `₹ ${s.total_amount.toLocaleString()}`,
                 status: 'completed'
             })
@@ -251,56 +250,49 @@ export function HomeDashboard({
             <PwaInstallPrompt />
 
             {/* Trial & Nudge Banners */}
-            <AnimatePresence>
-                {(isTrial && !dismissedTrial) && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 relative z-50"
-                    >
-                        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                                <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                                    {trialDaysLeft} days left in your trial — Pick a plan before read-only kicks in
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Link href={`/${slug}/pricing`}>
-                                    <Button size="sm" className="h-7 px-3 text-[10px] font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                                        Choose Plan
-                                    </Button>
-                                </Link>
-                                <button onClick={() => setDismissedTrial(true)} className="p-1 hover:bg-amber-500/10 rounded-full transition-colors">
-                                    <Plus className="rotate-45 text-amber-500" size={14} />
-                                </button>
-                            </div>
+            {(isTrial && !dismissedTrial) && (
+                <div
+                    className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 relative z-50 animate-in fade-in slide-in-from-top-full duration-500"
+                >
+                    <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                            <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                                {trialDaysLeft} days left in your trial — Pick a plan before read-only kicks in
+                            </p>
                         </div>
-                    </motion.div>
-                )}
-                {!onboardingStats.isProfileComplete && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 relative z-40"
-                    >
-                        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <Sparkles size={14} className="text-blue-500" />
-                                <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                                    Complete your business profile to enable professional GST invoices
-                                </p>
-                            </div>
-                            <Link href={`/${slug}/dashboard/settings`}>
-                                <Button variant="ghost" size="sm" className="h-7 px-3 text-[10px] font-black uppercase tracking-wider text-blue-500 hover:bg-blue-500/10 rounded-lg">
-                                    Setup Profile <ArrowRight size={10} className="ml-1" />
+                        <div className="flex items-center gap-2">
+                            <Link href={`/${slug}/pricing`}>
+                                <Button size="sm" className="h-7 px-3 text-[10px] font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
+                                    Choose Plan
                                 </Button>
                             </Link>
+                            <button onClick={() => setDismissedTrial(true)} className="p-1 hover:bg-amber-500/10 rounded-full transition-colors">
+                                <Plus className="rotate-45 text-amber-500" size={14} />
+                            </button>
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    </div>
+                </div>
+            )}
+            {!onboardingStats.isProfileComplete && (
+                <div
+                    className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 relative z-40 animate-in fade-in slide-in-from-top-full duration-500 delay-150"
+                >
+                    <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <Sparkles size={14} className="text-blue-500" />
+                            <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                Complete your business profile to enable professional GST invoices
+                            </p>
+                        </div>
+                        <Link href={`/${slug}/dashboard/settings`}>
+                            <Button variant="ghost" size="sm" className="h-7 px-3 text-[10px] font-black uppercase tracking-wider text-blue-500 hover:bg-blue-500/10 rounded-lg">
+                                Setup Profile <ArrowRight size={10} className="ml-1" />
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+            )}
 
             {/* Premium Background Orbital Glows */}
             <div className="orbital-glow">
@@ -311,10 +303,8 @@ export function HomeDashboard({
             <div className="max-w-[1600px] mx-auto px-4 lg:px-8 space-y-8 lg:space-y-12 relative z-10">
 
                 {/* 1. Immersive Command Center Header */}
-                <motion.header
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-4 lg:pt-8"
+                <header
+                    className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-4 lg:pt-8 animate-in fade-in slide-up"
                 >
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-primary/60">
@@ -383,7 +373,7 @@ export function HomeDashboard({
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                </motion.header>
+                </header>
 
                 {/* 2. Quick Actions (Desktop Grid, Mobile Scroll) */}
                 <div className="space-y-4">
@@ -464,10 +454,8 @@ export function HomeDashboard({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
                     {/* Revenue Chart Section */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="lg:col-span-8 premium-glass rounded-[2.5rem] p-6 lg:p-10 flex flex-col gap-8 shadow-2xl relative overflow-hidden group border-border/30"
+                    <div
+                        className="lg:col-span-8 premium-glass rounded-[2.5rem] p-6 lg:p-10 flex flex-col gap-8 shadow-2xl relative overflow-hidden group border-border/30 animate-in fade-in scale-in"
                     >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
                             <div className="space-y-1">
@@ -510,7 +498,7 @@ export function HomeDashboard({
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Recent Transactions Side Panel */}
                     <div className="lg:col-span-4 flex flex-col gap-6 lg:gap-8">
@@ -531,12 +519,12 @@ export function HomeDashboard({
                             <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-none">
                                 {recentMergedActivities.length > 0 ? (
                                     recentMergedActivities.map((activity, i) => (
-                                        <motion.div
+                                        <div
                                             key={activity.idx}
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.05 * i }}
-                                            className="flex items-start gap-4 p-4 rounded-2xl hover:bg-background/40 transition-colors group cursor-default border border-transparent hover:border-border/20"
+                                            className={cn(
+                                                "flex items-start gap-4 p-4 rounded-2xl hover:bg-background/40 transition-colors group cursor-default border border-transparent hover:border-border/20 animate-in fade-in slide-in-from-right-4",
+                                                i === 0 ? "stagger-1" : i === 1 ? "stagger-2" : i === 2 ? "stagger-3" : i === 3 ? "stagger-4" : "stagger-5"
+                                            )}
                                         >
                                             <div className={cn(
                                                 "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105",
@@ -566,7 +554,7 @@ export function HomeDashboard({
                                                     )}
                                                 </div>
                                             </div>
-                                        </motion.div>
+                                        </div>
                                     ))
                                 ) : (
                                     <div className="h-full flex flex-col items-center justify-center p-12 text-center text-muted-foreground space-y-4">
@@ -660,9 +648,8 @@ export function HomeDashboard({
                     </div>
 
                     {/* Inventory Health Widget */}
-                    <motion.div
-                        whileHover={{ y: -5 }}
-                        className="premium-glass p-8 rounded-[2.5rem] flex flex-col justify-between group cursor-pointer shadow-lg border-border/30"
+                    <div
+                        className="premium-glass p-8 rounded-[2.5rem] flex flex-col justify-between group cursor-pointer shadow-lg border-border/30 hover-scale"
                     >
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
@@ -686,7 +673,7 @@ export function HomeDashboard({
                                 />
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Low Stock Alert Section */}
                     <div className={cn(
@@ -743,11 +730,9 @@ function QuickAction({ title, description, icon: Icon, href, color }: { title: s
 
     return (
         <Link href={href} className="flex-1 min-w-[160px]">
-            <motion.div
-                whileHover={{ y: -5, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+            <div
                 className={cn(
-                    "p-6 rounded-[2.5rem] border premium-glass flex flex-col gap-4 group transition-all duration-300",
+                    "p-6 rounded-[2.5rem] border premium-glass flex flex-col gap-4 group transition-all duration-300 hover-scale active-scale",
                     variants[color]
                 )}
             >
@@ -761,7 +746,7 @@ function QuickAction({ title, description, icon: Icon, href, color }: { title: s
                     <p className="font-black text-foreground group-hover:text-primary transition-colors tracking-tight text-base leading-none">{title}</p>
                     <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{description}</p>
                 </div>
-            </motion.div>
+            </div>
         </Link>
     )
 }
@@ -783,9 +768,8 @@ function MetricCard({ title, subtitle, value, trend, trendUp, icon: Icon, color 
     }
 
     return (
-        <motion.div
-            whileHover={{ y: -5 }}
-            className="premium-glass p-8 rounded-[2.5rem] shadow-xl border-border/40 relative overflow-hidden group h-full"
+        <div
+            className="premium-glass p-8 rounded-[2.5rem] shadow-xl border-border/40 relative overflow-hidden group h-full hover-scale"
         >
             <div className={cn("absolute -right-4 -bottom-4 opacity-5 transition-transform duration-700 group-hover:scale-125 group-hover:-rotate-12", colors[color].split(' ')[0])}>
                 <Icon size={120} />
@@ -812,7 +796,7 @@ function MetricCard({ title, subtitle, value, trend, trendUp, icon: Icon, color 
                 </div>
                 <p className="text-4xl font-black italic tracking-tighter text-foreground leading-none">{value}</p>
             </div>
-        </motion.div>
+        </div>
     )
 }
 

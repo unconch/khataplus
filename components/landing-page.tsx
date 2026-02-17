@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { useScroll, useMotionValueEvent } from "framer-motion"
 import { HeroSection } from "@/components/landing-page/HeroSection"
 
 // Lazy load all other sections

@@ -23,7 +23,6 @@ import {
     PhoneCall,
     BarChart3
 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
 
 interface Feature {
     name: string
@@ -106,23 +105,16 @@ export function PricingComparison() {
     return (
         <div className="max-w-7xl mx-auto mt-40 px-6 pb-40">
             <div className="text-center mb-24">
-                <motion.h3
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-4xl md:text-5xl font-black text-zinc-950 mb-6 tracking-tight italic"
+                <h3
+                    className="text-4xl md:text-5xl font-black text-zinc-950 mb-6 tracking-tight italic animate-in fade-in slide-up duration-500"
                 >
                     Detailed Feature Matrix.
-                </motion.h3>
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    viewport={{ once: true }}
-                    className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl mx-auto"
+                </h3>
+                <p
+                    className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl mx-auto animate-in fade-in slide-up duration-500 delay-100"
                 >
                     Absolute transparency on every capability for every stage.
-                </motion.p>
+                </p>
             </div>
 
             <div className="relative">
@@ -175,40 +167,35 @@ export function PricingComparison() {
                                             </td>
                                         </tr>
 
-                                        <AnimatePresence initial={false}>
-                                            {!collapsed[category.name] && category.features.map((f, i) => (
-                                                <motion.tr
-                                                    key={f.name}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: i * 0.05 }}
-                                                    className="group hover:bg-slate-50 transition-all duration-300"
-                                                >
-                                                    <td className="sticky left-0 bg-white group-hover:bg-slate-50 z-20 py-6 px-10 border-r border-zinc-50 shadow-[4px_0_10px_-10px_rgba(0,0,0,0.1)]">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="text-zinc-400 group-hover:text-emerald-500 transition-colors">
-                                                                {f.icon}
-                                                            </div>
-                                                            <span className="text-zinc-600 font-bold group-hover:text-zinc-950 transition-colors text-sm tracking-tight">{f.name}</span>
+                                        {!collapsed[category.name] && category.features.map((f, i) => (
+                                            <tr
+                                                key={f.name}
+                                                className="group hover:bg-slate-50 transition-all duration-300 animate-in fade-in slide-up duration-300"
+                                            >
+                                                <td className="sticky left-0 bg-white group-hover:bg-slate-50 z-20 py-6 px-10 border-r border-zinc-50 shadow-[4px_0_10px_-10px_rgba(0,0,0,0.1)]">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                                                            {f.icon}
                                                         </div>
-                                                    </td>
-                                                    <td className="py-6 px-10">
-                                                        <Cell value={f.keep} plan="zinc" />
-                                                    </td>
-                                                    <td className="py-6 px-10">
-                                                        <Cell value={f.starter} plan="blue" />
-                                                    </td>
-                                                    <td className="py-6 px-10 bg-emerald-50/20 group-hover:bg-emerald-50/40 relative">
-                                                        {/* Glow effect on hover for Pro column */}
-                                                        <div className="absolute inset-0 border-x border-emerald-500/0 group-hover:border-emerald-500/10 group-hover:shadow-[inset_0_0_20px_-10px_rgba(16,185,129,0.1)] transition-all pointer-events-none" />
-                                                        <Cell value={f.pro} plan="emerald" isPro />
-                                                    </td>
-                                                    <td className="py-6 px-10">
-                                                        <Cell value={f.biz} plan="indigo" />
-                                                    </td>
-                                                </motion.tr>
-                                            ))}
-                                        </AnimatePresence>
+                                                        <span className="text-zinc-600 font-bold group-hover:text-zinc-950 transition-colors text-sm tracking-tight">{f.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-6 px-10">
+                                                    <Cell value={f.keep} plan="zinc" />
+                                                </td>
+                                                <td className="py-6 px-10">
+                                                    <Cell value={f.starter} plan="blue" />
+                                                </td>
+                                                <td className="py-6 px-10 bg-emerald-50/20 group-hover:bg-emerald-50/40 relative">
+                                                    {/* Glow effect on hover for Pro column */}
+                                                    <div className="absolute inset-0 border-x border-emerald-500/0 group-hover:border-emerald-500/10 group-hover:shadow-[inset_0_0_20px_-10px_rgba(16,185,129,0.1)] transition-all pointer-events-none" />
+                                                    <Cell value={f.pro} plan="emerald" isPro />
+                                                </td>
+                                                <td className="py-6 px-10">
+                                                    <Cell value={f.biz} plan="indigo" />
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </React.Fragment>
                                 ))}
                             </tbody>

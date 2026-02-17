@@ -8,6 +8,14 @@ export async function isGuestMode() {
 }
 
 export async function getCurrentUser(): Promise<{ userId: string, email: string, isGuest: boolean } | null> {
+    // Prefer explicit guest/demo mode if the request indicates it.
+    // This ensures visiting `/demo` forces the sandbox even when a
+    // Supabase session is present in the browser (server-side sign-out
+    // may not always clear client-side state immediately).
+    if (await isGuestMode()) {
+        return { userId: "guest-user", email: "guest@khataplus.demo", isGuest: true }
+    }
+
     const { getSession } = await import("../session")
     const session = await getSession()
     const userId = session?.userId
@@ -15,10 +23,6 @@ export async function getCurrentUser(): Promise<{ userId: string, email: string,
 
     if (userId && email) {
         return { userId, email, isGuest: false }
-    }
-
-    if (await isGuestMode()) {
-        return { userId: "guest-user", email: "guest@khataplus.demo", isGuest: true }
     }
 
     return null

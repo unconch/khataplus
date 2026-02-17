@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import {
     Calendar, Download, TrendingUp, TrendingDown, DollarSign,
     ShoppingCart, CreditCard, Wallet, FileText, Filter,
@@ -87,10 +86,8 @@ export function ReportsView({ orgId, orgSlug }: ReportsViewProps) {
     }
 
     const StatCard = ({ icon: Icon, label, value, change, trend }: any) => (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl border border-zinc-200 p-6 hover:shadow-lg transition-shadow"
+        <div
+            className="bg-white rounded-xl border border-zinc-200 p-6 hover:shadow-lg transition-shadow animate-in fade-in slide-up"
         >
             <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-lg ${trend === "up" ? "bg-emerald-100" : trend === "down" ? "bg-red-100" : "bg-blue-100"
@@ -108,7 +105,7 @@ export function ReportsView({ orgId, orgSlug }: ReportsViewProps) {
             </div>
             <p className="text-sm text-zinc-600 mb-1">{label}</p>
             <p className="text-2xl font-bold text-zinc-900">{value}</p>
-        </motion.div>
+        </div>
     )
 
     if (loading) {

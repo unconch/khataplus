@@ -33,3 +33,13 @@ user_data*/
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Local Debug Scripts and Logs
+check-org-schema.ts
+check-org.ts
+clear-org-data.ts
+dev-server*.err
+dev-server*.log
+inspect-trigger.ts
+list-tables.ts
+scripts/run_migrate_status_direct.ts

@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
 
@@ -19,9 +18,8 @@ function StepCard({ number, title, description, color }: {
     const c = colorMap[color]
 
     return (
-        <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-3xl p-8 md:p-10 shadow-lg border border-zinc-100 group relative overflow-hidden"
+        <div
+            className="bg-white rounded-3xl p-8 md:p-10 shadow-lg border border-zinc-100 group relative overflow-hidden hover-scale"
         >
             <div className={`absolute top-0 right-0 w-32 h-32 ${c.bg} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700`} />
 
@@ -33,7 +31,7 @@ function StepCard({ number, title, description, color }: {
 
             {/* Connecting Line (for desktop) */}
             <div className="hidden md:block absolute top-1/2 -right-8 w-16 h-0.5 bg-gradient-to-r from-zinc-200 to-transparent z-0" />
-        </motion.div>
+        </div>
     )
 }
 

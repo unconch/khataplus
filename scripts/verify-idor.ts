@@ -3,14 +3,13 @@
 const Module = require('module');
 const originalRequire = Module.prototype.require;
 
-Module.prototype.require = function (id) {
+Module.prototype.require = function (id: any) {
     if (id === 'server-only') return {};
 
-    if (id.includes('db') || id.endsWith('db')) {
+    if (typeof id === 'string' && (id.includes('db') || id.endsWith('db'))) {
         return {
-            sql: async (strings, ...values) => {
-                const query = strings.join("?"); // Crude reconstruction
-                // console.log("SQL:", query);
+            sql: async (strings: any, ...values: any[]) => {
+                const query = Array.isArray(strings) ? strings.join("?") : String(strings);
 
                 if (query.includes("SUM(total_amount)")) {
                     // Verify the IDOR fix: Check if org_id is in the query structure
@@ -38,18 +37,18 @@ Module.prototype.require = function (id) {
         };
     }
 
-    if (id.includes('auth')) return { getCurrentOrgId: async () => 'org1' };
-    if (id.includes('security')) return { authorize: async () => { }, audit: async () => { } };
-    if (id.includes('next')) return {
-        cache: fn => fn,
-        unstable_cache: fn => fn,
+    if (typeof id === 'string' && id.includes('auth')) return { getCurrentOrgId: async () => 'org1' };
+    if (typeof id === 'string' && id.includes('security')) return { authorize: async () => { }, audit: async () => { } };
+    if (typeof id === 'string' && id.includes('next')) return {
+        cache: (fn: any) => fn,
+        unstable_cache: (fn: any) => fn,
         revalidatePath: () => { },
         revalidateTag: () => { },
-        headers: async => ({ get: () => undefined }),
-        cookies: async => ({ get: () => undefined })
+        headers: async (_async: any) => ({ get: () => undefined }),
+        cookies: async (_async: any) => ({ get: () => undefined })
     };
 
-    return originalRequire.apply(this, arguments);
+    return originalRequire.apply(this, arguments as any);
 };
 
 const { syncDailyReport } = require('../lib/data/reports.ts');
@@ -59,8 +58,8 @@ async function testIdor() {
     try {
         await syncDailyReport("2023-01-01", "org1");
         console.log("✅ syncDailyReport executed with org_id constraint.");
-    } catch (e) {
-        console.error("❌ verification failed:", e.message);
+    } catch (e: any) {
+        console.error("❌ verification failed:", e?.message || e);
         process.exit(1);
     }
 }

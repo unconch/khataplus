@@ -22,7 +22,6 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { motion, AnimatePresence } from "framer-motion"
 import html2canvas from "html2canvas"
 import { toast } from "sonner"
 import QRCode from "react-qr-code"
@@ -609,19 +608,15 @@ export function BusinessCardTool() {
                         style={{ backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
 
                     {/* Card Container */}
-                    <motion.div
+                    <div
                         ref={cardRef}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                        className="relative w-full max-w-[500px] aspect-[1.75/1] bg-white text-black shadow-2xl rounded-xl overflow-hidden"
+                        className="relative w-full max-w-[500px] aspect-[1.75/1] bg-white text-black shadow-2xl rounded-xl overflow-hidden animate-in fade-in scale-in duration-500"
                     >
                         {purpose === 'professional' && <ProfessionalCard />}
                         {purpose === 'social' && <SocialCard />}
                         {purpose === 'commerce' && <CommerceCard />}
                         {purpose === 'event' && <EventCard />}
-                    </motion.div>
+                    </div>
 
                 </div>
 

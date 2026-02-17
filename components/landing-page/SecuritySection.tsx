@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { ShieldCheck, Zap, Shield } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 
@@ -46,15 +45,11 @@ export function SecuritySection() {
                             <div className="relative group">
                                 <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-teal-500/20 rounded-[3rem] blur-2xl group-hover:opacity-100 transition duration-1000" />
                                 <div className="relative bg-white border border-zinc-100 rounded-[2.5rem] p-12 shadow-xl flex items-center justify-center overflow-hidden">
-                                    <motion.div
-                                        animate={{
-                                            rotateY: [0, 180, 360],
-                                        }}
-                                        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                                        className="w-48 h-48 rounded-full border-8 border-emerald-500/20 flex items-center justify-center"
+                                    <div
+                                        className="w-48 h-48 rounded-full border-8 border-emerald-500/20 flex items-center justify-center animate-spin-y"
                                     >
                                         <ShieldCheck size={80} className="text-emerald-500" />
-                                    </motion.div>
+                                    </div>
                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent" />
                                 </div>
                             </div>

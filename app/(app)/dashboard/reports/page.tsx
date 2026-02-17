@@ -1,26 +1,29 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { getOrganizationBySlug } from "@/lib/data/organizations"
 import { ReportsView } from "@/components/reports-view"
-import { headers } from "next/headers"
 
 export default async function ReportsPage() {
-    const headersList = await headers()
-    const slug = headersList.get("x-tenant-slug")
+    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getOrganization } = await import("@/lib/data/organizations")
 
-    if (!slug) {
+    const user = await getCurrentUser()
+    if (!user) {
+        redirect("/auth/login")
+    }
+
+    const { userId, isGuest } = user
+    const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
+
+    if (!orgId) {
         redirect("/setup-organization")
     }
 
-    const org = await getOrganizationBySlug(slug)
-
-    if (!org) {
-        redirect("/setup-organization")
-    }
+    const org = await getOrganization(orgId)
+    const orgSlug = isGuest ? "demo" : (org?.slug || "")
 
     return (
         <Suspense fallback={<ReportsLoadingSkeleton />}>
-            <ReportsView orgId={org.id} orgSlug={slug} />
+            <ReportsView orgId={orgId} orgSlug={orgSlug} />
         </Suspense>
     )
 }

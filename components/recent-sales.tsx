@@ -92,7 +92,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
   return (
     <div className="space-y-4">
       {sales.map((sale) => {
-        const diffMs = now - new Date(sale.created_at).getTime()
+        const diffMs = now - new Date(sale.sale_date).getTime()
         const isEditable = diffMs < 5 * 60 * 1000
         const timeLeftMin = Math.ceil((5 * 60 * 1000 - diffMs) / 1000 / 60)
         const isEditing = editingId === sale.id
@@ -160,7 +160,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
                     ₹{Number(sale.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </p>
                   <p className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em]">
-                    {new Date(sale.created_at).toLocaleTimeString("en-IN", {
+                    {new Date(sale.sale_date).toLocaleTimeString("en-IN", {
                       hour: "2-digit",
                       minute: "2-digit",
                       hour12: true

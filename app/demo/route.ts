@@ -21,12 +21,16 @@ export async function GET(request: Request) {
     )
 
     const { data: { user } } = await supabase.auth.getUser()
-
+    // Ensure demo always uses the guest/demo sandbox. If a user is currently
+    // signed in, sign them out so the demo sandbox is used instead of their
+    // personal organization (avoid redirecting logged-in users to setup).
     if (user) {
-        const { getUserOrganizations } = await import("@/lib/data/organizations")
-        const userOrgs = await getUserOrganizations(user.id).catch(() => [])
-        const slug = userOrgs?.[0]?.organization?.slug || 'dashboard'
-        return NextResponse.redirect(new URL(`/${slug}/dashboard`, request.url))
+        try {
+            await supabase.auth.signOut()
+        } catch (err) {
+            // ignore sign-out errors; continue to set guest cookie and redirect
+            console.warn("/demo: failed to sign out user before entering demo", err)
+        }
     }
 
     const dashboardUrl = new URL("/demo/dashboard", request.url)

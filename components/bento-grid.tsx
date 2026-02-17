@@ -1,7 +1,6 @@
 "use client"
 
 import { ReactNode } from "react"
-import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -33,17 +32,16 @@ export function BentoCard({
     cta,
 }: BentoCardProps) {
     return (
-        <motion.div
+        <div
             key={name}
             className={cn(
                 "group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-3xl",
                 // Light mode styles
                 "bg-white border border-zinc-200",
                 // Hover styles
-                "hover:shadow-xl transition-all duration-300",
+                "hover:shadow-xl transition-all duration-300 hover-lift",
                 className
             )}
-            whileHover={{ y: -5 }}
         >
             <div className="absolute inset-0 z-0 transition-transform duration-300 group-hover:scale-105">
                 {background}
@@ -80,6 +78,6 @@ export function BentoCard({
             </div>
 
             <div className="pointer-events-none absolute inset-0 transform-gpu transition-all duration-300 group-hover:bg-black/[0.03] group-hover:backdrop-blur-[1px]" />
-        </motion.div>
+        </div>
     )
 }

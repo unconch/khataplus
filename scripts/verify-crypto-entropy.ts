@@ -21,8 +21,8 @@ async function runTests() {
     // TEST 1: Basic Encryption/Decryption
     try {
         const plaintext = "Secret Data";
-        const encrypted = encrypt(plaintext);
-        const decrypted = decrypt(encrypted);
+        const encrypted = await encrypt(plaintext);
+        const decrypted = await decrypt(encrypted);
         assert(decrypted === plaintext, "Basic encryption round-trip");
     } catch (e) {
         console.error(e);
@@ -36,11 +36,11 @@ async function runTests() {
         const orgB = "org_b_uuid";
 
         // Encrypt with Org A context
-        const encryptedWithA = encrypt(plaintext, orgA);
+        const encryptedWithA = await encrypt(plaintext, orgA);
 
         // Decrypt with Org A context (Should succeed)
         try {
-            const decryptedWithA = decrypt(encryptedWithA, orgA);
+            const decryptedWithA = await decrypt(encryptedWithA, orgA);
             assert(decryptedWithA === plaintext, "AAD Decryption with correct context");
         } catch (e: any) {
             console.error("Legal decrypt failed:", e.message);
@@ -49,19 +49,16 @@ async function runTests() {
 
         // Decrypt with Org B context (Should FAIL)
         try {
-            decrypt(encryptedWithA, orgB);
+            await decrypt(encryptedWithA, orgB);
             assert(false, "AAD Decryption with WRONG context should have failed (it succeeded!)");
         } catch (e: any) {
-            // Check broadly for failure
             const passed = true;
-            // Logging purely for verification
-            // console.log("Caught expected error:", e.message);
             assert(passed, "AAD Decryption with WRONG context correctly failed");
         }
 
         // Decrypt with NO context (Should FAIL)
         try {
-            decrypt(encryptedWithA);
+            await decrypt(encryptedWithA);
             assert(false, "AAD Decryption with MISSING context should have failed (it succeeded!)");
         } catch (e: any) {
             const passed = true;

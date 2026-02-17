@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Monitor, Smartphone, Receipt, Package, Users, BarChart3, Sparkles, Wallet } from "lucide-react"
 
 export function AdaptiveInterfaceSection() {
@@ -36,163 +35,151 @@ export function AdaptiveInterfaceSection() {
                 <div className="max-w-6xl mx-auto">
                     <div className={`relative transition-all duration-500 ease-in-out ${activeTab === 'desktop' ? 'h-[600px] md:h-auto md:aspect-[16/9]' : 'h-[750px] md:h-[850px] md:aspect-[16/9]'} rounded-3xl border border-white/10 p-1 md:p-4 backdrop-blur-2xl bg-gradient-to-br from-white/5 to-white/0`}>
                         <div className="relative h-full w-full rounded-2xl overflow-hidden bg-[#0F0F0F] flex items-center justify-center">
-                            <AnimatePresence mode="wait">
-                                {activeTab === "desktop" ? (
-                                    <motion.div
-                                        key="desktop"
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.4 }}
-                                        className="w-full h-full flex"
-                                    >
-                                        {/* Desktop Mockup */}
-                                        <div className="w-72 h-full border-r border-white/10 bg-white/5 flex flex-col p-6 gap-6 hidden md:flex">
-                                            <div className="w-40 h-10 bg-white/10 rounded-md animate-pulse" />
-                                            <div className="space-y-4 mt-4">
-                                                {[1, 2, 3, 4, 5, 6].map(i => (
-                                                    <div key={i} className="w-full h-12 bg-white/5 rounded-xl flex items-center px-4 gap-3">
-                                                        <div className="w-5 h-5 rounded bg-white/10" />
-                                                        <div className="flex-1 h-3 bg-white/10 rounded" />
-                                                    </div>
-                                                ))}
-                                            </div>
+                            {activeTab === "desktop" ? (
+                                <div
+                                    className="w-full h-full flex animate-in fade-in scale-in duration-400"
+                                >
+                                    {/* Desktop Mockup */}
+                                    <div className="w-72 h-full border-r border-white/10 bg-white/5 flex flex-col p-6 gap-6 hidden md:flex">
+                                        <div className="w-40 h-10 bg-white/10 rounded-md animate-pulse" />
+                                        <div className="space-y-4 mt-4">
+                                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                                <div key={i} className="w-full h-12 bg-white/5 rounded-xl flex items-center px-4 gap-3">
+                                                    <div className="w-5 h-5 rounded bg-white/10" />
+                                                    <div className="flex-1 h-3 bg-white/10 rounded" />
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="flex-1 p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 overflow-y-auto md:overflow-hidden">
-                                            <div className="md:col-span-2 space-y-6 md:space-y-8">
-                                                <div className="h-24 bg-white/5 rounded-2xl border border-white/10 p-6 flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/20" />
-                                                    <div className="space-y-2">
-                                                        <div className="w-32 h-4 bg-white/10 rounded" />
-                                                        <div className="w-48 h-3 bg-white/5 rounded" />
-                                                    </div>
-                                                </div>
-                                                <div className="h-[300px] md:h-[400px] bg-white/5 rounded-2xl border border-white/10 p-6 relative overflow-hidden group">
-                                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-50" />
-                                                    <div className="relative z-10 h-full flex flex-col">
-                                                        <div className="w-1/3 h-6 bg-white/10 rounded mb-8" />
-                                                        <div className="flex-1 w-full bg-gradient-to-t from-emerald-500/20 to-transparent rounded-xl border border-white/5 mt-auto" />
-                                                    </div>
+                                    </div>
+                                    <div className="flex-1 p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 overflow-y-auto md:overflow-hidden">
+                                        <div className="md:col-span-2 space-y-6 md:space-y-8">
+                                            <div className="h-24 bg-white/5 rounded-2xl border border-white/10 p-6 flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-emerald-500/20" />
+                                                <div className="space-y-2">
+                                                    <div className="w-32 h-4 bg-white/10 rounded" />
+                                                    <div className="w-48 h-3 bg-white/5 rounded" />
                                                 </div>
                                             </div>
-                                            <div className="md:col-span-1 space-y-6">
-                                                <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
-                                                    <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
-                                                    <div className="space-y-3">
-                                                        {[1, 2, 3].map(i => <div key={i} className="w-full h-8 bg-white/5 rounded-lg" />)}
-                                                    </div>
-                                                </div>
-                                                <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
-                                                    <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg" />)}
-                                                    </div>
+                                            <div className="h-[300px] md:h-[400px] bg-white/5 rounded-2xl border border-white/10 p-6 relative overflow-hidden group">
+                                                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-50" />
+                                                <div className="relative z-10 h-full flex flex-col">
+                                                    <div className="w-1/3 h-6 bg-white/10 rounded mb-8" />
+                                                    <div className="flex-1 w-full bg-gradient-to-t from-emerald-500/20 to-transparent rounded-xl border border-white/5 mt-auto" />
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="pwa"
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.4 }}
-                                        className="w-full h-full flex flex-col items-center justify-center p-4 md:p-12"
-                                    >
-                                        <div className="w-[340px] h-[680px] border-[8px] border-zinc-800 rounded-[3.5rem] bg-black relative overflow-hidden shadow-2xl scale-95 sm:scale-100 md:scale-105 lg:scale-115 origin-center ring-1 ring-white/10 transition-transform duration-500">
-                                            {/* Notch */}
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-8 bg-zinc-800 rounded-b-2xl z-20" />
+                                        <div className="md:col-span-1 space-y-6">
+                                            <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
+                                                <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
+                                                <div className="space-y-3">
+                                                    {[1, 2, 3].map(i => <div key={i} className="w-full h-8 bg-white/5 rounded-lg" />)}
+                                                </div>
+                                            </div>
+                                            <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
+                                                <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg" />)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div
+                                    className="w-full h-full flex flex-col items-center justify-center p-4 md:p-12 animate-in fade-in scale-in duration-400"
+                                >
+                                    <div className="w-[340px] h-[680px] border-[8px] border-zinc-800 rounded-[3.5rem] bg-black relative overflow-hidden shadow-2xl scale-95 sm:scale-100 md:scale-105 lg:scale-115 origin-center ring-1 ring-white/10 transition-transform duration-500">
+                                        {/* Notch */}
+                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-8 bg-zinc-800 rounded-b-2xl z-20" />
 
-                                            {/* Status Bar */}
-                                            <div className="absolute top-2 right-5 z-20 flex gap-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                                                <div className="w-4 h-1.5 rounded-full bg-zinc-600" />
+                                        {/* Status Bar */}
+                                        <div className="absolute top-2 right-5 z-20 flex gap-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                                            <div className="w-4 h-1.5 rounded-full bg-zinc-600" />
+                                        </div>
+
+                                        <div className="h-full w-full bg-[#09090b] flex flex-col relative text-white font-sans rounded-[2.6rem] overflow-hidden">
+                                            {/* App Header */}
+                                            <div className="pt-10 pb-4 px-5 flex items-center justify-between border-b border-white/5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold">K</div>
+                                                    <div className="cursor-default">
+                                                        <div className="h-2 w-20 bg-emerald-500/20 rounded mb-1" />
+                                                        <div className="h-2 w-12 bg-white/20 rounded" />
+                                                    </div>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-white/5" />
                                             </div>
 
-                                            <div className="h-full w-full bg-[#09090b] flex flex-col relative text-white font-sans rounded-[2.6rem] overflow-hidden">
-                                                {/* App Header */}
-                                                <div className="pt-10 pb-4 px-5 flex items-center justify-between border-b border-white/5">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold">K</div>
-                                                        <div className="cursor-default">
-                                                            <div className="h-2 w-20 bg-emerald-500/20 rounded mb-1" />
-                                                            <div className="h-2 w-12 bg-white/20 rounded" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-8 h-8 rounded-full bg-white/5" />
-                                                </div>
-
-                                                <div className="flex-1 p-5 space-y-6 overflow-hidden relative">
-                                                    {/* Quick Actions Grid */}
-                                                    <div>
-                                                        <div className="h-3 w-24 bg-white/10 rounded mb-3" />
-                                                        <div className="grid grid-cols-4 gap-3">
-                                                            {[1, 2, 3, 4].map(i => (
-                                                                <div key={i} className="flex flex-col items-center gap-2">
-                                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${i === 1 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-white/5 text-zinc-500'}`}>
-                                                                        {i === 1 && <Receipt size={20} />}
-                                                                        {i === 2 && <Package size={20} />}
-                                                                        {i === 3 && <Users size={20} />}
-                                                                        {i === 4 && <BarChart3 size={20} />}
-                                                                    </div>
+                                            <div className="flex-1 p-5 space-y-6 overflow-hidden relative">
+                                                {/* Quick Actions Grid */}
+                                                <div>
+                                                    <div className="h-3 w-24 bg-white/10 rounded mb-3" />
+                                                    <div className="grid grid-cols-4 gap-3">
+                                                        {[1, 2, 3, 4].map(i => (
+                                                            <div key={i} className="flex flex-col items-center gap-2">
+                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${i === 1 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-white/5 text-zinc-500'}`}>
+                                                                    {i === 1 && <Receipt size={20} />}
+                                                                    {i === 2 && <Package size={20} />}
+                                                                    {i === 3 && <Users size={20} />}
+                                                                    {i === 4 && <BarChart3 size={20} />}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Hero Card */}
-                                                    <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 relative overflow-hidden">
-                                                        <div className="absolute top-0 right-0 p-4 opacity-20"><Sparkles size={60} /></div>
-                                                        <div className="relative z-10">
-                                                            <div className="h-3 w-20 bg-white/40 rounded mb-2" />
-                                                            <div className="h-8 w-32 bg-white rounded mb-2" />
-                                                            <div className="h-3 w-16 bg-emerald-200/50 rounded" />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Recent List */}
-                                                    <div className="space-y-3">
-                                                        <div className="h-3 w-24 bg-white/10 rounded" />
-                                                        {[1, 2].map(i => (
-                                                            <div key={i} className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-white/10" />
-                                                                    <div className="space-y-1">
-                                                                        <div className="h-2 w-20 bg-white/20 rounded" />
-                                                                        <div className="h-2 w-12 bg-white/10 rounded" />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="h-3 w-10 bg-emerald-500/30 rounded" />
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
 
-                                                {/* Bottom Tab Bar */}
-                                                <div className="h-16 bg-[#09090b]/90 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 rounded-b-[2.5rem]">
-                                                    <div className="flex flex-col items-center gap-1 text-emerald-500">
-                                                        <Monitor size={20} />
+                                                {/* Hero Card */}
+                                                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 p-4 opacity-20"><Sparkles size={60} /></div>
+                                                    <div className="relative z-10">
+                                                        <div className="h-3 w-20 bg-white/40 rounded mb-2" />
+                                                        <div className="h-8 w-32 bg-white rounded mb-2" />
+                                                        <div className="h-3 w-16 bg-emerald-200/50 rounded" />
                                                     </div>
-                                                    <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                        <Receipt size={20} />
-                                                    </div>
-                                                    <div className="w-12 h-12 -mt-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
-                                                        <span className="text-xl font-bold">+</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                        <Users size={20} />
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                        <Wallet size={20} />
-                                                    </div>
+                                                </div>
+
+                                                {/* Recent List */}
+                                                <div className="space-y-3">
+                                                    <div className="h-3 w-24 bg-white/10 rounded" />
+                                                    {[1, 2].map(i => (
+                                                        <div key={i} className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-white/10" />
+                                                                <div className="space-y-1">
+                                                                    <div className="h-2 w-20 bg-white/20 rounded" />
+                                                                    <div className="h-2 w-12 bg-white/10 rounded" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="h-3 w-10 bg-emerald-500/30 rounded" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Bottom Tab Bar */}
+                                            <div className="h-16 bg-[#09090b]/90 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 rounded-b-[2.5rem]">
+                                                <div className="flex flex-col items-center gap-1 text-emerald-500">
+                                                    <Monitor size={20} />
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
+                                                    <Receipt size={20} />
+                                                </div>
+                                                <div className="w-12 h-12 -mt-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
+                                                    <span className="text-xl font-bold">+</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
+                                                    <Users size={20} />
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
+                                                    <Wallet size={20} />
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

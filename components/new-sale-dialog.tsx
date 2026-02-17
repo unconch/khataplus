@@ -5,17 +5,11 @@ import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
 import {
     Drawer,
     DrawerContent,
-    DrawerDescription,
-    DrawerHeader,
-    DrawerTitle,
     DrawerTrigger,
 } from "@/components/ui/drawer"
 import { PlusIcon } from "lucide-react"
@@ -46,16 +40,8 @@ export function NewSaleDialog({ inventory, userId, gstInclusive, gstEnabled, def
                         <span>New Sale</span>
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-card shadow-xl rounded-2xl focus:outline-none max-h-[90vh]">
-                    <div className="p-6 border-b border-zinc-100 dark:border-white/5 sticky top-0 z-10 bg-background/80 backdrop-blur-md">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-bold tracking-tight">New Sale</DialogTitle>
-                            <DialogDescription className="text-sm font-medium text-muted-foreground">
-                                Record a new transaction
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
-                    <div className="p-8 overflow-y-auto max-h-[70vh]">
+                <DialogContent className="max-w-4xl h-[90vh] p-0 overflow-hidden border-none bg-card shadow-xl rounded-2xl focus:outline-none flex flex-col [&>button]:top-[22px] [&>button]:right-5">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         <SalesForm
                             inventory={inventory}
                             userId={userId}
@@ -81,14 +67,8 @@ export function NewSaleDialog({ inventory, userId, gstInclusive, gstEnabled, def
                     <span>New Sale</span>
                 </Button>
             </DrawerTrigger>
-            <DrawerContent className="max-h-[90vh]">
-                <DrawerHeader className="text-left">
-                    <DrawerTitle>New Sale</DrawerTitle>
-                    <DrawerDescription>
-                        Record a new transaction
-                    </DrawerDescription>
-                </DrawerHeader>
-                <div className="px-4 pb-8 overflow-y-auto">
+            <DrawerContent className="h-[90vh] p-0 overflow-hidden flex flex-col">
+                <div className="flex-1 min-h-0 overflow-hidden">
                     <SalesForm
                         inventory={inventory}
                         userId={userId}

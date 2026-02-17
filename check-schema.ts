@@ -10,7 +10,7 @@ async function checkSchema() {
             ORDER BY ordinal_position;
         `;
         console.log("Columns in 'organizations':");
-        console.table(columns.map(c => ({ name: c.column_name, type: c.data_type })));
+        console.table(columns.map((c: any) => ({ name: c.column_name, type: c.data_type })));
     } catch (err) {
         console.error("Schema check failed:", err);
     } finally {

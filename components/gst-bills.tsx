@@ -44,7 +44,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
 
   const filteredGroups = useMemo(() => {
     const sorted = Object.values(groupedSales).sort((a, b) =>
-      new Date(b.createdat).getTime() - new Date(a.createdat).getTime()
+      new Date(b.saledate).getTime() - new Date(a.saledate).getTime()
     )
 
     if (!searchQuery) {
@@ -53,7 +53,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
 
     const query = searchQuery.toLowerCase()
     return sorted.filter(group => {
-      const billId = `INV-${format(new Date(group.createdat), "ddMMyyHHmm")}`
+      const billId = `INV-${format(new Date(group.saledate), "ddMMyyHHmm")}`
       const matchesId = billId.toLowerCase().includes(query)
       const matchesItem = group.items.some(item => item.inventory?.name.toLowerCase().includes(query))
       const totalAmount = group.items.reduce((sum, item) => sum + item.total_amount, 0)
@@ -124,7 +124,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-black text-base tracking-tight text-foreground uppercase">
-                            INV-{format(new Date(group.createdat), "ddMMyyHHmm")}
+                            INV-{format(new Date(group.saledate), "ddMMyyHHmm")}
                           </p>
                           {itemCount > 1 && (
                             <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] px-2 py-0.5 rounded-full uppercase font-black tracking-widest border border-emerald-500/20">
@@ -135,7 +135,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
                         <div className="flex items-center gap-2 mt-0.5">
                           <Calendar className="h-3 w-3 text-muted-foreground/40" />
                           <p className="text-[9px] uppercase font-bold text-muted-foreground/40 tracking-widest">
-                            {format(new Date(group.createdat), "dd MMM, yyyy • hh:mm a")}
+                            {format(new Date(group.saledate), "dd MMM, yyyy • hh:mm a")}
                           </p>
                         </div>
                       </div>
@@ -211,7 +211,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
                       <div className="flex-1 p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 flex justify-between items-center">
                         <div className="flex flex-col">
                           <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Invoice Total</span>
-                          <span className="text-sm font-medium text-muted-foreground mt-0.5">{format(new Date(group.createdat), "dd MMM yyyy")}</span>
+                          <span className="text-sm font-medium text-muted-foreground mt-0.5">{format(new Date(group.saledate), "dd MMM yyyy")}</span>
                         </div>
                         <span className="text-3xl font-black font-mono tracking-tighter text-primary">₹{totalAmount.toFixed(0)}</span>
                       </div>
@@ -219,7 +219,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
                       {group.paymentMethod === "UPI" && org?.upi_id && (
                         <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-emerald-500/20">
                           <img
-                            src={getQRCodeUrl(getUPILink({ pa: org.upi_id, pn: org.name, am: totalAmount.toString(), tn: `Bill INV-${format(new Date(group.createdat), "ddMMyyHHmm")}` }), 64)}
+                            src={getQRCodeUrl(getUPILink({ pa: org.upi_id, pn: org.name, am: totalAmount.toString(), tn: `Bill INV-${format(new Date(group.saledate), "ddMMyyHHmm")}` }), 64)}
                             alt="Payment QR"
                             className="h-12 w-12 rounded-lg"
                           />

@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { TrendingUp, Zap, Star, Package, ArrowUpRight } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
@@ -29,10 +28,9 @@ export function AnalyticsSection() {
                                     { label: "Inventory", value: "Live Status", icon: Package },
                                     { label: "Profit Margin", value: "Calculated", icon: ArrowUpRight }
                                 ].map((stat, i) => (
-                                    <motion.div
+                                    <div
                                         key={i}
-                                        whileHover={{ y: -5, scale: 1.02 }}
-                                        className="p-5 bg-white rounded-3xl border border-zinc-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_30px_-10px_rgba(16,185,129,0.2)] transition-all duration-300 group"
+                                        className="p-5 bg-white rounded-3xl border border-zinc-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_30px_-10px_rgba(16,185,129,0.2)] transition-all duration-300 group hover-scale"
                                     >
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
@@ -41,7 +39,7 @@ export function AnalyticsSection() {
                                             <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">{stat.label}</div>
                                         </div>
                                         <div className="text-emerald-600 font-black text-xl md:text-2xl">{stat.value}</div>
-                                    </motion.div>
+                                    </div>
                                 ))}
                             </div>
                         </AdvancedScrollReveal>
@@ -52,12 +50,13 @@ export function AnalyticsSection() {
                                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
                                 <div className="relative flex items-end justify-between gap-2 h-32 mb-4">
                                     {[40, 70, 45, 90, 65, 80, 50, 95, 60, 85].map((h, i) => (
-                                        <motion.div
+                                        <div
                                             key={i}
-                                            initial={{ height: 0 }}
-                                            whileInView={{ height: `${h}%` }}
-                                            transition={{ delay: i * 0.05, duration: 0.8, ease: "easeOut" }}
-                                            className="flex-1 bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-sm"
+                                            className="flex-1 bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-sm transition-all duration-1000 ease-out origin-bottom scale-y-0 [.reveal-container[data-visible=true]_&]:scale-y-100"
+                                            style={{
+                                                height: `${h}%`,
+                                                transitionDelay: `${i * 50}ms`,
+                                            }}
                                         />
                                     ))}
                                 </div>

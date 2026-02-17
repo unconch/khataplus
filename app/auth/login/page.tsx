@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Logo } from "@/components/ui/logo"
-import { motion } from "framer-motion"
 import { ArrowRight, ShieldCheck, Zap, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -188,10 +187,8 @@ export default function LoginPage() {
         }} />
 
         <div className="relative z-10 flex flex-col w-full p-16 text-white">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="mb-auto"
+          <div
+            className="mb-auto animate-in fade-in slide-left duration-500"
           >
             <Link href="/" className="flex items-center gap-3 group">
               <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
@@ -199,13 +196,11 @@ export default function LoginPage() {
               </div>
               <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
             </Link>
-          </motion.div>
+          </div>
 
           <div className="space-y-12">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+            <div
+              className="animate-in fade-in slide-up duration-700 delay-200"
             >
               <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
                 <ShieldCheck className="h-4 w-4 text-emerald-300" />
@@ -218,13 +213,10 @@ export default function LoginPage() {
               <p className="text-xl text-white/70 max-w-sm font-medium leading-relaxed">
                 Your business ecosystem is ready. Log in to continue your business growth.
               </p>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex gap-4"
+            <div
+              className="flex gap-4 animate-in fade-in slide-up duration-700 delay-[400ms]"
             >
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
                 <Zap className="h-4 w-4 text-emerald-300" />
@@ -234,7 +226,7 @@ export default function LoginPage() {
                 <ShieldCheck className="h-4 w-4 text-emerald-300" />
                 Protected
               </div>
-            </motion.div>
+            </div>
           </div>
 
           <div className="mt-auto pt-12 border-t border-white/10">
@@ -252,11 +244,8 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md space-y-8"
+        <div
+          className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700"
         >
           <div className="text-center lg:text-left">
             <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
@@ -360,7 +349,7 @@ export default function LoginPage() {
               Or try the demo without signing up →
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

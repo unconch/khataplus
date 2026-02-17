@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Minus, HelpCircle } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 
@@ -66,21 +65,13 @@ export function FaqSection() {
                                         {openIndex === i ? <Minus size={20} /> : <Plus size={20} />}
                                     </div>
                                 </button>
-                                <AnimatePresence>
-                                    {openIndex === i && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.3, ease: "circOut" }}
-                                            className="overflow-hidden"
-                                        >
-                                            <div className="px-10 pb-10 text-zinc-600 text-lg md:text-xl leading-relaxed font-medium">
-                                                {faq.answer}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                <div className={`grid transition-all duration-300 ease-in-out ${openIndex === i ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                                    <div className="overflow-hidden">
+                                        <div className="px-10 pb-10 text-zinc-600 text-lg md:text-xl leading-relaxed font-medium">
+                                            {faq.answer}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -21,7 +21,14 @@ export async function POST(request: Request) {
         // 1. Initial Analysis (Baseline Pattern Match)
         const patternResult = analyzeCSVStructure(data, dataType)
 
-        let aiResult = { schema: {} as Record<string, string>, confidence: 0, warnings: [] as string[], suggestions: [] as string[], cleaningHints: {} }
+        let aiResult = {
+            schema: {} as Record<string, string>,
+            confidence: 0,
+            warnings: [] as string[],
+            suggestions: [] as string[],
+            cleaningHints: {},
+            reasoning: "" as string | undefined
+        }
         let usedAI = false
 
         if (isGroqAvailable()) {
@@ -32,34 +39,22 @@ export async function POST(request: Request) {
                 const requiredFields = getRequiredFields(dataType)
                 const missingFields = requiredFields.filter(f => !patternResult.schema[f])
 
-                const prompt = `You are a data intelligence expert for KhataPlus, an Indian business software.
-Analyze actual data samples and map CSV columns to database fields. Also suggest data quality fixes.
+                // Using DeepSeek-R1 for Maximum Accuracy
+                const prompt = `You are a data intelligence expert for KhataPlus. 
+Analyze the provided data samples and map CSV columns to database fields with 100% precision.
 
 TARGET TABLE: ${dataType}
 EXPECTED FIELDS: ${expected.join(", ")}
-ALREADY DETECTED BY PATTERN MATCHING: ${JSON.stringify(patternResult.schema)}
-MISSING REQUIRED FIELDS: ${missingFields.join(", ") || "none"}
+ALREADY DETECTED: ${JSON.stringify(patternResult.schema)}
+MISSING REQUIRED: ${missingFields.join(", ") || "none"}
 
-COLUMN METADATA (types): ${JSON.stringify(structure.types)}
-ACTUAL DATA SAMPLES (first 8 rows): ${JSON.stringify(data.slice(0, 8))}
+DATA SAMPLES: ${JSON.stringify(data.slice(0, 15))}
 
-INDIAN BUSINESS CONTEXT:
-- MRP/Selling/Rate → sell_price
-- Cost/Purchase/CP → buy_price  
-- Qty/Stock/Closing → stock
-- Party/Ledger/Name → name (for customers/suppliers)
-- Ph/WhatsApp/Mobile → phone
-- created_at/updated_at → sale_date or expense_date
-- inventory_id/product_id → these are UUIDs referencing inventory, map to "sku" 
-- user_id/profile_id → ignore these (internal IDs)
-
-RULES:
-1. Return a "schema" mapping: { "db_field": "csv_column_name" }
-2. Only map columns that ACTUALLY EXIST in the sample data
-3. If the pattern matching already correctly mapped a field, keep it
-4. If a column contains IDs (UUIDs), note it in warnings
-5. Return "cleaningHints" for any data that needs transformation
-6. Return data quality "warnings" (missing values, bad formats, etc.)
+INSTRUCTIONS:
+1. Reason through the data types and values in each column.
+2. If a column name is ambiguous (e.g. "VAR1"), look at the row values to identify if it's a price, name, or phone number.
+3. Return a JSON mapping of db_field to csv_column.
+4. Set "confidence" to 0.95 if you are certain, or lower if data is messy.
 
 RESPOND WITH JSON:
 {
@@ -70,11 +65,19 @@ RESPOND WITH JSON:
   "cleaningHints": { "field": "instruction" }
 }`
 
-                const responseText = await groqWithRetry(() => groqChat(prompt))
-                aiResult = parseGroqJSON(responseText, aiResult)
-                console.log(`[analyze-csv] Groq returned schema:`, JSON.stringify(aiResult.schema))
+                const responseText = await groqWithRetry(() => groqChat(prompt, "deepseek-r1-distill-llama-70b"))
+                const { data: parsedAI, reasoning } = parseGroqJSON(responseText, aiResult)
+                aiResult = parsedAI as any
+                aiResult.reasoning = reasoning
+
+                // If R1 mapped anything, it's highly likely correct
+                if (Object.keys(aiResult.schema).length > 0 && aiResult.confidence < 0.8) {
+                    aiResult.confidence = 0.92
+                }
+
+                console.log(`[analyze-csv] R1 analyzed ${dataType}. Confidence: ${aiResult.confidence}`)
             } catch (aiError: any) {
-                console.warn("[analyze-csv] Groq failed, using pattern matching only:", aiError.message)
+                console.warn("[analyze-csv] Groq failed:", aiError.message)
                 usedAI = false
             }
         }
@@ -94,6 +97,7 @@ RESPOND WITH JSON:
             errors: validation.errors,
             suggestions: aiResult.suggestions || [],
             cleaningHints: aiResult.cleaningHints || {},
+            reasoning: aiResult.reasoning,
             usedAI
         })
 

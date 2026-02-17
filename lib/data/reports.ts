@@ -1,12 +1,13 @@
 "use server"
 
-import { sql } from "../db";
+import { sql, getDemoSql, getProductionSql } from "../db";
 import type { DailyReport } from "../types";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
 import { authorize, audit } from "../security";
+import { triggerSync } from "../sync-notifier";
+import { isGuestMode, getCurrentOrgId } from "./auth";
 
 export async function getDailyReports(orgId: string, range: string = "month") {
-    const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
@@ -21,7 +22,6 @@ export async function getDailyReports(orgId: string, range: string = "month") {
 
     return nextCache(
         async (): Promise<DailyReport[]> => {
-            const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
             const data = await db`SELECT * FROM daily_reports WHERE org_id = ${orgId} AND report_date >= ${startDate.toISOString().split('T')[0]} ORDER BY report_date DESC`;
@@ -55,6 +55,7 @@ export async function addDailyReport(report: Omit<DailyReport, "id" | "created_a
     (revalidateTag as any)("reports");
     (revalidateTag as any)(`reports-${orgId}`);
     revalidatePath("/dashboard/reports", "page");
+    await triggerSync(orgId, "report");
 
     return result[0] as any;
 }
@@ -72,10 +73,10 @@ export async function deleteDailyReport(id: string): Promise<void> {
     (revalidateTag as any)("reports");
     (revalidateTag as any)(`reports-${orgId}`);
     revalidatePath("/dashboard/reports", "page");
+    await triggerSync(orgId, "report");
 }
 
 export async function syncDailyReport(date: string, orgId?: string): Promise<void> {
-    const { getCurrentOrgId } = await import("./auth");
     const actualOrgId = orgId || await getCurrentOrgId();
     if (!actualOrgId) throw new Error("Organization ID required");
 
@@ -125,4 +126,5 @@ export async function syncDailyReport(date: string, orgId?: string): Promise<voi
 
     (revalidateTag as any)("reports");
     revalidatePath("/dashboard/reports", "page");
+    await triggerSync(actualOrgId, "report");
 }

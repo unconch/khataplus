@@ -21,15 +21,15 @@ async function runMigration() {
 
             // 1. Add status column
             console.log(`[${target.name}] Adding 'status' column...`);
-            await sql(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'`);
+            await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'`;
 
             // 2. Update NULLs
             console.log(`[${target.name}] Seeding 'active' status for existing records...`);
-            await sql(`UPDATE profiles SET status = 'active' WHERE status IS NULL`);
+            await sql`UPDATE profiles SET status = 'active' WHERE status IS NULL`;
 
             // 3. Set NOT NULL
             console.log(`[${target.name}] Applying NOT NULL constraint...`);
-            await sql(`ALTER TABLE profiles ALTER COLUMN status SET NOT NULL`);
+            await sql`ALTER TABLE profiles ALTER COLUMN status SET NOT NULL`;
 
             console.log(`[${target.name}] Migration SUCCESSFUL`);
         } catch (error) {

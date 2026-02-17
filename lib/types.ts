@@ -2,7 +2,7 @@ export interface Profile {
   id: string
   email: string
   name?: string
-  role: "owner" | "manager" | "staff"
+  role: "owner" | "manager" | "staff" | "main admin" | "admin"
   status: "pending" | "approved" | "disabled" | "active"
 
   biometric_required: boolean
