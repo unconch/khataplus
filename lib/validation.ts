@@ -42,12 +42,21 @@ export const InventorySchema = z.object({
     sku: z.string().min(1, "SKU is required").max(50),
     name: z.string().min(2, "Name must be at least 2 characters").max(200),
     buy_price: z.number().nonnegative(),
+    sell_price: z.number().nonnegative().optional(),
     gst_percentage: z.number().min(0).max(100),
     stock: z.number(),
+    min_stock: z.number().nonnegative().optional(),
     org_id: z.string().uuid()
 });
 
 export const CustomerSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters").max(200),
+    phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format"),
+    address: z.string().max(500).optional().nullable(),
+    org_id: z.string().uuid()
+});
+
+export const SupplierSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(200),
     phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format"),
     address: z.string().max(500).optional().nullable(),

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Home, ShoppingCart, Package, PieChart, Building2 } from "lucide-react"
+import { Home, Receipt, Box, Users, Settings } from "lucide-react"
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
@@ -19,10 +19,10 @@ export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
 
   const navItems = [
     { href: `${pathPrefix}/dashboard`, label: "Home", icon: Home },
-    { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: ShoppingCart },
-    { href: `${pathPrefix}/dashboard/inventory`, label: "Items", icon: Package },
-    { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: PieChart },
-    { href: `${pathPrefix}/dashboard/settings`, label: "Org", icon: Building2 },
+    { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: Receipt },
+    { href: `${pathPrefix}/dashboard/inventory`, label: "Stock", icon: Box },
+    { href: `${pathPrefix}/dashboard/customers`, label: "Ledger", icon: Users },
+    { href: `${pathPrefix}/dashboard/settings`, label: "More", icon: Settings },
   ]
 
   return (
@@ -30,7 +30,7 @@ export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
       <div className="max-w-md mx-auto relative">
         <nav className="flex items-center justify-around glass-sharp rounded-[3rem] shadow-xl px-2 py-3">
           {navItems.map((item) => {
-            const isAdmin = role === "admin" || role === "main admin" || role === "owner"
+            const isAdmin = role === "admin" || role === "owner"
             const isStaff = role === "staff"
 
             // Filtering logic

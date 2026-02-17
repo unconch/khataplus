@@ -47,5 +47,9 @@ export { getExpenseCategories, addExpenseCategory, getExpenses, addExpense, dele
 // Audit functions
 export { createAuditLog, getAuditLogs } from "./audit";
 
+// Migration functions
+export { exportData } from "./migration";
+export { importInventory, importCustomers, importSuppliers } from "../import";
+
 // Types
 export type * from "../types";

@@ -8,6 +8,8 @@ export type GroupedSale = {
     createdat: string,
     saledate: string,
     paymentMethod: string,
+    customerName?: string,
+    customerPhone?: string,
     items: Sale[]
 }
 
@@ -35,7 +37,7 @@ export const generateInvoice = async (group: GroupedSale, type: 'A4' | 'THERMAL'
             doc.setFont("helvetica", "normal")
             doc.setTextColor(200, 255, 200)
             doc.text("The Business Operating System • support@khataplus.in", 105, 27, { align: "center" })
-            doc.text(`GSTIN: ${businessGstin} | Contact: +91 98765 43210`, 105, 32, { align: "center" })
+            doc.text(`GSTIN: ${businessGstin}`, 105, 32, { align: "center" })
 
             doc.setDrawColor(230, 230, 230)
 
@@ -162,7 +164,6 @@ export const generateInvoice = async (group: GroupedSale, type: 'A4' | 'THERMAL'
             y += 5
             doc.setFontSize(8)
             doc.setFont("helvetica", "normal")
-            doc.text("Guwahati, Assam", 40, y, { align: "center" })
             doc.text(`GSTIN: ${businessGstin}`, 40, y + 4, { align: "center" })
             y += 10
 

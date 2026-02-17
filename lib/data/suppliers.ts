@@ -85,7 +85,7 @@ export async function getSupplierTransactions(orgId: string, supplierId?: string
     return data.map((row: any) => ({
         ...row,
         amount: parseFloat(row.amount),
-        created_by_name: row.name || row.email
+        created_by_name: row.creator_name || row.creator_email
     })) as SupplierTransaction[];
 }
 

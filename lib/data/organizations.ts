@@ -11,6 +11,11 @@ import { sendWelcomeEmail } from "../mail";
 import { getProfile } from "./profiles";
 
 
+export async function getTotalOrganizationCount(): Promise<number> {
+    const result = await sql`SELECT count(*) FROM organizations`;
+    return parseInt(result[0].count);
+}
+
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
     // Check for existing organization with the same name (case-insensitive)
     const existingName = await sql`SELECT id FROM organizations WHERE LOWER(name) = LOWER(${name})`;
@@ -30,12 +35,50 @@ export async function createOrganization(name: string, userId: string, details?:
     console.log("[DB/Orgs] Generated slug:", slug);
 
     try {
-        console.log("[DB/Orgs] Inserting into organizations table...");
-        const result = await sql`
-            INSERT INTO organizations(name, slug, created_by, gstin, address, phone)
-            VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null}, ${details?.phone || null})
-            RETURNING *
-        `;
+        // 2026 Monetization: Check for Pioneer Partner eligibility (first 1000 signups)
+        const orgCountResult = await sql`SELECT count(*) FROM organizations`;
+        const totalOrgs = parseInt(orgCountResult[0].count);
+        const isEligibleForPioneer = totalOrgs < 1000;
+
+        console.log("[DB/Orgs] Inserting into organizations table...", { isEligibleForPioneer });
+        let result;
+        try {
+            result = await sql`
+                INSERT INTO organizations(
+                    name, 
+                    slug, 
+                    created_by, 
+                    gstin, 
+                    address, 
+                    phone,
+                    subscription_status,
+                    trial_ends_at,
+                    pioneer_status,
+                    pioneer_joined_at
+                )
+                VALUES(
+                    ${name}, 
+                    ${slug}, 
+                    ${userId}, 
+                    ${details?.gstin || null}, 
+                    ${details?.address || null}, 
+                    ${details?.phone || null},
+                    'trial',
+                    NOW() + INTERVAL '30 days',
+                    ${isEligibleForPioneer},
+                    ${isEligibleForPioneer ? sql`NOW()` : null}
+                )
+                RETURNING *
+            `;
+        } catch (insertErr: any) {
+            // Fallback: DB missing monetization/phone columns
+            console.warn("[DB/Orgs] Full INSERT failed, trying minimal INSERT:", insertErr.message);
+            result = await sql`
+                INSERT INTO organizations(name, slug, created_by, gstin, address)
+                VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null})
+                RETURNING *
+            `;
+        }
 
         console.log("[DB/Orgs] result set:", result);
         const orgRaw = result[0] as any;
@@ -96,22 +139,31 @@ export async function getUserOrganizations(userId: string): Promise<(Organizatio
     for (let i = 0; i < retries; i++) {
         try {
             const data = await sql`
-                SELECT om.*, o.name as org_name, o.slug as org_slug, o.gstin as org_gstin, o.address as org_address, o.phone as org_phone
+                SELECT om.*, to_jsonb(o.*) as org_data
                 FROM organization_members om
                 JOIN organizations o ON om.org_id = o.id
                 WHERE om.user_id = ${userId}
             `;
-            return data.map((row: any) => ({
-                ...row,
-                organization: {
-                    id: row.org_id,
-                    name: row.org_name,
-                    slug: row.org_slug,
-                    gstin: row.org_gstin,
-                    address: row.org_address,
-                    phone: row.org_phone
-                }
-            })) as any;
+            return data.map((row: any) => {
+                const o = typeof row.org_data === 'string' ? JSON.parse(row.org_data) : row.org_data;
+                return {
+                    ...row,
+                    organization: {
+                        ...o,
+                        // Ensure monetization fields have safe defaults if missing
+                        subscription_status: o.subscription_status ?? 'trial',
+                        trial_ends_at: o.trial_ends_at ?? null,
+                        plan_type: o.plan_type ?? 'free',
+                        pioneer_status: o.pioneer_status ?? false,
+                        whatsapp_addon_active: o.whatsapp_addon_active ?? false,
+                        gst_addon_active: o.gst_addon_active ?? false,
+                        inventory_pro_active: o.inventory_pro_active ?? false,
+                        vernacular_pack_active: o.vernacular_pack_active ?? false,
+                        ai_forecast_active: o.ai_forecast_active ?? false,
+                        auto_reminders_enabled: o.auto_reminders_enabled ?? false,
+                    }
+                };
+            }) as any;
         } catch (error) {
             if (i === retries - 1) throw error;
             await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
@@ -130,6 +182,9 @@ export async function updateOrganization(orgId: string, updates: Partial<Organiz
             gstin = COALESCE(${updates.gstin}, gstin),
             address = COALESCE(${updates.address}, address),
             phone = COALESCE(${updates.phone}, phone),
+            upi_id = COALESCE(${updates.upi_id}, upi_id),
+            whatsapp_addon_active = COALESCE(${updates.whatsapp_addon_active}, whatsapp_addon_active),
+            auto_reminders_enabled = COALESCE(${updates.auto_reminders_enabled}, auto_reminders_enabled),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ${orgId}
     `;

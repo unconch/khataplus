@@ -18,22 +18,41 @@ import { cn } from "@/lib/utils"
 const organizationSchema = z.object({
     userName: z.string()
         .min(2, "Please enter your full name")
-        .max(50, "Name is too long"),
+        .max(50, "Name is too long")
+        .regex(/^[a-zA-Z\s.'-]+$/, "Name can only contain letters, spaces, dots, and hyphens")
+        .transform(val => val.trim().replace(/\s+/g, ' ')),
     name: z.string()
         .min(3, "Business name must be at least 3 characters")
+        .max(100, "Business name is too long")
+        .regex(/[a-zA-Z0-9]{3,}/, "Business name must contain at least 3 alphanumeric characters")
         .refine(val => val.toLowerCase() !== "demo", {
             message: "The name 'demo' is reserved. Please choose another name."
+        })
+        .refine(val => !/^\d+$/.test(val.trim()), {
+            message: "Business name cannot be only numbers."
         }),
-    gstin: z.string().optional(),
+    gstin: z.string()
+        .optional()
+        .refine(val => !val || val.trim() === "" || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(val.trim().toUpperCase()), {
+            message: "Invalid GSTIN format. Must be 15 characters (e.g. 22AAAAA0000A1Z5)."
+        }),
     // Detailed Address Fields
-    address_line1: z.string().min(3, "Street/Building is required"),
-    locality: z.string().optional(),
-    city: z.string().min(2, "City is required"),
-    state: z.string().min(2, "State is required"),
-    pincode: z.string().min(6, "Valid Pincode required").max(10),
+    address_line1: z.string()
+        .min(3, "Street/Building is required")
+        .max(200, "Address is too long"),
+    locality: z.string().max(100, "Locality is too long").optional(),
+    city: z.string()
+        .min(2, "City is required")
+        .max(50, "City name is too long")
+        .regex(/^[a-zA-Z\s'-]+$/, "City can only contain letters"),
+    state: z.string()
+        .min(2, "State is required")
+        .max(50, "State name is too long")
+        .regex(/^[a-zA-Z\s]+$/, "State can only contain letters"),
+    pincode: z.string()
+        .regex(/^\d{6}$/, "Pincode must be exactly 6 digits"),
     phone: z.string()
-        .min(10, "A valid 10-digit phone number is required")
-        .max(15, "Phone number is too long"),
+        .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number (starting with 6-9)"),
 })
 
 type OrganizationFormValues = z.infer<typeof organizationSchema>
@@ -222,9 +241,12 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="px-8 pb-8 pt-4 space-y-6">
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
                                         <Label htmlFor="userName" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Full Name</Label>
+                                        <span className="text-[10px] font-bold text-zinc-400">{register("userName").name?.length || 0}/50</span>
+                                    </div>
+                                    <div className="relative">
                                         <Input
                                             id="userName"
                                             placeholder="e.g. John Doe"
@@ -232,32 +254,56 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                             className="h-14 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 focus:border-violet-600 focus:ring-4 focus:ring-violet-500/10 transition-all rounded-xl px-4"
                                             autoFocus
                                         />
-                                        {errors.userName && (
-                                            <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
-                                                <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.userName.message}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Mobile Number</Label>
-                                        <div className="relative flex items-center">
-                                            <div className="absolute left-4 text-zinc-500 font-black border-r-2 border-zinc-200 dark:border-zinc-700 pr-3 h-6 flex items-center text-base">
-                                                +91
+                                        {register("userName").name?.length > 2 && !errors.userName && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500">
+                                                <Check size={18} />
                                             </div>
-                                            <Input
-                                                id="phone"
-                                                placeholder="10-digit number"
-                                                {...register("phone")}
-                                                className="h-14 pl-16 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-xl transition-all focus:border-violet-600 focus:ring-4 focus:ring-violet-500/10"
-                                            />
-                                        </div>
-                                        {errors.phone && (
-                                            <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
-                                                <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.phone.message}
-                                            </p>
                                         )}
                                     </div>
+                                    {errors.userName && (
+                                        <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
+                                            <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.userName.message}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Mobile Number</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-black border-r-2 border-zinc-200 dark:border-zinc-700 pr-3 h-6 flex items-center text-base z-10">
+                                            +91
+                                        </div>
+                                        <Input
+                                            id="phone"
+                                            placeholder="10-digit number"
+                                            {...register("phone")}
+                                            maxLength={10}
+                                            inputMode="numeric"
+                                            pattern="[6-9][0-9]{9}"
+                                            className="h-14 pl-16 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-xl transition-all focus:border-violet-600 focus:ring-4 focus:ring-violet-500/10 pr-10"
+                                            onChange={(e) => {
+                                                // Sanitize: strip +91 or leading 0 if user pastes or types it
+                                                let val = e.target.value.replace(/\D/g, '');
+                                                if (val.startsWith('91') && val.length > 10) val = val.substring(2);
+                                                if (val.startsWith('0')) val = val.substring(1);
+                                                e.target.value = val.substring(0, 10);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'].includes(e.key)) return;
+                                                if (!/[0-9]/.test(e.key)) e.preventDefault();
+                                            }}
+                                        />
+                                        {/^[6-9]\d{9}$/.test(register("phone").name?.length === 10 ? "checked" : "") && !errors.phone && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500">
+                                                <Check size={18} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {errors.phone && (
+                                        <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
+                                            <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.phone.message}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <Button onClick={nextStep} className="w-full h-14 text-lg font-black bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 shadow-xl hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all rounded-xl active:scale-95" size="lg">
@@ -291,18 +337,28 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                             </CardHeader>
                             <CardContent className="px-8 pb-8 pt-4 space-y-6">
                                 <div className="space-y-4">
-                                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Business Name</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="e.g. PLATINUM ELECTRONICS"
-                                        {...register("name", {
-                                            onChange: (e) => {
-                                                e.target.value = e.target.value.toUpperCase();
-                                            }
-                                        })}
-                                        className="h-14 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all rounded-xl px-4 uppercase"
-                                        autoFocus
-                                    />
+                                    <div className="flex justify-between items-center">
+                                        <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Business Name</Label>
+                                        <span className="text-[10px] font-bold text-zinc-400">{register("name").name?.length || 0}/100</span>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            id="name"
+                                            placeholder="e.g. PLATINUM ELECTRONICS"
+                                            {...register("name", {
+                                                onChange: (e) => {
+                                                    e.target.value = e.target.value.toUpperCase();
+                                                }
+                                            })}
+                                            className="h-14 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all rounded-xl px-4 uppercase pr-10"
+                                            autoFocus
+                                        />
+                                        {register("name").name?.length > 3 && !errors.name && (
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500">
+                                                <Check size={18} />
+                                            </div>
+                                        )}
+                                    </div>
                                     {errors.name && (
                                         <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
                                             <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.name.message}
@@ -351,9 +407,15 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                         id="gstin"
                                         placeholder="e.g. 22AAAAA0000A1Z5"
                                         {...register("gstin")}
+                                        maxLength={15}
                                         className="h-14 font-mono tracking-widest text-lg bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 transition-all rounded-xl px-4 uppercase"
                                         autoFocus
                                     />
+                                    {errors.gstin && (
+                                        <p className="text-xs text-red-600 font-black flex items-center gap-1.5">
+                                            <span className="w-1 h-1 rounded-full bg-red-600" /> {errors.gstin.message}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-4 pt-2">
@@ -434,7 +496,14 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                         <Input
                                             {...register("pincode")}
                                             placeholder="000000"
+                                            maxLength={6}
+                                            inputMode="numeric"
+                                            pattern="[0-9]{6}"
                                             className="h-12 font-mono font-bold tracking-widest bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-lg px-3"
+                                            onKeyDown={(e) => {
+                                                if (['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'].includes(e.key)) return;
+                                                if (!/[0-9]/.test(e.key)) e.preventDefault();
+                                            }}
                                         />
                                         {errors.pincode && <p className="text-[9px] text-red-600 font-black">{errors.pincode.message}</p>}
                                     </div>
@@ -477,7 +546,7 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
             >
                 Secure Cloud Infrastructure &bull; End-to-End Encryption
             </motion.p>
-        </div>
+        </div >
     )
 }
 

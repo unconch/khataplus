@@ -85,7 +85,7 @@ export function BusinessCardTool() {
     // Details (Professional)
     const [ownerName, setOwnerName] = useState("Your Name")
     const [tagline, setTagline] = useState("Your Tagline")
-    const [phone, setPhone] = useState("+91 98765 43210")
+    const [phone, setPhone] = useState("")
     const [email, setEmail] = useState("email@example.com")
     const [address, setAddress] = useState("Your Address, City")
     const [website, setWebsite] = useState("www.example.com")

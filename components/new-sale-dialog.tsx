@@ -30,7 +30,7 @@ interface NewSaleDialogProps {
     gstEnabled: boolean
     defaultOpen?: boolean
     orgId: string
-    org?: { name: string; gstin?: string }
+    org?: { name: string; gstin?: string; upi_id?: string }
 }
 
 export function NewSaleDialog({ inventory, userId, gstInclusive, gstEnabled, defaultOpen = false, orgId, org }: NewSaleDialogProps) {

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, BarChart3, Users, Settings, Package, FileText, BadgeIndianRupee } from "lucide-react"
+import { Home, BarChart3, Users, Settings, Package, FileText, BadgeIndianRupee, Database } from "lucide-react"
 import { SystemSettings } from "@/lib/types"
 
 interface DesktopSidebarProps {
@@ -25,6 +25,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "" }: D
         { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
         { href: `${pathPrefix}/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics },
         { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports },
+        { href: `${pathPrefix}/dashboard/migration`, label: "Migration", icon: Database, show: isAdmin },
         { href: `${pathPrefix}/dashboard/settings`, label: "Organization", icon: Users, show: isAdmin },
     ]
 

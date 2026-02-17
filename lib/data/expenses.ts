@@ -22,13 +22,14 @@ export async function addExpenseCategory(name: string): Promise<ExpenseCategory>
     return result[0] as any;
 }
 
-export async function getExpenses(startDate?: string, endDate?: string): Promise<Expense[]> {
+export async function getExpenses(orgId: string, startDate?: string, endDate?: string): Promise<Expense[]> {
     const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
 
     const data = await sql`
         SELECT * FROM expenses 
-        WHERE expense_date >= ${start.toISOString()} AND expense_date <= ${end.toISOString()}
+        WHERE org_id = ${orgId}
+        AND expense_date >= ${start.toISOString()} AND expense_date <= ${end.toISOString()}
         ORDER BY expense_date DESC, created_at DESC
     `;
     return data.map((d: any) => ({

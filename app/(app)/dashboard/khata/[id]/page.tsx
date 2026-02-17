@@ -49,6 +49,7 @@ export default async function CustomerKhataPage({ params }: { params: Promise<{ 
 async function KhataContent({ customerId }: { customerId: string }) {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
     const { getCustomer, getKhataTransactions } = await import("@/lib/data/customers")
+    const { getOrganization } = await import("@/lib/data/organizations")
     const user = await getCurrentUser()
 
     if (!user) {
@@ -74,7 +75,16 @@ async function KhataContent({ customerId }: { customerId: string }) {
         notFound()
     }
 
+    const org = isGuest ? { name: "Demo Shop", phone: "9100000000" } : await getOrganization(orgId)
     const transactions = await getKhataTransactions(orgId, customerId)
 
-    return <KhataLedger customer={customer} transactions={transactions} orgId={orgId} userId={userId} />
+    return (
+        <KhataLedger
+            customer={customer}
+            transactions={transactions}
+            orgId={orgId}
+            userId={userId}
+            shopName={org?.name || "My Shop"}
+        />
+    )
 }

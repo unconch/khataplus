@@ -30,12 +30,17 @@ export async function GET(request: Request) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error && data.session && data.user) {
             try {
+                // Read referral code from cookie if present
+                const referrerCode = cookieStore.get('kp_referral')?.value;
+
                 // Ensure profile is synced with Neon on first login/signup
                 const { ensureProfile } = await import('@/lib/data/profiles');
                 await ensureProfile(
                     data.user.id,
                     data.user.email!,
-                    data.user.user_metadata?.full_name
+                    data.user.user_metadata?.full_name,
+                    undefined, // phone
+                    referrerCode
                 );
 
                 // REGISTER SESSION for Governance (ASVS Level 3)

@@ -9,10 +9,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   const { getProfile } = await import("@/lib/data/profiles")
   const { getSystemSettings, getOrganization, getUserOrganizations } = await import("@/lib/data/organizations")
   const { getInventory } = await import("@/lib/data/inventory")
-  const { getCustomers } = await import("@/lib/data/customers")
+  const { getCustomers, getKhataTransactions } = await import("@/lib/data/customers")
   const { getSales } = await import("@/lib/data/sales")
   const { getDailyReports } = await import("@/lib/data/reports")
   const { getLowStockItems } = await import("@/lib/data/inventory")
+  const { getSuppliers, getSupplierTransactions } = await import("@/lib/data/suppliers")
 
   const user = await getCurrentUser()
 
@@ -59,11 +60,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   const orgId = profile.organization_id || ""
 
   // Self-Correction: If we are at /dashboard (no slug) but have an org, redirect to the slug URL
-  // We check if the current path lacks the slug prefix. 
-  // Since we can't easily check the URL here in a server component without headers, 
-  // we rely on the fact that if we are running this code, the middleware might not have rewritten it 
-  // OR we just want to enforce the canonical URL.
-  // Actually, we can check the x-tenant-slug header.
   const { headers } = await import("next/headers")
   const headersList = await headers()
   const slug = headersList.get("x-tenant-slug")
@@ -76,13 +72,26 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   }
 
   // Fetch stats for onboarding guide
-  const [inventory, customers, sales, org, reports, lowStockItems] = await Promise.all([
+  const [
+    inventory,
+    customers,
+    sales,
+    org,
+    reports,
+    lowStockItems,
+    suppliers,
+    khataTransactions,
+    supplierTransactions
+  ] = await Promise.all([
     getInventory(orgId),
     getCustomers(orgId),
     getSales(orgId),
     getOrganization(orgId),
     getDailyReports(orgId),
-    getLowStockItems(orgId)
+    getLowStockItems(orgId),
+    getSuppliers(orgId),
+    getKhataTransactions(orgId),
+    getSupplierTransactions(orgId)
   ])
 
   const onboardingStats = {
@@ -94,6 +103,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
 
   // Calculate real metrics
   const unpaidAmount = customers.reduce((acc, c: any) => acc + ((c.balance || 0) > 0 ? (c.balance || 0) : 0), 0)
+  const toPayAmount = suppliers.reduce((acc, s: any) => acc + ((s.balance || 0) > 0 ? (s.balance || 0) : 0), 0)
 
   // Simple inventory health: % of items in stock
   const totalItems = inventory.length
@@ -104,12 +114,19 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   return (
     <HomeDashboard
       profile={profile}
+      org={org as any}
       settings={settings}
       onboardingStats={onboardingStats}
       reports={reports}
       unpaidAmount={unpaidAmount}
+      toPayAmount={toPayAmount}
       inventoryHealth={inventoryHealth}
       lowStockItems={lowStockItems}
+      sales={sales as any}
+      khataTransactions={khataTransactions as any}
+      supplierTransactions={supplierTransactions as any}
+      customers={customers as any}
+      suppliers={suppliers as any}
     />
   )
 }

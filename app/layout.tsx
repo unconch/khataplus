@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/components/auth-provider"
+import { Suspense } from "react"
+import { ReferralTracker } from "@/components/referral-tracker"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -21,6 +23,7 @@ export const metadata: Metadata = {
     template: "%s | KhataPlus"
   },
   description: "The simplest billing, inventory, and khata management app designed effectively for Indian shopkeepers. GST-ready, offline-capable, and secure.",
+  manifest: "/manifest.json",
   generator: "v0.app",
   metadataBase: new URL("https://khataplus.com"),
   openGraph: {
@@ -39,12 +42,9 @@ export const metadata: Metadata = {
       },
     ],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "KhataPlus",
-    description: "The simplest billing app for Indian businesses.",
-    images: ["/og-image.png"], // consistent with OG
-    creator: "@khataplus",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.png",
   },
 }
 
@@ -55,8 +55,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: light)", color: "#10b981" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
   ],
 }
 
@@ -66,6 +66,7 @@ import { SystemAnnouncement } from "@/components/system-announcement"
 
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
+import { PWAProvider } from "@/components/pwa-provider"
 import { ScrollToTop } from "@/components/scroll-to-top"
 import { Toaster } from "sonner"
 
@@ -81,14 +82,19 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <AuthProvider>
-          <SyncProvider>
-            <ScrollToTop />
-            <SystemAnnouncement />
-            <OfflineBanner />
-            {children}
-          </SyncProvider>
-        </AuthProvider>
+        <PWAProvider>
+          <AuthProvider>
+            <SyncProvider>
+              <Suspense fallback={null}>
+                <ReferralTracker />
+              </Suspense>
+              <ScrollToTop />
+              <SystemAnnouncement />
+              <OfflineBanner />
+              {children}
+            </SyncProvider>
+          </AuthProvider>
+        </PWAProvider>
         <Analytics />
         <SpeedInsights />
         <PwaInstallPrompt />

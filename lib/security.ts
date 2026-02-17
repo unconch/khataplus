@@ -26,7 +26,7 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
             name: "Guest User",
             email: "guest@khataplus.demo",
             role: "owner",
-            status: "approved",
+            status: "active",
             organization_id: "demo-org",
             biometric_required: false,
             created_at: new Date().toISOString(),
@@ -46,7 +46,13 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
     }
 
     const user = profile[0] as Profile;
-    if (user.status !== "approved") {
+
+    // Fix: Default status to 'active' if undefined or empty
+    if (!user.status) {
+        user.status = 'active';
+    }
+
+    if (user.status !== "active") {
         throw new Error(`Unauthorized: Account status is ${user.status}`);
     }
 

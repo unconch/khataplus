@@ -7,15 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { IndianRupee, Plus, Minus, Calendar, Info, Share2, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AddTransactionDialog } from "@/components/add-transaction-dialog"
+import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
 
 interface KhataLedgerProps {
     customer: Customer
     transactions: KhataTransaction[]
     orgId: string
     userId: string
+    shopName: string
 }
 
-export function KhataLedger({ customer, transactions: initialTransactions, orgId, userId }: KhataLedgerProps) {
+export function KhataLedger({ customer, transactions: initialTransactions, orgId, userId, shopName }: KhataLedgerProps) {
     const [transactions, setTransactions] = useState(initialTransactions)
     const [balance, setBalance] = useState(customer.balance || 0)
 
@@ -26,13 +28,9 @@ export function KhataLedger({ customer, transactions: initialTransactions, orgId
     }
 
     const shareOnWhatsApp = () => {
-        const text = `*Balance Summary from ${customer.name}'s Ledger*\n\n` +
-            `Total Balance: *₹${Math.abs(balance).toLocaleString()}*\n` +
-            `Status: *${balance >= 0 ? "Pending Payment" : "Advance Paid"}*\n\n` +
-            `_Managed via KhataPlus - Your Digital Shop Assistant_\n` +
-            `https://khataplus.online?ref=remind`
-
-        window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(text)}`, "_blank")
+        const text = WhatsAppMessages.ledgerSummary(customer.name, shopName, balance)
+        const url = getWhatsAppUrl(customer.phone || "", text)
+        window.open(url, "_blank")
     }
 
     return (

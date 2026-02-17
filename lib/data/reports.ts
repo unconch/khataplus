@@ -5,17 +5,26 @@ import type { DailyReport } from "../types";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
 import { authorize, audit } from "../security";
 
-export async function getDailyReports(orgId: string) {
+export async function getDailyReports(orgId: string, range: string = "month") {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
+
+    let days = 30;
+    if (range === "today") days = 1;
+    else if (range === "week") days = 7;
+    else if (range === "month") days = 30;
+    else if (range === "year") days = 365;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
     return nextCache(
         async (): Promise<DailyReport[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
-            const data = await db`SELECT * FROM daily_reports WHERE org_id = ${orgId} ORDER BY report_date DESC LIMIT 30`;
+            const data = await db`SELECT * FROM daily_reports WHERE org_id = ${orgId} AND report_date >= ${startDate.toISOString().split('T')[0]} ORDER BY report_date DESC`;
             return data.map((d: any) => ({
                 ...d,
                 total_sale_gross: parseFloat(d.total_sale_gross),
@@ -27,7 +36,7 @@ export async function getDailyReports(orgId: string) {
                 report_date: d.report_date instanceof Date ? d.report_date.toISOString().split('T')[0] : String(d.report_date),
             })) as DailyReport[];
         },
-        [`reports-list-${flavor}-${orgId}`],
+        [`reports-list-${flavor}-${orgId}-${range}`],
         { tags: ["reports", `reports-${orgId}`, `reports-${flavor}`], revalidate: 300 }
     )();
 }

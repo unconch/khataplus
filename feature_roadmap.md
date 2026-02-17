@@ -1,23 +1,23 @@
 # KhataPlus SaaS Roadmap 🚀
 
-## Phase 1: SaaS Core (Current Focus)
+## Phase 1: 2026 Foundation (Q1-Q2)
 - [x] Multi-tenant Organization structure
-- [x] Role-based access (Owner, Admin, Staff)
-- [x] Dynamic Dashboard (Paytm-style)
-- [x] Sentry Error Monitoring & Tunneling
-- [x] Regional Geoblocking (India-only)
+- [/] **Revenue Core**: Razorpay integration (Base + Add-ons)
+- [/] **Pioneer Program**: 1,000 slots, countdown, and benefits locking
+- [ ] **Priority Add-ons**: WhatsApp Suite & GST Suite (Flat monthly model)
+- [ ] **Switch from Vyapar**: Migration landing page & data import
 
-## Phase 2: Monetization & Compliance
-- [ ] **Razorpay Integration**: Subscription plans (Growth, Business).
-- [ ] **Automated Reminders**: WhatsApp/SMS credit system.
-- [ ] **GST Module**: Report generation and HSN tracking.
-- [ ] **Data Sovereignty**: Audit logs and Indian region pinning.
+## Phase 2: Distribution (Q2-Q3)
+- [ ] **CA Partner Program**: Dashboard for accountants & referral credits
+- [ ] **Vernacular Pack**: Assamese, Bengali, and Meitei UI/Invoices
+- [ ] **Inventory Pro**: Unlimited items & Multi-unit support
+- [ ] **AI Cash Flow Forecast**: Predictive analytics engine
 
-## Phase 3: Scaling & UX
-- [ ] **Subdomain Routing**: `shop.khataplus.com`.
-- [ ] **Self-Service Onboarding**: Guided tours and data import wizards.
-- [ ] **Early Member Portal**: Dashboard for CAs/Accounting firms.
-- [ ] **Mobile App**: Dedicated Android/iOS shell for PWA.
+## Phase 3: Depth & Scaling (Q3-Q4)
+- [ ] **Annual Billing Push**: Default 12-month conversion optimization
+- [ ] **Tally Export**: One-click accounting integration
+- [ ] **MSME Government Outreach**: Bulk licensing for state MSME clusters
+- [ ] **KhataPlus Capital**: Loan referral pilot (Leg 3 Revenue)
 
 ## Priority Feature Matrix
 

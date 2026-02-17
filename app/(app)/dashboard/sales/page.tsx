@@ -96,7 +96,7 @@ async function SalesContent({ autoOpen }: { autoOpen: boolean }) {
           gstEnabled={settings.gst_enabled}
           defaultOpen={autoOpen}
           orgId={orgId}
-          org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin }}
+          org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin, upi_id: org?.upi_id }}
         />
       </div>
 
@@ -128,7 +128,7 @@ async function SalesContent({ autoOpen }: { autoOpen: boolean }) {
           <TabsContent value="bills" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <GstBills
               sales={(allSales as Sale[]) || []}
-              org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin }}
+              org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin, upi_id: org?.upi_id }}
             />
           </TabsContent>
         )}

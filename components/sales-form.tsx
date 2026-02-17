@@ -42,7 +42,7 @@ interface SalesFormProps {
   gstInclusive: boolean
   gstEnabled: boolean
   orgId: string
-  org?: { name: string; gstin?: string }
+  org?: { name: string; gstin?: string; upi_id?: string }
 }
 
 interface CartItem {
@@ -62,7 +62,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [quantity, setQuantity] = useState("")
   const [salePrice, setSalePrice] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI">("Cash")
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI" | "Credit">("Cash")
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerGst, setCustomerGst] = useState("")
@@ -192,7 +192,9 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
         gst_amount: item.gstAmount,
         profit: item.profit,
         payment_method: paymentMethod,
-        customer_gstin: customerGst || undefined
+        customer_gstin: customerGst || undefined,
+        customer_name: customerName || undefined,
+        customer_phone: customerPhone || undefined
       }))
 
       if (!isOnline) {
@@ -272,7 +274,10 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
     return (
       <SignatureReceipt
         amount={totalAmount}
-        customerName="Walk-in Customer" // TODO: Wire up actual customer name
+        customerName={customerName || "Walk-in Customer"}
+        customerPhone={customerPhone}
+        shopName={org?.name || "My Shop"}
+        upiId={org?.upi_id}
         paymentMethod={paymentMethod}
         itemCount={lastSaleGroup.items.length}
         onClose={() => setSuccess(false)}
@@ -450,33 +455,43 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Settlement Method</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
+                <div className="grid grid-cols-3 gap-3">
+                  <Button
                     type="button"
+                    variant={paymentMethod === "Cash" ? "default" : "outline"}
                     className={cn(
-                      "flex items-center justify-center gap-2 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest border transition-all active:scale-95",
-                      paymentMethod === "Cash"
-                        ? "bg-white text-black border-white"
-                        : "bg-transparent text-white/60 border-white/10 hover:border-white/30"
+                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
+                      paymentMethod === "Cash" ? "border-primary bg-primary/10 text-primary hover:bg-primary/20" : "border-zinc-100 hover:border-zinc-200"
                     )}
                     onClick={() => setPaymentMethod("Cash")}
                   >
-                    <BanknoteIcon className="h-4 w-4" />
-                    Physical Cash
-                  </button>
-                  <button
+                    <BanknoteIcon className="h-5 w-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Cash</span>
+                  </Button>
+                  <Button
                     type="button"
+                    variant={paymentMethod === "UPI" ? "default" : "outline"}
                     className={cn(
-                      "flex items-center justify-center gap-2 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest border transition-all active:scale-95",
-                      paymentMethod === "UPI"
-                        ? "bg-white text-black border-white"
-                        : "bg-transparent text-white/60 border-white/10 hover:border-white/30"
+                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
+                      paymentMethod === "UPI" ? "border-emerald-500 bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "border-zinc-100 hover:border-zinc-200"
                     )}
                     onClick={() => setPaymentMethod("UPI")}
                   >
-                    <CreditCardIcon className="h-4 w-4" />
-                    Digital Payment
-                  </button>
+                    <CreditCardIcon className="h-5 w-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Digital</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "Credit" ? "default" : "outline"}
+                    className={cn(
+                      "h-16 flex-col gap-1 rounded-2xl transition-all border-2",
+                      paymentMethod === "Credit" ? "border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-100" : "border-zinc-100 hover:border-zinc-200"
+                    )}
+                    onClick={() => setPaymentMethod("Credit")}
+                  >
+                    <ShoppingCartIcon className="h-5 w-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Credit</span>
+                  </Button>
                 </div>
               </div>
 

@@ -8,23 +8,32 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 import { useHaptic } from "@/hooks/use-haptic"
+import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
+import { getUPILink, getQRCodeUrl } from "@/lib/payments"
+import { QrCode } from "lucide-react"
 
 interface SignatureReceiptProps {
     amount: number
     customerName?: string
+    customerPhone?: string
+    shopName: string
     paymentMethod: string
     itemCount: number
     onClose: () => void
     onNewSale: () => void
+    upiId?: string
 }
 
 export function SignatureReceipt({
     amount,
     customerName,
+    customerPhone,
+    shopName,
     paymentMethod,
     itemCount,
     onClose,
     onNewSale,
+    upiId,
 }: SignatureReceiptProps) {
     const [isVisible, setIsVisible] = useState(false)
     const { trigger } = useHaptic()
@@ -77,6 +86,23 @@ export function SignatureReceipt({
                         </div>
                     </div>
 
+                    {/* Payment QR for UPI */}
+                    {paymentMethod === "UPI" && upiId && (
+                        <div className="w-full flex flex-col items-center space-y-3 bg-white dark:bg-zinc-900 p-6 rounded-2xl border-2 border-dashed border-emerald-500/30 group">
+                            <div className="relative">
+                                <img
+                                    src={getQRCodeUrl(getUPILink({ pa: upiId, pn: shopName, am: amount.toString(), tn: `Order from ${shopName}` }))}
+                                    alt="Payment QR"
+                                    className="h-32 w-32 rounded-lg"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-zinc-900/80 rounded-lg">
+                                    <QrCode className="h-8 w-8 text-emerald-500" />
+                                </div>
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Scan to Pay via UPI</p>
+                        </div>
+                    )}
+
                     {/* Receipt Details Ticket */}
                     <div className="w-full bg-zinc-50 dark:bg-white/5 rounded-2xl p-6 border border-zinc-100 dark:border-white/5 relative overflow-hidden group">
                         {/* Perforated edge visual at top */}
@@ -110,7 +136,12 @@ export function SignatureReceipt({
                         </Button>
                         <Button
                             className="h-14 rounded-2xl gap-2 font-black bg-foreground text-background hover:bg-foreground/90 active:scale-95 transition-all"
-                            onClick={() => { trigger("light"); /* Share logic */ }}
+                            onClick={() => {
+                                trigger("light");
+                                const text = WhatsAppMessages.invoiceShare(customerName, shopName, amount)
+                                const url = getWhatsAppUrl(customerPhone || "", text)
+                                window.open(url, "_blank")
+                            }}
                         >
                             <Share2 className="h-4 w-4" />
                             WhatsApp

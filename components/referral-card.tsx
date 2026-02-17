@@ -24,42 +24,52 @@ export function ReferralCard() {
     }
 
     return (
-        <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-white p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] shadow-2xl relative overflow-hidden group">
-            {/* Background Decor */}
-            <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-45">
-                <Users size={140} strokeWidth={2} />
+        <div className="relative group overflow-hidden rounded-[2.5rem] p-10 bg-zinc-900 text-white shadow-2xl">
+            {/* Immersive Gradient Layer */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 opacity-90 transition-transform duration-1000 group-hover:scale-110" />
+
+            {/* Animated Mesh Noise Overlay (Simulated with opacity) */}
+            <div className="absolute inset-x-0 top-0 h-32 bg-white/10 blur-[100px] animate-pulse pointer-events-none" />
+
+            {/* Background Icon */}
+            <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 transition-all duration-700 group-hover:scale-125 group-hover:rotate-45">
+                <Users size={160} strokeWidth={2.5} />
             </div>
 
-            <div className="relative z-10 space-y-6">
-                <div className="space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/10 backdrop-blur-sm">
+            <div className="relative z-10 space-y-8">
+                <div className="space-y-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 backdrop-blur-md">
                         <Share2 size={12} className="text-blue-200" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-blue-100">Growth Loop</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-100">Growth Loop</span>
                     </div>
-                    <h3 className="text-2xl lg:text-4xl font-black italic tracking-tight">Invite a fellow Shopkeeper</h3>
-                    <p className="text-blue-100/70 text-sm lg:text-lg font-medium max-w-md leading-relaxed">
-                        Helping other businesses digitize makes our community stronger. Share KhataPlus and help a friend grow.
-                    </p>
+
+                    <div className="space-y-2">
+                        <h3 className="text-3xl lg:text-4xl font-black italic tracking-tighter leading-none">
+                            Grow the <span className="text-blue-200">Network.</span>
+                        </h3>
+                        <p className="text-blue-100/70 text-sm lg:text-base font-bold max-w-sm leading-relaxed tracking-tight">
+                            Help fellow shopkeepers digitize their ledger and earn premium rewards as an early pioneer.
+                        </p>
+                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                     <Button
                         onClick={handleWhatsAppShare}
-                        className="h-14 px-8 bg-white text-blue-700 hover:bg-blue-50 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 transition-all active:scale-95"
+                        className="h-14 px-8 bg-white text-indigo-700 hover:bg-white/90 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all"
                     >
                         <Smartphone size={18} />
                         Share on WhatsApp
                     </Button>
                     <Button
-                        variant="secondary"
+                        variant="ghost"
                         onClick={handleCopy}
-                        className="h-14 px-8 bg-white/10 hover:bg-white/20 text-white border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest backdrop-blur-sm flex items-center gap-3 transition-all active:scale-95"
+                        className="h-14 px-8 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest backdrop-blur-sm border border-white/20 flex items-center gap-3 active:scale-95 transition-all"
                     >
                         {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
-                        {copied ? "Copied!" : "Copy Link"}
+                        {copied ? "Link Copied" : "Copy Secret Link"}
                     </Button>
                 </div>
-
             </div>
         </div>
     )

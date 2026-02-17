@@ -65,13 +65,18 @@ export default function SignUpPage() {
 
       if (data?.user) {
         try {
+          // Get referral code from cookie
+          const cookies = document.cookie.split('; ');
+          const referralCookie = cookies.find(row => row.startsWith('kp_referral='));
+          const referrerCode = referralCookie ? referralCookie.split('=')[1] : undefined;
+
           const [{ ensureProfile, getUserOrganizations }] = await Promise.all([
             import("@/lib/data"),
           ]);
 
           const [userOrgs] = await Promise.all([
             getUserOrganizations(data.user.id),
-            ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name).catch(e => console.error("Sync error:", e))
+            ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name, undefined, referrerCode).catch(e => console.error("Sync error:", e))
           ]);
 
           if (userOrgs && userOrgs.length > 0) {
@@ -181,8 +186,13 @@ export default function SignUpPage() {
 
       if (data?.user) {
         try {
+          // Get referral code from cookie
+          const cookies = document.cookie.split('; ');
+          const referralCookie = cookies.find(row => row.startsWith('kp_referral='));
+          const referrerCode = referralCookie ? referralCookie.split('=')[1] : undefined;
+
           const { ensureProfile } = await import("@/lib/data/profiles")
-          await ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name)
+          await ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name, undefined, referrerCode)
         } catch (syncErr) {
           console.error("[OTP] Profile sync failed:", syncErr)
         }

@@ -35,10 +35,10 @@ export default function PrivacyPolicy() {
                             <Shield size={40} />
                         </div>
                         <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight text-zinc-900">Privacy Policy</h1>
-                        <p className="text-zinc-500 text-xl font-medium">Clear, transparent, and built on trust.</p>
+                        <p className="text-zinc-500 text-xl font-medium">Built for trust, compliant with DPDPA 2023.</p>
                         <div className="mt-8 flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 w-fit px-4 py-1.5 rounded-full font-semibold border border-emerald-100 shadow-sm mx-auto md:mx-0">
                             <ClockIcon className="w-4 h-4" />
-                            <span>Last updated: February 6, 2026</span>
+                            <span>Effective Date: February 15, 2026</span>
                         </div>
                     </motion.div>
 
@@ -57,6 +57,9 @@ export default function PrivacyPolicy() {
                                     <div className="prose prose-zinc prose-lg text-zinc-600 leading-relaxed">
                                         <p>
                                             At KhataPlus, we believe your business data belongs to you. Our mission is to provide you with powerful tools while ensuring your information stays private, secure, and accessible only to you.
+                                        </p>
+                                        <p className="font-bold text-zinc-900">
+                                            We operate in full compliance with the Digital Personal Data Protection Act (DPDPA) 2023 of India.
                                         </p>
                                         <p>
                                             This Privacy Policy describes how we collect, use, and handle your information when you use our websites, software, and services ("Services"). By using our Services, you're agreeing to the practices described in this policy.
@@ -118,9 +121,10 @@ export default function PrivacyPolicy() {
                                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {[
                                             { name: "Neon", purpose: "Database Infrastructure" },
-                                            { name: "Descope", purpose: "Authentication & Security" },
+                                            { name: "Supabase", purpose: "Authentication & Security" },
                                             { name: "Vercel", purpose: "Hosting & Analytics" },
-                                            { name: "Sentry", purpose: "Error Tracking & Reliability" }
+                                            { name: "Sentry", purpose: "Reliability & Performance" },
+                                            { name: "Resend", purpose: "Transactional Communications" }
                                         ].map((service, i) => (
                                             <li key={i} className="flex flex-col p-4 rounded-xl border border-zinc-100 bg-white shadow-sm">
                                                 <span className="font-bold text-zinc-900">{service.name}</span>
@@ -232,13 +236,16 @@ export default function PrivacyPolicy() {
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                     <Button className="h-14 px-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-lg font-bold shadow-lg shadow-emerald-500/20">
-                                        Contact Support
+                                        <a href="mailto:privacy@khataplus.online">Email Privacy Team</a>
                                     </Button>
                                     <Link href="/">
                                         <Button variant="outline" className="h-14 px-8 border-white/20 text-white hover:bg-white/5 rounded-full text-lg font-bold">
                                             Back to Home
                                         </Button>
                                     </Link>
+                                </div>
+                                <div className="mt-8 text-zinc-500 text-sm">
+                                    Grievance Officer: As required under the DPDPA 2023, reach us at privacy@khataplus.online
                                 </div>
                             </div>
                         </section>

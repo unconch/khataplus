@@ -111,15 +111,23 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
     // Handle missing organization with cache resilience
     if (userOrgs.length === 0) {
-      // If we are already on an org-prefixed path, don't redirect back to setup
-      // This handles the race condition during onboarding where the first hit after creation 
-      // might see a stale empty org list while the URL already has the slug.
-      if (!pathPrefix || pathPrefix === "/setup-organization") {
+      // If the profile already has an organization_id, we should try to use it
+      // before giving up and redirecting to setup.
+      if (profile?.organization_id) {
+        console.log("--- [DEBUG] AppLayout: userOrgs empty but profile has org_id. Attempting recovery... ---")
+        const { getOrganization } = await import("@/lib/data/organizations")
+        const org = await getOrganization(profile.organization_id)
+        if (org) {
+          console.log(`--- [DEBUG] AppLayout: Recovered org context for ${org.slug}. Skipping setup redirect. ---`)
+          // We don't have the membership role here, so we'll default to 'admin' (or fetch it)
+          // But actually, if we are in this block, it's safer to just NOT redirect and let 
+          // the downstream logic handle it (which it will, by trying to find the membership later).
+        }
+      } else if (!pathPrefix || pathPrefix === "/setup-organization") {
         console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Setup ---")
         redirect("/setup-organization")
       } else {
         console.log("--- [DEBUG] AppLayout: Stale cache detected (No Orgs but path prefix exists). Waiting for revalidation... ---")
-        // We allow it to proceed; if the tenant fetch fails later, it will hit the catch block.
       }
     }
 
@@ -147,25 +155,33 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       if (xInvokePath.includes("/dashboard/sales") && !settings.allow_staff_sales) redirect("/dashboard")
     }
 
-    if (orgRole !== "admin" && orgRole !== "owner" && xInvokePath.includes("/dashboard/admin")) {
+    if (orgRole !== "owner" && xInvokePath.includes("/dashboard/admin")) {
       redirect("/dashboard")
     }
+
+    const { TrialExpiredGuard } = await import("@/components/trial-expired-guard")
 
     return (
       <>
         <RealtimeSyncActivator orgId={orgId} />
         <BiometricGate isRequired={profile?.biometric_required || false}>
           <TenantProvider tenant={tenant}>
-            <AppShell
-              profile={profile}
-              role={orgRole}
-              settings={settings}
-              orgId={orgId}
-              orgName={tenant.name}
-              pathPrefix={pathPrefix}
+            <TrialExpiredGuard
+              trialEndsAt={tenant.trial_ends_at || ""}
+              subscriptionStatus={tenant.subscription_status || "active"}
+              orgName={tenant.name || ""}
             >
-              {children}
-            </AppShell>
+              <AppShell
+                profile={profile}
+                role={orgRole}
+                settings={settings}
+                orgId={orgId}
+                orgName={tenant.name}
+                pathPrefix={pathPrefix}
+              >
+                {children}
+              </AppShell>
+            </TrialExpiredGuard>
           </TenantProvider>
         </BiometricGate>
       </>

@@ -5,14 +5,16 @@ import type { Sale } from "@/lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { FileTextIcon, Printer, Download, Loader2, Package2, Search, Calendar } from "lucide-react"
+import { FileTextIcon, Printer, Download, Loader2, Package2, Search, Calendar, MessageCircle, QrCode } from "lucide-react"
 import { format } from "date-fns"
 import { ReturnDialog } from "./return-dialog"
 import { generateInvoice, type GroupedSale } from "@/lib/invoice-utils"
+import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
+import { getUPILink, getQRCodeUrl } from "@/lib/payments"
 
 interface GstBillsProps {
   sales: Sale[]
-  org?: { name: string; gstin?: string }
+  org?: { name: string; gstin?: string; upi_id?: string }
 }
 
 export function GstBills({ sales, org }: GstBillsProps) {
@@ -30,6 +32,8 @@ export function GstBills({ sales, org }: GstBillsProps) {
           createdat: sale.created_at,
           saledate: sale.sale_date,
           paymentMethod: sale.payment_method,
+          customerName: sale.customer_name,
+          customerPhone: sale.customer_phone,
           items: []
         }
       }
@@ -138,6 +142,25 @@ export function GstBills({ sales, org }: GstBillsProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {group.customerPhone && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-11 flex-1 md:flex-none gap-2 text-[10px] font-black uppercase tracking-widest rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 active:scale-95 transition-all shadow-sm"
+                          onClick={() => {
+                            const msg = WhatsAppMessages.invoiceShare(
+                              group.customerName,
+                              org?.name || "My Shop",
+                              totalAmount,
+                              group.id
+                            )
+                            window.open(getWhatsAppUrl(group.customerPhone!, msg), "_blank")
+                          }}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Share
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -184,12 +207,28 @@ export function GstBills({ sales, org }: GstBillsProps) {
                     </div>
 
                     {/* Invoice Total Summary */}
-                    <div className="p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 flex justify-between items-center mt-4">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Invoice Total</span>
-                        <span className="text-sm font-medium text-muted-foreground mt-0.5">{format(new Date(group.createdat), "dd MMM yyyy")}</span>
+                    <div className="flex flex-col md:flex-row gap-4 mt-4">
+                      <div className="flex-1 p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Invoice Total</span>
+                          <span className="text-sm font-medium text-muted-foreground mt-0.5">{format(new Date(group.createdat), "dd MMM yyyy")}</span>
+                        </div>
+                        <span className="text-3xl font-black font-mono tracking-tighter text-primary">₹{totalAmount.toFixed(0)}</span>
                       </div>
-                      <span className="text-3xl font-black font-mono tracking-tighter text-primary">₹{totalAmount.toFixed(0)}</span>
+
+                      {group.paymentMethod === "UPI" && org?.upi_id && (
+                        <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-emerald-500/20">
+                          <img
+                            src={getQRCodeUrl(getUPILink({ pa: org.upi_id, pn: org.name, am: totalAmount.toString(), tn: `Bill INV-${format(new Date(group.createdat), "ddMMyyHHmm")}` }), 64)}
+                            alt="Payment QR"
+                            className="h-12 w-12 rounded-lg"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">UPI Payment</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">Scan to Pay</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

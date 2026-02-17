@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { Logo } from "@/components/ui/logo"
 import Link from "next/link"
+import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
 
 interface PublicShopProps {
     shopName: string
@@ -96,7 +97,14 @@ export function PublicShopProfile({ shopName, category, city, phone, isVerified 
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 relative z-10">
-                        <Button className="h-16 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                        <Button
+                            className="h-16 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                            onClick={() => {
+                                const text = WhatsAppMessages.orderRequest(shopName)
+                                const url = getWhatsAppUrl(phone, text)
+                                window.open(url, "_blank")
+                            }}
+                        >
                             <MessageSquare size={20} /> Order via WhatsApp
                         </Button>
                         <Button variant="outline" className="h-16 rounded-[2rem] border-2 border-zinc-100 dark:border-white/10 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3">

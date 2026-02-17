@@ -2,10 +2,12 @@ export interface Profile {
   id: string
   email: string
   name?: string
-  role: "owner" | "staff"
-  status: "pending" | "approved" | "disabled"
+  role: "owner" | "manager" | "staff"
+  status: "pending" | "approved" | "disabled" | "active"
 
   biometric_required: boolean
+  referral_code?: string
+  referred_by?: string
   phone?: string
   organization_id?: string
   created_at: string
@@ -17,6 +19,7 @@ export interface InventoryItem {
   sku: string
   name: string
   buy_price: number
+  sell_price?: number // New: Selling price / MRP
   gst_percentage: number
   stock: number
   hsn_code?: string
@@ -35,7 +38,7 @@ export interface Sale {
   total_amount: number
   gst_amount: number
   profit: number
-  payment_method: "Cash" | "UPI"
+  payment_method: "Cash" | "UPI" | "Credit"
   batch_id?: string
   sale_date: string
   created_at: string
@@ -50,6 +53,11 @@ export interface Sale {
   sgst_amount?: number
   gst_rate?: number
   place_of_supply?: string
+  // V2 Fields
+  customer_name?: string
+  customer_phone?: string
+  payment_link?: string
+  payment_status?: "pending" | "paid" | "failed"
 }
 
 export interface DailySummary {
@@ -160,6 +168,22 @@ export interface Organization {
   }
   created_by: string
   created_at: string
+  updated_at: string
+  upi_id?: string
+
+  // 2026 Monetization fields
+  plan_type: 'free' | 'starter' | 'pro' | 'legacy'
+  subscription_status: 'active' | 'past_due' | 'canceled' | 'trial'
+  trial_ends_at?: string
+  whatsapp_addon_active?: boolean
+  gst_addon_active?: boolean
+  inventory_pro_active?: boolean
+  vernacular_pack_active?: boolean
+  ai_forecast_active?: boolean
+  auto_reminders_enabled?: boolean
+  pioneer_status?: boolean
+  pioneer_joined_at?: string
+  pioneer_certificate_id?: string
 }
 
 export interface OrganizationMember {
@@ -206,4 +230,11 @@ export interface SupplierTransaction {
   org_id: string
   created_at: string
   supplier?: Partial<Supplier>
+}
+
+export interface SystemAlert {
+  id: string
+  message: string
+  metadata?: Record<string, unknown>
+  created_at: string
 }

@@ -71,10 +71,28 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
 
     const profit = (sale.sale_price - parseFloat(product.buy_price)) * sale.quantity;
 
+    const taxableAmount = sale.total_amount - sale.gst_amount;
+
+    // Simple logic for Intra-state (CGST/SGST) vs Inter-state (IGST)
+    // For now, assuming intra-state as we don't have buyer state yet.
+    const cgst = sale.gst_amount / 2;
+    const sgst = sale.gst_amount / 2;
+
     const result = await sql`
-        INSERT INTO sales(inventory_id, user_id, org_id, quantity, sale_price, total_amount, gst_amount, profit, payment_method, batch_id, sale_date)
-VALUES(${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, ${sale.batch_id || null}, ${sale.sale_date})
-RETURNING *
+        INSERT INTO sales(
+            inventory_id, user_id, org_id, quantity, sale_price, 
+            total_amount, gst_amount, profit, payment_method, 
+            batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
+            hsn_code, customer_gstin, customer_name, customer_phone
+        )
+        VALUES(
+            ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
+            ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, 
+            ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
+            ${sale.hsn_code || null}, ${sale.customer_gstin || null}, 
+            ${sale.customer_name || null}, ${sale.customer_phone || null}
+        )
+        RETURNING *
     `;
 
     // Update stock
@@ -122,6 +140,34 @@ export async function recordBatchSales(sales: Omit<Sale, "id" | "user_id" | "sal
     // Prepare atomic transaction queries
     const queries: any[] = [];
 
+    // Credit Sync: If this is a credit sale, we need a customer record
+    let khataCustomerId: string | null = null;
+    if (sales.length > 0 && sales[0].payment_method === 'Credit' && sales[0].customer_phone) {
+        const { getOrCreateCustomerByPhone } = await import("./customers");
+        const customer = await getOrCreateCustomerByPhone(
+            sales[0].customer_name || "Unknown",
+            sales[0].customer_phone,
+            orgId
+        );
+        khataCustomerId = customer.id;
+
+        // Add Khata Transaction query
+        // Note: khata_transactions uses normal SQL insert, so we can't easily batch it with Neon 
+        // unless we use a SQL statement here.
+        queries.push(db`
+            INSERT INTO khata_transactions(customer_id, type, amount, note, sale_id, created_by, org_id)
+            VALUES(
+                ${khataCustomerId}, 
+                'credit', 
+                ${sales.reduce((sum, s) => sum + s.total_amount, 0)}, 
+                ${`Sale Batch: ${batchId}`}, 
+                ${batchId}, 
+                ${user.id}, 
+                ${orgId}
+            )
+        `);
+    }
+
     // We need to fetch current prices/stock inside the transaction context?
     // Neon transaction batch doesn't allow read-then-write logic across steps.
     // We must use "INSERT ... SELECT" and "UPDATE ... WHERE" logic to carry data.
@@ -145,19 +191,26 @@ BEGIN
         // Query 2: Insert Sale (calculating profit on the fly from inventory)
         queries.push(db`
             INSERT INTO sales(
-    inventory_id, user_id, org_id, quantity, sale_price,
-    total_amount, gst_amount, profit, payment_method,
-    batch_id, customer_gstin, hsn_code
-)
-SELECT 
+                inventory_id, user_id, org_id, quantity, sale_price,
+                total_amount, gst_amount, profit, payment_method,
+                batch_id, customer_gstin, hsn_code,
+                taxable_amount, cgst_amount, sgst_amount,
+                customer_name, customer_phone, payment_status
+            )
+            SELECT 
                 ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
                 ${sale.total_amount}, ${sale.gst_amount},
-(${sale.sale_price} - buy_price) * ${sale.quantity}, 
+                (${sale.sale_price} - buy_price) * ${sale.quantity}, 
                 ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null},
-COALESCE(${sale.hsn_code || null}, hsn_code)
+                COALESCE(${sale.hsn_code || null}, hsn_code),
+                ${sale.total_amount - sale.gst_amount},
+                ${sale.gst_amount / 2},
+                ${sale.gst_amount / 2},
+                ${sale.customer_name || null}, ${sale.customer_phone || null},
+                ${sale.payment_method === 'Credit' ? 'pending' : 'paid'}
             FROM inventory
             WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
-`);
+        `);
     }
 
     // Execute Atomically

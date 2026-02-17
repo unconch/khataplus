@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch"
 import { updateOrganization, updateSystemSettings } from "@/lib/data/organizations"
 import { upsertProfile } from "@/lib/data/profiles"
 import { toast } from "sonner"
-import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield } from "lucide-react"
+import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield, MessageCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface SettingsFormProps {
     initialOrg: Organization
@@ -163,6 +164,19 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                         </div>
                     </div>
 
+                    <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">UPI ID (for Direct Payments)</Label>
+                        <div className="relative flex items-center">
+                            <Percent size={14} className="absolute left-3 text-emerald-500" />
+                            <Input
+                                value={org.upi_id || ""}
+                                onChange={(e) => setOrg({ ...org, upi_id: e.target.value })}
+                                className="h-10 pl-10 font-mono"
+                                placeholder="business@upi"
+                            />
+                        </div>
+                    </div>
+
                     <div className="space-y-2 md:col-span-2">
                         <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Business Address</Label>
                         <div className="relative flex items-center">
@@ -233,6 +247,46 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                             />
                         </div>
                     ))}
+                </div>
+            </section>
+
+            {/* Connected Automation Section (V2) */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <MessageCircle className="h-5 w-5 text-emerald-500" />
+                    <h3 className="text-lg font-bold">Connected Automation</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-900/5">
+                        <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                                <Label className="text-sm font-bold">WhatsApp Automation Add-on</Label>
+                                {org.whatsapp_addon_active && (
+                                    <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase">Active</span>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Enable Smart Share & Automated Reminders</p>
+                        </div>
+                        <Switch
+                            checked={org.whatsapp_addon_active}
+                            onCheckedChange={(checked) => setOrg({ ...org, whatsapp_addon_active: checked })}
+                        />
+                    </div>
+
+                    <div className={cn(
+                        "flex items-center justify-between p-4 rounded-xl border transition-opacity",
+                        org.whatsapp_addon_active ? "opacity-100" : "opacity-40 pointer-events-none"
+                    )}>
+                        <div className="space-y-0.5">
+                            <Label className="text-sm font-bold">Auto Payment Reminders</Label>
+                            <p className="text-xs text-muted-foreground">Send periodic alerts for overdue balances</p>
+                        </div>
+                        <Switch
+                            checked={org.auto_reminders_enabled}
+                            onCheckedChange={(checked) => setOrg({ ...org, auto_reminders_enabled: checked })}
+                        />
+                    </div>
                 </div>
             </section>
 

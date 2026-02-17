@@ -160,31 +160,48 @@
 
 @layer utilities {
 
-  /* 6️⃣ CORE UI COMPONENTS - ZERO GRAIN SYSTEM */
+  /* 6️⃣ CORE UI COMPONENTS - PREMIUM GLASS SYSTEM */
+  .premium-glass,
   .glass,
   .glass-sharp,
   .glass-panel,
   .glass-sheet,
   .glass-control {
-    background-color: var(--card) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    transform: none !important;
+    background-color: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    border-radius: 2rem;
   }
 
-  .dark .glass,
-  .dark .glass-sharp,
-  .dark .glass-panel,
-  .dark .glass-sheet,
-  .dark .glass-control {
-    background-color: var(--card) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+  :is(.dark .premium-glass, .dark .glass, .dark .glass-sharp, .dark .glass-panel, .dark .glass-sheet, .dark .glass-control) {
+    background-color: rgba(24, 24, 27, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   }
+
+  .premium-glass-strong {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(64px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 12px 48px 0 rgba(31, 38, 135, 0.1);
+    border-radius: 2rem;
+  }
+
+  .dark .premium-glass-strong {
+    background-color: rgba(24, 24, 27, 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .premium-shadow {
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.1), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .premium-shadow {
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5), 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+  }
+
 
   .gpu-layer {
     transform: translateZ(0);
@@ -410,11 +427,30 @@
 
   /* 7️⃣ UTILITIES - SCROLLBAR HIDING */
   .scrollbar-none {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
-  
+
   .scrollbar-none::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
+  }
+
+  @keyframes slide-down {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-down {
+    animation: slide-down 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
