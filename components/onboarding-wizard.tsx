@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, ArrowRight, Check, Building2, MapPin, ReceiptText, User } from "lucide-react"
+import { Loader2, ArrowRight, Check, ChevronLeft, Building2, MapPin, ReceiptText, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -483,25 +483,29 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 pt-4">
-                                    <Button variant="outline" onClick={prevStep} className="flex-1 h-14 font-black text-base border-2 rounded-xl bg-white dark:bg-zinc-800/50 hover:bg-zinc-50 transition-all shadow-md" disabled={loading}>
-                                        Back
+                                <div className="flex gap-3 pt-8 w-full">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={prevStep}
+                                        className="flex-none w-24 sm:w-28 h-14 text-base sm:text-lg font-black rounded-xl"
+                                        disabled={loading}
+                                    >
+                                        <ChevronLeft className="mr-1 h-4 w-4" /> Back
                                     </Button>
                                     <Button
                                         onClick={handleSubmit(onSubmit)}
-                                        className={`flex-[3] h-14 text-lg font-black shadow-xl transition-all rounded-xl active:scale-95
-                                            ${loading ? "bg-zinc-800" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/40 text-white"}`}
                                         disabled={loading}
+                                        className="flex-1 min-w-0 h-14 text-base sm:text-lg font-black rounded-xl bg-emerald-600 hover:bg-emerald-500"
                                     >
                                         {loading ? (
-                                            <div className="flex items-center gap-3">
-                                                <Loader2 className="h-5 w-5 animate-spin" />
-                                                Activating...
-                                            </div>
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" /> Activating...
+                                            </span>
                                         ) : (
-                                            <>
-                                                Activate Account <Check className="ml-2 h-5 w-5" />
-                                            </>
+                                            <span className="truncate">
+                                                Activate Account <Check className="ml-2 h-5 w-5 inline" />
+                                            </span>
                                         )}
                                     </Button>
                                 </div>

@@ -21,7 +21,7 @@ export default async function SetupOrganizationPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 pt-20 sm:pt-4 relative overflow-hidden">
             {/* Background Aesthetics */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/10 rounded-full blur-3xl opacity-50" />

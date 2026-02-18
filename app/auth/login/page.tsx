@@ -21,7 +21,6 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Fetch user orgs to redirect to correct slug
         const { getUserOrganizations } = await import("@/lib/data/organizations")
         const userOrgs = await getUserOrganizations(session.user.id).catch(() => [])
 
@@ -35,7 +34,6 @@ export default function LoginPage() {
     checkUser()
   }, [router, supabase.auth])
 
-  // Handle GIS Credential Response
   const handleCredentialResponse = async (response: any) => {
     setLoading(true);
     try {
@@ -44,7 +42,6 @@ export default function LoginPage() {
         token: response.credential,
       });
 
-      // Fail-safe: If we get a generic error but the session actually worked (common with GIS/GoTrue Handshakes)
       if (error) {
         console.warn("[GIS] Supabase returned error, checking session fallback...", error);
         const { data: { session } } = await supabase.auth.getSession();
@@ -58,14 +55,11 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data?.user) {
-        // Parallelize profile sync and org fetch for maximum speed
         try {
           const [{ ensureProfile, getUserOrganizations }] = await Promise.all([
             import("@/lib/data"),
           ]);
 
-          // Fire and forget profile sync if it's slow, or wait if needed
-          // For now, let's run them in parallel to be safe but fast
           const [userOrgs] = await Promise.all([
             getUserOrganizations(data.user.id),
             ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name).catch(e => console.error("Sync error:", e))
@@ -85,7 +79,6 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error("[GIS Error]:", err);
-      // Suppress "Unexpected response" if the user is clearly authenticated
       if (err.message?.includes("unexpected response")) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
@@ -120,11 +113,10 @@ export default function LoginPage() {
     }
   };
 
-  // Re-initialize Google Login if script is already loaded (e.g., navigation back/logout)
   useEffect(() => {
     const timer = setTimeout(() => {
       handleGoogleLoad();
-    }, 500); // Small delay to ensure DOM is ready
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -145,7 +137,6 @@ export default function LoginPage() {
 
     toast.success("Welcome back!")
 
-    // Fetch user orgs to redirect to correct slug
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -161,7 +152,6 @@ export default function LoginPage() {
       console.error("Failed to resolve org for redirect:", e)
     }
 
-    // Fallback if no orgs found or error
     router.push("/setup-organization")
   }
 
@@ -169,27 +159,18 @@ export default function LoginPage() {
     <div className="min-h-svh w-full flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
-        {/* Mesh Background */}
         <div className="absolute inset-0 mesh-gradient opacity-60" />
-
-        {/* Overlay for contrast */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
-
-        {/* Animated Overlays */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px] animate-orbit" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px] animate-orbit-slow" />
         </div>
-
-        {/* Pattern Overlay */}
         <div className="absolute inset-0 opacity-[0.03] z-1" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' fill='%23ffffff' fill-rule='evenodd'/%3E%3C/svg%3E")`,
         }} />
 
         <div className="relative z-10 flex flex-col w-full p-16 text-white">
-          <div
-            className="mb-auto animate-in fade-in slide-left duration-500"
-          >
+          <div className="mb-auto animate-in fade-in slide-left duration-500">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
                 <Logo size={32} className="text-white" />
@@ -199,9 +180,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-12">
-            <div
-              className="animate-in fade-in slide-up duration-700 delay-200"
-            >
+            <div className="animate-in fade-in slide-up duration-700 delay-200">
               <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
                 <ShieldCheck className="h-4 w-4 text-emerald-300" />
                 Enterprise Grade Security
@@ -215,9 +194,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div
-              className="flex gap-4 animate-in fade-in slide-up duration-700 delay-[400ms]"
-            >
+            <div className="flex gap-4 animate-in fade-in slide-up duration-700 delay-[400ms]">
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
                 <Zap className="h-4 w-4 text-emerald-300" />
                 Zero Latency
@@ -236,22 +213,20 @@ export default function LoginPage() {
       </div>
 
       {/* Right Panel - Sign In Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950 relative">
-        <div className="absolute top-6 left-6 lg:hidden">
+      <div className="flex-1 flex items-center justify-center p-6 pt-20 lg:pt-6 bg-zinc-50 dark:bg-zinc-950 relative">
+        <div className="absolute top-6 left-6 lg:hidden z-50">
           <Link href="/" className="flex items-center gap-2">
-            <Logo size={32} className="text-emerald-600" />
-            <span className="font-bold text-xl text-zinc-900 dark:text-white">KhataPlus</span>
+            <Logo size={28} className="text-emerald-600" />
+            <span className="font-bold text-lg text-zinc-900 dark:text-white">KhataPlus</span>
           </Link>
         </div>
 
-        <div
-          className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700"
-        >
+        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700">
           <div className="text-center lg:text-left">
-            <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
+            <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
               Welcome <span className="text-emerald-600">Back.</span>
             </h2>
-            <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit">
+            <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit">
               Securely access your business ecosystem in the Digital India Era.
             </p>
           </div>
@@ -293,7 +268,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
             </button>
@@ -329,7 +304,7 @@ export default function LoginPage() {
 
           {/* Sign Up Link */}
           <div className="text-center">
-            <p className="text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
               Don't have an account?{" "}
               <Link
                 href="/auth/sign-up"
@@ -344,7 +319,7 @@ export default function LoginPage() {
           <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <Link
               href="/demo"
-              className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium"
+              className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium"
             >
               Or try the demo without signing up →
             </Link>
