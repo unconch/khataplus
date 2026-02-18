@@ -1,13 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Script from "next/script"
 import { Check, Crown, MessageSquare, FileText, Package, Zap, Sparkles, Star, Shield, Smartphone, Globe, Clock, ShieldCheck, ZapOff } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { toast } from "sonner"
+import type { BillingPlanKey } from "@/lib/billing-plans"
 
-export function PricingSection({ orgCount }: { orgCount?: number }) {
+declare global {
+    interface Window {
+        Cashfree?: any
+    }
+}
+
+export function PricingSection({
+    orgCount,
+    isAuthenticated = false,
+    orgSlug = null
+}: {
+    orgCount?: number
+    isAuthenticated?: boolean
+    orgSlug?: string | null
+}) {
+    const router = useRouter()
+    const searchParams = useSearchParams()
     const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
+    const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
+    const [isCashfreeLoaded, setIsCashfreeLoaded] = useState(false)
+    const [paymentToastShown, setPaymentToastShown] = useState(false)
 
     interface PricingTier {
+        planKey: BillingPlanKey
         name: string
         price: { monthly: number; yearly: number }
         desc: string
@@ -20,6 +44,7 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
 
     const tiers: PricingTier[] = [
         {
+            planKey: "keep",
             name: "Keep",
             price: { monthly: 49, yearly: 399 },
             desc: "Data alive cheaply.",
@@ -36,6 +61,7 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
             popular: false
         },
         {
+            planKey: "starter",
             name: "Starter",
             price: { monthly: 179, yearly: 1499 },
             desc: "Small shops ready to grow.",
@@ -52,6 +78,7 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
             popular: false
         },
         {
+            planKey: "pro",
             name: "Pro",
             price: { monthly: 449, yearly: 3999 },
             desc: "Growing businesses.",
@@ -68,6 +95,7 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
             popular: true
         },
         {
+            planKey: "business",
             name: "Business",
             price: { monthly: 899, yearly: 7999 },
             desc: "Multi-location SMEs.",
@@ -85,8 +113,92 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
         }
     ]
 
+    useEffect(() => {
+        const payment = searchParams.get("payment")
+        if (!payment || paymentToastShown) return
+
+        const message = searchParams.get("message")
+        if (payment === "success") {
+            toast.success(message || "Payment successful. Plan activated.")
+        } else if (payment === "failed") {
+            toast.error(message || "Payment verification failed.")
+        }
+        setPaymentToastShown(true)
+    }, [searchParams, paymentToastShown])
+
+    const getCashfreeInstance = (environment: string) => {
+        const factory = window.Cashfree
+        if (!factory) {
+            throw new Error("Cashfree SDK not loaded. Please refresh and try again.")
+        }
+        const mode = environment === "production" || environment === "live" ? "production" : "sandbox"
+        return factory({ mode })
+    }
+
+    const handleCheckout = async (planKey: BillingPlanKey) => {
+        if (!isAuthenticated) {
+            router.push("/auth/login")
+            return
+        }
+        if (!isCashfreeLoaded) {
+            toast.error("Cashfree SDK is still loading. Try again in a moment.")
+            return
+        }
+
+        setLoadingPlanKey(planKey)
+        try {
+            const response = await fetch("/api/billing/cashfree/create-order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    plan: planKey,
+                    cycle: billingCycle
+                })
+            })
+
+            const data = await response.json().catch(() => ({}))
+            if (!response.ok) {
+                throw new Error(data?.error || "Failed to initialize checkout")
+            }
+
+            if (!data?.paymentSessionId) {
+                throw new Error("Missing payment session from Cashfree")
+            }
+
+            const cashfree = getCashfreeInstance(String(data.environment || "sandbox"))
+            const checkoutResult = await cashfree.checkout({
+                paymentSessionId: data.paymentSessionId,
+                redirectTarget: "_self"
+            })
+            if (checkoutResult?.error) {
+                throw new Error(checkoutResult.error.message || "Unable to open checkout")
+            }
+        } catch (error: any) {
+            toast.error(error?.message || "Unable to start payment")
+        } finally {
+            setLoadingPlanKey(null)
+        }
+    }
+
+    const handleStartTrial = () => {
+        if (!isAuthenticated) {
+            router.push("/auth/sign-up")
+            return
+        }
+        if (orgSlug) {
+            router.push(`/${orgSlug}/dashboard`)
+            return
+        }
+        router.push("/setup-organization")
+    }
+
     return (
         <section id="pricing" className="relative py-24 md:py-40 px-6 overflow-hidden bg-white">
+            <Script
+                src="https://sdk.cashfree.com/js/v3/cashfree.js"
+                strategy="afterInteractive"
+                onLoad={() => setIsCashfreeLoaded(true)}
+            />
             <div className="max-w-7xl mx-auto relative z-10">
 
                 {/* Trial/Entry Strategy Callout */}
@@ -108,7 +220,10 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
                                 </p>
                             </div>
                             <div className="w-full md:w-auto">
-                                <button className="w-full md:px-10 py-4 bg-white text-zinc-950 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95 shadow-xl shadow-white/5">
+                                <button
+                                    onClick={handleStartTrial}
+                                    className="w-full md:px-10 py-4 bg-white text-zinc-950 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95 shadow-xl shadow-white/5"
+                                >
                                     Start Trial
                                 </button>
                             </div>
@@ -246,8 +361,12 @@ export function PricingSection({ orgCount }: { orgCount?: number }) {
                                     ))}
                                 </div>
 
-                                <button className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${tier.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}>
-                                    {tier.cta}
+                                <button
+                                    onClick={() => handleCheckout(tier.planKey)}
+                                    disabled={loadingPlanKey !== null}
+                                    className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tier.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                                >
+                                    {loadingPlanKey === tier.planKey ? "Processing..." : tier.cta}
                                 </button>
                             </div>
                         </AdvancedScrollReveal>

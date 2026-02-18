@@ -77,9 +77,11 @@ export function TrialExpiredGuard({ children, trialEndsAt, subscriptionStatus, o
                         </div>
 
                         <div className="flex flex-col gap-3">
-                            <Button className="h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/10">
-                                UPGRADE NOW
-                            </Button>
+                            <Link href="/pricing">
+                                <Button className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/10">
+                                    UPGRADE NOW
+                                </Button>
+                            </Link>
                             <div className="flex items-center gap-4 mt-2">
                                 <Link href="/" className="flex-1">
                                     <Button variant="outline" className="w-full h-12 border-zinc-800 text-zinc-400 hover:text-white rounded-2xl font-bold">

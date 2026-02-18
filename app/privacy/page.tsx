@@ -265,7 +265,7 @@ export default function PrivacyPolicy() {
                         </div>
                         <div className="flex flex-col items-center md:items-end gap-4">
                             <div className="flex gap-8 text-zinc-400">
-                                <Link href="/terms" className="hover:text-emerald-400 transition-colors">Terms of Service</Link>
+                                <Link href="/terms-and-condition" className="hover:text-emerald-400 transition-colors">Terms of Service</Link>
                                 <Link href="/" className="hover:text-emerald-400 transition-colors">About</Link>
                             </div>
                             <div className="text-zinc-600 text-xs">

@@ -34,7 +34,11 @@ export default async function PricingPage() {
                     isGuest={user?.isGuest}
                 />
                 <div className="pt-32 pb-20">
-                    <PricingSection orgCount={orgCount} />
+                    <PricingSection
+                        orgCount={orgCount}
+                        isAuthenticated={isAuthenticated}
+                        orgSlug={orgSlug}
+                    />
                     <PricingComparison />
                 </div>
                 <SiteFooter />

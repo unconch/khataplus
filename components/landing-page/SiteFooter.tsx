@@ -41,10 +41,16 @@ export function SiteFooter() {
                     </div>
                 </div>
                 <div className="border-t border-zinc-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-zinc-400 text-sm">
-                    <p>&copy; {new Date().getFullYear()} KhataPlus Inc. All rights reserved.</p>
+                    <div className="text-center md:text-left">
+                        <p>&copy; {new Date().getFullYear()} KhataPlus Inc. All rights reserved.</p>
+                        <p className="text-zinc-500 text-xs mt-1">
+                            Legal Business Name: <span className="font-semibold text-zinc-700">UNMESH BAISHYA</span>
+                        </p>
+                    </div>
                     <div className="flex gap-6">
                         <Link href="/privacy" className="hover:text-zinc-900 transition-colors">Privacy Policy</Link>
-                        <a href="#" className="hover:text-zinc-900 transition-colors">Terms of Service</a>
+                        <Link href="/terms-and-condition" className="hover:text-zinc-900 transition-colors">Terms of Service</Link>
+                        <Link href="/legal/cancellation-refund" className="hover:text-zinc-900 transition-colors">Cancellation & Refund</Link>
                     </div>
                 </div>
             </div>

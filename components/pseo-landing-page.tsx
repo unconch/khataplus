@@ -176,7 +176,7 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                     </div>
                     <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                         <Link href="/privacy" className="hover:text-emerald-500">Privacy Policy</Link>
-                        <Link href="/terms" className="hover:text-emerald-500">Terms of Service</Link>
+                        <Link href="/terms-and-condition" className="hover:text-emerald-500">Terms of Service</Link>
                         <Link href="/beta" className="text-emerald-600 font-black">Early Access</Link>
                     </div>
                 </div>

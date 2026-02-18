@@ -172,7 +172,7 @@ export interface Organization {
   upi_id?: string
 
   // 2026 Monetization fields
-  plan_type: 'free' | 'starter' | 'pro' | 'legacy'
+  plan_type: 'free' | 'starter' | 'pro' | 'business' | 'legacy'
   subscription_status: 'active' | 'past_due' | 'canceled' | 'trial'
   trial_ends_at?: string
   whatsapp_addon_active?: boolean

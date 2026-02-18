@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 // Routes that should NOT be treated as org slugs
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite',
-    'geoblocked', 'privacy', 'terms', '_next', 'pricing',
+    'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing',
     'dashboard', 'demo', 'marketing', 'offline',
     'pending-approval', 'tools', 'beta', 'for', 'shop',
 ])
