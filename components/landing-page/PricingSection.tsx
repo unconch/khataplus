@@ -126,6 +126,13 @@ export function PricingSection({
         setPaymentToastShown(true)
     }, [searchParams, paymentToastShown])
 
+    // Fallback if script already loaded
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.Cashfree) {
+            setIsCashfreeLoaded(true)
+        }
+    }, [])
+
     const getCashfreeInstance = (environment: string) => {
         const factory = window.Cashfree
         if (!factory) {
