@@ -11,6 +11,18 @@ import { sendWelcomeEmail, sendOrgDeletionRequestEmail, sendOrgDeletionRejectedE
 import { getProfile } from "./profiles";
 import { initializeOrganizationSchema } from "./schema-init";
 
+async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
+    await sql`
+        ALTER TABLE organization_members
+        DROP CONSTRAINT IF EXISTS organization_members_role_check
+    `;
+
+    await sql`
+        ALTER TABLE organization_members
+        ADD CONSTRAINT organization_members_role_check
+        CHECK (role = ANY (ARRAY['admin'::text, 'manager'::text, 'staff'::text, 'owner'::text]))
+    `;
+}
 
 
 export async function getTotalOrganizationCount(): Promise<number> {
@@ -106,11 +118,33 @@ export async function createOrganization(name: string, userId: string, details?:
             // but in a production refined flow, we might want to rollback org creation.
         }
 
-        // Add creator as owner
-        await sql`
-            INSERT INTO organization_members(org_id, user_id, role)
-            VALUES(${org.id}, ${userId}, 'owner')
-        `;
+        // Add creator as owner. Self-heal older DBs where the role check
+        // constraint still excludes 'owner', then retry once.
+        try {
+            await sql`
+                INSERT INTO organization_members(org_id, user_id, role)
+                VALUES(${org.id}, ${userId}, 'owner')
+            `;
+        } catch (memberInsertErr: any) {
+            const message = String(memberInsertErr?.message || "");
+            if (!message.includes("organization_members_role_check")) {
+                throw memberInsertErr;
+            }
+
+            console.warn("[DB/Orgs] organization_members role constraint is outdated. Applying hotfix and retrying insert.");
+            try {
+                await ensureOrganizationMembersRoleConstraintAllowsOwner();
+            } catch (constraintErr: any) {
+                throw new Error(
+                    `Database schema is outdated for organization roles. Please run the role-constraint migration (organization_members_role_check): ${constraintErr?.message || "unknown error"}`
+                );
+            }
+
+            await sql`
+                INSERT INTO organization_members(org_id, user_id, role)
+                VALUES(${org.id}, ${userId}, 'owner')
+            `;
+        }
 
 
         // Promote user to main admin in profiles table for consistent permissions

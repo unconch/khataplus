@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, Share2, Printer, ArrowRight } from "lucide-react"
+import { CheckCircle2, Share2, Printer, ArrowRight, Clock3 } from "lucide-react"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
@@ -18,6 +18,7 @@ interface SignatureReceiptProps {
     customerPhone?: string
     shopName: string
     paymentMethod: string
+    paymentStatus?: "pending" | "paid" | "failed"
     itemCount: number
     onClose: () => void
     onNewSale: () => void
@@ -30,6 +31,7 @@ export function SignatureReceipt({
     customerPhone,
     shopName,
     paymentMethod,
+    paymentStatus = "paid",
     itemCount,
     onClose,
     onNewSale,
@@ -37,6 +39,7 @@ export function SignatureReceipt({
 }: SignatureReceiptProps) {
     const [isVisible, setIsVisible] = useState(false)
     const { trigger } = useHaptic()
+    const isPending = paymentStatus === "pending"
 
     useEffect(() => {
         // Entrance animation delay
@@ -70,19 +73,30 @@ export function SignatureReceipt({
                     {/* Success Icon Bloom */}
                     <div className="relative">
                         <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full" />
-                        <div className="relative h-20 w-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-2">
-                            <CheckCircle2 className="h-10 w-10 animate-in zoom-in spin-in-12 duration-500" />
+                        <div className={cn(
+                            "relative h-20 w-20 rounded-full flex items-center justify-center mb-2",
+                            isPending ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
+                        )}>
+                            {isPending ? (
+                                <Clock3 className="h-10 w-10 animate-in zoom-in duration-500" />
+                            ) : (
+                                <CheckCircle2 className="h-10 w-10 animate-in zoom-in spin-in-12 duration-500" />
+                            )}
                         </div>
                     </div>
 
                     <div className="space-y-1">
-                        <p className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">Payment Received</p>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground">
+                            {isPending ? "Payment Pending" : "Payment Received"}
+                        </p>
                         <div className="scale-125 transform origin-center py-2">
                             <PriceDisplay amount={amount} size="2xl" className="text-foreground" />
                         </div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10">
-                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{paymentMethod}</span>
+                            <span className={cn("h-2 w-2 rounded-full animate-pulse", isPending ? "bg-amber-500" : "bg-emerald-500")} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {paymentMethod} {isPending ? "(Pending)" : "(Paid)"}
+                            </span>
                         </div>
                     </div>
 

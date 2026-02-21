@@ -40,6 +40,11 @@ check-org.ts
 clear-org-data.ts
 dev-server*.err
 dev-server*.log
+dev-3000.*
+dev-sdk-check.*
+start_debug.log
 inspect-trigger.ts
 list-tables.ts
 scripts/run_migrate_status_direct.ts
+scripts/test-*.mjs
+scripts/check-billing-schema.mjs

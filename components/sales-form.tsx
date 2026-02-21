@@ -57,6 +57,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   const [quantity, setQuantity] = useState("")
   const [salePrice, setSalePrice] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "UPI" | "Credit">("Cash")
+  const [requireUpiVerification, setRequireUpiVerification] = useState(true)
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerGst, setCustomerGst] = useState("")
@@ -190,18 +191,28 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
     }
 
     try {
-      const salesPayload = cart.map((item) => ({
-        inventory_id: item.inventoryItem.id,
-        quantity: item.quantity,
-        sale_price: item.salePrice,
-        total_amount: item.totalAmount,
-        gst_amount: item.gstAmount,
-        profit: item.profit,
-        payment_method: paymentMethod,
-        customer_gstin: customerGst || undefined,
-        customer_name: customerName || undefined,
-        customer_phone: customerPhone || undefined,
-      }))
+      const salesPayload = cart.map((item) => {
+        const paymentStatus: "pending" | "paid" =
+          paymentMethod === "Credit"
+            ? "pending"
+            : paymentMethod === "UPI" && requireUpiVerification
+              ? "pending"
+              : "paid"
+
+        return {
+          inventory_id: item.inventoryItem.id,
+          quantity: item.quantity,
+          sale_price: item.salePrice,
+          total_amount: item.totalAmount,
+          gst_amount: item.gstAmount,
+          profit: item.profit,
+          payment_method: paymentMethod,
+          payment_status: paymentStatus,
+          customer_gstin: customerGst || undefined,
+          customer_name: customerName || undefined,
+          customer_phone: customerPhone || undefined,
+        }
+      })
 
       if (!isOnline) {
         await addToQueue({
@@ -267,6 +278,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
 
   if (success && lastSaleGroup) {
     const totalAmount = lastSaleGroup.items.reduce((sum, item) => sum + item.total_amount, 0)
+    const paymentStatus = (lastSaleGroup.items?.[0] as any)?.payment_status || "paid"
 
     return (
       <SignatureReceipt
@@ -276,6 +288,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
         shopName={org?.name || "My Shop"}
         upiId={org?.upi_id}
         paymentMethod={paymentMethod}
+        paymentStatus={paymentStatus}
         itemCount={lastSaleGroup.items.length}
         onClose={() => setSuccess(false)}
         onNewSale={() => {
@@ -546,6 +559,29 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
                 </div>
               </div>
 
+              {paymentMethod === "UPI" && (
+                <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 p-4">
+                  <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                    Own QR mode: keep payment pending until you manually confirm received amount.
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "h-10 rounded-xl text-xs font-semibold",
+                        requireUpiVerification
+                          ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500"
+                          : "border-zinc-200 dark:border-zinc-700"
+                      )}
+                      onClick={() => setRequireUpiVerification((v) => !v)}
+                    >
+                      {requireUpiVerification ? "Manual Confirmation: ON" : "Manual Confirmation: OFF"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
                 <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-xl">
                   Back
@@ -573,6 +609,14 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
                   <span className="text-muted-foreground">Payment</span>
                   <span className="font-medium">{paymentMethod}</span>
                 </div>
+                {(paymentMethod === "UPI" || paymentMethod === "Credit") && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Payment Status</span>
+                    <span className="font-medium">
+                      {paymentMethod === "UPI" && requireUpiVerification ? "Pending (verify later)" : paymentMethod === "Credit" ? "Pending" : "Paid"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-medium">Rs{subtotalAmount.toFixed(2)}</span>

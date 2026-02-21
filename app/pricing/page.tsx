@@ -3,15 +3,33 @@ import { getTotalOrganizationCount } from "@/lib/data/organizations"
 import { getCurrentUser } from "@/lib/data/auth"
 
 export default async function PricingPage() {
-    const orgCount = await getTotalOrganizationCount()
-    const user = await getCurrentUser()
+    let orgCount = 0
+    let user: Awaited<ReturnType<typeof getCurrentUser>> = null
+
+    try {
+        orgCount = await getTotalOrganizationCount()
+    } catch (error) {
+        console.warn("[pricing] orgCount fetch failed, defaulting to 0", error)
+    }
+
+    try {
+        user = await getCurrentUser()
+    } catch (error) {
+        console.warn("[pricing] user fetch failed, treating as anonymous", error)
+        user = null
+    }
+
     const isAuthenticated = !!user
 
     let orgSlug = null
     if (user && !user.isGuest) {
-        const { getUserOrganizations } = await import("@/lib/data/organizations")
-        const orgs = await getUserOrganizations(user.userId)
-        orgSlug = orgs[0]?.organization?.slug || null
+        try {
+            const { getUserOrganizations } = await import("@/lib/data/organizations")
+            const orgs = await getUserOrganizations(user.userId)
+            orgSlug = orgs[0]?.organization?.slug || null
+        } catch (error) {
+            console.warn("[pricing] org lookup failed, skipping redirect slug", error)
+        }
     }
 
     return (

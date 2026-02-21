@@ -3,7 +3,7 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: false, // Set to false to test PWA in dev mode
+  disable: true, // Set to true to avoid PWA issues in dev mode
   register: true,
   skipWaiting: true,
   cacheOnFrontEndNav: true,

@@ -11,6 +11,15 @@ import { triggerSync } from "../sync-notifier";
 import { syncDailyReport } from "./reports";
 import { getCurrentOrgId } from "./auth";
 
+function resolveInitialPaymentStatus(
+    paymentMethod: Sale["payment_method"],
+    requestedStatus?: Sale["payment_status"]
+): "pending" | "paid" {
+    if (paymentMethod === "Credit") return "pending";
+    if (paymentMethod === "UPI" && requestedStatus === "pending") return "pending";
+    return "paid";
+}
+
 export async function getSales(orgId: string) {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
@@ -77,20 +86,21 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
     // For now, assuming intra-state as we don't have buyer state yet.
     const cgst = sale.gst_amount / 2;
     const sgst = sale.gst_amount / 2;
+    const initialPaymentStatus = resolveInitialPaymentStatus(sale.payment_method, sale.payment_status);
 
     const result = await sql`
         INSERT INTO sales(
             inventory_id, user_id, org_id, quantity, sale_price, 
             total_amount, gst_amount, profit, payment_method, 
             batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
-            hsn_code, customer_gstin, customer_name, customer_phone
+            hsn_code, customer_gstin, customer_name, customer_phone, payment_status
         )
         VALUES(
             ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
             ${sale.total_amount}, ${sale.gst_amount}, ${profit}, ${sale.payment_method}, 
             ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
             ${sale.hsn_code || null}, ${sale.customer_gstin || null}, 
-            ${sale.customer_name || null}, ${sale.customer_phone || null}
+            ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}
         )
         RETURNING *
     `;
@@ -173,6 +183,8 @@ export async function recordBatchSales(sales: Omit<Sale, "id" | "user_id" | "sal
     // We must use "INSERT ... SELECT" and "UPDATE ... WHERE" logic to carry data.
 
     for (const sale of sales) {
+        const paymentStatus = resolveInitialPaymentStatus(sale.payment_method, sale.payment_status);
+
         // Query 1: Deduct Stock (Abort if insufficient)
         // We use a PL/pgSQL block to raise exception if stock is low
         queries.push(db`
@@ -207,7 +219,7 @@ BEGIN
                 ${sale.gst_amount / 2},
                 ${sale.gst_amount / 2},
                 ${sale.customer_name || null}, ${sale.customer_phone || null},
-                ${sale.payment_method === 'Credit' ? 'pending' : 'paid'}
+                ${paymentStatus}
             FROM inventory
             WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
         `);
@@ -326,14 +338,27 @@ export async function updateSale(saleId: string, updates: Partial<Sale>, orgId?:
 
     await authorize("Update Sale", undefined, actualOrgId);
 
-    // Validate 5-minute window for safety
-    const diffMs = Date.now() - new Date(prev.created_at).getTime();
-    if (diffMs > 5 * 60 * 1000) {
-        throw new Error("Sale is locked (5-minute edit window expired)");
+    const updateKeys = Object.keys(updates).filter((k) => (updates as any)[k] !== undefined);
+    if (updateKeys.length === 0) {
+        return;
+    }
+
+    const onlyPaymentStatusUpdate = updateKeys.every((k) => k === "payment_status");
+
+    if (updates.payment_status && !["pending", "paid", "failed"].includes(updates.payment_status)) {
+        throw new Error("Invalid payment status");
+    }
+
+    // Validate 5-minute window for inventory/amount edits only.
+    if (!onlyPaymentStatusUpdate) {
+        const diffMs = Date.now() - new Date(prev.created_at).getTime();
+        if (diffMs > 5 * 60 * 1000) {
+            throw new Error("Sale is locked (5-minute edit window expired)");
+        }
     }
 
     // Adjust Inventory Stock before updating sale
-    if (updates.quantity !== undefined && updates.quantity !== prev.quantity) {
+    if (!onlyPaymentStatusUpdate && updates.quantity !== undefined && updates.quantity !== prev.quantity) {
         const diffQty = updates.quantity - prev.quantity;
         await sql`
             UPDATE inventory 
@@ -353,14 +378,17 @@ quantity = COALESCE(${updates.quantity}, quantity),
     gst_amount = COALESCE(${updates.gst_amount}, gst_amount),
     profit = COALESCE(${updates.profit}, profit),
     payment_method = COALESCE(${updates.payment_method}, payment_method),
+    payment_status = COALESCE(${updates.payment_status}, payment_status),
     updated_at = CURRENT_TIMESTAMP
         WHERE id = ${saleId} AND org_id = ${actualOrgId}
 `;
 
-    // Re-sync daily report
-    await syncDailyReport(new Date(prev.sale_date).toISOString().split('T')[0]);
+    // Re-sync daily report only when financial values changed.
+    if (!onlyPaymentStatusUpdate) {
+        await syncDailyReport(new Date(prev.sale_date).toISOString().split('T')[0]);
+    }
 
-    await audit("Updated Sale", "sale", saleId, diff, actualOrgId);
+    await audit(onlyPaymentStatusUpdate ? "Updated Sale Payment Status" : "Updated Sale", "sale", saleId, diff, actualOrgId);
     (revalidateTag as any)("inventory");
     (revalidateTag as any)("sales");
     revalidatePath("/dashboard/sales", "page");

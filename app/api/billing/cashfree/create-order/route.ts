@@ -5,6 +5,7 @@ import { generateUUID } from "@/lib/universal-crypto";
 import {
   getCashfreeEnvironment,
   getCashfreeOrdersBaseUrl,
+  getCashfreeOrderSessionsUrl,
   getCashfreeRequestHeaders,
 } from "@/lib/cashfree-billing";
 import {
@@ -99,9 +100,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing payment session id from Cashfree" }, { status: 500 });
     }
 
+    let fallbackCheckoutUrl: string | null = null;
+    try {
+      const sessionResponse = await fetch(getCashfreeOrderSessionsUrl(), {
+        method: "POST",
+        headers: getCashfreeRequestHeaders(),
+        body: JSON.stringify({
+          payment_session_id: paymentSessionId,
+          payment_method: {
+            upi: {
+              channel: "link",
+            },
+          },
+        }),
+        cache: "no-store",
+      });
+
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json().catch(() => ({}));
+        const webUrl = String(sessionData?.data?.payload?.web || "").trim();
+        if (webUrl) {
+          fallbackCheckoutUrl = webUrl;
+        }
+      }
+    } catch (fallbackError: any) {
+      console.warn("[Cashfree/CreateOrder] Fallback checkout URL unavailable:", fallbackError?.message || fallbackError);
+    }
+
     return NextResponse.json({
       orderId,
       paymentSessionId,
+      fallbackCheckoutUrl,
       environment: getCashfreeEnvironment(),
     });
   } catch (error: any) {

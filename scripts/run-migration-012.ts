@@ -14,10 +14,14 @@ async function runMigration() {
     console.log(`Updating role constraint for organization_members...`);
 
     await sql`
-        ALTER TABLE organization_members 
-        DROP CONSTRAINT organization_members_role_check,
-        ADD CONSTRAINT organization_members_role_check 
-        CHECK (role = ANY (ARRAY['admin'::text, 'manager'::text, 'staff'::text, 'owner'::text]));
+        ALTER TABLE organization_members
+        DROP CONSTRAINT IF EXISTS organization_members_role_check
+    `;
+
+    await sql`
+        ALTER TABLE organization_members
+        ADD CONSTRAINT organization_members_role_check
+        CHECK (role = ANY (ARRAY['admin'::text, 'manager'::text, 'staff'::text, 'owner'::text]))
     `;
 
     console.log('Migration completed successfully.');

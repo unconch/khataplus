@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Organization, SystemSettings, Profile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,9 +22,10 @@ interface SettingsFormProps {
     initialProfile: Profile
     isAdmin: boolean
     orgRole?: string
+    viewMode?: "full" | "profile" | "organization"
 }
 
-export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAdmin, orgRole }: SettingsFormProps) {
+export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAdmin, orgRole, viewMode = "full" }: SettingsFormProps) {
     const [org, setOrg] = useState(initialOrg)
     const [settings, setSettings] = useState(initialSettings)
     const [profile, setProfile] = useState(initialProfile)
@@ -38,14 +40,53 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
     const [statusLoading, setStatusLoading] = useState(false)
     const isCreator = initialOrg.created_by === initialProfile.id
 
+    const planNames: Record<string, string> = {
+        free: "Plus",
+        starter: "Starter",
+        pro: "Pro",
+        business: "Business",
+        legacy: "Legacy"
+    }
+
+    const currentPlan = (org.id === "demo-org" || org.plan_type === "free")
+        ? "Plus"
+        : (planNames[org.plan_type || "free"] || String(org.plan_type || "Free"))
+    const subscriptionStatus = String(org.subscription_status || "trial")
+    const trialEndsAt = org.trial_ends_at ? new Date(org.trial_ends_at) : null
+    const planExpiresAtRaw = (org as any).plan_expires_at as string | undefined
+    const planExpiresAt = planExpiresAtRaw ? new Date(planExpiresAtRaw) : null
+    const now = new Date()
+
+    const trialDaysLeft = trialEndsAt
+        ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+        : 0
+
+    const statusMeta = subscriptionStatus === "active"
+        ? { label: "Active", tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+        : subscriptionStatus === "trial"
+            ? { label: "Trial", tone: "text-amber-700 bg-amber-50 border-amber-200" }
+            : subscriptionStatus === "past_due"
+                ? { label: "Past Due", tone: "text-red-700 bg-red-50 border-red-200" }
+                : { label: "Canceled", tone: "text-zinc-700 bg-zinc-100 border-zinc-200" }
+
+    const isProfileView = viewMode === "profile"
+    const showProfileSection = viewMode !== "organization"
+    const showOrganizationSections = viewMode !== "profile"
+
     const handleSave = async () => {
-        if (!isAdmin) {
+        if (!isProfileView && !isAdmin) {
             toast.error("You don't have permission to update settings")
             return
         }
 
         setLoading(true)
         try {
+            if (isProfileView) {
+                await upsertProfile(profile)
+                toast.success("Identity updated!")
+                return
+            }
+
             // Destructure settings out to avoid overwriting them with stale data in updateOrganization
             // updateSystemSettings manages the settings column exclusively
             const { settings: _unused, ...orgUpdates } = org
@@ -143,6 +184,7 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
         return (
         <div className="space-y-12">
             {/* Owner Identity Section */}
+            {showProfileSection && (
             <section className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                     <User className="h-5 w-5 text-primary" />
@@ -193,8 +235,10 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
 
                 </div>
             </section>
+            )}
 
             {/* Business Profile Section */}
+            {showOrganizationSections && (
             <section className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                     <Building2 className="h-5 w-5 text-primary" />
@@ -280,8 +324,88 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                     </div>
                 </div>
             </section>
+            )}
+
+            {/* Membership Section */}
+            {showOrganizationSections && (
+            <section className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <BadgeCheck className="h-5 w-5 text-emerald-500" />
+                    <h3 className="text-lg font-bold">Billing</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-5 rounded-2xl border border-border bg-muted/20 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Membership</p>
+                                <h4 className="text-2xl font-black tracking-tight mt-1">{currentPlan}</h4>
+                            </div>
+                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border", statusMeta.tone)}>
+                                {statusMeta.label}
+                            </span>
+                        </div>
+
+                        {subscriptionStatus === "trial" && (
+                            <p className="text-sm text-amber-700 font-semibold">
+                                Trial ends in {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}.
+                            </p>
+                        )}
+
+                        {subscriptionStatus !== "trial" && planExpiresAt && (
+                            <p className="text-sm text-muted-foreground">
+                                Current cycle ends on{" "}
+                                <span className="font-semibold text-foreground">
+                                    {planExpiresAt.toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                    })}
+                                </span>.
+                            </p>
+                        )}
+
+                        {subscriptionStatus === "trial" && trialEndsAt && (
+                            <p className="text-sm text-muted-foreground">
+                                Trial end date:{" "}
+                                <span className="font-semibold text-foreground">
+                                    {trialEndsAt.toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                    })}
+                                </span>
+                            </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-3 pt-2">
+                            <Link href={`/${org.slug}/pricing`}>
+                                <Button size="sm" className="h-10 px-4 font-black uppercase tracking-wide">
+                                    Upgrade / Change Plan
+                                </Button>
+                            </Link>
+                            <Link href="/legal/cancellation-refund">
+                                <Button size="sm" variant="outline" className="h-10 px-4 font-bold">
+                                    Cancellation & Refund Policy
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="p-5 rounded-2xl border border-border bg-muted/20 space-y-3">
+                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Billing Notes</p>
+                        <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+                            <li>Plan upgrades are applied after successful payment verification.</li>
+                            <li>If payment fails, account may move to read-only mode after grace period.</li>
+                            <li>You can export your data anytime from the settings area.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            )}
 
             {/* System Preferences Section */}
+            {showOrganizationSections && (
             <section className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                     <Percent className="h-5 w-5 text-primary" />
@@ -312,8 +436,10 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                     </div>
                 </div>
             </section>
+            )}
 
             {/* Staff Permissions Section */}
+            {showOrganizationSections && (
             <section className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                     <Info className="h-5 w-5 text-primary" />
@@ -338,8 +464,10 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                     ))}
                 </div>
             </section>
+            )}
 
             {/* Connected Automation Section (V2) */}
+            {showOrganizationSections && (
             <section className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                     <MessageCircle className="h-5 w-5 text-emerald-500" />
@@ -378,18 +506,21 @@ export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAd
                     </div>
                 </div>
             </section>
+            )}
 
             <div className="pt-6 border-t border-border/50">
                 <Button
                     onClick={handleSave}
                     className="w-full h-14 text-lg font-black shadow-2xl active:scale-95 transition-all"
-                    disabled={loading || !isAdmin}
+                    disabled={loading || (!isAdmin && !isProfileView)}
                 >
-                    {loading ? "Synchronizing Identity..." : "Seal Identity & Configuration"}
+                    {loading
+                        ? (isProfileView ? "Saving Identity..." : "Synchronizing Identity...")
+                        : (isProfileView ? "Save Identity" : "Seal Identity & Configuration")}
                     {!loading && <Save className="ml-2 h-5 w-5" />}
                 </Button>
             </div>
-            {isAdmin && isCreator && (
+            {showOrganizationSections && isAdmin && isCreator && (
                 <section className="space-y-4 pt-8 border-t-2 border-red-100 dark:border-red-900/30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

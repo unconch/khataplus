@@ -82,15 +82,15 @@ export async function getReorderSuggestions(orgId: string) {
     const health = await getStockHealth(orgId);
 
     return health
-        .filter(item => item.status === 'Reorder Now' || item.status === 'Watch')
-        .map(item => ({
+        .filter((item: any) => item.status === 'Reorder Now' || item.status === 'Watch')
+        .map((item: any) => ({
             id: item.id,
             name: item.name,
             currentStock: item.stock,
             suggestedQty: Math.ceil(item.avgDaily * 7),
             daysLeft: item.daysLeft
         }))
-        .sort((a, b) => (a.daysLeft || 0) - (b.daysLeft || 0));
+        .sort((a: any, b: any) => (a.daysLeft || 0) - (b.daysLeft || 0));
 }
 
 /**
@@ -99,8 +99,8 @@ export async function getReorderSuggestions(orgId: string) {
 export async function getStockInsights(orgId: string) {
     const health = await getStockHealth(orgId);
 
-    const deadStockCount = health.filter(item => item.status === 'Dead Stock').length;
-    const reorderCount = health.filter(item => item.status === 'Reorder Now').length;
+    const deadStockCount = health.filter((item: any) => item.status === 'Dead Stock').length;
+    const reorderCount = health.filter((item: any) => item.status === 'Reorder Now').length;
 
     // Fetch total revenue to calculate percentages
     const thirtyDaysAgo = new Date();
@@ -129,8 +129,8 @@ export async function getStockInsights(orgId: string) {
 
     // Better: just use totalSold volume for now
     if (health.length > 0) {
-        const totalVolume = health.reduce((acc, item) => acc + item.totalSold, 0);
-        const topVolume = topItems.reduce((acc, item) => acc + item.totalSold, 0);
+        const totalVolume = health.reduce((acc: number, item: any) => acc + item.totalSold, 0);
+        const topVolume = topItems.reduce((acc: number, item: any) => acc + item.totalSold, 0);
         if (totalVolume > 0) {
             const pct = Math.round((topVolume / totalVolume) * 100);
             insights.push(`Your top 3 items drive ${pct}% of your sales volume.`);

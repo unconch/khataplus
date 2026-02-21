@@ -142,7 +142,7 @@ export default async function ExecutiveDashboard() {
                                             <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1 rounded-full mt-2 overflow-hidden">
                                                 <div
                                                     className="bg-primary h-full rounded-full transition-all duration-1000"
-                                                    style={{ width: `${Math.min(100, (item.value / data.dailyTrends.reduce((a, b) => a + b.revenue, 0)) * 100 * 5)}%` }}
+                                                    style={{ width: `${Math.min(100, (item.value / data.dailyTrends.reduce((a: number, b: any) => a + b.revenue, 0)) * 100 * 5)}%` }}
                                                 />
                                             </div>
                                         </div>

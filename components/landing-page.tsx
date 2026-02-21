@@ -7,6 +7,7 @@ import { HeroSection } from "@/components/landing-page/HeroSection"
 // Lazy load all other sections
 const FreeToolsSection = dynamic(() => import("@/components/landing-page/FreeToolsSection").then(mod => mod.FreeToolsSection), { ssr: false })
 const FeaturesSection = dynamic(() => import("@/components/landing-page/FeaturesSection").then(mod => mod.FeaturesSection), { ssr: false })
+const SolutionsSection = dynamic(() => import("@/components/landing-page/SolutionsSection").then(mod => mod.SolutionsSection), { ssr: false })
 const InfrastructureSection = dynamic(() => import("@/components/landing-page/InfrastructureSection").then(mod => mod.InfrastructureSection), { ssr: false })
 const OfflineModeSection = dynamic(() => import("@/components/landing-page/OfflineModeSection").then(mod => mod.OfflineModeSection), { ssr: false })
 const AnalyticsSection = dynamic(() => import("@/components/landing-page/AnalyticsSection").then(mod => mod.AnalyticsSection), { ssr: false })
@@ -25,6 +26,7 @@ export function LandingPage({ isAuthenticated, orgCount, orgSlug, isGuest }: { i
 
             <FreeToolsSection />
             <FeaturesSection />
+            <SolutionsSection />
             <InfrastructureSection />
             <OfflineModeSection />
             <AnalyticsSection />

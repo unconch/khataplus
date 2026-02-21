@@ -89,10 +89,10 @@ const pricingData: Category[] = [
 ]
 
 const plans = [
-    { name: "Keep", price: "₹33/mo", sub: "₹399/yr", color: "zinc" },
-    { name: "Starter", price: "₹124/mo", sub: "₹1,499/yr", color: "blue" },
-    { name: "Pro", price: "₹333/mo", sub: "₹3,999/yr", color: "emerald", recommended: true },
-    { name: "Business", price: "₹666/mo", sub: "₹7,999/yr", color: "indigo" },
+    { name: "Keep", price: "₹ 33/mo", sub: "₹ 399/yr", color: "zinc" },
+    { name: "Starter", price: "₹ 124/mo", sub: "₹ 1,499/yr", color: "blue" },
+    { name: "Pro", price: "₹ 333/mo", sub: "₹ 3,999/yr", color: "emerald", recommended: true },
+    { name: "Business", price: "₹ 666/mo", sub: "₹ 7,999/yr", color: "indigo" },
 ]
 
 export function PricingComparison() {
@@ -103,7 +103,7 @@ export function PricingComparison() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto mt-40 px-6 pb-40">
+        <div className="max-w-7xl mx-auto mt-12 md:mt-20 px-6 pb-24">
             <div className="text-center mb-24">
                 <h3
                     className="text-4xl md:text-5xl font-black text-zinc-950 mb-6 tracking-tight italic animate-in fade-in slide-up duration-500"

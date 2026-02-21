@@ -63,6 +63,7 @@ export const viewport: Viewport = {
 import { OfflineBanner } from "@/components/offline-banner"
 import { SyncProvider } from "@/components/sync-provider"
 import { SystemAnnouncement } from "@/components/system-announcement"
+import { MotionProvider } from "@/components/motion-provider"
 
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
@@ -82,19 +83,21 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <PWAProvider>
-          <AuthProvider>
-            <SyncProvider>
-              <Suspense fallback={null}>
-                <ReferralTracker />
-              </Suspense>
-              <ScrollToTop />
-              <SystemAnnouncement />
-              <OfflineBanner />
-              {children}
-            </SyncProvider>
-          </AuthProvider>
-        </PWAProvider>
+        <MotionProvider>
+          <PWAProvider>
+            <AuthProvider>
+              <SyncProvider>
+                <Suspense fallback={null}>
+                  <ReferralTracker />
+                </Suspense>
+                <ScrollToTop />
+                <SystemAnnouncement />
+                <OfflineBanner />
+                {children}
+              </SyncProvider>
+            </AuthProvider>
+          </PWAProvider>
+        </MotionProvider>
         <Analytics />
         <SpeedInsights />
         <PwaInstallPrompt />

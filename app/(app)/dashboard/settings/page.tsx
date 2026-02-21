@@ -66,17 +66,18 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
 
     return (
         <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="profile">Identity & Settings</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="profile">Identity</TabsTrigger>
+                <TabsTrigger value="organization">Organization</TabsTrigger>
                 <TabsTrigger value="team">Team Members</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile">
                 <Card className="glass-card border-0 shadow-2xl overflow-hidden">
                     <CardHeader className="border-b border-border/50 bg-muted/20">
-                        <CardTitle>Unified Configuration</CardTitle>
+                        <CardTitle>Personal Identity</CardTitle>
                         <CardDescription>
-                            Update your personal identity and organization preferences in one place.
+                            Update your personal profile and account identity.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
@@ -86,6 +87,28 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             initialProfile={profile}
                             isAdmin={isAdmin}
                             orgRole={orgRole}
+                            viewMode="profile"
+                        />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="organization">
+                <Card className="glass-card border-0 shadow-2xl overflow-hidden">
+                    <CardHeader className="border-b border-border/50 bg-muted/20">
+                        <CardTitle>Organization & Billing</CardTitle>
+                        <CardDescription>
+                            Manage organization profile, billing, access rules, and automation.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <SettingsForm
+                            initialOrg={org}
+                            initialSettings={settings}
+                            initialProfile={profile}
+                            isAdmin={isAdmin}
+                            orgRole={orgRole}
+                            viewMode="organization"
                         />
                     </CardContent>
                 </Card>

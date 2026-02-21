@@ -575,4 +575,35 @@
     display: none;
     /* Chrome, Safari and Opera */
   }
+
+  /* Motion gating:
+     html.rich-motion   → full animations
+     html.static-motion → zero-duration transitions/animations + hides heavy layers
+  */
+  html.static-motion *,
+  html.static-motion *::before,
+  html.static-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html.static-motion .orbital-glow,
+  html.static-motion .animate-gradient-x,
+  html.static-motion .animate-spin,
+  html.static-motion .animate-spin-y,
+  html.static-motion .shimmer {
+    animation-name: none !important;
+    display: none !important;
+  }
+
+  html.static-motion .hover-scale,
+  html.static-motion .hover-lift,
+  html.static-motion .hover-scale-lift,
+  html.static-motion .active-scale {
+    transform: none !important;
+  }
 }

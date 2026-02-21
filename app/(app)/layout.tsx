@@ -143,6 +143,12 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       currentOrgMembership = userOrgs[0]
     }
 
+    if (!currentOrgMembership) {
+      console.log("--- [DEBUG] AppLayout: No organization membership found. Redirecting to setup. ---")
+      redirect("/setup-organization")
+      return null // Ensure execution stops
+    }
+
     const orgRole = currentOrgMembership.role
     const orgId = currentOrgMembership.org_id
     const tenant = currentOrgMembership.organization

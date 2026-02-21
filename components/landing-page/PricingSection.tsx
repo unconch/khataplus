@@ -1,12 +1,19 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Script from "next/script"
-import { Check, Crown, MessageSquare, FileText, Package, Zap, Sparkles, Star, Shield, Smartphone, Globe, Clock, ShieldCheck, ZapOff } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { toast } from "sonner"
 import type { BillingPlanKey } from "@/lib/billing-plans"
+
+const formatINR = (value: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
+
+const CASHFREE_PRIMARY_SDK_SRC = "/api/billing/cashfree/sdk"
+const CASHFREE_FALLBACK_SDK_SRC = "https://sdk.cashfree.com/js/v3/cashfree.js"
+const CASHFREE_SDK_SOURCES = [CASHFREE_PRIMARY_SDK_SRC, CASHFREE_FALLBACK_SDK_SRC] as const
 
 declare global {
     interface Window {
@@ -14,7 +21,83 @@ declare global {
     }
 }
 
-export function PricingSection({
+type BillingCycle = "monthly" | "yearly"
+
+interface PricingTier {
+    planKey: BillingPlanKey
+    name: string
+    price: { monthly: number; yearly: number }
+    desc: string
+    features: string[]
+    cta: string
+    popular?: boolean
+}
+
+const tiers: PricingTier[] = [
+    {
+        planKey: "keep",
+        name: "Keep",
+        price: { monthly: 49, yearly: 399 },
+        desc: "Keep your data alive, safely.",
+        features: [
+            "Data preserved & safe",
+            "10 invoices/mo",
+            "30 inventory items",
+            "Customer ledger",
+            "Regional languages",
+            "WhatsApp share"
+        ],
+        cta: "Start free"
+    },
+    {
+        planKey: "starter",
+        name: "Starter",
+        price: { monthly: 179, yearly: 1499 },
+        desc: "Everything for small shops to grow.",
+        features: [
+            "Unlimited invoices",
+            "200 inventory items",
+            "3 staff seats",
+            "A4 + thermal PDF billing",
+            "Import from Vyapar / CSV",
+            "Regional languages"
+        ],
+        cta: "Get Starter"
+    },
+    {
+        planKey: "pro",
+        name: "Pro",
+        price: { monthly: 449, yearly: 3999 },
+        desc: "For growing businesses that need more.",
+        features: [
+            "Unlimited inventory",
+            "Business intelligence",
+            "GST portal sync",
+            "Public shop profile",
+            "PWA — works offline",
+            "3 store locations"
+        ],
+        cta: "Go Pro",
+        popular: true
+    },
+    {
+        planKey: "business",
+        name: "Business",
+        price: { monthly: 899, yearly: 7999 },
+        desc: "Multi-location SMEs with teams.",
+        features: [
+            "Unlimited staff & locations",
+            "WhatsApp automation (v2)",
+            "Advanced GST reporting",
+            "Dedicated support",
+            "Audit logs & SLA",
+            "AI stock custom (v3)"
+        ],
+        cta: "Talk to us"
+    }
+]
+
+function PricingContent({
     orgCount,
     isAuthenticated = false,
     orgSlug = null
@@ -25,119 +108,72 @@ export function PricingSection({
 }) {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
+    const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
     const [isCashfreeLoaded, setIsCashfreeLoaded] = useState(false)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
 
-    interface PricingTier {
-        planKey: BillingPlanKey
-        name: string
-        price: { monthly: number; yearly: number }
-        desc: string
-        features: string[]
-        cta: string
-        color: string
-        popular: boolean
-        note?: string
-    }
-
-    const tiers: PricingTier[] = [
-        {
-            planKey: "keep",
-            name: "Keep",
-            price: { monthly: 49, yearly: 399 },
-            desc: "Data alive cheaply.",
-            features: [
-                "Data preserved & safe",
-                "10 Invoices/mo",
-                "30 Inventory Items",
-                "Customer Ledger",
-                "Regional Languages",
-                "WhatsApp Share"
-            ],
-            cta: "Get Keep",
-            color: "zinc",
-            popular: false
-        },
-        {
-            planKey: "starter",
-            name: "Starter",
-            price: { monthly: 179, yearly: 1499 },
-            desc: "Small shops ready to grow.",
-            features: [
-                "Unlimited Invoices",
-                "200 Inventory Items",
-                "3 Staff Seats",
-                "A4 + Thermal PDF Billing",
-                "Import from Vyapar / CSV",
-                "Regional Languages"
-            ],
-            cta: "Go Starter",
-            color: "blue",
-            popular: false
-        },
-        {
-            planKey: "pro",
-            name: "Pro",
-            price: { monthly: 449, yearly: 3999 },
-            desc: "Growing businesses.",
-            features: [
-                "Unlimited Inventory",
-                "Business Intelligence",
-                "GST Portal Sync",
-                "Public Shop Profile",
-                "PWA — Works Offline",
-                "3 Store Locations"
-            ],
-            cta: "Go Pro",
-            color: "emerald",
-            popular: true
-        },
-        {
-            planKey: "business",
-            name: "Business",
-            price: { monthly: 899, yearly: 7999 },
-            desc: "Multi-location SMEs.",
-            features: [
-                "Unlimited Staff & Locations",
-                "WhatsApp Automation (v2)",
-                "Advanced GST Reporting",
-                "Dedicated Support",
-                "Audit Logs & SLA",
-                "AI Stock Custom (v3)"
-            ],
-            cta: "Go Business",
-            color: "indigo",
-            popular: false
-        }
-    ]
-
     useEffect(() => {
         const payment = searchParams.get("payment")
         if (!payment || paymentToastShown) return
-
         const message = searchParams.get("message")
-        if (payment === "success") {
-            toast.success(message || "Payment successful. Plan activated.")
-        } else if (payment === "failed") {
-            toast.error(message || "Payment verification failed.")
-        }
+        if (payment === "success") toast.success(message || "Payment successful. Plan activated.")
+        else if (payment === "failed") toast.error(message || "Payment verification failed.")
         setPaymentToastShown(true)
     }, [searchParams, paymentToastShown])
 
-    // Fallback if script already loaded
     useEffect(() => {
-        if (typeof window !== "undefined" && window.Cashfree) {
-            setIsCashfreeLoaded(true)
-        }
+        if (typeof window !== "undefined" && window.Cashfree) setIsCashfreeLoaded(true)
     }, [])
+
+    const waitForCashfree = async (timeoutMs = 8000) => {
+        const startedAt = Date.now()
+        while (Date.now() - startedAt < timeoutMs) {
+            if (typeof window !== "undefined" && window.Cashfree) {
+                setIsCashfreeLoaded(true)
+                return
+            }
+            await new Promise((resolve) => setTimeout(resolve, 150))
+        }
+        throw new Error("Cashfree checkout is unavailable right now. Please retry.")
+    }
+
+    const injectCashfreeScript = async (src: string) => {
+        const existingScript = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null
+        if (existingScript) return
+        await new Promise<void>((resolve, reject) => {
+            const script = document.createElement("script")
+            script.src = src
+            script.async = true
+            script.onload = () => resolve()
+            script.onerror = () => reject(new Error(`Failed to load script: ${src}`))
+            document.head.appendChild(script)
+        })
+    }
+
+    const ensureCashfreeLoaded = async () => {
+        if (typeof window === "undefined") throw new Error("Checkout is only available in browser mode.")
+        if (window.Cashfree) {
+            setIsCashfreeLoaded(true)
+            return
+        }
+        let lastError: any = null
+        for (const sdkSrc of CASHFREE_SDK_SOURCES) {
+            try {
+                await injectCashfreeScript(sdkSrc)
+                await waitForCashfree(6000)
+                return
+            } catch (error) {
+                lastError = error
+            }
+        }
+        console.error("[Cashfree] SDK failed for all sources:", lastError)
+        throw new Error("Payment checkout is blocked on this network. Please switch network/browser and retry.")
+    }
 
     const getCashfreeInstance = (environment: string) => {
         const factory = window.Cashfree
-        if (!factory) {
-            throw new Error("Cashfree SDK not loaded. Please refresh and try again.")
-        }
+        if (!factory) throw new Error("Cashfree SDK not loaded. Please refresh and try again.")
         const mode = environment === "production" || environment === "live" ? "production" : "sandbox"
         return factory({ mode })
     }
@@ -147,38 +183,32 @@ export function PricingSection({
             router.push("/auth/login")
             return
         }
-        if (!isCashfreeLoaded) {
-            toast.error("Cashfree SDK is still loading. Try again in a moment.")
-            return
-        }
-
         setLoadingPlanKey(planKey)
         try {
             const response = await fetch("/api/billing/cashfree/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    plan: planKey,
-                    cycle: billingCycle
-                })
+                body: JSON.stringify({ plan: planKey, cycle: billingCycle })
             })
-
             const data = await response.json().catch(() => ({}))
-            if (!response.ok) {
-                throw new Error(data?.error || "Failed to initialize checkout")
-            }
+            if (!response.ok) throw new Error(data?.error || "Failed to initialize checkout")
+            if (!data?.paymentSessionId) throw new Error("Missing payment session from Cashfree")
 
-            if (!data?.paymentSessionId) {
-                throw new Error("Missing payment session from Cashfree")
-            }
-
-            const cashfree = getCashfreeInstance(String(data.environment || "sandbox"))
-            const checkoutResult = await cashfree.checkout({
-                paymentSessionId: data.paymentSessionId,
-                redirectTarget: "_self"
-            })
-            if (checkoutResult?.error) {
-                throw new Error(checkoutResult.error.message || "Unable to open checkout")
+            try {
+                await ensureCashfreeLoaded()
+                const cashfree = getCashfreeInstance(String(data.environment || "sandbox"))
+                const checkoutResult = await cashfree.checkout({
+                    paymentSessionId: data.paymentSessionId,
+                    redirectTarget: "_self"
+                })
+                if (checkoutResult?.error) throw new Error(checkoutResult.error.message || "Unable to open checkout")
+            } catch (sdkError) {
+                const fallbackCheckoutUrl = String(data?.fallbackCheckoutUrl || "").trim()
+                if (fallbackCheckoutUrl) {
+                    window.location.assign(fallbackCheckoutUrl)
+                    return
+                }
+                throw sdkError
             }
         } catch (error: any) {
             toast.error(error?.message || "Unable to start payment")
@@ -200,153 +230,74 @@ export function PricingSection({
     }
 
     return (
-        <section id="pricing" className="relative py-24 md:py-40 px-6 overflow-hidden bg-white">
+        <section id="pricing" className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-50 py-10 md:py-14 px-6">
             <Script
-                src="https://sdk.cashfree.com/js/v3/cashfree.js"
+                src={CASHFREE_PRIMARY_SDK_SRC}
                 strategy="afterInteractive"
                 onLoad={() => setIsCashfreeLoaded(true)}
+                onError={() => setIsCashfreeLoaded(false)}
             />
+
+            {/* background accents (kept subtle) */}
+            <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -top-32 -left-16 w-80 h-80 bg-emerald-100 blur-[120px] rounded-full opacity-50" />
+                <div className="absolute top-6 right-0 w-80 h-80 bg-sky-100 blur-[120px] rounded-full opacity-45" />
+            </div>
+
             <div className="max-w-7xl mx-auto relative z-10">
-
-                {/* Trial/Entry Strategy Callout */}
-                <AdvancedScrollReveal variant="slideUp">
-                    <div
-                        className="max-w-4xl mx-auto mb-32 p-8 md:p-12 rounded-[2.5rem] bg-zinc-950 text-white relative overflow-hidden group shadow-2xl"
-                    >
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:bg-emerald-500/20 transition-all duration-700" />
-
-                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                            <div className="p-5 bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
-                                <Clock size={40} className="text-emerald-400" strokeWidth={1.5} />
-                            </div>
-                            <div className="text-center md:text-left flex-1">
-                                <h3 className="text-2xl md:text-3xl font-black mb-3 tracking-tight italic">30-Day Full Access Trial.</h3>
-                                <p className="text-zinc-400 text-sm md:text-base font-medium leading-relaxed max-w-xl">
-                                    No credit card. No commitment. Explore every Pro feature for 30 days.
-                                    Downgrades to read-only on Day 30 if no plan selected. Your data is always safe.
-                                </p>
-                            </div>
-                            <div className="w-full md:w-auto">
-                                <button
-                                    onClick={handleStartTrial}
-                                    className="w-full md:px-10 py-4 bg-white text-zinc-950 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95 shadow-xl shadow-white/5"
-                                >
-                                    Start Trial
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="mt-10 pt-8 border-t border-zinc-800/50 grid grid-cols-2 md:grid-cols-4 gap-6">
-                            <div className="flex items-center gap-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                <ShieldCheck size={14} className="text-emerald-500" /> No credit card
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                <Zap size={14} className="text-emerald-500" /> Instant Setup
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                <Smartphone size={14} className="text-emerald-500" /> Full Mobile Sync
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                <Globe size={14} className="text-emerald-500" /> Built for Bharat
-                            </div>
-                        </div>
+                <div className="text-center space-y-5 mb-14">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-[0.2em] shadow-sm">
+                        Flexible for every stage
                     </div>
-                </AdvancedScrollReveal>
-
-                {/* Platform Tiers Toggle & Header */}
-                <div className="text-center mb-32 cursor-default relative">
-                    {/* Background Glow */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-emerald-500/5 rounded-full blur-[120px] -z-10" />
-
-                    {orgCount && orgCount > 5 && (
-                        <div
-                            className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-50 border border-zinc-100 rounded-full mb-8 animate-in fade-in duration-700"
-                        >
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-                                Powering {orgCount.toLocaleString()}+ Shops Pan-Bharat
-                            </span>
-                        </div>
-                    )}
-
                     <AdvancedScrollReveal variant="slideUp">
-                        <h2
-                            className="text-5xl md:text-8xl font-black tracking-tighter text-zinc-950 mb-8 leading-[0.9]"
-                        >
-                            The Better Way <br />
-                            <span className="text-zinc-300 italic">to Build & Bill.</span>
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.05]">
+                            Pricing that scales with your shop
                         </h2>
                     </AdvancedScrollReveal>
-
-                    <AdvancedScrollReveal variant="slideUp" delay={200}>
-                        <p
-                            className="text-zinc-500 font-medium text-lg md:text-xl mb-16 max-w-3xl mx-auto leading-relaxed"
-                        >
-                            Honest pricing for Bharat's most ambitious shops. <br />
-                            <span className="text-zinc-400">Upgrade from legacy tools in minutes. No hidden costs. No compromises.</span>
+                    <AdvancedScrollReveal variant="slideUp" delay={120}>
+                        <p className="text-zinc-500 text-lg md:text-xl max-w-2xl mx-auto">
+                            Start free, pay as you grow. No setup fees, no surprises—switch plans anytime.
                         </p>
                     </AdvancedScrollReveal>
 
-                    {/* Differentiator Grid */}
-                    <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-20 pointer-events-none">
-                        {[
-                            { icon: <Zap className="text-emerald-500" size={18} />, label: "Switch from Vyapar", sub: "2-min instant import" },
-                            { icon: <ZapOff className="text-emerald-500" size={18} />, label: "Works Offline", sub: "Bill without internet" },
-                            { icon: <Star className="text-emerald-500" size={18} />, label: "Public Profile", sub: "WhatsApp ordering" },
-                        ].map((item, idx) => (
-                            <AdvancedScrollReveal key={idx} variant="slideUp" delay={300 + idx * 100}>
-                                <div
-                                    className="flex flex-col items-center gap-2 p-6 rounded-3xl bg-zinc-50/50 border border-zinc-100"
-                                >
-                                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-zinc-100 mb-2">
-                                        {item.icon}
-                                    </div>
-                                    <span className="text-zinc-950 font-black text-sm">{item.label}</span>
-                                    <span className="text-zinc-500 text-[11px] font-medium">{item.sub}</span>
-                                </div>
-                            </AdvancedScrollReveal>
-                        ))}
-                    </div>
-
-                    <div className="inline-flex p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-sm relative z-10 transition-transform active:scale-95">
+                    <div className="inline-flex mt-6 p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-md relative z-10 transition-transform active:scale-95">
                         <button
                             onClick={() => setBillingCycle("monthly")}
-                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all ${billingCycle === "monthly" ? "bg-white text-zinc-950 shadow-md" : "text-zinc-400 hover:text-zinc-600"}`}
+                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all ${billingCycle === "monthly" ? "bg-emerald-500 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-800"}`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingCycle("yearly")}
-                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all relative ${billingCycle === "yearly" ? "bg-white text-zinc-950 shadow-md" : "text-zinc-400 hover:text-zinc-600"}`}
+                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all relative ${billingCycle === "yearly" ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-800"}`}
                         >
                             Yearly
-                            <span className="absolute -top-4 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shadow-lg">~25% OFF</span>
+                            <span className="absolute -top-4 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shadow-lg">Save ~25%</span>
                         </button>
                     </div>
                 </div>
 
-                {/* The 4-Tier Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                     {tiers.map((tier, i) => (
-                        <AdvancedScrollReveal key={i} variant="slideUp" delay={i * 100} className="flex h-full">
+                        <AdvancedScrollReveal key={tier.planKey} variant="slideUp" delay={i * 80} className="flex h-full">
                             <div
-                                className={`group relative bg-white rounded-3xl p-8 border ${tier.popular ? 'border-emerald-500/30' : 'border-zinc-100'} hover:border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col w-full`}
+                                className={`group relative bg-white/90 backdrop-blur-xl rounded-3xl p-8 border ${tier.popular ? 'border-emerald-500/40 shadow-[0_20px_60px_-25px_rgba(16,185,129,0.6)]' : 'border-zinc-100 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.3)]'} hover:-translate-y-1 transition-all duration-300 flex flex-col w-full`}
                             >
                                 {tier.popular && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                                        RECOMMENDED
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                                        Most picked
                                     </div>
                                 )}
 
-                                <div className="mb-8">
-                                    <h3 className="text-xl font-bold text-zinc-950 mb-1">{tier.name}</h3>
-                                    <p className="text-zinc-500 text-[13px] font-medium leading-relaxed min-h-[40px]">{tier.desc}</p>
+                                <div className="mb-7 space-y-2">
+                                    <h3 className="text-xl font-bold text-zinc-950">{tier.name}</h3>
+                                    <p className="text-zinc-500 text-sm leading-relaxed min-h-[40px]">{tier.desc}</p>
                                 </div>
 
-                                <div className="mb-10">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-5xl font-black text-zinc-950 tracking-tighter">
-                                            ₹{tier.price[billingCycle].toLocaleString()}
+                                <div className="mb-8">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">
+                                            {formatINR(tier.price[billingCycle])}
                                         </span>
                                         <span className="text-zinc-400 font-bold text-xs uppercase tracking-tighter">
                                             /{billingCycle === "yearly" ? "yr" : "mo"}
@@ -354,34 +305,79 @@ export function PricingSection({
                                     </div>
                                     {billingCycle === "yearly" && (
                                         <div className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest mt-1">
-                                            Equivalent to ₹{Math.floor(tier.price.yearly / 12)}/mo
+                                            ≈ {formatINR(Math.floor(tier.price.yearly / 12))}/mo billed yearly
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="space-y-4 mb-12 flex-1 border-t border-zinc-50 pt-8">
+                                <div className="space-y-3.5 mb-8 flex-1 border-t border-zinc-100 pt-7">
                                     {tier.features.map((feat, j) => (
-                                        <div key={j} className="flex items-start gap-3 text-zinc-600 text-[13px] font-medium leading-tight">
-                                            <Check size={14} className="text-emerald-500 flex-shrink-0 mt-0.5" strokeWidth={3} />
-                                            {feat}
+                                        <div key={j} className="flex items-start gap-3 text-zinc-700 text-[13px] font-medium leading-tight">
+                                            <div className="rounded-full bg-emerald-50 text-emerald-600 p-1">
+                                                <Check size={13} strokeWidth={3} />
+                                            </div>
+                                            <span>{feat}</span>
                                         </div>
                                     ))}
                                 </div>
 
                                 <button
-                                    onClick={() => handleCheckout(tier.planKey)}
+                                    onClick={() => tier.planKey === "keep" ? handleStartTrial() : handleCheckout(tier.planKey)}
                                     disabled={loadingPlanKey !== null}
-                                    className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tier.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                                    className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tier.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
                                 >
                                     {loadingPlanKey === tier.planKey ? "Processing..." : tier.cta}
                                 </button>
+
+                                <div className="absolute inset-x-6 -bottom-3 h-2 rounded-full blur-md opacity-20 bg-emerald-500 group-hover:opacity-40 transition-opacity" />
                             </div>
                         </AdvancedScrollReveal>
                     ))}
                 </div>
 
+                <div className="mt-12 max-w-5xl mx-auto">
+                    <div className="rounded-[28px] bg-white shadow-[0_20px_60px_-35px_rgba(0,0,0,0.25)] border border-emerald-100/60 px-6 py-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            {[
+                                "Live sync across mobile + desktop",
+                                "GST-ready invoices in seconds",
+                                "WhatsApp share + regional languages",
+                            ].map((text) => (
+                                <div
+                                    key={text}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/90 border border-zinc-100 shadow-sm hover:shadow-md transition-shadow"
+                                >
+                                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="font-semibold text-zinc-800">{text}</span>
+                                </div>
+                            ))}
+                        </div>
 
+                        <div className="mt-6 text-center space-y-1 text-sm">
+                            <div className="text-zinc-700 font-medium">Prices in ₹ INR, inclusive of applicable taxes. Cancel anytime.</div>
+                            <div className="text-xs text-zinc-400">
+                                Need something tailored? <a className="text-emerald-600 font-semibold" href="mailto:hello@khataplus.com">hello@khataplus.com</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
+    )
+}
+
+export function PricingSection(props: {
+    orgCount?: number
+    isAuthenticated?: boolean
+    orgSlug?: string | null
+}) {
+    return (
+        <Suspense fallback={
+            <div className="w-full py-40 flex items-center justify-center bg-white">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            </div>
+        }>
+            <PricingContent {...props} />
+        </Suspense>
     )
 }

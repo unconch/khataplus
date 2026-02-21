@@ -33,6 +33,9 @@ export const getProductionSql = () => {
     return getClient(connectionUrl, false);
 }
 
+// Backward-compatible alias used by legacy imports.
+export const getSql = () => getProductionSql();
+
 export const getDemoSql = () => {
     const connectionUrl = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL;
     if (!connectionUrl) throw new Error('DEMO_DATABASE_URL or DATABASE_URL not set');

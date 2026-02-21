@@ -31,7 +31,7 @@ async function applyOrgsMigration() {
                 id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
                 user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-                role TEXT NOT NULL CHECK (role IN ('admin', 'manager', 'staff')) DEFAULT 'staff',
+                role TEXT NOT NULL CHECK (role IN ('admin', 'manager', 'staff', 'owner')) DEFAULT 'staff',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(org_id, user_id)
             )

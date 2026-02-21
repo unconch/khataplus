@@ -1,16 +1,11 @@
-// ============================================================
-// FILE 5: app/deletion-approval/page.tsx
-// (Email link landing page for other owners to approve/reject)
-// ============================================================
-
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function DeletionApprovalPage() {
+function DeletionApprovalContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const requestId = searchParams.get("requestId")
@@ -162,5 +157,17 @@ export default function DeletionApprovalPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function DeletionApprovalPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+                <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+            </div>
+        }>
+            <DeletionApprovalContent />
+        </Suspense>
     )
 }

@@ -152,3 +152,7 @@ export function getCashfreeRequestHeaders() {
 export function getCashfreeOrdersBaseUrl() {
   return `${getCashfreeBaseUrl(getCashfreeEnvironment())}/pg/orders`;
 }
+
+export function getCashfreeOrderSessionsUrl() {
+  return `${getCashfreeBaseUrl(getCashfreeEnvironment())}/pg/orders/sessions`;
+}
