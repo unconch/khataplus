@@ -19,7 +19,8 @@ export async function GET(
         return NextResponse.json({
             email: invite.email,
             role: invite.role,
-            orgName: org?.name
+            orgName: org?.name,
+            orgSlug: org?.slug
         })
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })
@@ -55,7 +56,8 @@ export async function POST(
 
         return NextResponse.json({
             success: true,
-            orgName: org?.name
+            orgName: org?.name,
+            orgSlug: org?.slug
         })
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })

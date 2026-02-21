@@ -4,8 +4,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 // Routes that should NOT be treated as org slugs
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite',
-    'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing',
-    'dashboard', 'demo', 'marketing', 'offline',
+    'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing', 'roadmap',
+    'dashboard', 'demo', 'marketing', 'offline', 'docs', 'solutions',
     'pending-approval', 'tools', 'beta', 'for', 'shop',
 ])
 
@@ -121,12 +121,12 @@ export default async function middleware(req: NextRequest) {
     // --------------------------------------------------------------------------
     const cspHeader = `
         default-src 'self';
-        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com https://sdk.cashfree.com;
+        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com;
         style-src 'self' 'unsafe-inline' https://accounts.google.com https://grainy-gradients.vercel.app https://fonts.googleapis.com;
         img-src 'self' blob: data: https://*.supabase.co https://*.googleusercontent.com https://images.unsplash.com https://grainy-gradients.vercel.app https://accounts.google.com;
         font-src 'self' data: https://fonts.gstatic.com;
-        frame-src 'self' https://accounts.google.com https://sdk.cashfree.com https://sandbox.cashfree.com https://api.cashfree.com https://*.cashfree.com;
-        connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com https://sdk.cashfree.com https://sandbox.cashfree.com https://api.cashfree.com https://*.cashfree.com;
+        frame-src 'self' https://accounts.google.com https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com https://*.rzp.io;
+        connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://*.rzp.io;
         object-src 'none';
         base-uri 'self';
         form-action 'self';

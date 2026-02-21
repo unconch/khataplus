@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
+import { useMotion } from "@/components/motion-provider"
 
 type AnimationVariant = "fadeIn" | "slideUp" | "slideLeft" | "slideRight" | "scaleUp" | "rotate"
 
@@ -18,13 +19,18 @@ export function AdvancedScrollReveal({
     children,
     variant = "slideUp",
     delay = 0,
-    duration = 0.5,
+    duration = 0.8,
     className = "",
     once = true,
-    threshold = 0.2
+    threshold = 0.15
 }: AdvancedScrollRevealProps) {
+    const { enableMotion } = useMotion()
     const ref = useRef<HTMLDivElement>(null)
     const [isVisible, setIsVisible] = useState(false)
+
+    if (!enableMotion) {
+        return <div className={className}>{children}</div>
+    }
 
     useEffect(() => {
         const observer = new IntersectionObserver(

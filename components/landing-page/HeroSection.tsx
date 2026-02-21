@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { ArrowRight, CheckCircle2, Play, Sparkles } from "lucide-react"
+import { ArrowRight, CheckCircle2, Play, Sparkles, TrendingUp, DollarSign, Users, Package } from "lucide-react"
 import { Navbar } from "./Navbar"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { cn } from "@/lib/utils"
 
 interface HeroSectionProps {
     isAuthenticated: boolean
@@ -20,142 +20,165 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
         <>
             <Navbar isAuthenticated={isAuthenticated} />
 
-            <section className="relative min-h-[108svh] md:min-h-[104svh] overflow-hidden bg-[#0f4ad3] text-white">
+            <section className="relative min-h-[85svh] md:min-h-[750px] flex items-center overflow-hidden bg-[#0f4ad3] text-white">
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_35%,#67dcff_0%,rgba(103,220,255,0.2)_26%,transparent_56%)]" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_86%_18%,rgba(157,234,255,0.95)_0%,rgba(24,118,255,0.3)_30%,transparent_65%)]" />
                     <div className="absolute inset-0 bg-[linear-gradient(102deg,#0b2b92_0%,#1b65f1_48%,#66d4ff_100%)] opacity-85" />
-                    <div className="absolute inset-0 opacity-[0.14] [background-image:radial-gradient(#ffffff_1px,transparent_1px)] [background-size:18px_18px]" />
+                    <div className="absolute inset-0 opacity-[0.1] [background-image:radial-gradient(#ffffff_2px,transparent_2px)] [background-size:24px_24px]" />
                 </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-18 pb-14 md:pt-22 md:pb-20">
-                    <div className="grid gap-7 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
-                        <div>
-                            <AdvancedScrollReveal variant="slideUp" delay={100}>
-                                <div className="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-lg">
-                                    <Sparkles className="h-3.5 w-3.5 text-cyan-200" />
-                                    Made for Indian shops and distributors
-                                </div>
-                            </AdvancedScrollReveal>
+                <div className="relative z-10 max-w-7xl mx-auto px-6 w-full pt-12 pb-8">
+                    <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                        <div className="space-y-6">
 
                             <AdvancedScrollReveal variant="slideUp" delay={220}>
-                                <h1 className="mt-4 max-w-2xl text-[2.35rem] font-extrabold leading-[1.08] tracking-tight md:text-6xl lg:text-[3.45rem]">
-                                    GST billing & khata
-                                    <br className="hidden sm:block" />
-                                    in one fast app
+                                <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] uppercase italic">
+                                    GST Billing & <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-100 via-white to-blue-300">Advance Khata.</span>
                                 </h1>
                             </AdvancedScrollReveal>
 
                             <AdvancedScrollReveal variant="slideUp" delay={340}>
-                                <p className="mt-4 max-w-2xl text-base leading-relaxed text-blue-50/90 md:text-lg">
-                                    Raise invoices in seconds, track stock live, and collect payments faster—always in sync on mobile and desktop.
+                                <p className="max-w-xl text-lg md:text-xl font-medium leading-relaxed text-blue-100/70 border-l-2 border-white/20 pl-6">
+                                    Manage your business efficiently with professional GST billing, automated stock tracking, and digital credit records.
                                 </p>
                             </AdvancedScrollReveal>
 
                             <AdvancedScrollReveal variant="slideUp" delay={430}>
-                                <div className="mt-5 space-y-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                                     {[
-                                        "GST-ready invoices with auto tax totals",
-                                        "Smart payment reminders over WhatsApp",
-                                        "Live stock, khata, and sales analytics",
+                                        "GST & Non-GST Billing",
+                                        "Automated Credit Reminders",
+                                        "Offline Billing Mode",
+                                        "Daily Profit Reports",
                                     ].map((item) => (
-                                        <div key={item} className="flex items-center gap-2.5 text-sm text-blue-50 md:text-base">
-                                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-300 md:h-4 md:w-4" />
-                                            <span>{item}</span>
+                                        <div key={item} className="flex items-center gap-3 text-xs font-black text-blue-50/80 uppercase tracking-widest group">
+                                            <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)] transition-all group-hover:scale-150" />
+                                            <span className="group-hover:text-white transition-colors">{item}</span>
                                         </div>
                                     ))}
                                 </div>
                             </AdvancedScrollReveal>
 
                             <AdvancedScrollReveal variant="slideUp" delay={560}>
-                                <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center pt-6">
                                     <Link
                                         href={primaryHref}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-[0_18px_30px_-18px_rgba(0,0,0,0.85)] transition hover:bg-slate-800 md:px-7 md:py-3.5"
+                                        className="inline-flex items-center justify-center gap-4 rounded-2xl bg-white px-14 py-6 text-[13px] font-black uppercase tracking-widest text-blue-700 shadow-2xl transition hover:bg-cyan-50 hover:scale-[1.03] active:scale-[0.98] relative overflow-hidden group/btn"
                                     >
-                                        Start Free Trial
-                                        <ArrowRight className="h-4 w-4" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                                        <span className="relative z-10">Get Started Free</span>
+                                        <ArrowRight className="h-5 w-5 relative z-10" />
                                     </Link>
                                     <Link
                                         href={secondaryHref}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/55 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur-lg transition hover:bg-white/18 md:px-7 md:py-3.5"
+                                        className="inline-flex items-center justify-center gap-4 rounded-2xl border border-white/30 bg-white/5 px-14 py-6 text-[13px] font-black uppercase tracking-widest text-white backdrop-blur-xl transition hover:bg-white/10 hover:border-white/50"
                                     >
-                                        <Play className="h-4 w-4 fill-white stroke-0" />
-                                        Watch Demo
+                                        <Play className="h-5 w-5 fill-white stroke-0" />
+                                        Watch Demo Video
                                     </Link>
                                 </div>
                             </AdvancedScrollReveal>
-
                         </div>
 
                         <AdvancedScrollReveal variant="slideLeft" delay={280} className="relative hidden lg:block">
                             <div className="visual-stack">
+                                {/* Dashboard Mockup */}
                                 <div className="dash-frame">
                                     <div className="dash-sidebar">
-                                        <div className="dash-logo">KP</div>
-                                        {["Home","Sales","Inventory","Analytics","Reports","Organization"].map((item, idx) => (
-                                            <div key={item} className={`dash-nav ${idx===0 ? "active":""}`}>
-                                                <span className="dot bullet" /> {item}
-                                            </div>
+                                        <div className="dash-logo">K</div>
+                                        {[1, 2, 3, 4, 5].map(idx => (
+                                            <div key={idx} className={cn("dash-nav", idx === 1 && "active")} />
                                         ))}
                                     </div>
                                     <div className="dash-main">
-                                        <div className="dash-topbar">
-                                            <div className="dash-breadcrumb">KhataPlus</div>
-                                            <div className="dash-search">Search Command</div>
-                                            <div className="dash-user">kong</div>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <div className="space-y-1">
+                                                <div className="h-2 w-20 bg-white/10 rounded-full" />
+                                                <div className="h-4 w-32 bg-white/20 rounded-full" />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="h-6 w-16 bg-white/5 border border-white/10 rounded-lg" />
+                                                <div className="h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-500/40" />
+                                            </div>
                                         </div>
-                                        <div className="dash-banner">
-                                            <span>Complete your business profile to enable professional GST invoices</span>
-                                            <button>Setup profile</button>
+
+                                        <div className="grid grid-cols-3 gap-3 mb-6">
+                                            {[
+                                                { label: "Sales Today", val: "₹1.4L", icon: TrendingUp, color: "text-emerald-400" },
+                                                { label: "Items in Stock", val: "842", icon: Package, color: "text-blue-400" },
+                                                { label: "Pending Credit", val: "₹12k", icon: DollarSign, color: "text-rose-400" }
+                                            ].map((stat, i) => (
+                                                <div key={i} className="p-3 bg-white/5 rounded-2xl border border-white/5 space-y-2">
+                                                    <stat.icon size={12} className={stat.color} />
+                                                    <div>
+                                                        <div className="text-[7px] font-bold text-zinc-500 uppercase">{stat.label}</div>
+                                                        <div className="text-xs font-black italic">{stat.val}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="dash-greeting">
-                                            <p>My business</p>
-                                            <h3>Good evening, kong 👋</h3>
-                                            <div className="dash-meta">Friday, Feb 20, 2026 · Live sync</div>
-                                        </div>
-                                        <div className="dash-quick">
-                                            <div className="quick-card"><span className="icon">＋</span><div><strong>New Sale</strong><small>Record daily income</small></div></div>
-                                            <div className="quick-card"><span className="icon">$</span><div><strong>New Invoice</strong><small>Generate billing</small></div></div>
-                                            <div className="quick-card"><span className="icon">⬆</span><div><strong>Add Stock</strong><small>Update inventory</small></div></div>
-                                            <div className="quick-card"><span className="icon">👥</span><div><strong>Add Customer</strong><small>Expand ledger</small></div></div>
+
+                                        <div className="bg-black/30 rounded-2xl border border-white/5 p-4 flex-1">
+                                            <div className="flex justify-between items-end h-20 gap-1">
+                                                {[40, 70, 45, 90, 65, 80, 55, 95, 40, 60, 85].map((h, i) => (
+                                                    <div key={i} className="flex-1 bg-gradient-to-t from-blue-600/40 to-cyan-400/20 rounded-t-sm" style={{ height: `${h}%` }} />
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex justify-between">
+                                                <div className="h-2 w-24 bg-white/5 rounded-full" />
+                                                <div className="h-2 w-10 bg-white/10 rounded-full" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="phone-card phone-right">
+                                {/* Floating Phone - High Resolution Details */}
+                                <div className="phone-card">
                                     <div className="phone-glow" />
                                     <div className="phone-shell">
-                                        <div className="phone-top">
+                                        <div className="phone-notch" />
+                                        <div className="phone-header">
                                             <div className="phone-avatar">K</div>
-                                            <div>
-                                                <div className="phone-hello">Hello, kong</div>
-                                                <div className="phone-sub">Owner · Live sync</div>
+                                            <div className="space-y-1">
+                                                <div className="h-1.5 w-12 bg-white/20 rounded-full" />
+                                                <div className="h-1 w-8 bg-white/10 rounded-full" />
                                             </div>
                                         </div>
-                                        <div className="phone-cards">
-                                            <div className="mini-card">
-                                                <span className="mini-label">Sales today</span>
-                                                <strong className="mini-value">₹18,250</strong>
-                                                <span className="mini-trend up">+12% vs yesterday</span>
+
+                                        <div className="p-4 space-y-4">
+                                            <div className="h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+                                                <div className="flex justify-between">
+                                                    <div className="h-1.5 w-8 bg-white/30 rounded" />
+                                                    <div className="h-1.5 w-4 bg-white/30 rounded" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-[6px] font-black uppercase text-white/50 tracking-widest">Balance</div>
+                                                    <div className="text-sm font-black italic text-white leading-none">₹82,410.00</div>
+                                                </div>
                                             </div>
-                                            <div className="mini-card">
-                                                <span className="mini-label">Invoices</span>
-                                                <strong className="mini-value">12</strong>
-                                                <span className="mini-sub">Due: 3 · Paid: 9</span>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <div key={i} className="h-12 bg-white/5 border border-white/5 rounded-xl flex items-center justify-center">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <div className="mini-card">
-                                                <span className="mini-label">Low stock</span>
-                                                <strong className="mini-value warn">6</strong>
-                                                <span className="mini-sub">Restock soon</span>
-                                            </div>
-                                            <div className="mini-card">
-                                                <span className="mini-label">Customers</span>
-                                                <strong className="mini-value">842</strong>
-                                                <span className="mini-sub">+18 this week</span>
+
+                                            <div className="space-y-2">
+                                                {[1, 2].map(i => (
+                                                    <div key={i} className="flex justify-between items-center bg-black/20 p-2 rounded-lg border border-white/5">
+                                                        <div className="flex gap-2 items-center">
+                                                            <div className="w-4 h-4 bg-white/5 rounded" />
+                                                            <div className="h-1 w-12 bg-white/10 rounded-full" />
+                                                        </div>
+                                                        <div className="h-1 w-6 bg-emerald-500/40 rounded-full" />
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="phone-footer">Quick tip: Send invoices via WhatsApp instantly</div>
                                     </div>
                                 </div>
                             </div>
@@ -163,273 +186,150 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                     </div>
                 </div>
 
-                <div className="pointer-events-none absolute -bottom-4 left-[-8%] h-9 w-[24%] rotate-[-8deg] bg-emerald-300/95" />
-                <div className="pointer-events-none absolute -bottom-2 right-[-8%] h-8 w-[26%] rotate-[7deg] bg-blue-800/85" />
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-b from-transparent to-white/95" />
-
-                <div className="absolute bottom-14 left-0 right-0 h-7 z-20 pointer-events-none">
-                    <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full" preserveAspectRatio="none">
-                        <path d="M0 90C210 48 430 106 694 83C945 62 1185 36 1440 74" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.5" />
-                    </svg>
-                </div>
-
-                <div className="absolute bottom-7 left-0 right-0 h-8 z-20 pointer-events-none">
-                    <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full" preserveAspectRatio="none">
-                        <path d="M0 84C236 28 438 110 703 78C949 48 1176 24 1440 66" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeOpacity="0.95" />
-                    </svg>
-                </div>
-
-                <div className="absolute bottom-0 left-0 right-0 h-10 z-10 pointer-events-none">
-                    <svg viewBox="0 0 1440 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" preserveAspectRatio="none">
-                        <path d="M0 200L1440 200V25C1245 95 981 137 709 137C434 137 181 90 0 16V200Z" fill="white" />
-                    </svg>
-                </div>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 to-transparent" />
 
                 <style jsx global>{`
                     .visual-stack {
                         position: relative;
-                        width: 740px;
-                        height: 460px;
+                        width: 550px;
+                        height: 420px;
                         margin-inline: auto;
-                        transform: translateY(-18px);
-                        perspective: 1400px;
-                        transform-style: preserve-3d;
+                        perspective: 1500px;
+                        transition: transform 0.8s ease-out;
                     }
-                    .visual-stack::before {
-                        content: "";
-                        position: absolute;
-                        inset: 6%;
-                        background: radial-gradient(circle at 30% 30%, rgba(59,130,246,0.25), transparent 55%),
-                                    radial-gradient(circle at 70% 60%, rgba(16,185,129,0.22), transparent 60%);
-                        filter: blur(38px);
-                        z-index: -1;
-                        transform: translateZ(-60px);
+                    .visual-stack:hover {
+                        transform: translateY(-5px);
                     }
                     .dash-frame {
-                        position: absolute;
-                        left: 0;
-                        top: 2%;
-                        width: 92%;
-                        height: 330px;
-                        background: linear-gradient(180deg, #0f172a 0%, #0b1224 40%, #0b1224 100%);
+                        width: 100%;
+                        height: 350px;
+                        background: #080b18;
                         border-radius: 24px;
-                        overflow: hidden;
                         border: 1px solid rgba(255,255,255,0.08);
-                        box-shadow: 0 38px 80px -32px rgba(0,0,0,0.7);
                         display: grid;
-                        grid-template-columns: 170px 1fr;
-                        transform: rotateY(-6deg) rotateX(4deg);
+                        grid-template-columns: 80px 1fr;
+                        transform: rotateY(-12deg) rotateX(5deg);
+                        box-shadow: 
+                            -15px 30px 60px -15px rgba(0,0,0,0.6);
+                        transition: all 0.8s ease-out;
+                        overflow: hidden;
+                    }
+                    .visual-stack:hover .dash-frame {
+                        transform: rotateY(-8deg) rotateX(3deg);
+                        box-shadow: 
+                            -20px 40px 80px -20px rgba(0,0,0,0.7);
                     }
                     .dash-sidebar {
-                        color: #e2e8f0;
-                        padding: 18px 14px;
-                        display: grid;
-                        gap: 10px;
-                        background: #0b1224;
+                        padding: 20px 12px;
+                        border-right: 1px solid rgba(255,255,255,0.05);
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        align-items: center;
+                        background: #030610;
                     }
                     .dash-logo {
-                        width: 46px;
-                        height: 46px;
-                        border-radius: 12px;
-                        background: #111827;
-                        display: grid;
-                        place-items: center;
-                        font-weight: 800;
-                        letter-spacing: 0.02em;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-                    }
-                    .dash-nav {
-                        padding: 10px 12px;
+                        width: 32px;
+                        height: 32px;
                         border-radius: 10px;
-                        font-weight: 600;
-                        color: #cbd5e1;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                        transition: background 0.2s ease, color 0.2s ease;
-                    }
-                    .dash-nav.active {
-                        background: #111827;
-                        color: #f8fafc;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-                    }
-                    .dot.bullet {
-                        width: 6px;
-                        height: 6px;
-                        border-radius: 50%;
-                        background: #22c55e;
-                        display: inline-block;
-                    }
-                    .dash-main {
-                        background: linear-gradient(180deg, #0f172a 0%, #0b1224 100%);
-                        padding: 14px 16px;
-                        color: #e2e8f0;
-                        display: grid;
-                        gap: 10px;
-                        position: relative;
-                    }
-                    .dash-topbar {
-                        display: grid;
-                        grid-template-columns: 1fr auto auto;
-                        gap: 8px;
-                        align-items: center;
-                        font-size: 12px;
-                        opacity: 0.9;
-                    }
-                    .dash-search {
-                        background: #0b1224;
-                        border-radius: 999px;
-                        padding: 6px 12px;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07);
-                    }
-                    .dash-user {
-                        background: #111827;
-                        padding: 6px 10px;
-                        border-radius: 10px;
-                        font-weight: 700;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-                    }
-                    .dash-breadcrumb {
-                        font-weight: 700;
-                        letter-spacing: 0.02em;
-                    }
-                    .dash-banner {
-                        background: #eaf2ff;
-                        color: #0b1224;
-                        border-radius: 12px;
-                        padding: 10px 12px;
-                        font-size: 12px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        gap: 12px;
-                        box-shadow: inset 0 0 0 1px rgba(37,99,235,0.12);
-                    }
-                    .dash-banner button {
-                        background: #2563eb;
-                        color: #fff;
-                        border: none;
-                        border-radius: 8px;
-                        padding: 6px 10px;
-                        font-weight: 700;
-                        cursor: pointer;
-                    }
-                    .dash-greeting h3 {
-                        margin: 6px 0 2px;
-                        font-size: 26px;
-                        font-weight: 900;
-                    }
-                    .dash-greeting p { margin: 0; font-size: 11px; letter-spacing: 0.2px; opacity: 0.8; text-transform: uppercase; }
-                    .dash-meta { font-size: 11px; color: #9ca3af; }
-                    .dash-quick {
-                        display: grid;
-                        grid-template-columns: repeat(4, minmax(0, 1fr));
-                        gap: 10px;
-                        margin-top: 10px;
-                    }
-                    .quick-card {
-                        background: #0b1224;
-                        border-radius: 12px;
-                        padding: 12px;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 12px 30px -24px rgba(0,0,0,0.6);
-                        font-size: 12px;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                        color: #e2e8f0;
-                    }
-                    .quick-card .icon {
-                        width: 20px;
-                        height: 20px;
-                        display: grid;
-                        place-items: center;
-                        border-radius: 6px;
-                        background: rgba(255,255,255,0.08);
-                        font-weight: 800;
-                    }
-                    .phone-card {
-                        position: absolute;
-                        right: -12%;
-                        bottom: -12%;
-                        width: 230px;
-                        transform: rotateZ(12deg) rotateY(-3deg) translateZ(70px);
-                        animation: phone-float 6s ease-in-out infinite;
-                    }
-                    .phone-card.phone-right {
-                        right: -6%;
-                        bottom: -6%;
-                    }
-                    .phone-glow {
-                        position: absolute;
-                        inset: 8%;
-                        background: radial-gradient(circle at 40% 30%, rgba(16,185,129,0.35), transparent 60%);
-                        filter: blur(24px);
-                        transform: translateZ(-10px);
-                    }
-                    .phone-card .phone-img {
-                        border-radius: 26px;
-                        border: 1px solid rgba(255,255,255,0.2);
-                        box-shadow: 0 24px 44px -24px rgba(0,0,0,0.75);
-                        width: 100%;
-                        height: 360px;
-                        object-fit: cover;
-                        background: #0b1224;
-                    }
-                    .phone-shell {
-                        background: linear-gradient(180deg, #0ea5e9, #22c55e);
-                        color: #f8fafc;
-                        border-radius: 24px;
-                        padding: 16px;
-                        min-height: 360px;
-                        box-shadow: 0 24px 46px -24px rgba(0,0,0,0.8);
-                        display: grid;
-                        gap: 10px;
-                    }
-                    .phone-top {
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        font-weight: 800;
-                        font-size: 15px;
-                    }
-                    .phone-avatar {
-                        width: 34px;
-                        height: 34px;
-                        border-radius: 12px;
-                        background: rgba(0,0,0,0.18);
+                        background: #3b82f6;
                         display: grid;
                         place-items: center;
                         font-weight: 900;
                         font-size: 14px;
+                        color: white;
+                        margin-bottom: 20px;
+                        box-shadow: 0 0 15px rgba(59,130,246,0.3);
                     }
-                    .phone-hello { font-size: 14px; font-weight: 800; }
-                    .phone-sub { font-size: 11px; opacity: 0.8; }
-                    .phone-cards {
+                    .dash-nav {
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 6px;
+                        background: rgba(255,255,255,0.03);
+                    }
+                    .dash-nav.active {
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.1);
+                    }
+                    .dash-main {
+                        padding: 30px;
+                        background: linear-gradient(135deg, #080b18 0%, #030610 100%);
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .phone-card {
+                        position: absolute;
+                        right: -25px;
+                        bottom: -15px;
+                        width: 190px;
+                        height: 360px;
+                        transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px);
+                        animation: float 6s ease-in-out infinite;
+                        transition: all 0.8s ease-out;
+                    }
+                    .visual-stack:hover .phone-card {
+                        transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px);
+                        right: -35px;
+                    }
+                    .phone-shell {
+                        width: 100%;
+                        height: 100%;
+                        background: #000;
+                        border-radius: 32px;
+                        border: 4px solid #1e293b;
+                        box-shadow: 0 40px 80px -15px rgba(0,0,0,0.85);
+                        position: relative;
+                        overflow: hidden;
+                        display: flex;
+                        flex-direction: column;
+                        ring: 1px solid rgba(255,255,255,0.1);
+                    }
+                    .phone-notch {
+                        width: 60px;
+                        height: 18px;
+                        background: #1e293b;
+                        position: absolute;
+                        top: 0;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        border-bottom-left-radius: 12px;
+                        border-bottom-right-radius: 12px;
+                        z-index: 20;
+                    }
+                    .phone-header {
+                        padding: 24px 16px 12px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        border-bottom: 1px solid rgba(255,255,255,0.05);
+                    }
+                    .phone-avatar {
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 8px;
+                        background: #22c55e;
                         display: grid;
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 8px;
+                        place-items: center;
+                        font-weight: 900;
+                        font-size: 10px;
+                        color: black;
                     }
-                    .mini-card {
-                        background: rgba(255,255,255,0.14);
-                        border-radius: 12px;
-                        padding: 10px;
-                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+                    .phone-glow {
+                        position: absolute;
+                        inset: -30px;
+                        background: radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%);
+                        filter: blur(30px);
                     }
-                    .mini-label { font-size: 11px; opacity: 0.85; display: block; }
-                    .mini-value { font-size: 18px; font-weight: 900; display: block; margin-top: 2px; }
-                    .mini-value.warn { color: #fffbeb; }
-                    .mini-trend { font-size: 11px; font-weight: 700; }
-                    .mini-trend.up { color: #bbf7d0; }
-                    .mini-sub { font-size: 11px; opacity: 0.85; }
-                    .phone-footer { font-size: 11px; opacity: 0.85; }
-                    .phone-shell .phone-img { display: none; }
+                    @keyframes float {
+                        0%, 100% { transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px) translateY(0); }
+                        50% { transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px) translateY(-12px); }
                     }
-                    @keyframes phone-float {
-                        0%,100% { transform: rotateZ(12deg) rotateY(-3deg) translateY(0) translateZ(70px); }
-                        50% { transform: rotateZ(10deg) rotateY(-1deg) translateY(-14px) translateZ(70px); }
+                    .visual-stack:hover .phone-card {
+                        animation: float-hover 6s ease-in-out infinite;
                     }
-                    @media (max-width: 1024px) {
-                        .visual-stack { display: none; }
+                    @keyframes float-hover {
+                        0%, 100% { transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px) translateY(8px); }
+                        50% { transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px) translateY(-2px); }
                     }
                 `}</style>
             </section>

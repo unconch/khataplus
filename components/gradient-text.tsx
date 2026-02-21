@@ -1,6 +1,6 @@
 "use client"
 
-
+import { cn } from "@/lib/utils"
 
 interface GradientTextProps {
     children: React.ReactNode
@@ -20,7 +20,11 @@ export function GradientText({
     const gradientColors = colors.join(", ")
 
     return (
-        <div className={`relative flex items-center max-w-fit mx-auto md:mx-0 ${className}`}>
+        <span className={cn(
+            "relative",
+            className.includes("inline") ? "inline-flex" : "flex items-center max-w-fit mx-auto md:mx-0",
+            className
+        )}>
             <div
                 className="relative z-10 bg-clip-text text-transparent bg-[length:300%_auto] animate-gradient-x"
                 style={{
@@ -40,6 +44,6 @@ export function GradientText({
                     }}
                 />
             )}
-        </div>
+        </span>
     )
 }

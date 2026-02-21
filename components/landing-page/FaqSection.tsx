@@ -1,81 +1,115 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Minus, HelpCircle } from "lucide-react"
+import { Plus, Minus, HelpCircle, ArrowRight, MessageSquare } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { GradientText } from "@/components/gradient-text"
+import { cn } from "@/lib/utils"
 
 const faqs = [
     {
         question: "Can I access my data from multiple devices?",
-        answer: "Yes! KhataPlus is built on a modern cloud architecture. You can log in from your computer, tablet, or phone simultaneously. All your sales, stock, and ledger data stays synced in real-time across every device."
+        answer: "Yes! KhataPlus is built on a modern cloud architecture. All your sales, stock, and ledger data stays synced in real-time across every device."
     },
     {
         question: "What happens to my data if I decide to leave?",
-        answer: "We believe in zero vendor lock-in. You can export all your data (customers, inventory, sales) into standard Excel or CSV files with just one click at any time. Your data is always yours to keep."
+        answer: "We believe in zero vendor lock-in. You can export all your data (customers, inventory, sales) into standard Excel or CSV files with just one click."
     },
     {
         question: "Does KhataPlus calculate GST automatically?",
-        answer: "Absolutely. Our smart billing engine automatically calculates CGST, SGST, and IGST based on your product settings. It even generates HSN-compliant invoices to keep your business tax-ready."
+        answer: "Absolutely. Our engine automatically calculates GST based on your settings and generates HSN-compliant invoices."
     },
     {
-        question: "Is there a limit to how many transactions I can record?",
-        answer: "No. The KhataPlus Pioneer Plan allows you to record unlimited sales, expenses, and customer transactions. Our database is optimized for high-volume retailers who process hundreds of bills every day."
+        question: "Is there a limit to transactions?",
+        answer: "No. Our storage is optimized for high-volume retailers. Record thousands of transactions without any performance hit."
     },
     {
-        question: "How does the automated backup system work?",
-        answer: "Your data is backed up automatically every few minutes to secure cloud servers. Even if you lose your phone or your computer crashes, your business records are safe and can be restored instantly on a new device."
-    },
-    {
-        question: "Can I manage multiple businesses under one account?",
-        answer: "Yes, you can create and manage multiple organization profiles easily. Switch between different shops or business units from the dashboard with zero hassle, all while keeping their accounts completely separate."
+        question: "How does the backup system work?",
+        answer: "Your data is backed up automatically to secure cloud servers using block-level sync. Your records are always safe."
     }
 ]
 
 export function FaqSection() {
-    const [openIndex, setOpenIndex] = useState<number | null>(null)
+    const [openIndex, setOpenIndex] = useState<number | null>(0)
 
     return (
-        <section id="faq" className="py-24 md:py-32 px-6 bg-slate-50/30">
-            <div className="max-w-4xl mx-auto">
-                <AdvancedScrollReveal variant="slideUp">
-                    <div className="text-center mb-20">
-                        <h2 className="text-5xl md:text-7xl font-black tracking-tight text-zinc-900 mb-8 items-center justify-center flex flex-wrap gap-x-4">
-                            Common <span className="text-emerald-600">Queries.</span>
-                        </h2>
-                        <p className="text-zinc-500 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-                            Everything you need to know about KhataPlus and how it helps your business grow.
-                        </p>
+        <section id="faq" className="py-16 md:py-20 px-6 bg-white relative overflow-hidden">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex flex-col lg:flex-row gap-12 lg:gap-20">
+                    <div className="lg:w-1/3 lg:sticky lg:top-32 h-fit space-y-6">
+                        <AdvancedScrollReveal variant="slideRight">
+                            <div className="space-y-4">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/50">
+                                    <HelpCircle size={12} className="text-zinc-600" />
+                                    <span className="text-zinc-600 font-black text-[9px] tracking-widest uppercase">Support Center</span>
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-900 leading-none uppercase italic">
+                                    Common <br />
+                                    <span className="text-zinc-400">Queries.</span>
+                                </h2>
+                                <p className="text-zinc-500 text-sm font-medium leading-relaxed max-w-sm">
+                                    Got questions? We've got answers. If you can't find what you're looking for, our support team is ready.
+                                </p>
+                            </div>
+                        </AdvancedScrollReveal>
+
+                        <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-100 space-y-3 shadow-sm">
+                            <h4 className="text-lg font-black italic tracking-tighter text-emerald-900 uppercase">Need direct help?</h4>
+                            <p className="text-emerald-700/70 text-[11px] font-medium leading-relaxed">Join our merchant community on WhatsApp for instant support and tips.</p>
+                            <button className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest group">
+                                Contact Support <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="lg:w-2/3 space-y-3">
                         {faqs.map((faq, i) => (
-                            <div
-                                key={i}
-                                className={`rounded-[2.5rem] border border-zinc-100 bg-white transition-all duration-300 shadow-sm hover:shadow-md ${openIndex === i ? "ring-2 ring-emerald-500/10 border-emerald-500/20" : ""
-                                    }`}
-                            >
-                                <button
-                                    onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                                    className="w-full px-10 py-8 flex items-center justify-between text-left"
+                            <AdvancedScrollReveal key={i} variant="slideUp" delay={i * 50}>
+                                <div
+                                    className={cn(
+                                        "group rounded-2xl border transition-all duration-500 overflow-hidden",
+                                        openIndex === i
+                                            ? "bg-zinc-950 border-zinc-900 shadow-xl"
+                                            : "bg-zinc-50 border-zinc-100 hover:bg-zinc-100/50"
+                                    )}
                                 >
-                                    <span className="text-xl md:text-2xl font-bold text-zinc-900 pr-8">
-                                        {faq.question}
-                                    </span>
-                                    <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${openIndex === i ? "bg-emerald-500 text-white rotate-0 shadow-lg shadow-emerald-500/20" : "bg-zinc-100 text-zinc-400 rotate-90"}`}>
-                                        {openIndex === i ? <Minus size={20} /> : <Plus size={20} />}
-                                    </div>
-                                </button>
-                                <div className={`grid transition-all duration-300 ease-in-out ${openIndex === i ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-                                    <div className="overflow-hidden">
-                                        <div className="px-10 pb-10 text-zinc-600 text-lg md:text-xl leading-relaxed font-medium">
-                                            {faq.answer}
+                                    <button
+                                        onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                                        className="w-full px-6 py-5 flex items-center justify-between text-left"
+                                    >
+                                        <span className={cn(
+                                            "text-lg md:text-xl font-black italic tracking-tighter pr-8 uppercase",
+                                            openIndex === i ? "text-white" : "text-zinc-900"
+                                        )}>
+                                            {faq.question}
+                                        </span>
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500",
+                                            openIndex === i
+                                                ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/40"
+                                                : "bg-white text-zinc-400 shadow-sm"
+                                        )}>
+                                            {openIndex === i ? <Minus size={16} /> : <Plus size={16} />}
+                                        </div>
+                                    </button>
+                                    <div className={cn(
+                                        "grid transition-all duration-500 ease-in-out",
+                                        openIndex === i ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                                    )}>
+                                        <div className="overflow-hidden">
+                                            <div className={cn(
+                                                "px-6 pb-6 text-sm font-medium leading-relaxed",
+                                                openIndex === i ? "text-zinc-400" : "text-zinc-500"
+                                            )}>
+                                                {faq.answer}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </AdvancedScrollReveal>
                         ))}
                     </div>
-                </AdvancedScrollReveal>
+                </div>
             </div>
         </section>
     )

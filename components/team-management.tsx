@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Users, UserPlus, Copy, Check, Trash2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface TeamPageProps {
     orgId: string
@@ -25,7 +26,6 @@ interface Member {
 export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     const [members, setMembers] = useState<Member[]>([])
     const [loading, setLoading] = useState(true)
-    const [inviteEmail, setInviteEmail] = useState("")
     const [inviteRole, setInviteRole] = useState("staff")
     const [inviteLink, setInviteLink] = useState("")
     const [copied, setCopied] = useState(false)
@@ -48,32 +48,48 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     }
 
     const handleInvite = async () => {
-        if (!inviteEmail.trim()) {
-            return
-        }
         setSending(true)
 
         try {
             const res = await fetch(`/api/organizations/${orgId}/members`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: inviteEmail, role: inviteRole })
+                body: JSON.stringify({ role: inviteRole })
             })
             const data = await res.json()
 
             if (res.ok) {
                 setInviteLink(data.link)
-                setInviteEmail("")
+                await copyText(data.link)
+                toast.success("Invite link copied.")
             }
         } catch (e) {
             console.error(e)
+            toast.error("Failed to create invite link")
         } finally {
             setSending(false)
         }
     }
 
-    const copyLink = () => {
-        navigator.clipboard.writeText(inviteLink)
+    const copyText = async (text: string) => {
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+                return
+            }
+        } catch { }
+
+        const el = document.createElement("textarea")
+        el.value = text
+        el.setAttribute("readonly", "")
+        el.style.position = "absolute"
+        el.style.left = "-9999px"
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand("copy")
+        document.body.removeChild(el)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
@@ -114,16 +130,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2 space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                                type="email"
-                                placeholder="teammate@example.com"
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                            />
-                        </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                             <Label>Role</Label>
                             <Select value={inviteRole} onValueChange={setInviteRole}>
@@ -139,7 +146,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
                         </div>
                     </div>
 
-                    <Button onClick={handleInvite} disabled={sending || !inviteEmail.trim()}>
+                    <Button onClick={handleInvite} disabled={sending}>
                         {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
                         Create Invite Link
                     </Button>
@@ -147,7 +154,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
                     {inviteLink && (
                         <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                             <Input value={inviteLink} readOnly className="text-xs" />
-                            <Button variant="outline" size="icon" onClick={copyLink}>
+                            <Button variant="outline" size="icon" onClick={() => copyText(inviteLink)}>
                                 {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                             </Button>
                         </div>

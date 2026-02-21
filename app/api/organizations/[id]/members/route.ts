@@ -2,6 +2,26 @@ import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
 
+const getOriginFromRequest = (request: Request) => {
+    const forwardedProto = request.headers.get("x-forwarded-proto")
+    const forwardedHost = request.headers.get("x-forwarded-host")
+    const host = request.headers.get("host")
+
+    if (forwardedHost) {
+        const proto = forwardedProto || "https"
+        return `${proto}://${forwardedHost}`
+    }
+    if (host) {
+        const proto = forwardedProto || "https"
+        return `${proto}://${host}`
+    }
+    try {
+        return new URL(request.url).origin
+    } catch {
+        return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    }
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -36,17 +56,14 @@ export async function POST(
         }
 
         const { id: orgId } = await params
-        const { email, role } = await request.json()
+        const { email, role } = await request.json().catch(() => ({}))
 
-        if (!email) {
-            return NextResponse.json({ error: "Email is required" }, { status: 400 })
-        }
-
-        const invite = await createInvite(orgId, email, role || "staff")
+        const invite = await createInvite(orgId, email || null, role || "staff")
         const org = await getOrganization(orgId)
 
         // Generate invite link
-        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${invite.token}`
+        const origin = process.env.NEXT_PUBLIC_APP_URL || getOriginFromRequest(request)
+        const inviteLink = `${origin}/auth/sign-up?invite=${invite.token}`
 
         return NextResponse.json({
             ...invite,

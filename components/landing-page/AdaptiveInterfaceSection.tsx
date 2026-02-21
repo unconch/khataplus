@@ -1,200 +1,202 @@
 "use client"
 
 import { useState } from "react"
-import { Monitor, Smartphone, Receipt, Package, Users, BarChart3, Sparkles, Wallet } from "lucide-react"
+import { Monitor, Smartphone, Layout, Zap, Layers, Bell, Shield, Cloud, HardDrive } from "lucide-react"
+import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { cn } from "@/lib/utils"
 
 export function AdaptiveInterfaceSection() {
     const [activeTab, setActiveTab] = useState<"desktop" | "pwa">("desktop")
 
     return (
-        <section className="py-24 md:py-32 px-6 bg-zinc-900 text-white relative overflow-hidden">
-            <div className="absolute inset-0 opacity-5" style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }} />
+        <section id="interface" className="py-12 md:py-20 px-6 bg-zinc-950 text-white relative overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            <div className="container mx-auto relative z-10">
-                <div className="text-center mb-16">
-                    <span className="text-emerald-400 font-semibold text-sm tracking-wider uppercase bg-emerald-500/10 px-3 py-1 rounded-full">Adaptive Interface</span>
-                    <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">Experience Flexibility</h2>
-                    <div className="flex items-center justify-center gap-4">
-                        <button
-                            onClick={() => setActiveTab("desktop")}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 ${activeTab === "desktop" ? "bg-white text-black shadow-lg scale-105" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}
-                        >
-                            <Monitor className="w-5 h-5" /> Desktop UI
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("pwa")}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 ${activeTab === "pwa" ? "bg-white text-black shadow-lg scale-105" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}
-                        >
-                            <Smartphone className="w-5 h-5" /> PWA Mobile
-                        </button>
+            <div className="max-w-7xl mx-auto relative z-10">
+                <div className="flex flex-col lg:flex-row items-center justify-between mb-10 gap-8">
+                    <AdvancedScrollReveal variant="slideRight">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-400">
+                                <Layers size={10} />
+                                <span className="font-black text-[9px] tracking-widest uppercase">Everything Stays Synced</span>
+                            </div>
+                            <h2 className="text-3xl md:text-5xl font-black tracking-tighter leading-none uppercase italic">
+                                One App. <span className="text-zinc-500">Works Everywhere.</span>
+                            </h2>
+                        </div>
+                    </AdvancedScrollReveal>
+
+                    <div className="flex items-center justify-center p-1 bg-white/5 rounded-xl border border-white/10 backdrop-blur-xl">
+                        {[
+                            { id: "desktop" as const, label: "On Desktop", icon: Monitor },
+                            { id: "pwa" as const, label: "On Mobile", icon: Smartphone }
+                        ].map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setActiveTab(t.id)}
+                                className={cn(
+                                    "flex items-center gap-2 px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest",
+                                    activeTab === t.id ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500 hover:text-white"
+                                )}
+                            >
+                                <t.icon size={14} /> {t.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                <div className="max-w-6xl mx-auto">
-                    <div className={`relative transition-all duration-500 ease-in-out ${activeTab === 'desktop' ? 'h-[600px] md:h-auto md:aspect-[16/9]' : 'h-[750px] md:h-[850px] md:aspect-[16/9]'} rounded-3xl border border-white/10 p-1 md:p-4 backdrop-blur-2xl bg-gradient-to-br from-white/5 to-white/0`}>
-                        <div className="relative h-full w-full rounded-2xl overflow-hidden bg-[#0F0F0F] flex items-center justify-center">
-                            {activeTab === "desktop" ? (
-                                <div
-                                    className="w-full h-full flex animate-in fade-in scale-in duration-400"
-                                >
-                                    {/* Desktop Mockup */}
-                                    <div className="w-72 h-full border-r border-white/10 bg-white/5 flex flex-col p-6 gap-6 hidden md:flex">
-                                        <div className="w-40 h-10 bg-white/10 rounded-md animate-pulse" />
-                                        <div className="space-y-4 mt-4">
-                                            {[1, 2, 3, 4, 5, 6].map(i => (
-                                                <div key={i} className="w-full h-12 bg-white/5 rounded-xl flex items-center px-4 gap-3">
-                                                    <div className="w-5 h-5 rounded bg-white/10" />
-                                                    <div className="flex-1 h-3 bg-white/10 rounded" />
-                                                </div>
-                                            ))}
+                <div className="relative">
+                    <AdvancedScrollReveal variant="scaleUp">
+                        <div className="relative w-full max-w-5xl mx-auto rounded-[2.5rem] bg-zinc-900 border border-white/5 shadow-2xl overflow-hidden group min-h-[400px]">
+                            {/* Filling the space with a grid background and data noise */}
+                            <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:20px_20px]" />
+
+                            <div className="relative z-10 p-6 md:p-10 h-full">
+                                {activeTab === "desktop" ? (
+                                    <div className="flex flex-col md:flex-row gap-6 animate-in fade-in duration-700 h-full items-stretch">
+                                        <div className="w-full md:w-56 bg-black/40 rounded-2xl border border-white/10 p-5 space-y-4">
+                                            <div className="h-4 w-24 bg-white/10 rounded-full" />
+                                            <div className="space-y-2 pt-4">
+                                                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 w-full bg-white/5 rounded-xl border border-white/5" />)}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex-1 p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 overflow-y-auto md:overflow-hidden">
-                                        <div className="md:col-span-2 space-y-6 md:space-y-8">
-                                            <div className="h-24 bg-white/5 rounded-2xl border border-white/10 p-6 flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-xl bg-emerald-500/20" />
+                                        <div className="flex-1 space-y-6">
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                {[
+                                                    { label: "Daily Sale", val: "₹18.4k" },
+                                                    { label: "Item Stock", val: "₹4.2L" },
+                                                    { label: "Customer List", val: "1,202" }
+                                                ].map((stat, i) => (
+                                                    <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                                        <div className="text-[8px] font-black uppercase text-zinc-500 mb-1">{stat.label}</div>
+                                                        <div className="text-lg font-black italic">{stat.val}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="bg-black/40 rounded-3xl border border-white/10 p-6">
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div className="h-3 w-32 bg-white/10 rounded-full" />
+                                                    <div className="h-6 w-16 bg-emerald-500/10 rounded-full border border-emerald-500/20" />
+                                                </div>
                                                 <div className="space-y-2">
-                                                    <div className="w-32 h-4 bg-white/10 rounded" />
-                                                    <div className="w-48 h-3 bg-white/5 rounded" />
-                                                </div>
-                                            </div>
-                                            <div className="h-[300px] md:h-[400px] bg-white/5 rounded-2xl border border-white/10 p-6 relative overflow-hidden group">
-                                                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-50" />
-                                                <div className="relative z-10 h-full flex flex-col">
-                                                    <div className="w-1/3 h-6 bg-white/10 rounded mb-8" />
-                                                    <div className="flex-1 w-full bg-gradient-to-t from-emerald-500/20 to-transparent rounded-xl border border-white/5 mt-auto" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="md:col-span-1 space-y-6">
-                                            <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
-                                                <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
-                                                <div className="space-y-3">
-                                                    {[1, 2, 3].map(i => <div key={i} className="w-full h-8 bg-white/5 rounded-lg" />)}
-                                                </div>
-                                            </div>
-                                            <div className="h-48 bg-white/5 rounded-2xl border border-white/10 p-6">
-                                                <div className="w-1/2 h-4 bg-white/10 rounded mb-4" />
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg" />)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div
-                                    className="w-full h-full flex flex-col items-center justify-center p-4 md:p-12 animate-in fade-in scale-in duration-400"
-                                >
-                                    <div className="w-[340px] h-[680px] border-[8px] border-zinc-800 rounded-[3.5rem] bg-black relative overflow-hidden shadow-2xl scale-95 sm:scale-100 md:scale-105 lg:scale-115 origin-center ring-1 ring-white/10 transition-transform duration-500">
-                                        {/* Notch */}
-                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-8 bg-zinc-800 rounded-b-2xl z-20" />
-
-                                        {/* Status Bar */}
-                                        <div className="absolute top-2 right-5 z-20 flex gap-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                                            <div className="w-4 h-1.5 rounded-full bg-zinc-600" />
-                                        </div>
-
-                                        <div className="h-full w-full bg-[#09090b] flex flex-col relative text-white font-sans rounded-[2.6rem] overflow-hidden">
-                                            {/* App Header */}
-                                            <div className="pt-10 pb-4 px-5 flex items-center justify-between border-b border-white/5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold">K</div>
-                                                    <div className="cursor-default">
-                                                        <div className="h-2 w-20 bg-emerald-500/20 rounded mb-1" />
-                                                        <div className="h-2 w-12 bg-white/20 rounded" />
-                                                    </div>
-                                                </div>
-                                                <div className="w-8 h-8 rounded-full bg-white/5" />
-                                            </div>
-
-                                            <div className="flex-1 p-5 space-y-6 overflow-hidden relative">
-                                                {/* Quick Actions Grid */}
-                                                <div>
-                                                    <div className="h-3 w-24 bg-white/10 rounded mb-3" />
-                                                    <div className="grid grid-cols-4 gap-3">
-                                                        {[1, 2, 3, 4].map(i => (
-                                                            <div key={i} className="flex flex-col items-center gap-2">
-                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${i === 1 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-white/5 text-zinc-500'}`}>
-                                                                    {i === 1 && <Receipt size={20} />}
-                                                                    {i === 2 && <Package size={20} />}
-                                                                    {i === 3 && <Users size={20} />}
-                                                                    {i === 4 && <BarChart3 size={20} />}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Hero Card */}
-                                                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 relative overflow-hidden">
-                                                    <div className="absolute top-0 right-0 p-4 opacity-20"><Sparkles size={60} /></div>
-                                                    <div className="relative z-10">
-                                                        <div className="h-3 w-20 bg-white/40 rounded mb-2" />
-                                                        <div className="h-8 w-32 bg-white rounded mb-2" />
-                                                        <div className="h-3 w-16 bg-emerald-200/50 rounded" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Recent List */}
-                                                <div className="space-y-3">
-                                                    <div className="h-3 w-24 bg-white/10 rounded" />
-                                                    {[1, 2].map(i => (
-                                                        <div key={i} className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-full bg-white/10" />
-                                                                <div className="space-y-1">
-                                                                    <div className="h-2 w-20 bg-white/20 rounded" />
-                                                                    <div className="h-2 w-12 bg-white/10 rounded" />
-                                                                </div>
-                                                            </div>
-                                                            <div className="h-3 w-10 bg-emerald-500/30 rounded" />
+                                                    {[1, 2, 3].map(i => (
+                                                        <div key={i} className="flex gap-4 items-center">
+                                                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/5" />
+                                                            <div className="h-2 flex-1 bg-white/5 rounded-full" />
+                                                            <div className="h-2 w-12 bg-white/10 rounded-full" />
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center animate-in fade-in zoom-in duration-700">
+                                        {/* Left Side: System Status */}
+                                        <div className="hidden lg:flex flex-col gap-4">
+                                            <StatusCard icon={Zap} title="Bina Internet" status="Available" color="text-amber-500" />
+                                            <StatusCard icon={HardDrive} title="Memory" status="Optimized" color="text-blue-500" />
+                                            <StatusCard icon={Bell} title="WhatsApp Notifications" status="Ready" color="text-emerald-500" />
+                                        </div>
 
-                                            {/* Bottom Tab Bar */}
-                                            <div className="h-16 bg-[#09090b]/90 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 rounded-b-[2.5rem]">
-                                                <div className="flex flex-col items-center gap-1 text-emerald-500">
-                                                    <Monitor size={20} />
-                                                </div>
-                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                    <Receipt size={20} />
-                                                </div>
-                                                <div className="w-12 h-12 -mt-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
-                                                    <span className="text-xl font-bold">+</span>
-                                                </div>
-                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                    <Users size={20} />
-                                                </div>
-                                                <div className="flex flex-col items-center gap-1 text-zinc-600">
-                                                    <Wallet size={20} />
+                                        {/* Center: Mobile Mockup - Larger */}
+                                        <div className="flex justify-center relative">
+                                            <div className="absolute inset-0 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+                                            <div className="w-[200px] md:w-[220px] aspect-[9/19] rounded-[2.5rem] border-[6px] border-zinc-800 bg-black shadow-2xl relative overflow-hidden ring-4 ring-white/5">
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-zinc-800 rounded-b-xl z-20" />
+                                                <div className="p-4 pt-8 space-y-4">
+                                                    <div className="h-28 bg-gradient-to-br from-emerald-600 to-teal-500 rounded-2xl p-4 flex flex-col justify-between">
+                                                        <div className="h-2 w-10 bg-white/30 rounded" />
+                                                        <div className="space-y-1">
+                                                            <div className="text-[7px] font-black uppercase text-white/60">Balance Today</div>
+                                                            <div className="text-lg font-black italic text-white leading-none">₹8,402</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[
+                                                            { label: 'Sale', icon: Layout },
+                                                            { label: 'Stock', icon: Layers },
+                                                            { label: 'Cloud', icon: Cloud },
+                                                            { label: 'Vault', icon: Shield }
+                                                        ].map((item, i) => (
+                                                            <div key={i} className="aspect-square bg-white/5 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-1.5 group/icon transition-colors hover:bg-white/10">
+                                                                <item.icon size={16} className="text-zinc-500 group-hover/icon:text-emerald-500" />
+                                                                <span className="text-[6px] font-black uppercase tracking-widest text-zinc-600">{item.label}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="mt-8 grid md:grid-cols-2 gap-8">
-                        <div className={`p-6 rounded-2xl border border-white/10 transition-all duration-300 ${activeTab === 'desktop' ? 'bg-white/10 block' : 'bg-transparent opacity-50 hidden md:block'}`}>
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><Monitor className="w-5 h-5 text-emerald-400" /> Desktop Power</h3>
-                            <p className="text-gray-400">Full-featured dashboard with multi-pane layouts, deep analytics, and administrative controls optimized for productivity on large screens.</p>
+                                        {/* Right Side: Deployment Stats */}
+                                        <div className="hidden lg:flex flex-col gap-4">
+                                            <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Live Syncing</div>
+                                                <div className="space-y-3">
+                                                    {[
+                                                        { label: "Other Devices", val: "Connected" },
+                                                        { label: "Data Safety", val: "Verified" },
+                                                        { label: "Sync Speed", val: "Fast" }
+                                                    ].map((item, i) => (
+                                                        <div key={i} className="flex justify-between items-center text-[9px] font-bold">
+                                                            <span className="text-zinc-400 capitalize">{item.label}</span>
+                                                            <span className="text-white">{item.val}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-emerald-500 w-[92%] animate-[shimmer_2s_infinite]" />
+                                                </div>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-zinc-800/50 border border-white/5 backdrop-blur-sm">
+                                                <p className="text-[10px] font-medium text-zinc-500 leading-relaxed italic">
+                                                    "Whether on Desktop or Mobile, KhataPlus runs everywhere without manual setup."
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className={`p-6 rounded-2xl border border-white/10 transition-all duration-300 ${activeTab === 'pwa' ? 'bg-white/10 block' : 'bg-transparent opacity-50 hidden md:block'}`}>
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><Smartphone className="w-5 h-5 text-teal-400" /> Mobile Agility</h3>
-                            <p className="text-gray-400">Installable PWA that feels like a native app. Optimized touch interactions, offline capabilities, and focused views for field work.</p>
-                        </div>
+                    </AdvancedScrollReveal>
+
+                    {/* Footer Features - Tight & Semantic */}
+                    <div className="mt-8 flex flex-wrap justify-between gap-6 px-4">
+                        <SimpleFeature icon={Monitor} title="Billing Counter" desc="Works on PC." />
+                        <SimpleFeature icon={Smartphone} title="Mobile Billing" desc="Use your phone." />
+                        <SimpleFeature icon={Zap} title="Always Sync" desc="Data is always safe." />
                     </div>
                 </div>
             </div>
         </section>
+    )
+}
+
+function StatusCard({ icon: Icon, title, status, color }: any) {
+    return (
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 group hover:bg-white/10 transition-all">
+            <div className={cn("w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center", color)}>
+                <Icon size={16} />
+            </div>
+            <div>
+                <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">{title}</div>
+                <div className="text-xs font-black text-white">{status}</div>
+            </div>
+        </div>
+    )
+}
+
+function SimpleFeature({ icon: Icon, title, desc }: any) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-zinc-400">
+                <Icon size={12} />
+            </div>
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase text-white leading-none mb-0.5">{title}</span>
+                <span className="text-[8px] font-medium text-zinc-500 leading-none">{desc}</span>
+            </div>
+        </div>
     )
 }

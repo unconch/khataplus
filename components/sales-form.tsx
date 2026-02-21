@@ -24,7 +24,7 @@ import { type GroupedSale } from "@/lib/invoice-utils"
 import { StateCard } from "@/components/ui/state-card"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { SignatureReceipt } from "@/components/ui/signature-receipt"
-import { useOnlineStatus } from "@/hooks/use-online-status"
+import { useInventoryCache } from "@/hooks/use-inventory-cache"
 import { useSync } from "@/hooks/use-sync"
 import { useHaptic } from "@/hooks/use-haptic"
 
@@ -67,9 +67,11 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+  const { inventory: inventorySource, isOnline, applyLocalSale } = useInventoryCache(inventory, orgId)
+
   const filteredItems =
     searchQuery.length >= 1
-      ? inventory
+      ? inventorySource
           .filter(
             (item) =>
               item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,7 +119,6 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
     return { baseAmount, gstAmount, totalAmount, profit }
   }
 
-  const isOnline = useOnlineStatus()
   const { addToQueue } = useSync()
   const { trigger: haptic } = useHaptic()
 
@@ -220,6 +221,12 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
           method: "POST",
           body: { sales: salesPayload, orgId },
         })
+        await applyLocalSale(
+          salesPayload.map((sale) => ({
+            inventory_id: sale.inventory_id,
+            quantity: sale.quantity,
+          }))
+        )
 
         setLastSaleGroup({
           id: `TEMP-${Date.now()}`,
@@ -262,7 +269,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, orgId, 
     }
   }
 
-  if (inventory.length === 0) {
+  if (inventorySource.length === 0) {
     return (
       <Card className="border-dashed bg-zinc-50 dark:bg-zinc-900/40">
         <CardContent className="flex flex-col items-center justify-center py-20 text-center">

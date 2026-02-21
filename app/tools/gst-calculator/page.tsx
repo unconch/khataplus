@@ -1,5 +1,4 @@
 import { GSTCalculator } from "@/components/gst-calculator"
-import { LandingPage } from "@/components/landing-page"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
 
@@ -38,7 +37,6 @@ export default function GSTCalculatorPage() {
                 <div className="max-w-7xl mx-auto px-6 text-center space-y-8">
                     <div className="flex flex-wrap justify-center gap-8 text-sm font-bold text-muted-foreground">
                         <Link href="/#features" className="hover:text-foreground">Features</Link>
-                        <Link href="/#pricing" className="hover:text-foreground">Pricing</Link>
                         <Link href="/auth/sign-up" className="hover:text-foreground text-emerald-600">Start Free</Link>
                     </div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">

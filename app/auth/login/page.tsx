@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Logo } from "@/components/ui/logo"
 import { ArrowRight, ShieldCheck, Zap, Loader2, Eye, EyeOff } from "lucide-react"
@@ -11,6 +11,7 @@ import Script from "next/script"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -21,6 +22,11 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
+        const nextUrl = searchParams.get("next")
+        if (nextUrl && nextUrl.startsWith("/")) {
+          router.replace(nextUrl)
+          return
+        }
         const { getUserOrganizations } = await import("@/lib/data/organizations")
         const userOrgs = await getUserOrganizations(session.user.id).catch(() => [])
 
@@ -32,11 +38,12 @@ export default function LoginPage() {
       }
     }
     checkUser()
-  }, [router, supabase.auth])
+  }, [router, supabase.auth, searchParams])
 
   const handleCredentialResponse = async (response: any) => {
     setLoading(true);
     try {
+      const nextUrl = searchParams.get("next")
       let { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: response.credential,
@@ -64,6 +71,11 @@ export default function LoginPage() {
             getUserOrganizations(data.user.id),
             ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name).catch(e => console.error("Sync error:", e))
           ]);
+
+          if (nextUrl && nextUrl.startsWith("/")) {
+            router.push(nextUrl)
+            return
+          }
 
           if (userOrgs && userOrgs.length > 0) {
             toast.success("Welcome back!");
@@ -138,10 +150,16 @@ export default function LoginPage() {
     toast.success("Welcome back!")
 
     try {
+      const nextUrl = searchParams.get("next")
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { getUserOrganizations } = await import("@/lib/data/organizations")
         const userOrgs = await getUserOrganizations(user.id)
+
+        if (nextUrl && nextUrl.startsWith("/")) {
+          router.push(nextUrl)
+          return
+        }
 
         if (userOrgs && userOrgs.length > 0) {
           router.push(`/${userOrgs[0].organization.slug}/dashboard`)
@@ -156,35 +174,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-svh w-full flex">
+    <div className="h-svh w-full flex overflow-hidden bg-zinc-950">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
-        <div className="absolute inset-0 mesh-gradient opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(255,255,255,0.04)_1px,transparent_0)] bg-[size:32px_32px] z-10" />
+        <div className="absolute inset-0 mesh-gradient opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px] animate-orbit" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px] animate-orbit-slow" />
+          <div className="absolute top-[-15%] left-[-10%] w-[90%] h-[90%] bg-teal-700/20 rounded-full blur-[140px] animate-orbit" />
+          <div className="absolute bottom-[-15%] right-[-10%] w-[80%] h-[80%] bg-blue-700/15 rounded-full blur-[140px] animate-orbit-slow" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] bg-lime-500/10 rounded-full blur-[120px]" />
         </div>
-        <div className="absolute inset-0 opacity-[0.03] z-1" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' fill='%23ffffff' fill-rule='evenodd'/%3E%3C/svg%3E")`,
-        }} />
 
         <div className="relative z-10 flex flex-col w-full p-16 text-white">
           <div className="mb-auto animate-in fade-in slide-left duration-500">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
-                <Logo size={32} className="text-white" />
+            <Link href="/" className="flex items-center gap-4 group">
+              <div className="p-3 bg-white/10 backdrop-blur-md rounded-[22px] border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
+                <Logo size={48} className="text-white" />
               </div>
-              <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
+              <span className="font-black text-4xl tracking-tighter">KhataPlus</span>
             </Link>
           </div>
 
           <div className="space-y-12">
             <div className="animate-in fade-in slide-up duration-700 delay-200">
-              <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
-                <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                Enterprise Grade Security
-              </div>
               <h1 className="text-6xl xl:text-7xl font-black leading-[0.9] tracking-tighter mb-6">
                 Welcome<br />
                 <span className="text-emerald-400">Back.</span>
@@ -215,24 +228,24 @@ export default function LoginPage() {
       {/* Right Panel - Sign In Form */}
       <div className="flex-1 flex items-center justify-center p-6 pt-20 lg:pt-6 bg-zinc-50 dark:bg-zinc-950 relative">
         <div className="absolute top-6 left-6 lg:hidden z-50">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={28} className="text-emerald-600" />
-            <span className="font-bold text-lg text-zinc-900 dark:text-white">KhataPlus</span>
+          <Link href="/" className="flex items-center gap-3">
+            <Logo size={36} className="text-emerald-600" />
+            <span className="font-bold text-2xl text-zinc-900 dark:text-white">KhataPlus</span>
           </Link>
         </div>
 
-        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700">
+        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700 mt-10">
           <div className="text-center lg:text-left">
-            <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-              Welcome <span className="text-emerald-600">Back.</span>
+            <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter animate-in fade-in slide-in-from-bottom-8 duration-1000">
+              Welcome <span className="text-emerald-600 inline-block animate-pulse-subtle">Back.</span>
             </h2>
-            <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit">
+            <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit animate-in fade-in slide-in-from-bottom-4 duration-1200 delay-300">
               Securely access your business ecosystem in the Digital India Era.
             </p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4 animate-in fade-in slide-up duration-1000 delay-500">
             <div className="space-y-2">
               <label className="text-sm font-medium dark:text-zinc-300">Email Address</label>
               <input
@@ -274,7 +287,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="relative mt-16 mb-2">
+          <div className="relative mt-4 mb-1 animate-in fade-in slide-up duration-1000 delay-700">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
             </div>
@@ -286,7 +299,7 @@ export default function LoginPage() {
           </div>
 
           {/* Google Login Button Container */}
-          <div className="w-full relative py-2 flex justify-center">
+          <div className="w-full relative py-0 flex justify-center animate-in fade-in slide-up duration-1000 delay-800">
             <div className="relative w-full flex justify-center items-center">
               <Script
                 src="https://accounts.google.com/gsi/client"
@@ -303,20 +316,20 @@ export default function LoginPage() {
           </div>
 
           {/* Sign Up Link */}
-          <div className="text-center">
-            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
+          <div className="text-center mt-1 animate-in fade-in slide-up duration-1000 delay-900">
+            <p className="text-sm sm:text-base text-zinc-500 font-bold">
               Don't have an account?{" "}
               <Link
                 href="/auth/sign-up"
-                className="text-emerald-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1 group"
+                className="text-[#10b981] hover:text-emerald-500 font-[1000] inline-flex items-center gap-1.5 group transition-colors"
               >
                 Create one
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </p>
           </div>
 
-          <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="text-center pt-1 mt-1 border-t border-zinc-200 dark:border-zinc-800 animate-in fade-in slide-up duration-1000 delay-1000">
             <Link
               href="/demo"
               className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium"

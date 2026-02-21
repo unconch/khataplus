@@ -274,14 +274,17 @@ export async function getOrganizationMembers(orgId: string): Promise<Organizatio
 
 }
 
-export async function createInvite(orgId: string, email: string, role: string): Promise<OrganizationInvite> {
+const OPEN_INVITE_PLACEHOLDER = "open-invite@khataplus.local"
+
+export async function createInvite(orgId: string, email: string | null, role: string): Promise<OrganizationInvite> {
     const token = generateUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    const normalizedEmail = email?.trim() || OPEN_INVITE_PLACEHOLDER;
 
     const result = await sql`
         INSERT INTO organization_invites(org_id, email, role, token, expires_at)
-        VALUES(${orgId}, ${email}, ${role}, ${token}, ${expiresAt})
+        VALUES(${orgId}, ${normalizedEmail}, ${role}, ${token}, ${expiresAt})
         RETURNING *
     `;
     return result[0] as OrganizationInvite;
@@ -300,19 +303,23 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
     if (!invite) return false;
 
     // SECURITY HARDENING: Prevent Invitation Hijacking
-    // Verify that the accepting user's email matches the invited email
-    const profile = await getProfile(userId);
-    if (!profile || !profile.email || profile.email.toLowerCase() !== invite.email.toLowerCase()) {
-        console.error(`[AcceptInvite] Hijack Attempt? Invited: ${invite.email}, Accepting: ${profile?.email}`);
-        throw new Error("This invitation was sent to a different email address.");
+    // Verify that the accepting user's email matches the invited email (skip for open invites)
+    const isOpenInvite = invite.email === OPEN_INVITE_PLACEHOLDER;
+    if (!isOpenInvite) {
+        const profile = await getProfile(userId);
+        if (!profile || !profile.email || profile.email.toLowerCase() !== invite.email.toLowerCase()) {
+            console.error(`[AcceptInvite] Hijack Attempt? Invited: ${invite.email}, Accepting: ${profile?.email}`);
+            throw new Error("This invitation was sent to a different email address.");
+        }
     }
 
     await sql`
         INSERT INTO organization_members(org_id, user_id, role)
         VALUES(${invite.org_id}, ${userId}, ${invite.role})
+        ON CONFLICT (org_id, user_id) DO NOTHING
     `;
 
-    // Mark invite as accepted
+    // Mark invite as accepted (one-time use for all invites)
     await sql`UPDATE organization_invites SET accepted_at = NOW() WHERE id = ${invite.id}`;
     return true;
 }

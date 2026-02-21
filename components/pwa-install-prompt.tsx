@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Download, X, Sparkles, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { useHaptic } from "@/hooks/use-haptic"
 import { cn } from "@/lib/utils"
 
@@ -62,8 +63,8 @@ export function PwaInstallPrompt() {
 
                     <div className="flex flex-col gap-5">
                         <div className="flex items-start justify-between">
-                            <div className="h-14 w-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                <Smartphone size={28} />
+                            <div className="h-14 w-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
+                                <Logo size={36} />
                             </div>
                             <button
                                 className="p-2 text-muted-foreground hover:text-foreground transition-colors"

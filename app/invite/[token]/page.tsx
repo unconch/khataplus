@@ -16,6 +16,7 @@ export default function AcceptInvitePage() {
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
     const [message, setMessage] = useState("")
     const [orgName, setOrgName] = useState("")
+    const [orgSlug, setOrgSlug] = useState("")
 
     useEffect(() => {
         const acceptInvite = async () => {
@@ -23,16 +24,26 @@ export default function AcceptInvitePage() {
                 const res = await fetch(`/api/invite/${token}`, { method: "POST" })
                 const data = await res.json()
 
+                if (res.status === 401) {
+                    router.push(`/auth/login?next=${encodeURIComponent(`/invite/${token}`)}`)
+                    return
+                }
+
                 if (!res.ok) {
                     throw new Error(data.error || "Failed to accept invite")
                 }
 
                 setStatus("success")
                 setOrgName(data.orgName)
+                setOrgSlug(data.orgSlug || "")
                 setMessage("You've joined the team!")
 
                 setTimeout(() => {
-                    router.push("/dashboard")
+                    if (data.orgSlug) {
+                        router.push(`/${data.orgSlug}/dashboard`)
+                    } else {
+                        router.push("/dashboard")
+                    }
                     router.refresh()
                 }, 2000)
             } catch (e: any) {

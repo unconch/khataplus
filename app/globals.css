@@ -168,11 +168,13 @@
   .glass-sheet,
   .glass-control {
     background-color: rgba(255, 255, 255, 0.4);
+    -webkit-backdrop-filter: blur(40px);
     backdrop-filter: blur(40px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
     border-radius: 2rem;
   }
+
 
   :is(.dark .premium-glass, .dark .glass, .dark .glass-sharp, .dark .glass-panel, .dark .glass-sheet, .dark .glass-control) {
     background-color: rgba(24, 24, 27, 0.4);
@@ -192,6 +194,65 @@
     background-color: rgba(24, 24, 27, 0.7);
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .liquid-glass {
+    position: relative;
+    background: rgba(10, 10, 12, 0.4);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 30px 60px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 20px 0 rgba(16, 185, 129, 0.05);
+    overflow: hidden;
+  }
+
+  .liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(125deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .liquid-glass::after {
+    content: "";
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    width: 300%;
+    height: 300%;
+    background: radial-gradient(circle at center,
+        rgba(16, 185, 129, 0.15) 0%,
+        rgba(59, 130, 246, 0.1) 25%,
+        rgba(139, 92, 246, 0.05) 50%,
+        transparent 70%);
+    animation: liquid-swirl 20s infinite ease-in-out;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(60px);
+  }
+
+  @keyframes liquid-swirl {
+
+    0%,
+    100% {
+      transform: translate(0, 0) rotate(0deg) scale(1);
+    }
+
+    33% {
+      transform: translate(-10%, 10%) rotate(120deg) scale(1.2);
+    }
+
+    66% {
+      transform: translate(10%, -5%) rotate(240deg) scale(0.9);
+    }
   }
 
   .premium-shadow {
@@ -259,7 +320,7 @@
   }
 
   .animate-in {
-    animation-duration: 400ms;
+    animation-duration: 800ms;
     animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
     animation-fill-mode: forwards;
   }
@@ -293,7 +354,7 @@
   @keyframes slide-up {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(30px);
     }
 
     to {
@@ -305,7 +366,7 @@
   @keyframes slide-down {
     from {
       opacity: 0;
-      transform: translateY(-20px);
+      transform: translateY(-30px);
     }
 
     to {
@@ -317,7 +378,7 @@
   @keyframes scale-in {
     from {
       opacity: 0;
-      transform: scale(0.95);
+      transform: scale(0.9);
     }
 
     to {
@@ -385,23 +446,23 @@
   }
 
   .stagger-1 {
-    animation-delay: 50ms;
-  }
-
-  .stagger-2 {
-    animation-delay: 100ms;
-  }
-
-  .stagger-3 {
     animation-delay: 150ms;
   }
 
+  .stagger-2 {
+    animation-delay: 300ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 450ms;
+  }
+
   .stagger-4 {
-    animation-delay: 200ms;
+    animation-delay: 600ms;
   }
 
   .stagger-5 {
-    animation-delay: 250ms;
+    animation-delay: 750ms;
   }
 
   /* Orbital Glow Effect */

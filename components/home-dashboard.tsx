@@ -118,7 +118,14 @@ export function HomeDashboard({
             setUser(user)
         }
         getUser()
-        setIsMounted(true)
+
+        // Artificial delay for premium feel — allows loading screen logo
+        // and staggered entry animations to be fully visible
+        const timer = setTimeout(() => {
+            setIsMounted(true)
+        }, 1200)
+
+        return () => clearTimeout(timer)
     }, [supabase])
 
     const { isOnline } = usePWA()
@@ -379,75 +386,91 @@ export function HomeDashboard({
                 <div className="space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/50 px-2 lg:px-0">Quick Operations</h3>
                     <div className="flex lg:grid lg:grid-cols-4 gap-4 overflow-x-auto pb-2 lg:pb-0 scrollbar-none snap-x lg:snap-none">
-                        <QuickAction
-                            title="New Sale"
-                            description="Record Daily Income"
-                            icon={Plus}
-                            href={`/${slug}/dashboard/sales/new`}
-                            color="emerald"
-                        />
-                        <QuickAction
-                            title="New Invoice"
-                            description="Generate Billing"
-                            icon={Receipt}
-                            href={`/${slug}/dashboard/sales/new`}
-                            color="blue"
-                        />
-                        <QuickAction
-                            title="Add Stock"
-                            description="Update Inventory"
-                            icon={Box}
-                            href={`/${slug}/dashboard/inventory`}
-                            color="amber"
-                        />
-                        <QuickAction
-                            title="Add Customer"
-                            description="Expand Ledger"
-                            icon={Users}
-                            href={`/${slug}/dashboard/customers`}
-                            color="purple"
-                        />
+                        <div className="animate-in fade-in slide-up stagger-1 min-w-[160px] flex-1">
+                            <QuickAction
+                                title="New Sale"
+                                description="Record Daily Income"
+                                icon={Plus}
+                                href={`/${slug}/dashboard/sales/new`}
+                                color="emerald"
+                            />
+                        </div>
+                        <div className="animate-in fade-in slide-up stagger-2 min-w-[160px] flex-1">
+                            <QuickAction
+                                title="New Invoice"
+                                description="Generate Billing"
+                                icon={Receipt}
+                                href={`/${slug}/dashboard/sales/new`}
+                                color="blue"
+                            />
+                        </div>
+                        <div className="animate-in fade-in slide-up stagger-3 min-w-[160px] flex-1">
+                            <QuickAction
+                                title="Add Stock"
+                                description="Update Inventory"
+                                icon={Box}
+                                href={`/${slug}/dashboard/inventory`}
+                                color="amber"
+                            />
+                        </div>
+                        <div className="animate-in fade-in slide-up stagger-4 min-w-[160px] flex-1">
+                            <QuickAction
+                                title="Add Customer"
+                                description="Expand Ledger"
+                                icon={Users}
+                                href={`/${slug}/dashboard/customers`}
+                                color="purple"
+                            />
+                        </div>
                     </div>
                 </div>
 
                 {/* 3. Metrics & Stats */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
-                    <MetricCard
-                        title="Today's Sales"
-                        subtitle={`${new Date(lastReport.report_date).toLocaleDateString()}`}
-                        value={`₹ ${(lastReport.total_sale_gross ?? 0).toLocaleString()}`}
-                        trend="+12% vs yday"
-                        trendUp={true}
-                        icon={TrendingUp}
-                        color="emerald"
-                    />
-                    <MetricCard
-                        title="To Collect"
-                        subtitle="Outstanding Dues"
-                        value={`₹ ${unpaidAmount.toLocaleString()}`}
-                        trend={`${customers.filter(c => (c.balance || 0) > 0).length} customers`}
-                        trendUp={unpaidAmount < 10000}
-                        icon={Users}
-                        color="blue"
-                    />
-                    <MetricCard
-                        title="To Pay"
-                        subtitle="Supplier Dues"
-                        value={`₹ ${toPayAmount.toLocaleString()}`}
-                        trend={`${suppliers.filter(s => (s.balance || 0) > 0).length} suppliers`}
-                        trendUp={toPayAmount < 5000}
-                        icon={ShoppingCart}
-                        color="amber"
-                    />
-                    <MetricCard
-                        title="Low Stock"
-                        subtitle="Items needing attention"
-                        value={lowStockItems.length === 0 ? "All Stocked" : `${lowStockItems.length} Items`}
-                        trend={lowStockItems.length === 0 ? "Optimal" : "Need reorder"}
-                        trendUp={lowStockItems.length === 0}
-                        icon={Box}
-                        color={lowStockItems.length === 0 ? "emerald" : "red"}
-                    />
+                    <div className="animate-in fade-in slide-up stagger-2">
+                        <MetricCard
+                            title="Today's Sales"
+                            subtitle={`${new Date(lastReport.report_date).toLocaleDateString()}`}
+                            value={`₹ ${(lastReport.total_sale_gross ?? 0).toLocaleString()}`}
+                            trend="+12% vs yday"
+                            trendUp={true}
+                            icon={TrendingUp}
+                            color="emerald"
+                        />
+                    </div>
+                    <div className="animate-in fade-in slide-up stagger-3">
+                        <MetricCard
+                            title="To Collect"
+                            subtitle="Outstanding Dues"
+                            value={`₹ ${unpaidAmount.toLocaleString()}`}
+                            trend={`${customers.filter(c => (c.balance || 0) > 0).length} customers`}
+                            trendUp={unpaidAmount < 10000}
+                            icon={Users}
+                            color="blue"
+                        />
+                    </div>
+                    <div className="animate-in fade-in slide-up stagger-4">
+                        <MetricCard
+                            title="To Pay"
+                            subtitle="Supplier Dues"
+                            value={`₹ ${toPayAmount.toLocaleString()}`}
+                            trend={`${suppliers.filter(s => (s.balance || 0) > 0).length} suppliers`}
+                            trendUp={toPayAmount < 5000}
+                            icon={ShoppingCart}
+                            color="amber"
+                        />
+                    </div>
+                    <div className="animate-in fade-in slide-up stagger-5">
+                        <MetricCard
+                            title="Low Stock"
+                            subtitle="Items needing attention"
+                            value={lowStockItems.length === 0 ? "All Stocked" : `${lowStockItems.length} Items`}
+                            trend={lowStockItems.length === 0 ? "Optimal" : "Need reorder"}
+                            trendUp={lowStockItems.length === 0}
+                            icon={Box}
+                            color={lowStockItems.length === 0 ? "emerald" : "red"}
+                        />
+                    </div>
                 </div>
 
                 {/* 4. Main Activity & Charts Grid */}
@@ -455,8 +478,11 @@ export function HomeDashboard({
 
                     {/* Revenue Chart Section */}
                     <div
-                        className="lg:col-span-8 premium-glass rounded-[2.5rem] p-6 lg:p-10 flex flex-col gap-8 shadow-2xl relative overflow-hidden group border-border/30 animate-in fade-in scale-in"
+                        className="lg:col-span-8 premium-glass rounded-[2.5rem] p-6 lg:p-10 flex flex-col gap-8 shadow-2xl relative overflow-hidden group border-border/30 animate-in fade-in scale-in transition-all duration-700"
                     >
+                        {/* Animated Mesh Pattern */}
+                        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_50%_120%,rgba(16,185,129,0.3),transparent)] animate-pulse-subtle" />
+
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
                             <div className="space-y-1">
                                 <h3 className="text-xl font-black italic tracking-tight text-foreground">Revenue — Last {isOnline ? '30' : '7'} Days</h3>
@@ -580,7 +606,7 @@ export function HomeDashboard({
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
 
                     {/* Top Selling Items */}
-                    <div className="premium-glass p-8 rounded-[2.5rem] border-border/30 shadow-xl space-y-6">
+                    <div className="premium-glass p-8 rounded-[2.5rem] border-border/30 shadow-xl space-y-6 animate-in fade-in slide-up stagger-3">
                         <div className="space-y-1">
                             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60">Top Selling Items</h4>
                             <p className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-widest">Performance this month</p>
@@ -771,7 +797,7 @@ function MetricCard({ title, subtitle, value, trend, trendUp, icon: Icon, color 
         <div
             className="premium-glass p-8 rounded-[2.5rem] shadow-xl border-border/40 relative overflow-hidden group h-full hover-scale"
         >
-            <div className={cn("absolute -right-4 -bottom-4 opacity-5 transition-transform duration-700 group-hover:scale-125 group-hover:-rotate-12", colors[color].split(' ')[0])}>
+            <div className={cn("absolute -right-4 -bottom-4 opacity-5 transition-transform duration-700 group-hover:scale-125 group-hover:-rotate-12 animate-pulse-subtle", colors[color].split(' ')[0])}>
                 <Icon size={120} />
             </div>
 

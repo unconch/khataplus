@@ -33,6 +33,15 @@ const computeAutoMotion = () => {
   const prefersReduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
   if (prefersReduce) return { enableMotion: false, reason: "prefers-reduced-motion" }
 
+  const connection = (navigator as any).connection
+  const saveData = connection?.saveData ?? false
+  if (saveData) return { enableMotion: false, reason: "save-data" }
+
+  const effectiveType = connection?.effectiveType as string | undefined
+  if (effectiveType && (effectiveType === "slow-2g" || effectiveType === "2g")) {
+    return { enableMotion: false, reason: "slow-connection" }
+  }
+
   const cores = navigator.hardwareConcurrency ?? 2
   const mem = (navigator as any).deviceMemory ?? 2
 

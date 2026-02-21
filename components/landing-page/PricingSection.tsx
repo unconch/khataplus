@@ -2,22 +2,24 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Script from "next/script"
-import { Check, Loader2 } from "lucide-react"
+import { Check, Loader2, Sparkles, Zap, Shield, Crown, Building2 } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { GradientText } from "@/components/gradient-text"
 import { toast } from "sonner"
 import type { BillingPlanKey } from "@/lib/billing-plans"
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const formatINR = (value: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
 
-const CASHFREE_PRIMARY_SDK_SRC = "/api/billing/cashfree/sdk"
-const CASHFREE_FALLBACK_SDK_SRC = "https://sdk.cashfree.com/js/v3/cashfree.js"
-const CASHFREE_SDK_SOURCES = [CASHFREE_PRIMARY_SDK_SRC, CASHFREE_FALLBACK_SDK_SRC] as const
+const RAZORPAY_SDK_PRIMARY_SRC = "/api/billing/razorpay/sdk"
+const RAZORPAY_SDK_FALLBACK_SRC = "https://checkout.razorpay.com/v1/checkout.js"
+const RAZORPAY_SDK_SOURCES = [RAZORPAY_SDK_PRIMARY_SRC, RAZORPAY_SDK_FALLBACK_SRC] as const
 
 declare global {
     interface Window {
-        Cashfree?: any
+        Razorpay?: any
     }
 }
 
@@ -26,10 +28,12 @@ type BillingCycle = "monthly" | "yearly"
 interface PricingTier {
     planKey: BillingPlanKey
     name: string
+    icon: any
     price: { monthly: number; yearly: number }
     desc: string
     features: string[]
     cta: string
+    color: string
     popular?: boolean
 }
 
@@ -37,68 +41,72 @@ const tiers: PricingTier[] = [
     {
         planKey: "keep",
         name: "Keep",
+        icon: Shield,
         price: { monthly: 49, yearly: 399 },
-        desc: "Keep your data alive, safely.",
+        desc: "Essential data safety.",
         features: [
             "Data preserved & safe",
-            "10 invoices/mo",
-            "30 inventory items",
-            "Customer ledger",
-            "Regional languages",
-            "WhatsApp share"
+            "10 Billing / Month",
+            "30 Stock items",
+            "Digital Khata Ledger",
+            "WhatsApp Sharing"
         ],
-        cta: "Start free"
+        cta: "Start Free",
+        color: "zinc"
     },
     {
         planKey: "starter",
         name: "Starter",
+        icon: Zap,
         price: { monthly: 179, yearly: 1499 },
-        desc: "Everything for small shops to grow.",
+        desc: "For small retail shops.",
         features: [
-            "Unlimited invoices",
-            "200 inventory items",
-            "3 staff seats",
-            "A4 + thermal PDF billing",
-            "Import from Vyapar / CSV",
-            "Regional languages"
+            "Unlimited Billing",
+            "200 Stock Items",
+            "3 Staff Member Seats",
+            "A4 + Thermal Printing",
+            "Daily Profit Reports"
         ],
-        cta: "Get Starter"
+        cta: "Scale Up",
+        color: "blue"
     },
     {
         planKey: "pro",
         name: "Pro",
+        icon: Crown,
         price: { monthly: 449, yearly: 3999 },
-        desc: "For growing businesses that need more.",
+        desc: "For growing retailers.",
         features: [
-            "Unlimited inventory",
-            "Business intelligence",
-            "GST portal sync",
-            "Public shop profile",
-            "PWA — works offline",
-            "3 store locations"
+            "Unlimited Stock",
+            "Advanced Analytics",
+            "GST Sync Ready",
+            "Works fully Offline",
+            "3 Store Locations"
         ],
         cta: "Go Pro",
-        popular: true
+        popular: true,
+        color: "emerald"
     },
     {
         planKey: "business",
         name: "Business",
+        icon: Building2,
         price: { monthly: 899, yearly: 7999 },
-        desc: "Multi-location SMEs with teams.",
+        desc: "For large store chains.",
         features: [
-            "Unlimited staff & locations",
-            "WhatsApp automation (v2)",
-            "Advanced GST reporting",
-            "Dedicated support",
-            "Audit logs & SLA",
-            "AI stock custom (v3)"
+            "Unlimited Staff",
+            "WhatsApp Automation",
+            "Advanced GST Filing",
+            "AI Stock Forecasting",
+            "Audit & Activity Logs"
         ],
-        cta: "Talk to us"
+        cta: "Enquire",
+        color: "indigo"
     }
 ]
 
+
 function PricingContent({
-    orgCount,
     isAuthenticated = false,
     orgSlug = null
 }: {
@@ -110,8 +118,16 @@ function PricingContent({
     const searchParams = useSearchParams()
     const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
-    const [isCashfreeLoaded, setIsCashfreeLoaded] = useState(false)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
+    const [showEnquiry, setShowEnquiry] = useState(false)
+    const [enquirySubmitting, setEnquirySubmitting] = useState(false)
+    const [enquiry, setEnquiry] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        message: ""
+    })
 
     useEffect(() => {
         const payment = searchParams.get("payment")
@@ -122,246 +138,288 @@ function PricingContent({
         setPaymentToastShown(true)
     }, [searchParams, paymentToastShown])
 
-    useEffect(() => {
-        if (typeof window !== "undefined" && window.Cashfree) setIsCashfreeLoaded(true)
-    }, [])
-
-    const waitForCashfree = async (timeoutMs = 8000) => {
-        const startedAt = Date.now()
-        while (Date.now() - startedAt < timeoutMs) {
-            if (typeof window !== "undefined" && window.Cashfree) {
-                setIsCashfreeLoaded(true)
-                return
-            }
-            await new Promise((resolve) => setTimeout(resolve, 150))
-        }
-        throw new Error("Cashfree checkout is unavailable right now. Please retry.")
-    }
-
-    const injectCashfreeScript = async (src: string) => {
-        const existingScript = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null
-        if (existingScript) return
-        await new Promise<void>((resolve, reject) => {
-            const script = document.createElement("script")
-            script.src = src
-            script.async = true
-            script.onload = () => resolve()
-            script.onerror = () => reject(new Error(`Failed to load script: ${src}`))
-            document.head.appendChild(script)
-        })
-    }
-
-    const ensureCashfreeLoaded = async () => {
+    const ensureRazorpayScript = async () => {
         if (typeof window === "undefined") throw new Error("Checkout is only available in browser mode.")
-        if (window.Cashfree) {
-            setIsCashfreeLoaded(true)
-            return
-        }
-        let lastError: any = null
-        for (const sdkSrc of CASHFREE_SDK_SOURCES) {
+        if (window.Razorpay) return
+
+        let lastError: unknown = null
+
+        for (const src of RAZORPAY_SDK_SOURCES) {
             try {
-                await injectCashfreeScript(sdkSrc)
-                await waitForCashfree(6000)
-                return
+                await new Promise<void>((resolve, reject) => {
+                    const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null
+                    if (existing) {
+                        existing.addEventListener("load", () => resolve(), { once: true })
+                        existing.addEventListener("error", () => reject(new Error("Failed to load Razorpay SDK")), { once: true })
+                        return
+                    }
+
+                    const script = document.createElement("script")
+                    script.src = src
+                    script.async = true
+                    script.dataset.razorpaySdk = "true"
+                    script.onload = () => resolve()
+                    script.onerror = () => reject(new Error(`Failed to load Razorpay SDK from ${src}`))
+                    document.head.appendChild(script)
+                })
+
+                if (window.Razorpay) return
             } catch (error) {
                 lastError = error
             }
         }
-        console.error("[Cashfree] SDK failed for all sources:", lastError)
-        throw new Error("Payment checkout is blocked on this network. Please switch network/browser and retry.")
-    }
 
-    const getCashfreeInstance = (environment: string) => {
-        const factory = window.Cashfree
-        if (!factory) throw new Error("Cashfree SDK not loaded. Please refresh and try again.")
-        const mode = environment === "production" || environment === "live" ? "production" : "sandbox"
-        return factory({ mode })
+        throw new Error((lastError as Error)?.message || "Failed to load Razorpay SDK")
     }
 
     const handleCheckout = async (planKey: BillingPlanKey) => {
-        if (!isAuthenticated) {
-            router.push("/auth/login")
-            return
-        }
         setLoadingPlanKey(planKey)
         try {
-            const response = await fetch("/api/billing/cashfree/create-order", {
+            await ensureRazorpayScript()
+
+            const response = await fetch("/api/billing/razorpay/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ plan: planKey, cycle: billingCycle })
             })
             const data = await response.json().catch(() => ({}))
             if (!response.ok) throw new Error(data?.error || "Failed to initialize checkout")
-            if (!data?.paymentSessionId) throw new Error("Missing payment session from Cashfree")
 
-            try {
-                await ensureCashfreeLoaded()
-                const cashfree = getCashfreeInstance(String(data.environment || "sandbox"))
-                const checkoutResult = await cashfree.checkout({
-                    paymentSessionId: data.paymentSessionId,
-                    redirectTarget: "_self"
-                })
-                if (checkoutResult?.error) throw new Error(checkoutResult.error.message || "Unable to open checkout")
-            } catch (sdkError) {
-                const fallbackCheckoutUrl = String(data?.fallbackCheckoutUrl || "").trim()
-                if (fallbackCheckoutUrl) {
-                    window.location.assign(fallbackCheckoutUrl)
-                    return
-                }
-                throw sdkError
+            if (!data?.orderId || !data?.keyId) {
+                throw new Error("Missing order details")
             }
-        } catch (error: any) {
-            toast.error(error?.message || "Unable to start payment")
-        } finally {
-            setLoadingPlanKey(null)
-        }
+
+            const rzp = new window.Razorpay({
+                key: data.keyId,
+                amount: data.amount,
+                currency: data.currency || "INR",
+                name: "KhataPlus",
+                description: `${planKey.toUpperCase()} | ${billingCycle}`,
+                order_id: data.orderId,
+                notes: { plan: planKey, cycle: billingCycle },
+                handler: () => {
+                    toast.success("Payment successful. Activating your plan...")
+                    router.push("/pricing?payment=success")
+                },
+                theme: { color: "#10b981" }
+            })
+            rzp.on("payment.failed", (err: any) => {
+                toast.error(err?.error?.description || "Payment failed. Please try again.")
+            })
+            rzp.open()
+        } catch (error: any) { toast.error(error?.message || "Checkout failed") }
+        finally { setLoadingPlanKey(null) }
     }
 
     const handleStartTrial = () => {
-        if (!isAuthenticated) {
-            router.push("/auth/sign-up")
-            return
-        }
-        if (orgSlug) {
-            router.push(`/${orgSlug}/dashboard`)
-            return
-        }
+        if (!isAuthenticated) { router.push("/auth/sign-up"); return; }
+        if (orgSlug) { router.push(`/${orgSlug}/dashboard`); return; }
         router.push("/setup-organization")
     }
 
+    const handleEnquirySubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setEnquirySubmitting(true)
+        try {
+            const response = await fetch("/api/enquiry", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...enquiry,
+                    plan: "business",
+                    cycle: billingCycle,
+                    source: "pricing"
+                })
+            })
+            const data = await response.json().catch(() => ({}))
+            if (!response.ok) throw new Error(data?.error || "Failed to send enquiry")
+            toast.success("Enquiry sent. We'll reach out shortly.")
+            setShowEnquiry(false)
+            setEnquiry({ name: "", email: "", phone: "", company: "", message: "" })
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to send enquiry")
+        } finally {
+            setEnquirySubmitting(false)
+        }
+    }
+
     return (
-        <section id="pricing" className="relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-50 py-10 md:py-14 px-6">
-            <Script
-                src={CASHFREE_PRIMARY_SDK_SRC}
-                strategy="afterInteractive"
-                onLoad={() => setIsCashfreeLoaded(true)}
-                onError={() => setIsCashfreeLoaded(false)}
-            />
-
-            {/* background accents (kept subtle) */}
-            <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-32 -left-16 w-80 h-80 bg-emerald-100 blur-[120px] rounded-full opacity-50" />
-                <div className="absolute top-6 right-0 w-80 h-80 bg-sky-100 blur-[120px] rounded-full opacity-45" />
-            </div>
-
-            <div className="max-w-7xl mx-auto relative z-10">
-                <div className="text-center space-y-5 mb-14">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-[0.2em] shadow-sm">
-                        Flexible for every stage
-                    </div>
+        <section id="pricing" className="py-16 md:py-24 bg-white relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6 relative z-10">
+                <div className="flex flex-col items-center text-center space-y-6 mb-16">
                     <AdvancedScrollReveal variant="slideUp">
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.05]">
-                            Pricing that scales with your shop
-                        </h2>
-                    </AdvancedScrollReveal>
-                    <AdvancedScrollReveal variant="slideUp" delay={120}>
-                        <p className="text-zinc-500 text-lg md:text-xl max-w-2xl mx-auto">
-                            Start free, pay as you grow. No setup fees, no surprises—switch plans anytime.
-                        </p>
+                        <div className="space-y-4">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/50">
+                                <Sparkles size={12} className="text-zinc-600" />
+                                <span className="text-zinc-600 font-black text-[9px] tracking-widest uppercase text-zinc-400">Pricing Models</span>
+                            </div>
+                            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 leading-none italic uppercase">
+                                Simple. <span className="text-zinc-400">Scalable.</span>
+                            </h2>
+                            <p className="text-zinc-500 text-base font-medium max-w-lg mx-auto">
+                                Transparent plans that grow with your business scale.
+                            </p>
+                        </div>
                     </AdvancedScrollReveal>
 
-                    <div className="inline-flex mt-6 p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-md relative z-10 transition-transform active:scale-95">
+                    <div className="flex items-center justify-center p-1 bg-zinc-100 rounded-xl border border-zinc-200">
                         <button
                             onClick={() => setBillingCycle("monthly")}
-                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all ${billingCycle === "monthly" ? "bg-emerald-500 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-800"}`}
+                            className={cn(
+                                "px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest",
+                                billingCycle === "monthly" ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500"
+                            )}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingCycle("yearly")}
-                            className={`px-8 py-3 rounded-xl text-sm font-black tracking-widest uppercase transition-all relative ${billingCycle === "yearly" ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-800"}`}
+                            className={cn(
+                                "px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest relative",
+                                billingCycle === "yearly" ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500"
+                            )}
                         >
                             Yearly
-                            <span className="absolute -top-4 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shadow-lg">Save ~25%</span>
+                            <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-[7px] font-black rounded-full italic">Save 25%</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {tiers.map((tier, i) => (
-                        <AdvancedScrollReveal key={tier.planKey} variant="slideUp" delay={i * 80} className="flex h-full">
-                            <div
-                                className={`group relative bg-white/90 backdrop-blur-xl rounded-3xl p-8 border ${tier.popular ? 'border-emerald-500/40 shadow-[0_20px_60px_-25px_rgba(16,185,129,0.6)]' : 'border-zinc-100 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.3)]'} hover:-translate-y-1 transition-all duration-300 flex flex-col w-full`}
-                            >
+                        <AdvancedScrollReveal key={tier.planKey} variant="slideUp" delay={i * 50}>
+                            <div className={cn(
+                                "group relative h-full flex flex-col p-6 rounded-[2rem] border transition-all duration-500",
+                                tier.popular
+                                    ? "bg-zinc-950 border-zinc-900 shadow-2xl z-10"
+                                    : "bg-white border-zinc-100 hover:bg-zinc-50"
+                            )}>
                                 {tier.popular && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                                        Most picked
+                                    <div className="absolute top-0 right-10 -translate-y-1/2 bg-emerald-500 text-zinc-950 font-black text-[8px] px-3 py-0.5 rounded-full uppercase italic">
+                                        Popular
                                     </div>
                                 )}
 
-                                <div className="mb-7 space-y-2">
-                                    <h3 className="text-xl font-bold text-zinc-950">{tier.name}</h3>
-                                    <p className="text-zinc-500 text-sm leading-relaxed min-h-[40px]">{tier.desc}</p>
+                                <div className="space-y-4 mb-8">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-xl flex items-center justify-center",
+                                        tier.popular ? "bg-white/10 text-emerald-400" : "bg-zinc-100 text-zinc-600"
+                                    )}>
+                                        <tier.icon size={22} />
+                                    </div>
+                                    <div>
+                                        <h3 className={cn("text-xl font-black italic tracking-tighter uppercase", tier.popular ? "text-white" : "text-zinc-900")}>{tier.name}</h3>
+                                        <p className={cn("text-[11px] font-medium leading-relaxed", tier.popular ? "text-zinc-500" : "text-zinc-400")}>{tier.desc}</p>
+                                    </div>
                                 </div>
 
                                 <div className="mb-8">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tight">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
                                             {formatINR(tier.price[billingCycle])}
                                         </span>
-                                        <span className="text-zinc-400 font-bold text-xs uppercase tracking-tighter">
+                                        <span className="text-zinc-500 font-bold text-[8px] uppercase tracking-widest">
                                             /{billingCycle === "yearly" ? "yr" : "mo"}
                                         </span>
                                     </div>
                                     {billingCycle === "yearly" && (
-                                        <div className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest mt-1">
-                                            ≈ {formatINR(Math.floor(tier.price.yearly / 12))}/mo billed yearly
+                                        <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest mt-1">
+                                            {formatINR(Math.floor(tier.price.yearly / 12))}/mo
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="space-y-3.5 mb-8 flex-1 border-t border-zinc-100 pt-7">
+                                <div className="space-y-3 mb-8 flex-1 pt-6 border-t border-white/5">
                                     {tier.features.map((feat, j) => (
-                                        <div key={j} className="flex items-start gap-3 text-zinc-700 text-[13px] font-medium leading-tight">
-                                            <div className="rounded-full bg-emerald-50 text-emerald-600 p-1">
-                                                <Check size={13} strokeWidth={3} />
-                                            </div>
-                                            <span>{feat}</span>
+                                        <div key={j} className="flex items-center gap-2.5">
+                                            <Check size={12} className={tier.popular ? "text-emerald-400" : "text-zinc-400"} />
+                                            <span className={cn("text-xs font-medium transition-colors", tier.popular ? "text-zinc-400" : "text-zinc-500")}>{feat}</span>
                                         </div>
                                     ))}
                                 </div>
 
                                 <button
-                                    onClick={() => tier.planKey === "keep" ? handleStartTrial() : handleCheckout(tier.planKey)}
+                                    onClick={() => {
+                                        if (tier.planKey === "keep") {
+                                            handleStartTrial()
+                                            return
+                                        }
+                                        if (tier.planKey === "business") {
+                                            setShowEnquiry(true)
+                                            return
+                                        }
+                                        handleCheckout(tier.planKey)
+                                    }}
                                     disabled={loadingPlanKey !== null}
-                                    className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tier.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+                                    className={cn(
+                                        "w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all",
+                                        tier.popular
+                                            ? "bg-white text-zinc-950 hover:bg-emerald-400"
+                                            : "bg-zinc-950 text-white hover:bg-emerald-600 shadow-xl"
+                                    )}
                                 >
-                                    {loadingPlanKey === tier.planKey ? "Processing..." : tier.cta}
+                                    {loadingPlanKey === tier.planKey ? "..." : tier.cta}
                                 </button>
-
-                                <div className="absolute inset-x-6 -bottom-3 h-2 rounded-full blur-md opacity-20 bg-emerald-500 group-hover:opacity-40 transition-opacity" />
                             </div>
                         </AdvancedScrollReveal>
                     ))}
                 </div>
-
-                <div className="mt-12 max-w-5xl mx-auto">
-                    <div className="rounded-[28px] bg-white shadow-[0_20px_60px_-35px_rgba(0,0,0,0.25)] border border-emerald-100/60 px-6 py-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                            {[
-                                "Live sync across mobile + desktop",
-                                "GST-ready invoices in seconds",
-                                "WhatsApp share + regional languages",
-                            ].map((text) => (
-                                <div
-                                    key={text}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/90 border border-zinc-100 shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="font-semibold text-zinc-800">{text}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-6 text-center space-y-1 text-sm">
-                            <div className="text-zinc-700 font-medium">Prices in ₹ INR, inclusive of applicable taxes. Cancel anytime.</div>
-                            <div className="text-xs text-zinc-400">
-                                Need something tailored? <a className="text-emerald-600 font-semibold" href="mailto:hello@khataplus.com">hello@khataplus.com</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
+
+            <Dialog open={showEnquiry} onOpenChange={setShowEnquiry}>
+                <DialogContent className="max-w-lg rounded-[2rem]">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black tracking-tight">Business Plan Enquiry</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEnquirySubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <input
+                                required
+                                value={enquiry.name}
+                                onChange={(e) => setEnquiry({ ...enquiry, name: e.target.value })}
+                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
+                                placeholder="Full name"
+                            />
+                            <input
+                                required
+                                type="email"
+                                value={enquiry.email}
+                                onChange={(e) => setEnquiry({ ...enquiry, email: e.target.value })}
+                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
+                                placeholder="Work email"
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <input
+                                required
+                                value={enquiry.phone}
+                                onChange={(e) => setEnquiry({ ...enquiry, phone: e.target.value })}
+                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
+                                placeholder="Phone"
+                            />
+                            <input
+                                value={enquiry.company}
+                                onChange={(e) => setEnquiry({ ...enquiry, company: e.target.value })}
+                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
+                                placeholder="Company"
+                            />
+                        </div>
+                        <textarea
+                            value={enquiry.message}
+                            onChange={(e) => setEnquiry({ ...enquiry, message: e.target.value })}
+                            className="w-full min-h-[110px] rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
+                            placeholder="Tell us about your needs"
+                        />
+                        <button
+                            type="submit"
+                            disabled={enquirySubmitting}
+                            className="w-full rounded-xl bg-zinc-950 text-white py-3 text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors disabled:opacity-60"
+                        >
+                            {enquirySubmitting ? "Sending..." : "Send Enquiry"}
+                        </button>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </section>
     )
 }
@@ -372,11 +430,7 @@ export function PricingSection(props: {
     orgSlug?: string | null
 }) {
     return (
-        <Suspense fallback={
-            <div className="w-full py-40 flex items-center justify-center bg-white">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-            </div>
-        }>
+        <Suspense fallback={<div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>}>
             <PricingContent {...props} />
         </Suspense>
     )

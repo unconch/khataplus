@@ -57,6 +57,30 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
         getUserOrganizations(userId)
     ])
 
+    const { isGuestMode } = await import("@/lib/data/auth")
+    const isGuest = await isGuestMode()
+
+    if (isGuest) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-muted rounded-[2rem] bg-muted/5 space-y-4 animate-in fade-in zoom-in duration-500">
+                <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <div className="text-2xl font-black italic">!</div>
+                </div>
+                <div className="text-center space-y-2">
+                    <h3 className="text-xl font-black italic tracking-tighter text-foreground">Settings Disabled</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Identity and organization settings are <span className="text-amber-600 font-bold uppercase underline">not available in demo mode</span>.
+                    </p>
+                </div>
+                <div className="pt-4">
+                    <a href="/auth/sign-up" className="px-6 py-2.5 rounded-full bg-zinc-950 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all">
+                        Create Real Account
+                    </a>
+                </div>
+            </div>
+        )
+    }
+
     if (!org) return <div>Organization not found</div>
     if (!profile) return <div>Identity not found</div>
 
