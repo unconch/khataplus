@@ -82,7 +82,7 @@ export function HowItWorksSection() {
                             <h3 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white">Ready to Grow?</h3>
                             <div className="flex items-center justify-center md:justify-start gap-2 text-[8px] font-black uppercase tracking-widest text-zinc-500">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Live Sync Enabled • Military Grade Security
+                                Live Sync Enabled
                             </div>
                         </div>
                         <div className="flex flex-col items-center md:items-end gap-3">

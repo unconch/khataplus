@@ -76,22 +76,6 @@ export function SolutionsSection() {
 
                 </div>
 
-                <AdvancedScrollReveal variant="slideUp" delay={400}>
-                    <div className="mt-12 p-8 lg:p-12 rounded-[2.5rem] liquid-glass border border-white/10 relative overflow-hidden group">
-                        {/* Shifting Liquid Highlight */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-
-                        <div className="relative z-20 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-                            <div className="space-y-4">
-                                <h3 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase leading-[0.8]">Still not sure?</h3>
-                                <p className="text-zinc-400 text-base md:text-lg font-bold max-w-xl leading-relaxed tracking-tight">Our experts can help you setup the perfect workflow for your specific shop model.</p>
-                            </div>
-                            <Link href="/auth/sign-up" className="px-10 py-5 rounded-2xl bg-white text-zinc-950 font-black uppercase tracking-widest text-[11px] hover:bg-emerald-400 transition-all duration-500 shadow-2xl hover:scale-105 active:scale-95 shrink-0">
-                                START FREE DEMO
-                            </Link>
-                        </div>
-                    </div>
-                </AdvancedScrollReveal>
             </div>
         </section>
     )

@@ -29,7 +29,7 @@ export const BatchSalesSchema = z.array(SaleSchema);
 
 export const ReportQuerySchema = z.object({
     month: z.string().regex(/^\d{4}-\d{2}$/, "Invalid month format (YYYY-MM)"),
-    orgId: z.string().uuid()
+    orgId: z.string().min(3, "Invalid organization ID")
 });
 
 export const ReturnSchema = z.object({
@@ -47,19 +47,19 @@ export const InventorySchema = z.object({
     gst_percentage: z.number().min(0).max(100),
     stock: z.number(),
     min_stock: z.number().nonnegative().optional(),
-    org_id: z.string().uuid()
+    org_id: z.string().min(3, "Invalid organization ID")
 });
 
 export const CustomerSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(200),
     phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format"),
     address: z.string().max(500).optional().nullable(),
-    org_id: z.string().uuid()
+    org_id: z.string().min(3, "Invalid organization ID")
 });
 
 export const SupplierSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(200),
     phone: z.string().regex(/^\+?[0-9]{10,15}$/, "Invalid phone format"),
     address: z.string().max(500).optional().nullable(),
-    org_id: z.string().uuid()
+    org_id: z.string().min(3, "Invalid organization ID")
 });

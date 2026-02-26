@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { respondToOrganizationDeletion } from "@/lib/data/organizations"
+import { StepUpRequiredError } from "@/lib/step-up"
 
 export async function POST(request: Request) {
     try {
@@ -15,7 +16,8 @@ export async function POST(request: Request) {
         return NextResponse.json(result)
     } catch (error: any) {
         console.error("[DELETE/respond]", error.message)
-        const status = error.message.includes("not an approver") ? 403
+        const status = error instanceof StepUpRequiredError ? 428
+            : error.message.includes("not an approver") ? 403
             : error.message.includes("already responded") ? 409
             : error.message.includes("expired") ? 410
             : 500

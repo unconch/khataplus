@@ -75,7 +75,7 @@ const SOLUTIONS = [
     }
 ]
 
-export function Navbar({ isAuthenticated, lightMode = false }: NavbarProps) {
+export function Navbar({ isAuthenticated, lightMode = false, orgSlug }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [isSolutionsHovered, setIsSolutionsHovered] = useState(false)
@@ -100,10 +100,19 @@ export function Navbar({ isAuthenticated, lightMode = false }: NavbarProps) {
     }, [mobileMenuOpen])
 
     const isSolid = lightMode || scrolled || mobileMenuOpen
-    const primaryHref = "/auth/sign-up"
-    const primaryLabel = "Start Free Trial"
-    const secondaryHref = "/auth/login"
-    const secondaryLabel = "Sign In"
+
+    const primaryHref = isAuthenticated
+        ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
+        : "/auth/sign-up"
+    const primaryLabel = isAuthenticated
+        ? "Go to Dashboard"
+        : "Start Free Trial"
+    const secondaryHref = isAuthenticated
+        ? (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
+        : "/auth/login"
+    const secondaryLabel = isAuthenticated
+        ? "Settings"
+        : "Sign In"
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50">

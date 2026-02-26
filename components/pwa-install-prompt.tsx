@@ -75,7 +75,7 @@ export function PwaInstallPrompt() {
                         </div>
 
                         <div className="space-y-1">
-                            <h4 className="font-black italic text-lg tracking-tight">KhataPlus Pocket</h4>
+                            <h4 className="font-black italic text-lg tracking-tight">KhataPlus Business</h4>
                             <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                                 Install the native experience for lightning fast access and
                                 <span className="text-emerald-600 dark:text-emerald-400 font-bold italic ml-1">full offline power</span>.

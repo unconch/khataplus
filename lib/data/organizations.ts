@@ -10,6 +10,7 @@ import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next
 import { sendWelcomeEmail, sendOrgDeletionRequestEmail, sendOrgDeletionRejectedEmail } from "../mail";
 import { getProfile } from "./profiles";
 import { initializeOrganizationSchema } from "./schema-init";
+import { assertRecentOtpStepUp } from "../step-up";
 
 async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
     await sql`
@@ -24,6 +25,17 @@ async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<voi
     `;
 }
 
+async function generateShortOrganizationId(): Promise<string> {
+    // Format: org_xxxxxxxx (8 hex chars). Retry on rare collision.
+    for (let i = 0; i < 8; i++) {
+        const candidate = `org_${randomHex(8).toLowerCase()}`;
+        const exists = await sql`SELECT 1 FROM organizations WHERE id = ${candidate} LIMIT 1`;
+        if (exists.length === 0) return candidate;
+    }
+    // Safe fallback if repeated collisions happen.
+    return `org_${randomHex(12).toLowerCase()}`;
+}
+
 
 export async function getTotalOrganizationCount(): Promise<number> {
     const result = await sql`SELECT count(*) FROM organizations`;
@@ -31,8 +43,8 @@ export async function getTotalOrganizationCount(): Promise<number> {
 }
 
 export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
-    // Check for existing organization with the same name (case-insensitive)
-    const existingName = await sql`SELECT id FROM organizations WHERE LOWER(name) = LOWER(${name})`;
+    // Keep organization names globally unique (case-insensitive) for predictable lookup and cleaner UX.
+    const existingName = await sql`SELECT id FROM organizations WHERE LOWER(name) = LOWER(${name}) LIMIT 1`;
     if (existingName.length > 0) {
         throw new Error(`An organization with the name "${name}" already exists.`);
     }
@@ -49,6 +61,8 @@ export async function createOrganization(name: string, userId: string, details?:
     console.log("[DB/Orgs] Generated slug:", slug);
 
     try {
+        const orgId = await generateShortOrganizationId();
+
         // 2026 Monetization: Check for Pioneer Partner eligibility (first 1000 signups)
         const orgCountResult = await sql`SELECT count(*) FROM organizations`;
         const totalOrgs = parseInt(orgCountResult[0].count);
@@ -59,6 +73,7 @@ export async function createOrganization(name: string, userId: string, details?:
         try {
             result = await sql`
                 INSERT INTO organizations(
+                    id,
                     name, 
                     slug, 
                     created_by, 
@@ -71,6 +86,7 @@ export async function createOrganization(name: string, userId: string, details?:
                     pioneer_joined_at
                 )
                 VALUES(
+                    ${orgId},
                     ${name}, 
                     ${slug}, 
                     ${userId}, 
@@ -80,7 +96,7 @@ export async function createOrganization(name: string, userId: string, details?:
                     'trial',
                     NOW() + INTERVAL '30 days',
                     ${isEligibleForPioneer},
-                    ${isEligibleForPioneer ? sql`NOW()` : null}
+                    ${isEligibleForPioneer ? new Date() : null}
                 )
                 RETURNING *
             `;
@@ -88,8 +104,8 @@ export async function createOrganization(name: string, userId: string, details?:
             // Fallback: DB missing monetization/phone columns
             console.warn("[DB/Orgs] Full INSERT failed, trying minimal INSERT:", insertErr.message);
             result = await sql`
-                INSERT INTO organizations(name, slug, created_by, gstin, address)
-                VALUES(${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null})
+                INSERT INTO organizations(id, name, slug, created_by, gstin, address)
+                VALUES(${orgId}, ${name}, ${slug}, ${userId}, ${details?.gstin || null}, ${details?.address || null})
                 RETURNING *
             `;
         }
@@ -222,21 +238,46 @@ export async function getUserOrganizations(userId: string): Promise<(Organizatio
 export async function updateOrganization(orgId: string, updates: Partial<Organization>): Promise<void> {
     await authorize("Update Organization", "owner", orgId);
 
+    const currentRows = await sql`SELECT slug FROM organizations WHERE id = ${orgId} LIMIT 1`;
+    const currentSlug = currentRows[0]?.slug as string | undefined;
+
+    let nextSlug = updates.slug;
+    if (typeof nextSlug === "string") {
+        nextSlug = nextSlug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+        if (!nextSlug) {
+            throw new Error("Slug cannot be empty");
+        }
+
+        if (nextSlug !== currentSlug) {
+            const existing = await sql`SELECT id FROM organizations WHERE slug = ${nextSlug} AND id <> ${orgId} LIMIT 1`;
+            if (existing.length > 0) {
+                throw new Error("This slug is already in use. Please choose another.");
+            }
+        }
+    }
+
     await sql`
         UPDATE organizations
         SET 
-            name = COALESCE(${updates.name}, name),
-            gstin = COALESCE(${updates.gstin}, gstin),
-            address = COALESCE(${updates.address}, address),
-            phone = COALESCE(${updates.phone}, phone),
-            upi_id = COALESCE(${updates.upi_id}, upi_id),
-            whatsapp_addon_active = COALESCE(${updates.whatsapp_addon_active}, whatsapp_addon_active),
-            auto_reminders_enabled = COALESCE(${updates.auto_reminders_enabled}, auto_reminders_enabled),
+            name = COALESCE(${updates.name ?? null}, name),
+            slug = COALESCE(${nextSlug ?? null}, slug),
+            gstin = COALESCE(${updates.gstin ?? null}, gstin),
+            address = COALESCE(${updates.address ?? null}, address),
+            phone = COALESCE(${updates.phone ?? null}, phone),
+            upi_id = COALESCE(${updates.upi_id ?? null}, upi_id),
+            whatsapp_addon_active = COALESCE(${updates.whatsapp_addon_active ?? null}, whatsapp_addon_active),
+            auto_reminders_enabled = COALESCE(${updates.auto_reminders_enabled ?? null}, auto_reminders_enabled),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ${orgId}
     `;
 
     await audit("Updated Organization", "organization", orgId, updates, orgId);
+
+    revalidatePath("/dashboard", "page");
+    if (currentSlug) revalidatePath(`/${currentSlug}/dashboard`, "page");
+    if (nextSlug) revalidatePath(`/${nextSlug}/dashboard`, "page");
+    if (currentSlug) (revalidateTag as any)(`org-slug-${currentSlug}`);
+    if (nextSlug) (revalidateTag as any)(`org-slug-${nextSlug}`);
 }
 
 export const getOrganizationBySlug = cache(async (slug: string): Promise<Organization | null> => {
@@ -361,6 +402,7 @@ export async function getSystemSettings(orgId?: string) {
             allow_staff_add_inventory: false,
             gst_enabled: true,
             gst_inclusive: false,
+            show_buy_price_in_sales: false,
             updated_at: new Date().toISOString()
         } as SystemSettings;
     }
@@ -386,6 +428,7 @@ export async function getSystemSettings(orgId?: string) {
                     allow_staff_add_inventory: false,
                     gst_enabled: true,
                     gst_inclusive: false,
+                    show_buy_price_in_sales: false,
                     updated_at: new Date().toISOString()
                 } as SystemSettings;
             }
@@ -393,6 +436,7 @@ export async function getSystemSettings(orgId?: string) {
             return {
                 id: orgId,
                 ...s,
+                show_buy_price_in_sales: Boolean(s?.show_buy_price_in_sales),
                 updated_at: result[0].updated_at instanceof Date ? result[0].updated_at.toISOString() : String(result[0].updated_at),
             } as SystemSettings;
         },
@@ -410,7 +454,7 @@ export async function updateSystemSettings(updates: Partial<SystemSettings>, org
 
     await sql`
         UPDATE organizations
-        SET settings = settings || ${JSON.stringify(updates)}::jsonb
+        SET settings = COALESCE(settings, '{}'::jsonb) || ${JSON.stringify(updates)}::jsonb
         WHERE id = ${actualOrgId}
     `;
 
@@ -468,22 +512,25 @@ export async function requestOrganizationDeletion(orgId: string): Promise<{
     // 1. Authorize - any owner can call, but only creator proceeds past next check
     const user = await authorize("Delete Organization", "owner", orgId)
 
-    // 2. Verify org exists
+    // 2. Require fresh OTP step-up for destructive action
+    await assertRecentOtpStepUp()
+
+    // 3. Verify org exists
     const orgRows = await sql`
         SELECT id, name, created_by FROM organizations WHERE id = ${orgId}
     `
     if (orgRows.length === 0) throw new Error("Organization not found")
     const org = orgRows[0]
 
-    // 3. Only original creator can initiate
+    // 4. Only original creator can initiate
     if (org.created_by !== user.id) {
         throw new Error("Only the original creator of this organization can request deletion")
     }
 
-    // 4. Expire stale requests first
+    // 5. Expire stale requests first
     await expireStaleRequests(orgId)
 
-    // 5. Check for existing active pending request
+    // 6. Check for existing active pending request
     const existing = await sql`
         SELECT id FROM org_deletion_requests
         WHERE org_id = ${orgId} AND status = 'pending'
@@ -492,7 +539,7 @@ export async function requestOrganizationDeletion(orgId: string): Promise<{
         throw new Error("A deletion request is already pending. Check your settings page for status.")
     }
 
-    // 6. Get ALL other owners (not the creator)
+    // 7. Get ALL other owners (not the creator)
     const otherOwners = await sql`
         SELECT om.user_id, p.name, p.email
         FROM organization_members om
@@ -503,7 +550,7 @@ export async function requestOrganizationDeletion(orgId: string): Promise<{
           AND p.status = 'active'
     `
 
-    // 7. Create the deletion request record
+    // 8. Create the deletion request record
     const requestRows = await sql`
         INSERT INTO org_deletion_requests (org_id, requested_by, org_name, status, expires_at)
         VALUES (
@@ -517,13 +564,13 @@ export async function requestOrganizationDeletion(orgId: string): Promise<{
     `
     const requestId = requestRows[0].id
 
-    // 8. No other owners — delete immediately
+    // 9. No other owners — delete immediately
     if (otherOwners.length === 0) {
         await executeOrganizationDeletion(orgId, user.id, requestId, org.name)
         return { requestId, requiresApproval: false, pendingOwners: 0, deleted: true }
     }
 
-    // 9. Create approval slots for each other owner
+    // 10. Create approval slots for each other owner
     for (const owner of otherOwners) {
         await sql`
             INSERT INTO org_deletion_approvals (request_id, owner_id, owner_name, owner_email, approved)
@@ -532,7 +579,7 @@ export async function requestOrganizationDeletion(orgId: string): Promise<{
         `
     }
 
-    // 10. Notify all other owners via email (non-fatal)
+    // 11. Notify all other owners via email (non-fatal)
     const requesterName = user.name || user.email || "Organization Creator"
     for (const owner of otherOwners) {
         sendOrgDeletionRequestEmail(
@@ -593,7 +640,11 @@ export async function respondToOrganizationDeletion(
         throw new Error("This deletion request has expired")
     }
 
-    // 4. Verify this user is an approver for this request
+    // 4. Require fresh OTP step-up for each owner response.
+    const requestCreatedAtSeconds = Math.floor(new Date(req.created_at).getTime() / 1000)
+    await assertRecentOtpStepUp({ minimumAuthTimeSeconds: requestCreatedAtSeconds })
+
+    // 5. Verify this user is an approver for this request
     const approvalRows = await sql`
         SELECT id, approved FROM org_deletion_approvals
         WHERE request_id = ${requestId} AND owner_id = ${user.id}
@@ -605,14 +656,14 @@ export async function respondToOrganizationDeletion(
         throw new Error("You have already responded to this deletion request")
     }
 
-    // 5. Record response
+    // 6. Record response
     await sql`
         UPDATE org_deletion_approvals
         SET approved = ${approve}, responded_at = NOW()
         WHERE request_id = ${requestId} AND owner_id = ${user.id}
     `
 
-    // 6. If rejected — cancel immediately, no need for others to respond
+    // 7. If rejected — cancel immediately, no need for others to respond
     if (!approve) {
         await sql`
             UPDATE org_deletion_requests
@@ -646,7 +697,7 @@ export async function respondToOrganizationDeletion(
         return { deleted: false, pendingCount: 0, rejectedBy: user.name || user.email }
     }
 
-    // 7. Check if all approvers have approved
+    // 8. Check if all approvers have approved
     const pendingRows = await sql`
         SELECT COUNT(*) as count
         FROM org_deletion_approvals
@@ -658,7 +709,7 @@ export async function respondToOrganizationDeletion(
         return { deleted: false, pendingCount: stillPending }
     }
 
-    // 8. All approved — execute deletion
+    // 9. All approved — execute deletion
     await executeOrganizationDeletion(req.org_id, req.requested_by, requestId, req.org_name)
     return { deleted: true, pendingCount: 0 }
 }

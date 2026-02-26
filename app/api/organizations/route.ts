@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
-import { createOrganization, getUserOrganizations } from "@/lib/data/organizations"
+import { createOrganization } from "@/lib/data/organizations"
+import { getUserOrganizationsResolved } from "@/lib/data/auth"
 import { getProfile, upsertProfile } from "@/lib/data/profiles"
 import { z } from "zod"
 
@@ -82,7 +83,8 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const orgs = await getUserOrganizations(userId)
+        // Use resolved lookup to avoid stale membership reads immediately after org creation.
+        const orgs = await getUserOrganizationsResolved(userId)
 
         return NextResponse.json(orgs)
     } catch (e: any) {

@@ -10,12 +10,14 @@ import { isGuestMode, getCurrentOrgId } from "./auth";
 export async function getDailyReports(orgId: string, range: string = "month") {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
+    const cacheVersion = "v4-today-strict-fix";
 
     let days = 30;
-    if (range === "today") days = 1;
+    if (range === "today") days = 0;
     else if (range === "week") days = 7;
     else if (range === "month") days = 30;
     else if (range === "year") days = 365;
+    else if (range === "all") days = 365000;
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -23,20 +25,280 @@ export async function getDailyReports(orgId: string, range: string = "month") {
     return nextCache(
         async (): Promise<DailyReport[]> => {
             const db = isGuest ? getDemoSql() : getProductionSql();
+            const startDateText = range === "all" ? "1900-01-01" : startDate.toISOString().split('T')[0]
+            const salesCols = await db`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'sales'
+            `
+            const salesColSet = new Set((salesCols as any[]).map((r: any) => String(r.column_name)))
+            const hasPaymentMethod = salesColSet.has("payment_method")
+            const dailyReportCols = await db`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'daily_reports'
+            `
+            const dailyReportColSet = new Set((dailyReportCols as any[]).map((r: any) => String(r.column_name)))
+            const hasDailyReportOrgId = dailyReportColSet.has("org_id")
 
-            const data = await db`SELECT * FROM daily_reports WHERE org_id = ${orgId} AND report_date >= ${startDate.toISOString().split('T')[0]} ORDER BY report_date DESC`;
-            return data.map((d: any) => ({
-                ...d,
-                total_sale_gross: parseFloat(d.total_sale_gross),
-                total_cost: parseFloat(d.total_cost),
-                expenses: parseFloat(d.expenses),
-                cash_sale: parseFloat(d.cash_sale),
-                online_sale: parseFloat(d.online_sale),
-                online_cost: parseFloat(d.online_cost),
-                report_date: d.report_date instanceof Date ? d.report_date.toISOString().split('T')[0] : String(d.report_date),
+            // Reports are derived from transactional data (sales + expenses) so
+            // analytics and reports always reflect imported/recorded activity.
+            const data = hasPaymentMethod ? await db`
+                WITH sales_agg AS (
+                    SELECT
+                        sale_date::date AS report_date,
+                        SUM(total_amount)::numeric AS total_sale_gross,
+                        SUM(total_amount - profit)::numeric AS total_cost,
+                        SUM(CASE WHEN payment_method = 'Cash' THEN total_amount ELSE 0 END)::numeric AS cash_sale,
+                        SUM(CASE WHEN payment_method <> 'Cash' THEN total_amount ELSE 0 END)::numeric AS online_sale
+                    FROM sales
+                    WHERE org_id = ${orgId}
+                      AND sale_date >= ${startDateText}::date
+                    GROUP BY sale_date::date
+                ),
+                expenses_agg AS (
+                    SELECT
+                        expense_date::date AS report_date,
+                        SUM(amount)::numeric AS expenses
+                    FROM expenses
+                    WHERE org_id = ${orgId}
+                      AND expense_date::date >= ${startDateText}::date
+                    GROUP BY expense_date::date
+                )
+                SELECT
+                    TO_CHAR(COALESCE(s.report_date, e.report_date), 'YYYY-MM-DD') AS report_date,
+                    COALESCE(s.total_sale_gross, 0)::numeric AS total_sale_gross,
+                    COALESCE(s.total_cost, 0)::numeric AS total_cost,
+                    COALESCE(e.expenses, 0)::numeric AS expenses,
+                    COALESCE(s.cash_sale, 0)::numeric AS cash_sale,
+                    COALESCE(s.online_sale, 0)::numeric AS online_sale,
+                    CASE
+                        WHEN COALESCE(s.total_sale_gross, 0) > 0
+                        THEN (COALESCE(s.total_cost, 0) * COALESCE(s.online_sale, 0) / NULLIF(s.total_sale_gross, 0))
+                        ELSE 0
+                    END::numeric AS online_cost
+                FROM sales_agg s
+                FULL OUTER JOIN expenses_agg e ON s.report_date = e.report_date
+                ORDER BY COALESCE(s.report_date, e.report_date) DESC
+            ` : await db`
+                WITH sales_agg AS (
+                    SELECT
+                        sale_date::date AS report_date,
+                        SUM(total_amount)::numeric AS total_sale_gross,
+                        SUM(total_amount - profit)::numeric AS total_cost,
+                        SUM(total_amount)::numeric AS cash_sale,
+                        0::numeric AS online_sale
+                    FROM sales
+                    WHERE org_id = ${orgId}
+                      AND sale_date >= ${startDateText}::date
+                    GROUP BY sale_date::date
+                ),
+                expenses_agg AS (
+                    SELECT
+                        expense_date::date AS report_date,
+                        SUM(amount)::numeric AS expenses
+                    FROM expenses
+                    WHERE org_id = ${orgId}
+                      AND expense_date::date >= ${startDateText}::date
+                    GROUP BY expense_date::date
+                )
+                SELECT
+                    TO_CHAR(COALESCE(s.report_date, e.report_date), 'YYYY-MM-DD') AS report_date,
+                    COALESCE(s.total_sale_gross, 0)::numeric AS total_sale_gross,
+                    COALESCE(s.total_cost, 0)::numeric AS total_cost,
+                    COALESCE(e.expenses, 0)::numeric AS expenses,
+                    COALESCE(s.cash_sale, 0)::numeric AS cash_sale,
+                    COALESCE(s.online_sale, 0)::numeric AS online_sale,
+                    0::numeric AS online_cost
+                FROM sales_agg s
+                FULL OUTER JOIN expenses_agg e ON s.report_date = e.report_date
+                ORDER BY COALESCE(s.report_date, e.report_date) DESC
+            `;
+
+            const mappedDerived = (data as any[]).map((d: any) => {
+                const dateText = String(d.report_date).slice(0, 10)
+                return {
+                    id: `derived-${orgId}-${dateText}`,
+                    report_date: dateText,
+                    total_sale_gross: parseFloat(d.total_sale_gross || "0"),
+                    total_cost: parseFloat(d.total_cost || "0"),
+                    expenses: parseFloat(d.expenses || "0"),
+                    cash_sale: parseFloat(d.cash_sale || "0"),
+                    online_sale: parseFloat(d.online_sale || "0"),
+                    online_cost: parseFloat(d.online_cost || "0"),
+                    expense_breakdown: [],
+                    org_id: orgId,
+                    created_at: dateText,
+                    updated_at: dateText,
+                } as DailyReport
+            });
+
+            if (mappedDerived.length > 0) {
+                return mappedDerived;
+            }
+
+            // "Today" should be strict; do not backfill with older historical days.
+            if (range === "today") {
+                return [];
+            }
+
+            // If the current-date window is empty (common with old imported history),
+            // fallback to latest available aggregated history so Reports/Analytics
+            // still surface data.
+            const dataAll = hasPaymentMethod ? await db`
+                WITH sales_agg AS (
+                    SELECT
+                        sale_date::date AS report_date,
+                        SUM(total_amount)::numeric AS total_sale_gross,
+                        SUM(total_amount - profit)::numeric AS total_cost,
+                        SUM(CASE WHEN payment_method = 'Cash' THEN total_amount ELSE 0 END)::numeric AS cash_sale,
+                        SUM(CASE WHEN payment_method <> 'Cash' THEN total_amount ELSE 0 END)::numeric AS online_sale
+                    FROM sales
+                    WHERE org_id = ${orgId}
+                    GROUP BY sale_date::date
+                ),
+                expenses_agg AS (
+                    SELECT
+                        expense_date::date AS report_date,
+                        SUM(amount)::numeric AS expenses
+                    FROM expenses
+                    WHERE org_id = ${orgId}
+                    GROUP BY expense_date::date
+                )
+                SELECT
+                    TO_CHAR(COALESCE(s.report_date, e.report_date), 'YYYY-MM-DD') AS report_date,
+                    COALESCE(s.total_sale_gross, 0)::numeric AS total_sale_gross,
+                    COALESCE(s.total_cost, 0)::numeric AS total_cost,
+                    COALESCE(e.expenses, 0)::numeric AS expenses,
+                    COALESCE(s.cash_sale, 0)::numeric AS cash_sale,
+                    COALESCE(s.online_sale, 0)::numeric AS online_sale,
+                    CASE
+                        WHEN COALESCE(s.total_sale_gross, 0) > 0
+                        THEN (COALESCE(s.total_cost, 0) * COALESCE(s.online_sale, 0) / NULLIF(s.total_sale_gross, 0))
+                        ELSE 0
+                    END::numeric AS online_cost
+                FROM sales_agg s
+                FULL OUTER JOIN expenses_agg e ON s.report_date = e.report_date
+                ORDER BY COALESCE(s.report_date, e.report_date) DESC
+            ` : await db`
+                WITH sales_agg AS (
+                    SELECT
+                        sale_date::date AS report_date,
+                        SUM(total_amount)::numeric AS total_sale_gross,
+                        SUM(total_amount - profit)::numeric AS total_cost,
+                        SUM(total_amount)::numeric AS cash_sale,
+                        0::numeric AS online_sale
+                    FROM sales
+                    WHERE org_id = ${orgId}
+                    GROUP BY sale_date::date
+                ),
+                expenses_agg AS (
+                    SELECT
+                        expense_date::date AS report_date,
+                        SUM(amount)::numeric AS expenses
+                    FROM expenses
+                    WHERE org_id = ${orgId}
+                    GROUP BY expense_date::date
+                )
+                SELECT
+                    TO_CHAR(COALESCE(s.report_date, e.report_date), 'YYYY-MM-DD') AS report_date,
+                    COALESCE(s.total_sale_gross, 0)::numeric AS total_sale_gross,
+                    COALESCE(s.total_cost, 0)::numeric AS total_cost,
+                    COALESCE(e.expenses, 0)::numeric AS expenses,
+                    COALESCE(s.cash_sale, 0)::numeric AS cash_sale,
+                    COALESCE(s.online_sale, 0)::numeric AS online_sale,
+                    0::numeric AS online_cost
+                FROM sales_agg s
+                FULL OUTER JOIN expenses_agg e ON s.report_date = e.report_date
+                ORDER BY COALESCE(s.report_date, e.report_date) DESC
+            `;
+
+            const mappedAllDerived = (dataAll as any[]).map((d: any) => {
+                const dateText = String(d.report_date).slice(0, 10)
+                return {
+                    id: `derived-${orgId}-${dateText}`,
+                    report_date: dateText,
+                    total_sale_gross: parseFloat(d.total_sale_gross || "0"),
+                    total_cost: parseFloat(d.total_cost || "0"),
+                    expenses: parseFloat(d.expenses || "0"),
+                    cash_sale: parseFloat(d.cash_sale || "0"),
+                    online_sale: parseFloat(d.online_sale || "0"),
+                    online_cost: parseFloat(d.online_cost || "0"),
+                    expense_breakdown: [],
+                    org_id: orgId,
+                    created_at: dateText,
+                    updated_at: dateText,
+                } as DailyReport
+            });
+
+            if (mappedAllDerived.length > 0) {
+                return mappedAllDerived.slice(0, days);
+            }
+
+            // Fallback: if transactional derivation returns no rows (schema drift or partial imports),
+            // use persisted daily_reports for the same range so Reports/Analytics still render data.
+            const fallback = hasDailyReportOrgId ? await db`
+                SELECT *
+                FROM daily_reports
+                WHERE org_id = ${orgId}
+                  AND report_date >= ${startDateText}::date
+                ORDER BY report_date DESC
+            ` : await db`
+                SELECT *
+                FROM daily_reports
+                WHERE report_date >= ${startDateText}::date
+                ORDER BY report_date DESC
+            `;
+
+            const mappedFallback = (fallback as any[]).map((d: any) => ({
+                id: String(d.id || `fallback-${orgId}-${String(d.report_date).slice(0, 10)}`),
+                report_date: String(d.report_date).slice(0, 10),
+                total_sale_gross: parseFloat(d.total_sale_gross || "0"),
+                total_cost: parseFloat(d.total_cost || "0"),
+                expenses: parseFloat(d.expenses || "0"),
+                cash_sale: parseFloat(d.cash_sale || "0"),
+                online_sale: parseFloat(d.online_sale || "0"),
+                online_cost: parseFloat(d.online_cost || "0"),
+                expense_breakdown: Array.isArray(d.expense_breakdown) ? d.expense_breakdown : [],
+                org_id: String(d.org_id || orgId),
+                created_at: String(d.created_at || ""),
+                updated_at: String(d.updated_at || ""),
+            })) as DailyReport[];
+
+            if (mappedFallback.length > 0) {
+                return mappedFallback;
+            }
+
+            // Final fallback: latest persisted reports regardless date window.
+            const fallbackAll = hasDailyReportOrgId ? await db`
+                SELECT *
+                FROM daily_reports
+                WHERE org_id = ${orgId}
+                ORDER BY report_date DESC
+                LIMIT ${days}
+            ` : await db`
+                SELECT *
+                FROM daily_reports
+                ORDER BY report_date DESC
+                LIMIT ${days}
+            `;
+
+            return (fallbackAll as any[]).map((d: any) => ({
+                id: String(d.id || `fallback-${orgId}-${String(d.report_date).slice(0, 10)}`),
+                report_date: String(d.report_date).slice(0, 10),
+                total_sale_gross: parseFloat(d.total_sale_gross || "0"),
+                total_cost: parseFloat(d.total_cost || "0"),
+                expenses: parseFloat(d.expenses || "0"),
+                cash_sale: parseFloat(d.cash_sale || "0"),
+                online_sale: parseFloat(d.online_sale || "0"),
+                online_cost: parseFloat(d.online_cost || "0"),
+                expense_breakdown: Array.isArray(d.expense_breakdown) ? d.expense_breakdown : [],
+                org_id: String(d.org_id || orgId),
+                created_at: String(d.created_at || ""),
+                updated_at: String(d.updated_at || ""),
             })) as DailyReport[];
         },
-        [`reports-list-${flavor}-${orgId}-${range}`],
+        [`reports-list-${cacheVersion}-${flavor}-${orgId}-${range}`],
         { tags: ["reports", `reports-${orgId}`, `reports-${flavor}`], revalidate: 300 }
     )();
 }

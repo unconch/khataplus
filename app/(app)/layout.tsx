@@ -23,26 +23,70 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
   try {
+    const isDbConnectivityError = (err: any) => {
+      const msg = String(err?.message || err || "").toLowerCase()
+      return (
+        msg.includes("error connecting to database") ||
+        msg.includes("fetch failed") ||
+        msg.includes("econnreset") ||
+        msg.includes("etimedout") ||
+        msg.includes("enotfound") ||
+        msg.includes("socket hang up")
+      )
+    }
+
     const { getSession } = await import("@/lib/session")
     const sessionRes = await getSession()
     const userId = sessionRes?.userId
 
     console.log("--- [DEBUG] AppLayoutLogic Execution: Render Phase - Fixing Stale Cache ---")
-    const { getProfile, upsertProfile, getSystemSettings, getUserOrganizations, ensureProfile } = await import("@/lib/data")
+    const { getProfile, upsertProfile, getSystemSettings, ensureProfile } = await import("@/lib/data")
+    const { getUserOrganizationsResolved } = await import("@/lib/data/auth")
     const { getTenant } = await import("@/lib/tenant")
     const { TenantProvider } = await import("@/components/tenant-provider")
     const { RealtimeSyncActivator } = await import("@/components/realtime-sync-activator")
 
-    // Parallelize initial critical fetches
+    // Parallelize initial critical fetches with graceful DB outage handling
+    let dbUnavailable = false
+    const safeFetch = async <T,>(task: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await task()
+      } catch (err) {
+        if (isDbConnectivityError(err)) {
+          dbUnavailable = true
+          return fallback
+        }
+        throw err
+      }
+    }
+
     const [subdomainTenant, profileResult, userOrgsResult] = await Promise.all([
-      getTenant(),
-      userId ? getProfile(userId) : Promise.resolve(null),
-      userId ? getUserOrganizations(userId) : Promise.resolve([])
+      safeFetch(() => getTenant(), null as any),
+      userId ? safeFetch(() => getProfile(userId), null as any) : Promise.resolve(null),
+      userId ? safeFetch(() => getUserOrganizationsResolved(userId), [] as any) : Promise.resolve([])
     ])
 
     const headersList = await headers()
     const pathPrefix = headersList.get("x-path-prefix") || ""
     const xInvokePath = headersList.get("x-invoke-path") || ""
+
+    if (dbUnavailable) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+          <h2 className="text-2xl font-bold mb-2">Database Connection Issue</h2>
+          <p className="text-muted-foreground mb-4 max-w-md">
+            Temporary network issue while connecting to database. Please refresh in a few seconds.
+          </p>
+          <button
+            type="button"
+            onClick={() => location.reload()}
+            className="h-10 px-5 rounded-xl bg-zinc-950 text-white font-bold text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      )
+    }
 
     // Check for Guest Mode
     const { isGuestMode } = await import("@/lib/data/auth")
@@ -98,30 +142,42 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     let profile = profileResult
-    const userOrgs = userOrgsResult
+    let userOrgs = userOrgsResult
 
-    // Handle Profile Creation/Update
+    // Handle Profile Creation/Update/Consolidation
     const user = sessionRes?.user
-    const email = sessionRes?.email || user?.email || ""
-    const name = (user?.user_metadata?.full_name as string) || (user?.user_metadata?.name as string) || ""
+    const email = sessionRes?.email || user?.email || `descope_${userId}@local.invalid`
+    const name = (user?.name as string) || ""
 
-    if (!profile) {
+    if (userId) {
+      // Always call ensureProfile to handle consolidation of multiple accounts (Google vs Email)
       profile = await ensureProfile(userId, email, name)
+
+      // If we didn't find organizations initially, re-fetch them after potential migration/consolidation
+      if (userOrgs.length === 0) {
+        const { getUserOrganizationsResolved } = await import("@/lib/data/auth")
+        userOrgs = await getUserOrganizationsResolved(userId)
+      }
     }
 
     // Handle missing organization with cache resilience
     if (userOrgs.length === 0) {
-      // If the profile already has an organization_id, we should try to use it
-      // before giving up and redirecting to setup.
       if (profile?.organization_id) {
         console.log("--- [DEBUG] AppLayout: userOrgs empty but profile has org_id. Attempting recovery... ---")
         const { getOrganization } = await import("@/lib/data/organizations")
         const org = await getOrganization(profile.organization_id)
         if (org) {
-          console.log(`--- [DEBUG] AppLayout: Recovered org context for ${org.slug}. Skipping setup redirect. ---`)
-          // We don't have the membership role here, so we'll default to 'admin' (or fetch it)
-          // But actually, if we are in this block, it's safer to just NOT redirect and let 
-          // the downstream logic handle it (which it will, by trying to find the membership later).
+          console.log(`--- [DEBUG] AppLayout: Recovered org context for ${org.slug}. Building fallback membership. ---`)
+          userOrgs = [{
+            id: `fallback-${profile.organization_id}`,
+            org_id: profile.organization_id,
+            user_id: userId,
+            role: (profile.role === "owner" || profile.role === "manager" || profile.role === "staff")
+              ? profile.role
+              : "owner",
+            created_at: new Date().toISOString(),
+            organization: org
+          }] as any
         }
       } else if (!pathPrefix || pathPrefix === "/setup-organization") {
         console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Setup ---")

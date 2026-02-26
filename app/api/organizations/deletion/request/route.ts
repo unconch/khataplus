@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { requestOrganizationDeletion } from "@/lib/data/organizations"
+import { StepUpRequiredError } from "@/lib/step-up"
 
 export async function POST(request: Request) {
     try {
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
         return NextResponse.json(result)
     } catch (error: any) {
         console.error("[DELETE/request]", error.message)
-        return NextResponse.json({ error: error.message }, { status: error.message.includes("Only the original creator") ? 403 : 500 })
+        const status = error instanceof StepUpRequiredError ? 428
+            : error.message.includes("Only the original creator") ? 403
+                : 500
+        return NextResponse.json({ error: error.message }, { status })
     }
 }

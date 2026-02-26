@@ -69,21 +69,59 @@ export async function revokeAllSessions(userId: string) {
 }
 
 /**
+ * Retrieves all active sessions for a user.
+ */
+export async function getUserSessions(userId: string): Promise<string[]> {
+    const redis = getRedis();
+    if (!redis) return [];
+
+    const key = `user:sessions:${userId}`
+    return await redis.smembers(key)
+}
+
+/**
+ * Revokes a specific session.
+ */
+export async function revokeSession(userId: string, sessionId: string) {
+    const redis = getRedis();
+    if (!redis) return;
+
+    const key = `user:sessions:${userId}`
+    await redis.srem(key, sessionId)
+    await redis.set(`revoked:session:${sessionId}`, 'true', { ex: 3600 * 24 })
+}
+
+/**
  * Checks if a session is valid and not revoked.
  */
 export async function isSessionValid(userId: string, sessionId: string, iat?: number): Promise<boolean> {
     const redis = getRedis();
     if (!redis) return true; // Fail open if Redis is down/missing
 
-    // 1. Check if explicitly revoked
-    const isRevoked = await redis.get(`revoked:session:${sessionId}`)
-    if (isRevoked) return false
+    // Use a small timeout for session validation to avoid hanging the middleware
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 2500)
+    );
 
-    // 2. Check if issued before a mandatory logout event (password change)
-    if (iat) {
-        const minIat = await redis.get<number>(`user:min_iat:${userId}`)
-        if (minIat && iat < minIat) return false
+    try {
+        const result = await Promise.race([
+            (async () => {
+                // 1. Check if explicitly revoked
+                const isRevoked = await redis.get(`revoked:session:${sessionId}`)
+                if (isRevoked) return false
+
+                // 2. Check if issued before a mandatory logout event (password change)
+                if (iat) {
+                    const minIat = await redis.get<number>(`user:min_iat:${userId}`)
+                    if (minIat && iat < minIat) return false
+                }
+                return true
+            })(),
+            timeoutPromise
+        ]);
+        return result;
+    } catch (err: any) {
+        console.warn("[SessionGovernance] Validation timed out or failed, failing open:", err?.message || err);
+        return true; // Fail open for resilience
     }
-
-    return true
 }

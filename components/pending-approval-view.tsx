@@ -4,23 +4,15 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClockIcon, XCircleIcon } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 interface PendingApprovalViewProps {
   email: string
   isDisabled: boolean
 }
 
-import { useDescope } from "@descope/react-sdk"
-
 export function PendingApprovalView({ email, isDisabled }: PendingApprovalViewProps) {
-  const router = useRouter()
-  const { logout } = useDescope()
-
   const handleLogout = async () => {
-    await logout()
-    router.push("/auth/login")
-    router.refresh()
+    window.location.href = "/api/auth/logout?returnTo=/auth/login"
   }
 
   return (

@@ -1,10 +1,23 @@
-import { sql } from "@/lib/db";
 import { AlertCircle, CheckCircle, Info, Megaphone, X } from "lucide-react";
 
 export async function SystemAnnouncement() {
     try {
+        const { getProductionSql } = await import("@/lib/db");
+        const db = getProductionSql();
+
+        const tableExists = await db`
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'system_announcements'
+            ) as exists
+        ` as any[];
+
+        if (!tableExists?.[0]?.exists) return null;
+
         // Fetch most recent active announcement
-        const announcements = await sql`
+        const announcements = await db`
             SELECT * FROM system_announcements 
             WHERE is_active = true 
             ORDER BY created_at DESC 

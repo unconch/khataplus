@@ -10,13 +10,21 @@ export const metadata = {
 
 export default async function CustomersPage() {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">Customers</h2>
+        <div className="min-h-full space-y-10 pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-4">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+                        Credit <span className="text-emerald-600">Ledger</span>
+                    </h1>
+                    <p className="text-sm font-medium text-muted-foreground">Manage your customers and outstanding balances</p>
+                </div>
             </div>
             <Suspense fallback={
-                <div className="flex h-[400px] w-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="h-[600px] w-full flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-3xl animate-pulse border">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground/20" />
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opening Ledger</p>
+                    </div>
                 </div>
             }>
                 <CustomersContent />

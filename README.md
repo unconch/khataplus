@@ -15,7 +15,7 @@ Business billing and khata management for Indian businesses. Built with Next.js 
 - Neon Postgres
 - Tailwind CSS + Shadcn UI
 - Recharts
-- Descope Auth
+- Auth0
 
 ## Getting Started
 
@@ -26,7 +26,11 @@ npm install
 Create `.env.local`:
 ```env
 DATABASE_URL=your_neon_db_url
-NEXT_PUBLIC_DESCOPE_PROJECT_ID=your_descope_id
+AUTH0_DOMAIN=your-tenant.us.auth0.com
+AUTH0_CLIENT_ID=your_client_id
+AUTH0_CLIENT_SECRET=your_client_secret
+AUTH0_SECRET=your_long_random_secret
+APP_BASE_URL=http://localhost:3000
 ```
 
 Run dev server:

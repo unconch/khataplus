@@ -78,6 +78,7 @@ export interface SystemSettings {
   allow_staff_add_inventory: boolean
   gst_enabled: boolean
   gst_inclusive: boolean
+  show_buy_price_in_sales?: boolean
   updated_at: string
 }
 
@@ -144,7 +145,9 @@ export interface KhataTransaction {
   sale_id?: string
   note?: string
   created_by?: string
+  created_by_name?: string
   created_at: string
+  running_balance?: number
   customer?: Customer
 }
 
@@ -159,6 +162,7 @@ export interface Organization {
   settings?: {
     gst_enabled: boolean
     gst_inclusive: boolean
+    show_buy_price_in_sales?: boolean
     allow_staff_inventory: boolean
     allow_staff_sales: boolean
     allow_staff_reports: boolean
@@ -230,6 +234,19 @@ export interface SupplierTransaction {
   org_id: string
   created_at: string
   supplier?: Partial<Supplier>
+}
+
+export interface StockMovement {
+  id: string
+  org_id: string
+  inventory_id: string
+  quantity_delta: number
+  movement_type: "sale" | "return" | "adjustment" | "purchase" | "transfer_in" | "transfer_out" | "opening"
+  reference_type?: string
+  reference_id?: string
+  note?: string
+  created_by?: string
+  created_at: string
 }
 
 export interface SystemAlert {

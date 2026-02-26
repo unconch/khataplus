@@ -14,7 +14,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
     const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
-    const secondaryHref = "/demo"
+    const secondaryHref = "/auth/login"
 
     return (
         <>
@@ -76,7 +76,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                                         className="inline-flex items-center justify-center gap-4 rounded-2xl border border-white/30 bg-white/5 px-14 py-6 text-[13px] font-black uppercase tracking-widest text-white backdrop-blur-xl transition hover:bg-white/10 hover:border-white/50"
                                     >
                                         <Play className="h-5 w-5 fill-white stroke-0" />
-                                        Watch Demo Video
+                                        Login to Dashboard
                                     </Link>
                                 </div>
                             </AdvancedScrollReveal>

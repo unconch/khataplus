@@ -21,6 +21,7 @@
     ]
   },
   "dependencies": {
+    "@descope/nextjs-sdk": "^0.15.14",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",

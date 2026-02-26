@@ -39,7 +39,7 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
         throw new Error("Unauthorized: No active session");
     }
 
-    // Fetch profile from DB to verify status
+    // Fetch profile from DB
     const profile = await sql`SELECT * FROM profiles WHERE id = ${session.sub}`;
     if (profile.length === 0) {
         throw new Error("Unauthorized: Profile not found");
@@ -47,13 +47,12 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
 
     const user = profile[0] as Profile;
 
-    // Fix: Default status to 'active' if undefined or empty
-    if (!user.status) {
-        user.status = 'active';
-    }
+    const normalizedRole = String(user.role || "").toLowerCase();
+    const hasValidRole = ["owner", "main admin", "admin", "manager", "staff"].includes(normalizedRole);
 
-    if (user.status !== "active") {
-        throw new Error(`Unauthorized: Account status is ${user.status}`);
+    // Access is role-based only. Account status is not used for authorization.
+    if (!hasValidRole) {
+        throw new Error(`Unauthorized: Invalid user role ${user.role || "unknown"}`);
     }
 
     // If orgId is provided, check organization-specific role

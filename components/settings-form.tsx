@@ -1,707 +1,464 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
-import { Organization, SystemSettings, Profile } from "@/lib/types"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import type { Organization, Profile, SystemSettings } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { updateOrganization, updateSystemSettings } from "@/lib/data/organizations"
-import { upsertProfile } from "@/lib/data/profiles"
+import { Save, Loader2, User, Building2, Globe, Shield, Receipt, MapPin, Phone, Mail, Zap, CheckCircle2, Hash, Copy } from "lucide-react"
 import { toast } from "sonner"
-import { Building2, Save, BadgeCheck, Phone, MapPin, Globe, Percent, Info, User, Fingerprint, Shield, MessageCircle,
-    Trash2, AlertTriangle, Clock, CheckCircle2, XCircle, Users, ShieldAlert, RefreshCw, Loader2
-} from "lucide-react"
-import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+const INDIAN_STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa",
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka",
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+  "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+]
+
+// Helper: parse a comma-separated address string into structured parts
+function parseAddress(raw?: string | null) {
+  const parts = (raw || "").split(",").map(s => s.trim())
+  const pinPattern = /\b\d{6}\b/
+
+  const extractPin = (...fields: string[]) => {
+    for (const f of fields) {
+      const m = String(f || "").match(pinPattern)
+      if (m) return m[0]
+    }
+    return ""
+  }
+
+  const pinFromAny = extractPin(parts[4] || "", parts[3] || "", parts[2] || "", parts[1] || "", parts[0] || "")
+  const stripPin = (v: string) => String(v || "").replace(pinPattern, "").replace(/\s*-\s*$/, "").trim()
+
+  return {
+    street: stripPin(parts[0] || ""),
+    city: stripPin(parts[1] || ""),
+    district: stripPin(parts[2] || ""),
+    state: stripPin(parts[3] || ""),
+    pin: (parts[4] || pinFromAny || "").replace(/\D/g, "").slice(0, 6),
+  }
+}
+
+function combineAddress(addr: { street: string; city: string; district: string; state: string; pin: string }) {
+  return [addr.street, addr.city, addr.district, addr.state, addr.pin]
+    .map(s => s.trim())
+    .filter(Boolean)
+    .join(", ")
+}
+
+function normalizeStateName(value: string) {
+  return value.toLowerCase().replace(/[^a-z]/g, "")
+}
+
+// Conservative PIN -> state inference.
+// Returns null where prefixes are shared by multiple states to avoid false mismatches.
+function inferIndianStateFromPin(pin: string): string | null {
+  const clean = pin.replace(/\D/g, "")
+  if (clean.length !== 6) return null
+
+  if (clean.startsWith("744")) return "Andaman and Nicobar Islands"
+  if (clean.startsWith("682")) return "Lakshadweep"
+  if (clean.startsWith("737")) return "Sikkim"
+
+  const prefix2 = Number.parseInt(clean.slice(0, 2), 10)
+  if (Number.isNaN(prefix2)) return null
+
+  if (prefix2 === 11) return "Delhi"
+  if (prefix2 >= 12 && prefix2 <= 13) return "Haryana"
+  if (prefix2 >= 14 && prefix2 <= 16) return "Punjab"
+  if (prefix2 === 17) return "Himachal Pradesh"
+  if (prefix2 >= 18 && prefix2 <= 19) return "Jammu and Kashmir"
+  if (prefix2 >= 36 && prefix2 <= 39) return "Gujarat"
+  if (prefix2 >= 40 && prefix2 <= 44) return "Maharashtra"
+  if (prefix2 >= 45 && prefix2 <= 48) return "Madhya Pradesh"
+  if (prefix2 === 49) return "Chhattisgarh"
+  if (prefix2 === 50) return "Telangana"
+  if (prefix2 >= 56 && prefix2 <= 59) return "Karnataka"
+  if (prefix2 >= 60 && prefix2 <= 64) return "Tamil Nadu"
+  if (prefix2 >= 67 && prefix2 <= 69) return "Kerala"
+  if (prefix2 >= 70 && prefix2 <= 74) return "West Bengal"
+  if (prefix2 >= 75 && prefix2 <= 77) return "Odisha"
+  if (prefix2 === 78) return "Assam"
+
+  return null
+}
 
 interface SettingsFormProps {
-    initialOrg: Organization
-    initialSettings: SystemSettings
-    initialProfile: Profile
-    isAdmin: boolean
-    orgRole?: string
-    viewMode?: "full" | "profile" | "organization"
+  initialOrg: Organization
+  initialSettings: SystemSettings
+  initialProfile: Profile
+  isAdmin: boolean
+  orgRole?: string
+  viewMode?: "full" | "profile" | "organization"
 }
 
-export function SettingsForm({ initialOrg, initialSettings, initialProfile, isAdmin, orgRole, viewMode = "full" }: SettingsFormProps) {
-    const [org, setOrg] = useState(initialOrg)
-    const [settings, setSettings] = useState(initialSettings)
-    const [profile, setProfile] = useState(initialProfile)
-    const [loading, setLoading] = useState(false)
+export function SettingsForm({
+  initialOrg,
+  initialSettings,
+  initialProfile,
+  isAdmin,
+  viewMode = "full",
+}: SettingsFormProps) {
+  const [org, setOrg] = useState(initialOrg)
+  const [profile, setProfile] = useState(initialProfile)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const [address, setAddress] = useState(() => parseAddress(initialOrg.address))
 
-    const router = useRouter()
-    const [deleteConfirmText, setDeleteConfirmText] = useState("")
-    const [showDeleteSection, setShowDeleteSection] = useState(false)
-    const [isRequesting, setIsRequesting] = useState(false)
-    const [isCancelling, setIsCancelling] = useState(false)
-    const [deletionStatus, setDeletionStatus] = useState<any>(null)
-    const [statusLoading, setStatusLoading] = useState(false)
-    const isCreator = initialOrg.created_by === initialProfile.id
+  const isProfileView = viewMode === "profile"
+  const showProfileSection = viewMode !== "organization"
+  const showOrganizationSections = viewMode !== "profile"
 
-    const planNames: Record<string, string> = {
-        free: "Plus",
-        starter: "Starter",
-        pro: "Pro",
-        business: "Business",
-        legacy: "Legacy"
+  const canSave = useMemo(() => {
+    if (isProfileView) return true
+    return isAdmin
+  }, [isAdmin, isProfileView])
+
+  const pinStateValidation = useMemo(() => {
+    const pin = (address.pin || "").replace(/\D/g, "")
+    const state = (address.state || "").trim()
+
+    if (!pin) return { kind: "idle" as const, message: "" }
+    if (pin.length < 6) return { kind: "invalid" as const, message: "PIN code must be 6 digits." }
+
+    const inferredState = inferIndianStateFromPin(pin)
+    if (!inferredState) {
+      return { kind: "unknown" as const, message: "PIN region not deterministically mapped. State check skipped." }
     }
 
-    const currentPlan = (org.id === "demo-org" || org.plan_type === "free")
-        ? "Plus"
-        : (planNames[org.plan_type || "free"] || String(org.plan_type || "Free"))
-    const subscriptionStatus = String(org.subscription_status || "trial")
-    const trialEndsAt = org.trial_ends_at ? new Date(org.trial_ends_at) : null
-    const planExpiresAtRaw = (org as any).plan_expires_at as string | undefined
-    const planExpiresAt = planExpiresAtRaw ? new Date(planExpiresAtRaw) : null
-    const now = new Date()
+    if (!state) return { kind: "warn" as const, message: `PIN ${pin} maps to ${inferredState}. Enter state to verify.` }
 
-    const trialDaysLeft = trialEndsAt
-        ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-        : 0
-
-    const statusMeta = subscriptionStatus === "active"
-        ? { label: "Active", tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
-        : subscriptionStatus === "trial"
-            ? { label: "Trial", tone: "text-amber-700 bg-amber-50 border-amber-200" }
-            : subscriptionStatus === "past_due"
-                ? { label: "Past Due", tone: "text-red-700 bg-red-50 border-red-200" }
-                : { label: "Canceled", tone: "text-zinc-700 bg-zinc-100 border-zinc-200" }
-
-    const isProfileView = viewMode === "profile"
-    const showProfileSection = viewMode !== "organization"
-    const showOrganizationSections = viewMode !== "profile"
-
-    const handleSave = async () => {
-        if (!isProfileView && !isAdmin) {
-            toast.error("You don't have permission to update settings")
-            return
-        }
-
-        setLoading(true)
-        try {
-            if (isProfileView) {
-                await upsertProfile(profile)
-                toast.success("Identity updated!")
-                return
-            }
-
-            // Destructure settings out to avoid overwriting them with stale data in updateOrganization
-            // updateSystemSettings manages the settings column exclusively
-            const { settings: _unused, ...orgUpdates } = org
-
-            await Promise.all([
-                updateOrganization(org.id, orgUpdates),
-                updateSystemSettings(settings, org.id),
-                upsertProfile(profile)
-            ])
-            toast.success("Identity and settings updated!")
-        } catch (error: any) {
-            toast.error("Failed to update: " + error.message)
-        } finally {
-            setLoading(false)
-        }
+    const same = normalizeStateName(state) === normalizeStateName(inferredState)
+    if (!same) {
+      return { kind: "mismatch" as const, message: `PIN ${pin} maps to ${inferredState}, but state entered is ${state}.` }
     }
 
-        const fetchDeletionStatus = useCallback(async () => {
-            if (!isCreator || !isAdmin) return
-            setStatusLoading(true)
-            try {
-                const res = await fetch(`/api/organizations/deletion/status?orgId=${initialOrg.id}`)
-                if (!res.ok) throw new Error("Status fetch failed")
-                const data = await res.json()
-                setDeletionStatus(data)
-            } catch (e) {
-                console.error("[DeletionStatus] fetch failed:", e)
-                // Don't show error toast — this is background polling
-            } finally {
-                setStatusLoading(false)
-            }
-        }, [initialOrg.id, isCreator, isAdmin])
+    return { kind: "ok" as const, message: `PIN ${pin} matches state ${inferredState}.` }
+  }, [address.pin, address.state])
 
-        // Fetch status on mount and poll every 30s if pending
-        useEffect(() => {
-            fetchDeletionStatus()
-            let interval: NodeJS.Timeout | null = null
-            if (deletionStatus?.hasPendingRequest) {
-                interval = setInterval(fetchDeletionStatus, 30000)
-            }
-            return () => { if (interval) clearInterval(interval) }
-        }, [fetchDeletionStatus, deletionStatus?.hasPendingRequest])
+  const isPinStateMismatch = pinStateValidation.kind === "mismatch"
+  const hasAddressValidationError = pinStateValidation.kind === "mismatch" || pinStateValidation.kind === "invalid"
 
-        const handleRequestDeletion = async () => {
-            if (deleteConfirmText.trim() !== org.name.trim()) {
-                toast.error("Organization name doesn't match — type it exactly")
-                return
-            }
-            setIsRequesting(true)
-            try {
-                const res = await fetch("/api/organizations/deletion/request", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ orgId: org.id })
-                })
-                const data = await res.json()
-                if (!res.ok) throw new Error(data.error)
+  const handleSave = async () => {
+    if (!canSave) {
+      toast.error("You don't have permission to update settings")
+      return
+    }
+    if (hasAddressValidationError) {
+      toast.error("Address validation failed. Fix PIN/State before saving.")
+      return
+    }
 
-                if (data.deleted) {
-                    toast.success("Organization permanently deleted")
-                    router.push("/setup-organization")
-                    return
-                }
+    setLoading(true)
+    const currentSlug = initialOrg.slug
+    const nextSlug = org.slug?.toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+    const slugChanged = !!nextSlug && nextSlug !== currentSlug
 
-                toast.success(`Deletion request sent to ${data.pendingOwners} owner(s) for approval`)
-                setShowDeleteSection(false)
-                setDeleteConfirmText("")
-                await fetchDeletionStatus()
-            } catch (error: any) {
-                toast.error(error.message)
-            } finally {
-                setIsRequesting(false)
-            }
-        }
+    try {
+      const { settings: _unused, ...orgUpdates } = org
+      const res = await fetch("/api/settings/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isProfileView,
+          org: orgUpdates,
+          profile,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Settings update failed")
 
-        const handleCancelDeletion = async () => {
-            setIsCancelling(true)
-            try {
-                const res = await fetch("/api/organizations/deletion/cancel", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ orgId: org.id })
-                })
-                const data = await res.json()
-                if (!res.ok) throw new Error(data.error)
-                toast.success("Deletion request cancelled — your organization is safe")
-                setDeletionStatus({ hasPendingRequest: false })
-            } catch (error: any) {
-                toast.error(error.message)
-            } finally {
-                setIsCancelling(false)
-            }
-        }
+      toast.success("Identity and settings updated!")
 
-        return (
-        <div className="space-y-12">
-            {/* Owner Identity Section */}
-            {showProfileSection && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <User className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-bold">Your Identity</h3>
-                </div>
+      if (slugChanged && nextSlug) {
+        toast.info(`Access URL updated to ${nextSlug}. Redirecting...`, { duration: 4000 })
+        setTimeout(() => {
+          window.location.href = `/${nextSlug}/dashboard/settings`
+        }, 700)
+      } else {
+        router.refresh()
+      }
+    } catch (error: any) {
+      console.error("Settings update failed:", error)
+      toast.error(error?.message || "Update failed")
+    } finally {
+      setLoading(false)
+    }
+  }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Legal Name</Label>
-                        <Input
-                            value={profile.name || ""}
-                            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                            className="h-10 font-medium"
-                            placeholder="Full Name"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Authorized Email</Label>
-                        <div className="relative">
-                            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-                            <Input
-                                value={profile.email}
-                                disabled
-                                className="h-10 pl-10 bg-muted/30 cursor-not-allowed border-dashed"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                            <Shield className="h-3 w-3" /> System Role
-                        </Label>
-                        <p className="text-sm font-bold capitalize">{orgRole || profile.role}</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                            <BadgeCheck className="h-3 w-3 text-emerald-500" /> Member Since
-                        </Label>
-                        <p className="text-sm font-bold">
-                            {new Date(profile.created_at).toLocaleDateString('en-IN', {
-                                month: 'long',
-                                year: 'numeric'
-                            })}
-                        </p>
-                    </div>
-
-                </div>
-            </section>
-            )}
-
-            {/* Business Profile Section */}
-            {showOrganizationSections && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-bold">Organization Identity</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Organization Display Name</Label>
-                        <Input
-                            value={org.name}
-                            onChange={(e) => setOrg({ ...org, name: e.target.value })}
-                            className="h-10 font-medium"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Access Link (Slug)</Label>
-                        <div className="relative flex items-center">
-                            <Globe size={14} className="absolute left-3 text-muted-foreground opacity-50" />
-                            <Input
-                                value={org.slug}
-                                onChange={(e) => setOrg({ ...org, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-') })}
-                                className="h-10 pl-10 font-medium"
-                                placeholder="my-business"
-                            />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            Your app is at <span className="text-primary font-bold">khataplus.online/{org.slug}/dashboard</span>
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">GSTIN / Tax ID</Label>
-                        <div className="relative flex items-center">
-                            <BadgeCheck size={14} className="absolute left-3 text-emerald-500" />
-                            <Input
-                                value={org.gstin || ""}
-                                onChange={(e) => setOrg({ ...org, gstin: e.target.value.toUpperCase() })}
-                                className="h-10 pl-10 font-mono uppercase"
-                                placeholder="18AAAAA0000A1Z5"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Business Phone</Label>
-                        <div className="relative flex items-center">
-                            <Phone size={14} className="absolute left-3 text-muted-foreground opacity-50" />
-                            <Input
-                                value={org.phone || ""}
-                                onChange={(e) => setOrg({ ...org, phone: e.target.value })}
-                                className="h-10 pl-10"
-                                placeholder="+91 00000 00000"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">UPI ID (for Direct Payments)</Label>
-                        <div className="relative flex items-center">
-                            <Percent size={14} className="absolute left-3 text-emerald-500" />
-                            <Input
-                                value={org.upi_id || ""}
-                                onChange={(e) => setOrg({ ...org, upi_id: e.target.value })}
-                                className="h-10 pl-10 font-mono"
-                                placeholder="business@upi"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Business Address</Label>
-                        <div className="relative flex items-center">
-                            <MapPin size={14} className="absolute left-3 text-muted-foreground opacity-50" />
-                            <Input
-                                value={org.address || ""}
-                                onChange={(e) => setOrg({ ...org, address: e.target.value })}
-                                className="h-10 pl-10"
-                                placeholder="Full business address..."
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
-            )}
-
-            {/* Membership Section */}
-            {showOrganizationSections && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <BadgeCheck className="h-5 w-5 text-emerald-500" />
-                    <h3 className="text-lg font-bold">Billing</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-5 rounded-2xl border border-border bg-muted/20 space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Membership</p>
-                                <h4 className="text-2xl font-black tracking-tight mt-1">{currentPlan}</h4>
-                            </div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border", statusMeta.tone)}>
-                                {statusMeta.label}
-                            </span>
-                        </div>
-
-                        {subscriptionStatus === "trial" && (
-                            <p className="text-sm text-amber-700 font-semibold">
-                                Trial ends in {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}.
-                            </p>
-                        )}
-
-                        {subscriptionStatus !== "trial" && planExpiresAt && (
-                            <p className="text-sm text-muted-foreground">
-                                Current cycle ends on{" "}
-                                <span className="font-semibold text-foreground">
-                                    {planExpiresAt.toLocaleDateString("en-IN", {
-                                        day: "numeric",
-                                        month: "long",
-                                        year: "numeric",
-                                    })}
-                                </span>.
-                            </p>
-                        )}
-
-                        {subscriptionStatus === "trial" && trialEndsAt && (
-                            <p className="text-sm text-muted-foreground">
-                                Trial end date:{" "}
-                                <span className="font-semibold text-foreground">
-                                    {trialEndsAt.toLocaleDateString("en-IN", {
-                                        day: "numeric",
-                                        month: "long",
-                                        year: "numeric",
-                                    })}
-                                </span>
-                            </p>
-                        )}
-
-                        <div className="flex flex-wrap gap-3 pt-2">
-                            <Link href={`/${org.slug}/pricing`}>
-                                <Button size="sm" className="h-10 px-4 font-black uppercase tracking-wide">
-                                    Upgrade / Change Plan
-                                </Button>
-                            </Link>
-                            <Link href="/legal/cancellation-refund">
-                                <Button size="sm" variant="outline" className="h-10 px-4 font-bold">
-                                    Cancellation & Refund Policy
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-
-                    <div className="p-5 rounded-2xl border border-border bg-muted/20 space-y-3">
-                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Billing Notes</p>
-                        <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-                            <li>Plan upgrades are applied after successful payment verification.</li>
-                            <li>If payment fails, account may move to read-only mode after grace period.</li>
-                            <li>You can export your data anytime from the settings area.</li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-            )}
-
-            {/* System Preferences Section */}
-            {showOrganizationSections && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <Percent className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-bold">Taxation & Operations</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-bold">Enable GST Invoicing</Label>
-                            <p className="text-xs text-muted-foreground">Show GST fields in sales and invoices</p>
-                        </div>
-                        <Switch
-                            checked={settings.gst_enabled}
-                            onCheckedChange={(checked) => setSettings({ ...settings, gst_enabled: checked })}
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-bold">GST Inclusive Pricing</Label>
-                            <p className="text-xs text-muted-foreground">Prices include tax by default</p>
-                        </div>
-                        <Switch
-                            checked={settings.gst_inclusive}
-                            onCheckedChange={(checked) => setSettings({ ...settings, gst_inclusive: checked })}
-                        />
-                    </div>
-                </div>
-            </section>
-            )}
-
-            {/* Staff Permissions Section */}
-            {showOrganizationSections && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <Info className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-bold">Staff Access Control</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                        { label: "Allow Staff Inventory Access", key: "allow_staff_inventory" },
-                        { label: "Allow Staff Sales Access", key: "allow_staff_sales" },
-                        { label: "Allow Staff Add Items", key: "allow_staff_add_inventory" },
-                        { label: "Allow Staff Reports Access", key: "allow_staff_reports" },
-                        { label: "Allow Staff Analytics", key: "allow_staff_analytics" },
-                    ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between py-2 px-1">
-                            <Label className="text-sm font-medium">{item.label}</Label>
-                            <Switch
-                                checked={(settings as any)[item.key]}
-                                onCheckedChange={(checked) => setSettings({ ...settings, [item.key]: checked })}
-                            />
-                        </div>
-                    ))}
-                </div>
-            </section>
-            )}
-
-            {/* Connected Automation Section (V2) */}
-            {showOrganizationSections && (
-            <section className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                    <MessageCircle className="h-5 w-5 text-emerald-500" />
-                    <h3 className="text-lg font-bold">Connected Automation</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-900/5">
-                        <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                                <Label className="text-sm font-bold">WhatsApp Automation Add-on</Label>
-                                {org.whatsapp_addon_active && (
-                                    <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase">Active</span>
-                                )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">Enable Smart Share & Automated Reminders</p>
-                        </div>
-                        <Switch
-                            checked={org.whatsapp_addon_active}
-                            onCheckedChange={(checked) => setOrg({ ...org, whatsapp_addon_active: checked })}
-                        />
-                    </div>
-
-                    <div className={cn(
-                        "flex items-center justify-between p-4 rounded-xl border transition-opacity",
-                        org.whatsapp_addon_active ? "opacity-100" : "opacity-40 pointer-events-none"
-                    )}>
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-bold">Auto Payment Reminders</Label>
-                            <p className="text-xs text-muted-foreground">Send periodic alerts for overdue balances</p>
-                        </div>
-                        <Switch
-                            checked={org.auto_reminders_enabled}
-                            onCheckedChange={(checked) => setOrg({ ...org, auto_reminders_enabled: checked })}
-                        />
-                    </div>
-                </div>
-            </section>
-            )}
-
-            <div className="pt-6 border-t border-border/50">
-                <Button
-                    onClick={handleSave}
-                    className="w-full h-14 text-lg font-black shadow-2xl active:scale-95 transition-all"
-                    disabled={loading || (!isAdmin && !isProfileView)}
-                >
-                    {loading
-                        ? (isProfileView ? "Saving Identity..." : "Synchronizing Identity...")
-                        : (isProfileView ? "Save Identity" : "Seal Identity & Configuration")}
-                    {!loading && <Save className="ml-2 h-5 w-5" />}
-                </Button>
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+      {showProfileSection && (
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 px-2">
+            <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+              <User size={16} strokeWidth={2.5} />
             </div>
-            {showOrganizationSections && isAdmin && isCreator && (
-                <section className="space-y-4 pt-8 border-t-2 border-red-100 dark:border-red-900/30">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <ShieldAlert className="h-5 w-5 text-red-500" />
-                            <h3 className="text-lg font-bold text-red-600">Danger Zone</h3>
-                        </div>
-                        {isCreator && (
-                            <button
-                                onClick={fetchDeletionStatus}
-                                disabled={statusLoading}
-                                className="text-xs text-zinc-400 hover:text-zinc-600 flex items-center gap-1"
-                            >
-                                <RefreshCw className={`h-3 w-3 ${statusLoading ? "animate-spin" : ""}`} />
-                                Refresh
-                            </button>
-                        )}
-                    </div>
+            <div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Personal Data</h3>
+              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Your Private Account Identity</p>
+            </div>
+          </div>
 
-                    {/* ── Pending deletion request status ── */}
-                    {deletionStatus?.hasPendingRequest && (
-                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5 space-y-4">
-                            <div className="flex items-start gap-3">
-                                <Clock className="h-5 w-5 text-amber-600 mt-0.5 shrink-0 animate-pulse" />
-                                <div className="flex-1">
-                                    <p className="font-bold text-amber-900 dark:text-amber-100">
-                                        Deletion Request Pending
-                                    </p>
-                                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
-                                        Waiting for{" "}
-                                        {(deletionStatus.totalApproversNeeded ?? 0) - (deletionStatus.approvedCount ?? 0)}{" "}
-                                        of {deletionStatus.totalApproversNeeded ?? 0} owner(s) to respond
-                                    </p>
-                                    {deletionStatus.expiresAt && (
-                                        <p className="text-xs text-amber-600 mt-1">
-                                            Expires: {new Date(deletionStatus.expiresAt).toLocaleDateString("en-IN", {
-                                                day: "numeric", month: "long", year: "numeric"
-                                            })}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SettingField label="Full Name" icon={<User size={14} />}>
+              <Input
+                value={profile.name || ""}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+              />
+            </SettingField>
 
-                            {/* Per-owner approval status */}
-                            {deletionStatus.approvals && deletionStatus.approvals.length > 0 && (
-                                <div className="space-y-2">
-                                    {deletionStatus.approvals.map((approval: any) => (
-                                        <div
-                                            key={approval.ownerId}
-                                            className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-lg px-4 py-3 border border-amber-100 dark:border-amber-900/30"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Users className="h-4 w-4 text-zinc-400" />
-                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                                    {approval.ownerName}
-                                                </span>
-                                            </div>
-                                            {approval.approved === true && (
-                                                <div className="flex items-center gap-1.5 text-emerald-600">
-                                                    <CheckCircle2 className="h-4 w-4" />
-                                                    <span className="text-xs font-bold">Approved</span>
-                                                </div>
-                                            )}
-                                            {approval.approved === false && (
-                                                <div className="flex items-center gap-1.5 text-red-500">
-                                                    <XCircle className="h-4 w-4" />
-                                                    <span className="text-xs font-bold">Rejected</span>
-                                                </div>
-                                            )}
-                                            {approval.approved === null && (
-                                                <div className="flex items-center gap-1.5 text-zinc-400">
-                                                    <Clock className="h-4 w-4" />
-                                                    <span className="text-xs font-bold">Pending</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+            <SettingField label="Email Address" icon={<Mail size={14} />} disabled>
+              <Input
+                value={profile.email}
+                disabled
+                className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium italic opacity-60 text-xs"
+              />
+            </SettingField>
 
-                            <button
-                                onClick={handleCancelDeletion}
-                                disabled={isCancelling}
-                                className="w-full py-2.5 text-sm font-semibold text-amber-800 hover:text-amber-950 dark:text-amber-300 underline disabled:opacity-50 transition-colors"
-                            >
-                                {isCancelling ? "Cancelling..." : "Cancel Deletion Request"}
-                            </button>
-                        </div>
-                    )}
+            <SettingField label="Direct Contact" icon={<Phone size={14} />}>
+              <Input
+                value={profile.phone || ""}
+                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                placeholder="+91 ..."
+              />
+            </SettingField>
 
-                    {/* ── Deletion initiator UI ── */}
-                    {!deletionStatus?.hasPendingRequest && (
-                        <>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                Permanently delete this organization and all its data. This action is irreversible.
-                                {" "}If other owners exist in the organization, <strong>all of them must approve</strong> before deletion proceeds.
-                            </p>
-
-                            {!showDeleteSection ? (
-                                <Button
-                                    variant="outline"
-                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900 dark:hover:bg-red-950/20"
-                                    onClick={() => setShowDeleteSection(true)}
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Organization
-                                </Button>
-                            ) : (
-                                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-6 space-y-5">
-                                    <div className="flex items-start gap-3">
-                                        <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="font-bold text-red-900 dark:text-red-100 mb-2">
-                                                This will permanently delete:
-                                            </p>
-                                            <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
-                                                <li>All products and inventory</li>
-                                                <li>All sales and transaction history</li>
-                                                <li>All customers and supplier records</li>
-                                                <li>All khata ledger entries</li>
-                                                <li>All reports and analytics data</li>
-                                                <li>All team members and invitations</li>
-                                                <li>All encrypted data (crypto-shredded, unrecoverable)</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <p className="text-sm text-red-700 dark:text-red-300">
-                                            Type <strong className="font-mono">{org.name}</strong> to confirm:
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={deleteConfirmText}
-                                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                            onPaste={(e) => e.preventDefault()} // Force manual typing
-                                            placeholder={org.name}
-                                            autoComplete="off"
-                                            className="w-full border border-red-300 dark:border-red-800 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-zinc-100"
-                                        />
-                                        <p className="text-[11px] text-red-500">Paste is disabled — type it manually</p>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            onClick={() => {
-                                                setShowDeleteSection(false)
-                                                setDeleteConfirmText("")
-                                            }}
-                                            disabled={isRequesting}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
-                                            onClick={handleRequestDeletion}
-                                            disabled={
-                                                deleteConfirmText.trim() !== org.name.trim() ||
-                                                isRequesting
-                                            }
-                                        >
-                                            {isRequesting ? (
-                                                <span className="flex items-center gap-2">
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                    Processing...
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-2">
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Delete Forever
-                                                </span>
-                                            )}
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </section>
-            )}
+            <SettingField label="System Permissions" icon={<Shield size={14} />} disabled>
+              <div className="h-10 flex items-center px-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{profile.role}</span>
+              </div>
+            </SettingField>
+          </div>
         </div>
-    )
+      )}
+
+      {showOrganizationSections && (
+        <div className="space-y-8">
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 px-2">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                <Building2 size={18} strokeWidth={2.5} />
+              </div>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Company Profile</h3>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Public-facing organization details</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingField label="Organization ID" icon={<Hash size={14} />} disabled>
+                <div className="relative">
+                  <Input
+                    value={org.id || ""}
+                    disabled
+                    className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold opacity-70 pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!org.id) return
+                      try {
+                        await navigator.clipboard.writeText(String(org.id))
+                        toast.success("Organization ID copied")
+                      } catch {
+                        toast.error("Failed to copy Organization ID")
+                      }
+                    }}
+                    disabled={!org.id}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Copy organization ID"
+                    title="Copy organization ID"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </SettingField>
+
+              <SettingField label="Legitimacy Name" icon={<Building2 size={14} />}>
+                <Input
+                  value={org.name || ""}
+                  onChange={(e) => setOrg({ ...org, name: e.target.value })}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  disabled={!isAdmin}
+                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-black text-emerald-600 dark:text-emerald-400 text-xs normal-case"
+                />
+              </SettingField>
+
+              <SettingField label="Unique Discovery Slug" icon={<Globe size={14} />}>
+                <div className="relative">
+                  <Input
+                    value={org.slug || ""}
+                    onChange={(e) => setOrg({ ...org, slug: e.target.value })}
+                    disabled={!isAdmin}
+                    className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold pl-14 text-xs"
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-zinc-400 uppercase tracking-tighter border-r pr-2 border-zinc-100 dark:border-zinc-800 leading-none">kh+/</div>
+                </div>
+              </SettingField>
+
+              <SettingField label="GST Registration" icon={<Receipt size={14} />}>
+                <Input
+                  value={org.gstin || ""}
+                  onChange={(e) => setOrg({ ...org, gstin: e.target.value })}
+                  disabled={!isAdmin}
+                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold"
+                  placeholder="22AAAAA0000A1Z5"
+                />
+              </SettingField>
+
+              <SettingField label="Org Contact" icon={<Phone size={14} />}>
+                <Input
+                  value={org.phone || ""}
+                  onChange={(e) => setOrg({ ...org, phone: e.target.value })}
+                  disabled={!isAdmin}
+                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                />
+              </SettingField>
+
+              <div className="md:col-span-2 mt-2">
+                <div className="flex items-center gap-3 px-2 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-600">
+                    <MapPin size={18} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Registered Address</h4>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Section-wise location</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl border border-dashed border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+                  <div className="md:col-span-2">
+                    <SettingField label="Building / Street" icon={<Building2 size={14} />}>
+                      <Input
+                        value={address.street}
+                        onChange={(e) => {
+                          const next = { ...address, street: e.target.value }
+                          setAddress(next)
+                          setOrg({ ...org, address: combineAddress(next) })
+                        }}
+                        disabled={!isAdmin}
+                        className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium text-xs"
+                      />
+                    </SettingField>
+                  </div>
+                  <SettingField label="City / Town" icon={<MapPin size={14} />}>
+                    <Input
+                      value={address.city}
+                      onChange={(e) => {
+                        const next = { ...address, city: e.target.value }
+                        setAddress(next)
+                        setOrg({ ...org, address: combineAddress(next) })
+                      }}
+                      disabled={!isAdmin}
+                      className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                    />
+                  </SettingField>
+                  <SettingField label="State" icon={<Shield size={14} />}>
+                    <Select
+                      disabled={!isAdmin}
+                      value={address.state}
+                      onValueChange={(val) => {
+                        const next = { ...address, state: val }
+                        setAddress(next)
+                        setOrg({ ...org, address: combineAddress(next) })
+                      }}
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs w-full",
+                          pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
+                        )}
+                      >
+                        <SelectValue placeholder="Select State" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDIAN_STATES.map((state) => (
+                          <SelectItem key={state} value={state}>
+                            {state}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SettingField>
+                  <SettingField label="PIN Code" icon={<Hash size={14} />}>
+                    <Input
+                      value={address.pin}
+                      onChange={(e) => {
+                        const next = { ...address, pin: e.target.value.replace(/\D/g, "").slice(0, 6) }
+                        setAddress(next)
+                        setOrg({ ...org, address: combineAddress(next) })
+                      }}
+                      disabled={!isAdmin}
+                      maxLength={6}
+                      className={cn(
+                        "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono font-bold text-xs tracking-widest",
+                        pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
+                      )}
+                    />
+                  </SettingField>
+                  {pinStateValidation.kind !== "idle" && (
+                    <div className={cn(
+                      "md:col-span-2 text-[10px] font-bold px-2",
+                      pinStateValidation.kind === "ok" && "text-emerald-600",
+                      pinStateValidation.kind === "mismatch" && "text-red-600",
+                      (pinStateValidation.kind === "warn" || pinStateValidation.kind === "invalid" || pinStateValidation.kind === "unknown") && "text-amber-600"
+                    )}>
+                      {pinStateValidation.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between p-1 border-t border-zinc-50 dark:border-zinc-800 mt-8 pt-8">
+        <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-zinc-300">
+          <div className="h-1 w-1 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+          Last calibrated: Feb 2026
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={loading || !canSave || hasAddressValidationError}
+          className={cn(
+            "h-11 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500 shadow-xl",
+            canSave ? "bg-zinc-950 dark:bg-zinc-100 hover:scale-105 active:scale-95 shadow-zinc-200 dark:shadow-zinc-950" : "bg-zinc-100 grayscale cursor-not-allowed"
+          )}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+          Commit Changes
+        </Button>
+      </div>
+    </div>
+  )
 }
+
+function SettingField({ label, icon, children, disabled }: { label: string, icon?: React.ReactNode, children: React.ReactNode, disabled?: boolean }) {
+  return (
+    <div className={cn("space-y-2 group transition-all", disabled && "opacity-80")}>
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-zinc-400 group-hover:text-foreground transition-colors">{icon}</span>
+        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+          {label}
+        </Label>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// Removing ControlSwitch from here since it will be moved to security-settings

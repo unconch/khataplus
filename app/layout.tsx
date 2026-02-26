@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "KhataPlus - Smart Billing for NorthEast India",
+    default: "KhataPlus Business - Smart Billing & Inventory",
     template: "%s | KhataPlus"
   },
   description: "The simplest billing, inventory, and khata management app designed effectively for Indian shopkeepers. GST-ready, offline-capable, and secure.",
@@ -46,6 +46,11 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/apple-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "KhataPlus Business",
+  },
 }
 
 export const viewport: Viewport = {
@@ -64,6 +69,7 @@ import { OfflineBanner } from "@/components/offline-banner"
 import { SyncProvider } from "@/components/sync-provider"
 import { SystemAnnouncement } from "@/components/system-announcement"
 import { MotionProvider } from "@/components/motion-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
@@ -83,21 +89,23 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <MotionProvider>
-          <PWAProvider>
-            <AuthProvider>
-              <SyncProvider>
-                <Suspense fallback={null}>
-                  <ReferralTracker />
-                </Suspense>
-                <ScrollToTop />
-                <SystemAnnouncement />
-                <OfflineBanner />
-                {children}
-              </SyncProvider>
-            </AuthProvider>
-          </PWAProvider>
-        </MotionProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <MotionProvider>
+            <PWAProvider>
+              <AuthProvider>
+                <SyncProvider>
+                  <Suspense fallback={null}>
+                    <ReferralTracker />
+                  </Suspense>
+                  <ScrollToTop />
+                  <SystemAnnouncement />
+                  <OfflineBanner />
+                  {children}
+                </SyncProvider>
+              </AuthProvider>
+            </PWAProvider>
+          </MotionProvider>
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
         <PwaInstallPrompt />

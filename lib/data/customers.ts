@@ -5,10 +5,12 @@ import type { Customer, KhataTransaction } from "../types";
 import { authorize, audit } from "../security";
 import { unstable_cache as nextCache } from "next/cache";
 
-export async function getCustomers(orgId: string) {
+export async function getCustomers(orgId: string, options: { limit?: number; offset?: number } = { limit: 1000 }) {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
+    const limit = options.limit ?? 1000;
+    const offset = options.offset ?? 0;
 
     return nextCache(
         async (): Promise<Customer[]> => {
@@ -33,6 +35,8 @@ export async function getCustomers(orgId: string) {
                 WHERE c.org_id = ${orgId}
                 GROUP BY c.id
                 ORDER BY c.created_at DESC
+                LIMIT ${limit}
+                OFFSET ${offset}
             `;
 
             return Promise.all(data.map(async (row: any) => {
@@ -59,8 +63,8 @@ export async function getCustomers(orgId: string) {
                 };
             })) as unknown as Customer[];
         },
-        [`customers-list-${flavor}-${orgId}`],
-        { tags: ["customers", `customers-${orgId}`, `customers-${flavor}`], revalidate: 300 }
+        [`customers-list-${flavor}-${orgId}-${limit}-${offset}`],
+        { tags: ["customers", `customers-${orgId}`, `customers-${flavor}`], revalidate: 3600 }
     )();
 }
 
@@ -161,25 +165,44 @@ export async function deleteCustomer(id: string, orgId: string): Promise<void> {
 export async function getKhataTransactions(orgId: string, customerId?: string): Promise<KhataTransaction[]> {
     const data = customerId
         ? await sql`
-            SELECT k.*, p.name as creator_name, p.email as creator_email
+            SELECT
+                k.*,
+                p.name AS creator_name,
+                p.email AS creator_email,
+                SUM(CASE WHEN k.type = 'credit' THEN k.amount ELSE -k.amount END)
+                    OVER (PARTITION BY k.customer_id ORDER BY k.created_at ASC, k.id ASC) AS running_balance
             FROM khata_transactions k
-            JOIN profiles p ON k.created_by = p.id
+            LEFT JOIN profiles p ON k.created_by = p.id
             WHERE k.customer_id = ${customerId} AND k.org_id = ${orgId}
-            ORDER BY k.created_at DESC
+            ORDER BY k.created_at DESC, k.id DESC
         `
         : await sql`
-            SELECT k.*, p.name as creator_name, p.email as creator_email
+            SELECT
+                k.*,
+                p.name AS creator_name,
+                p.email AS creator_email,
+                c.name AS customer_name,
+                c.phone AS customer_phone
             FROM khata_transactions k
-            JOIN profiles p ON k.created_by = p.id
+            LEFT JOIN profiles p ON k.created_by = p.id
+            LEFT JOIN customers c ON k.customer_id = c.id
             WHERE k.org_id = ${orgId}
-            ORDER BY k.created_at DESC
+            ORDER BY k.created_at DESC, k.id DESC
         `;
 
-    return data.map((row: any) => ({
-        ...row,
-        amount: parseFloat(row.amount),
-        created_by_name: row.creator_name || row.creator_email
-    })) as KhataTransaction[];
+    return data.map((row: any) => {
+        const customer = row.customer_name
+            ? { id: row.customer_id, name: row.customer_name, phone: row.customer_phone || "", created_at: "", updated_at: "" }
+            : undefined;
+
+        return {
+            ...row,
+            amount: parseFloat(row.amount),
+            running_balance: row.running_balance == null ? undefined : parseFloat(row.running_balance),
+            created_by_name: row.creator_name || row.creator_email || "Unknown",
+            customer
+        };
+    }) as KhataTransaction[];
 }
 
 export async function addKhataTransaction(
@@ -188,18 +211,123 @@ export async function addKhataTransaction(
 ): Promise<KhataTransaction> {
     const user = await authorize("Add Khata Transaction", undefined, orgId);
 
-    const result = await sql`
+    const inserted = await sql`
         INSERT INTO khata_transactions(customer_id, type, amount, note, sale_id, created_by, org_id)
         VALUES(${transaction.customer_id}, ${transaction.type}, ${transaction.amount}, ${transaction.note || null}, ${transaction.sale_id || null}, ${user.id}, ${orgId})
         RETURNING *
     `;
 
-    await audit(`Khata ${transaction.type === 'credit' ? 'Credit' : 'Payment'}`, "khata_tx", result[0].id, {
+    await audit(`Khata ${transaction.type === 'credit' ? 'Credit' : 'Payment'}`, "khata_tx", inserted[0].id, {
         customer_id: transaction.customer_id,
         amount: transaction.amount
     }, orgId);
 
-    return result[0] as KhataTransaction;
+    const enriched = await sql`
+        SELECT
+            k.*,
+            p.name AS creator_name,
+            p.email AS creator_email,
+            SUM(CASE WHEN k2.type = 'credit' THEN k2.amount ELSE -k2.amount END) AS running_balance
+        FROM khata_transactions k
+        LEFT JOIN profiles p ON k.created_by = p.id
+        LEFT JOIN khata_transactions k2
+            ON k2.customer_id = k.customer_id
+           AND k2.org_id = k.org_id
+           AND (
+                k2.created_at < k.created_at OR
+                (k2.created_at = k.created_at AND k2.id <= k.id)
+           )
+        WHERE k.id = ${inserted[0].id}
+        GROUP BY k.id, p.name, p.email
+        LIMIT 1
+    `;
+
+    const row = enriched[0] || inserted[0];
+    return {
+        ...row,
+        amount: parseFloat(row.amount),
+        running_balance: row.running_balance == null ? undefined : parseFloat(row.running_balance),
+        created_by_name: row.creator_name || row.creator_email || "Unknown"
+    } as KhataTransaction;
+}
+
+export async function updateKhataTransaction(
+    txId: string,
+    updates: { amount?: number; note?: string; type?: "credit" | "payment" },
+    orgId: string
+): Promise<KhataTransaction> {
+    await authorize("Update Khata Transaction", undefined, orgId);
+
+    if (updates.amount != null && (!Number.isFinite(updates.amount) || updates.amount <= 0)) {
+        throw new Error("Amount must be greater than 0");
+    }
+    if (updates.type && updates.type !== "credit" && updates.type !== "payment") {
+        throw new Error("Invalid transaction type");
+    }
+
+    const updatedRows = await sql`
+        UPDATE khata_transactions
+        SET
+            amount = COALESCE(${updates.amount ?? null}, amount),
+            note = COALESCE(${updates.note ?? null}, note),
+            type = COALESCE(${updates.type ?? null}, type)
+        WHERE id = ${txId} AND org_id = ${orgId}
+        RETURNING *
+    `;
+
+    if (updatedRows.length === 0) {
+        throw new Error("Transaction not found");
+    }
+
+    await audit("Updated Khata Transaction", "khata_tx", txId, updates, orgId);
+
+    const enriched = await sql`
+        SELECT
+            k.*,
+            p.name AS creator_name,
+            p.email AS creator_email,
+            SUM(CASE WHEN k2.type = 'credit' THEN k2.amount ELSE -k2.amount END) AS running_balance
+        FROM khata_transactions k
+        LEFT JOIN profiles p ON k.created_by = p.id
+        LEFT JOIN khata_transactions k2
+            ON k2.customer_id = k.customer_id
+           AND k2.org_id = k.org_id
+           AND (
+                k2.created_at < k.created_at OR
+                (k2.created_at = k.created_at AND k2.id <= k.id)
+           )
+        WHERE k.id = ${txId}
+        GROUP BY k.id, p.name, p.email
+        LIMIT 1
+    `;
+
+    const row = enriched[0] || updatedRows[0];
+    return {
+        ...row,
+        amount: parseFloat(row.amount),
+        running_balance: row.running_balance == null ? undefined : parseFloat(row.running_balance),
+        created_by_name: row.creator_name || row.creator_email || "Unknown"
+    } as KhataTransaction;
+}
+
+export async function deleteKhataTransaction(txId: string, orgId: string): Promise<void> {
+    await authorize("Delete Khata Transaction", undefined, orgId);
+
+    const deletedRows = await sql`
+        DELETE FROM khata_transactions
+        WHERE id = ${txId} AND org_id = ${orgId}
+        RETURNING id, customer_id, type, amount
+    `;
+
+    if (deletedRows.length === 0) {
+        throw new Error("Transaction not found");
+    }
+
+    await audit("Deleted Khata Transaction", "khata_tx", txId, {
+        customer_id: deletedRows[0].customer_id,
+        type: deletedRows[0].type,
+        amount: Number(deletedRows[0].amount),
+    }, orgId);
 }
 
 export async function getCustomerBalance(customerId: string, orgId: string): Promise<number> {

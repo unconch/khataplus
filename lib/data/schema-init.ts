@@ -31,6 +31,7 @@ export async function initializeOrganizationSchema(orgId: string): Promise<void>
                 sku text UNIQUE NOT NULL,
                 name text NOT NULL,
                 buy_price decimal(12, 2) NOT NULL,
+                sell_price decimal(12, 2),
                 gst_percentage decimal(5, 2) NOT NULL DEFAULT 18.00,
                 stock integer NOT NULL DEFAULT 0,
                 hsn_code text,
@@ -153,10 +154,26 @@ export async function initializeOrganizationSchema(orgId: string): Promise<void>
             )
         `);
 
+        // Stock Movements (inventory ledger foundation)
+        await sql(`
+            CREATE TABLE IF NOT EXISTS ${qName('stock_movements')} (
+                id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                inventory_id uuid NOT NULL REFERENCES ${qName('inventory')}(id),
+                quantity_delta integer NOT NULL,
+                movement_type text NOT NULL,
+                reference_type text,
+                reference_id text,
+                note text,
+                created_by text,
+                created_at timestamp with time zone DEFAULT now()
+            )
+        `);
+
         // Indexes
         await sql(`CREATE INDEX IF NOT EXISTS ${quoteIdent(`idx_${schemaName}_sales_date`)} ON ${qName('sales')}(sale_date)`);
         await sql(`CREATE INDEX IF NOT EXISTS ${quoteIdent(`idx_${schemaName}_audit_logs_created`)} ON ${qName('audit_logs')}(created_at DESC)`);
         await sql(`CREATE INDEX IF NOT EXISTS ${quoteIdent(`idx_${schemaName}_khata_customer`)} ON ${qName('khata_transactions')}(customer_id)`);
+        await sql(`CREATE INDEX IF NOT EXISTS ${quoteIdent(`idx_${schemaName}_stock_movements_inventory_created`)} ON ${qName('stock_movements')}(inventory_id, created_at DESC)`);
 
         console.log(`[SchemaInit] Successfully initialized schema: ${schemaName}`);
 

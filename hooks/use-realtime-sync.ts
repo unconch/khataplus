@@ -30,13 +30,17 @@ export function useRealtimeSync(orgId?: string) {
 
     useEffect(() => {
         if (!orgId) {
-          return
+            return
         }
 
         let eventSource: EventSource | null = null
         let pollingInterval: NodeJS.Timeout | null = null
 
         const setupSSE = () => {
+            if (!navigator.onLine) {
+                startPolling()
+                return
+            }
             console.log("[Sync] Connecting to SSE stream...")
             eventSource = new EventSource(`/api/sync/stream?orgId=${orgId}`)
 
@@ -64,8 +68,11 @@ export function useRealtimeSync(orgId?: string) {
         }
 
         const startPolling = () => {
+            if (!navigator.onLine) {
+                return
+            }
             if (pollingInterval) {
-              return
+                return
             }
 
             // 8. Fallback Strategy: Smart Polling (30s as per spec fallback)
@@ -88,19 +95,35 @@ export function useRealtimeSync(orgId?: string) {
         // Initialize connection
         setupSSE()
 
+        const handleOnline = () => {
+            stopPolling()
+            if (!eventSource) setupSSE()
+        }
+        const handleOffline = () => {
+            if (eventSource) {
+                eventSource.close()
+                eventSource = null
+            }
+            stopPolling()
+        }
+
         // also refresh on window focus as per spec 8
         const handleFocus = () => {
             console.log("[Sync] Window focused, immediate sync")
             pullSync()
         }
         window.addEventListener("focus", handleFocus)
+        window.addEventListener("online", handleOnline)
+        window.addEventListener("offline", handleOffline)
 
         return () => {
             if (eventSource) {
-              eventSource.close()
+                eventSource.close()
             }
             stopPolling()
             window.removeEventListener("focus", handleFocus)
+            window.removeEventListener("online", handleOnline)
+            window.removeEventListener("offline", handleOffline)
         }
     }, [orgId, pullSync])
 }

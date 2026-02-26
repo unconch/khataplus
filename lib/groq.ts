@@ -14,14 +14,23 @@ function getGroqClient(): Groq {
     return groqInstance
 }
 
-export async function groqChat(prompt: string, model: string = "llama-3.3-70b-versatile"): Promise<string> {
+export async function groqChat(prompt: string, model: string = "llama-3.3-70b-versatile", temperature?: number): Promise<string> {
     const client = getGroqClient()
+    // Use near-zero temperature for structured JSON mapping/classification tasks.
+    // R1 was previously 0.6 which caused hallucinated column names between retries.
+    const effectiveTemp = temperature ?? 0.1
+    const useJsonMode = !model.includes("r1") && !model.includes("qwen")
+    // Groq requires the word "json" to appear somewhere in the prompt when using json_object response_format.
+    // Prepend a system-level note to guarantee compliance without rewriting every caller's prompt.
+    const finalPrompt = useJsonMode && !prompt.toLowerCase().includes("json")
+        ? `Respond with strict JSON only.\n\n${prompt}`
+        : prompt
     const response = await client.chat.completions.create({
         model: model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: model.includes("r1") ? 0.6 : 0.05,
+        messages: [{ role: "user", content: finalPrompt }],
+        temperature: effectiveTemp,
         max_tokens: 4096,
-        response_format: model.includes("r1") ? undefined : { type: "json_object" },
+        response_format: useJsonMode ? { type: "json_object" } : undefined,
     })
     return response.choices[0]?.message?.content || "{}"
 }

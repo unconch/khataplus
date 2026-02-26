@@ -32,14 +32,14 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, pa
       <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
 
         {/* Desktop Sidebar: Visible only on lg+ */}
-        <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} />
+        <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} orgName={orgName} />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
           <AppHeader profile={profile} orgName={orgName} role={role} pathPrefix={pathPrefix} />
 
-          <main className="flex-1 pb-32 lg:pb-12 p-4 lg:p-12 xl:p-16 2xl:p-20 overflow-auto gpu-layer relative scroll-smooth" style={{ contentVisibility: "auto" }}>
-            <div className="mx-auto w-full max-w-[1800px] 2xl:max-w-[2000px] animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <main className="flex-1 pb-24 lg:pb-12 px-3 sm:px-4 lg:px-6 xl:px-8 2xl:px-10 pt-0 overflow-auto gpu-layer relative scroll-smooth" style={{ contentVisibility: "auto" }}>
+            <div className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-700">
               {children}
             </div>
           </main>

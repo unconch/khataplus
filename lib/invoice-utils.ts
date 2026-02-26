@@ -209,7 +209,13 @@ export const generateInvoice = async (group: GroupedSale, type: 'A4' | 'THERMAL'
             doc.text("--- Thank You ---", 40, y, { align: "center" })
 
             doc.autoPrint()
-            window.open(doc.output('bloburl'), '_blank')
+            const blobUrl = doc.output("bloburl")
+            const popup = window.open(blobUrl, "_blank")
+
+            // Popup blockers can kill print preview; fallback to file download.
+            if (!popup) {
+                doc.save(`Thermal_${group.id.split('-')[0].toUpperCase()}.pdf`)
+            }
         }
 
     } catch (err) {

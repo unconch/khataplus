@@ -21,9 +21,12 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         // Initial state
         setIsOnline(navigator.onLine)
         setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
+        let lastToastAt = 0
 
         const handleOnline = () => {
             setIsOnline(true)
+            if (Date.now() - lastToastAt < 2000) return
+            lastToastAt = Date.now()
             toast.success("Back Online", {
                 description: "Synchronizing data with the secure ledger...",
                 duration: 4000,
@@ -32,6 +35,8 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
 
         const handleOffline = () => {
             setIsOnline(false)
+            if (Date.now() - lastToastAt < 2000) return
+            lastToastAt = Date.now()
             toast.warning("Sailing Offline", {
                 description: "Transactions will be queued for background sync.",
                 duration: 6000,
@@ -50,12 +55,15 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     // Update Listener
     useEffect(() => {
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            let shown = false
             // Reload when new SW takes control (skipWaiting: true in config makes this happen immediately)
             // But we might want to just toast.
             // With skipWaiting: true, the new SW activates instantly.
             // We should notify user to refresh.
 
             navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (shown) return
+                shown = true
                 // This fires when the standard SW is replaced by a new one
                 toast.info("Update Available", {
                     description: "A new version of the app is ready.",

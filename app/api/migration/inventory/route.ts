@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { importInventory } from "@/lib/data/migration"
 
-const MAX_IMPORT_ROWS = 5000
+const MAX_IMPORT_ROWS = 10000
 
 export async function POST(request: Request) {
     try {

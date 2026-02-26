@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Plus, Minus, HelpCircle, ArrowRight, MessageSquare } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
@@ -56,9 +57,9 @@ export function FaqSection() {
                         <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-100 space-y-3 shadow-sm">
                             <h4 className="text-lg font-black italic tracking-tighter text-emerald-900 uppercase">Need direct help?</h4>
                             <p className="text-emerald-700/70 text-[11px] font-medium leading-relaxed">Join our merchant community on WhatsApp for instant support and tips.</p>
-                            <button className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest group">
+                            <Link href="/auth/sign-up" className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest group">
                                 Contact Support <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                            </button>
+                            </Link>
                         </div>
                     </div>
 

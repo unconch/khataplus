@@ -3,7 +3,7 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: true, // Set to true to avoid PWA issues in dev mode
+  disable: process.env.NODE_ENV === "development", // Disable PWA in dev mode
   register: true,
   skipWaiting: true,
   cacheOnFrontEndNav: true,
@@ -54,12 +54,12 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://accounts.google.com/gsi/client https://*.vercel-scripts.com",
-              "style-src 'self' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://fonts.googleapis.com https://grainy-gradients.vercel.app",
-              "connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com",
-              "frame-src 'self' https://*.supabase.co https://accounts.google.com",
-              "img-src 'self' data: https://*.supabase.co https://*.googleusercontent.com https://images.unsplash.com https://grainy-gradients.vercel.app https://accounts.google.com",
-              "font-src 'self' data: https://*.supabase.co https://fonts.gstatic.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.descope.com https://descopecdn.com https://*.vercel-scripts.com",
+              "style-src 'self' 'unsafe-inline' https://*.descope.com https://descopecdn.com https://fonts.googleapis.com https://grainy-gradients.vercel.app",
+              "connect-src 'self' https://*.descope.com https://api.descope.com https://descopecdn.com https://*.vercel-scripts.com",
+              "frame-src 'self' https://*.descope.com https://descopecdn.com",
+              "img-src 'self' data: https://*.descope.com https://descopecdn.com https://*.googleusercontent.com https://images.unsplash.com https://grainy-gradients.vercel.app",
+              "font-src 'self' data: https://fonts.gstatic.com",
               "worker-src 'self' blob:",
             ].join("; "),
           },
@@ -76,8 +76,7 @@ export default withSentryConfig(withPWA(nextConfig), {
   widenClientFileUpload: true,
   tunnelRoute: "/monitoring",
   // Disable automatic wrapping of App Router server components.
-  // The sentry-wrapper-module interferes with dynamic imports 
-  // (e.g. @descope/react-sdk), causing TypeError in some browsers.
+  // The sentry-wrapper-module can interfere with dynamic imports in client auth flows.
   autoInstrumentAppRouter: false,
   autoInstrumentServerFunctions: false,
   webpack: {

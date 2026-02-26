@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --topbar-height: 64px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -560,6 +561,97 @@
     animation: gradient-x 8s linear infinite;
   }
 
+  @keyframes greet-fade {
+    from {
+      opacity: 0.3;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes greet-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes greet-slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes greet-zoom {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes greet-soft-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    50% {
+      transform: scale(1.01);
+      opacity: 0.95;
+    }
+  }
+
+  .greet-anim-none {
+    animation: none;
+  }
+
+  .greet-anim-fade {
+    animation: greet-fade 420ms ease-out;
+  }
+
+  .greet-anim-slide-up {
+    animation: greet-slide-up 460ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .greet-anim-slide-left {
+    animation: greet-slide-left 460ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .greet-anim-zoom {
+    animation: greet-zoom 420ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .greet-anim-soft-pulse {
+    animation: greet-soft-pulse 1400ms ease-in-out;
+  }
+
+  .greet-anim-fade-lite {
+    animation: greet-fade 300ms ease-out;
+  }
+
+  .greet-anim-slide-up-lite {
+    animation: greet-slide-up 320ms ease-out;
+  }
+
   .orbital-glow {
     position: fixed;
     top: 0;
@@ -637,6 +729,21 @@
     /* Chrome, Safari and Opera */
   }
 
+  /* Professional Page Transitions */
+  .page-enter {
+    animation: fadeInSimple 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes fadeInSimple {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
   /* Motion gating:
      html.rich-motion   → full animations
      html.static-motion → zero-duration transitions/animations + hides heavy layers
@@ -667,4 +774,17 @@
   html.static-motion .active-scale {
     transform: none !important;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .greet-anim-fade,
+    .greet-anim-slide-up,
+    .greet-anim-slide-left,
+    .greet-anim-zoom,
+    .greet-anim-soft-pulse,
+    .greet-anim-fade-lite,
+    .greet-anim-slide-up-lite {
+      animation: none !important;
+    }
+  }
+
 }

@@ -1,450 +1,244 @@
-﻿"use client"
+"use client"
 
-import { createClient } from "@/lib/supabase/client"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import { Logo } from "@/components/ui/logo"
-import { ArrowRight, CheckCircle2, Loader2, Eye, EyeOff } from "lucide-react"
+import { FormEvent, useMemo, useState } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import Script from "next/script"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Logo } from "@/components/ui/logo"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, ArrowRight, Loader2, Mail, Sparkles, UserRound } from "lucide-react"
 
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
+
+  const next = useMemo(() => {
+    const raw = searchParams.get("next")
+    if (!raw) return "/setup-organization"
+    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/setup-organization"
+    return raw
+  }, [searchParams])
+
+  const loginHref = `/auth/login${next ? `?next=${encodeURIComponent(next)}` : ""}`
+
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
+  const [code, setCode] = useState("")
+  const [phase, setPhase] = useState<"email" | "verify">("email")
+  const [maskedEmail, setMaskedEmail] = useState("")
+  const [verifyLoginId, setVerifyLoginId] = useState("")
+  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [verifyingOtp, setVerifyingOtp] = useState(false)
-  const [otp, setOtp] = useState("")
-  const [isSuccess, setIsSuccess] = useState(false)
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const inviteToken = searchParams.get("invite")
-        if (inviteToken) {
-          router.replace(`/invite/${inviteToken}`)
-          return
-        }
-        router.replace("/dashboard")
-      }
-    }
-    checkUser()
-  }, [router, supabase.auth, searchParams])
-
-  const acceptInviteToken = async (token: string) => {
-    try {
-      const res = await fetch(`/api/invite/${token}`, { method: "POST" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Failed to accept invite")
-      if (data?.orgSlug) {
-        router.push(`/${data.orgSlug}/dashboard`)
-        return true
-      }
-      return true
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to accept invite")
-      return false
-    }
-  }
-
-  const requirements = [
-    { label: "At least 8 characters", check: (p: string) => p.length >= 8 },
-    { label: "At least one lowercase letter", check: (p: string) => /[a-z]/.test(p) },
-    { label: "At least one uppercase letter", check: (p: string) => /[A-Z]/.test(p) },
-    { label: "At least one number", check: (p: string) => /[0-9]/.test(p) },
-  ]
-
-  const unmetRequirements = requirements.filter(r => !r.check(password))
-  const isPasswordStrong = unmetRequirements.length === 0
-
-  const handleCredentialResponse = async (response: any) => {
-    setLoading(true);
-    try {
-      const inviteToken = searchParams.get("invite")
-      let { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: response.credential,
-      });
-
-      if (error) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          data = { user: session.user, session } as any;
-          error = null;
-        }
-      }
-
-      if (error) throw error;
-
-      if (data?.user) {
-        try {
-          const cookies = document.cookie.split('; ');
-          const referralCookie = cookies.find(row => row.startsWith('kp_referral='));
-          const referrerCode = referralCookie ? referralCookie.split('=')[1] : undefined;
-
-          const [{ ensureProfile, getUserOrganizations }] = await Promise.all([
-            import("@/lib/data"),
-          ]);
-
-          const [userOrgs] = await Promise.all([
-            getUserOrganizations(data.user.id),
-            ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name, undefined, referrerCode).catch(e => console.error("Sync error:", e))
-          ]);
-
-          if (inviteToken) {
-            const accepted = await acceptInviteToken(inviteToken)
-            if (accepted) return
-          }
-
-          if (userOrgs && userOrgs.length > 0) {
-            toast.success("Welcome back!");
-            router.push(`/${userOrgs[0].organization.slug}/dashboard`);
-            return;
-          }
-        } catch (err) {
-          console.error("[GIS Fast-Path Error]:", err);
-        }
-
-        toast.success("Account verified!");
-        if (inviteToken) {
-          const accepted = await acceptInviteToken(inviteToken)
-          if (accepted) return
-        }
-        router.push("/setup-organization");
-      }
-    } catch (err: any) {
-      console.error("[GIS Error]:", err);
-      if (err.message?.includes("unexpected response")) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          router.push("/setup-organization");
-          return;
-        }
-      }
-      toast.error(err.message || "Google sign-up failed. Please try again.");
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleLoad = async () => {
-    if (typeof window !== "undefined" && (window as any).google) {
-      const google = (window as any).google;
-
-      google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-        callback: handleCredentialResponse,
-      });
-
-      const buttonDiv = document.getElementById("google-button-signup");
-      if (buttonDiv) {
-        google.accounts.id.renderButton(buttonDiv, {
-          theme: "outline",
-          size: "large",
-          width: 320,
-          text: "signup_with",
-          shape: "rectangular"
-        });
-      }
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleGoogleLoad();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleSignUp = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!email || !isPasswordStrong) {
-      toast.error("Please meet all password requirements")
-      return
-    }
+    setError("")
     setLoading(true)
-
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-
-    if (authError || !data?.user) {
-      toast.error(authError?.message || "Authentication failed")
-      setLoading(false)
-      return
-    }
-
-    setLoading(false)
-    setIsSuccess(true)
-    toast.success("Verification code sent!")
-  }
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (otp.length < 6) {
-      toast.error("Please enter the 6-digit code")
-      return
-    }
-    setVerifyingOtp(true)
-
     try {
-      const inviteToken = searchParams.get("invite")
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'signup',
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email: phase === "verify" ? (verifyLoginId || email) : email,
+          code: phase === "verify" ? code : "",
+          next,
+        }),
       })
-
-      if (error) throw error
-
-      if (data?.user) {
-        try {
-          const cookies = document.cookie.split('; ');
-          const referralCookie = cookies.find(row => row.startsWith('kp_referral='));
-          const referrerCode = referralCookie ? referralCookie.split('=')[1] : undefined;
-
-          const { ensureProfile } = await import("@/lib/data/profiles")
-          await ensureProfile(data.user.id, data.user.email!, data.user.user_metadata?.full_name, undefined, referrerCode)
-        } catch (syncErr) {
-          console.error("[OTP] Profile sync failed:", syncErr)
-        }
-        toast.success("Account verified!")
-        if (inviteToken) {
-          const accepted = await acceptInviteToken(inviteToken)
-          if (accepted) return
-        }
-        router.push("/setup-organization")
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || "Registration failed")
+      if (data?.phase === "verify") {
+        setPhase("verify")
+        setMaskedEmail(data?.maskedEmail || email)
+        setVerifyLoginId(email.trim().toLowerCase())
+        return
       }
+      router.replace(data?.next || next || "/setup-organization")
+      router.refresh()
     } catch (err: any) {
-      toast.error(err.message || "Invalid or expired code")
-      setVerifyingOtp(false)
+      setError(err?.message || "Could not create account.")
+    } finally {
+      setLoading(false)
     }
   }
-
-  const benefits = [
-    "GST-compliant invoicing",
-    "Real-time inventory tracking",
-    "Works offline on any device",
-    "Khata (credit) management",
-  ]
-
-  const PasswordRequirement = ({ label, met, showChecked }: { label: string; met: boolean; showChecked: boolean }) => (
-    <div className={cn(
-      "flex items-center gap-2 text-[11px] transition-colors",
-      met ? "text-emerald-500" : showChecked ? "text-red-500" : "text-zinc-400"
-    )}>
-      {met ? <CheckCircle2 className="h-3 w-3" /> : <div className="h-1 w-1 rounded-full bg-current ml-1 mr-1" />}
-      {label}
-    </div>
-  )
 
   return (
-    <div className="h-svh w-full flex overflow-hidden bg-zinc-950">
-      {/* Left Panel - Branding (Premium Immersive) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden border-r border-white/5 bg-zinc-950">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(255,255,255,0.04)_1px,transparent_0)] bg-[size:32px_32px] z-10" />
-        <div className="absolute inset-0 mesh-gradient opacity-30" />
+    <div className="min-h-svh w-full bg-[#0b1010] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(20,184,166,0.3),transparent_40%),radial-gradient(circle_at_85%_80%,rgba(99,102,241,0.28),transparent_36%)]" />
+      <div className="absolute -top-24 -left-16 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
+      <div className="absolute -bottom-24 right-0 h-[24rem] w-[24rem] rounded-full bg-indigo-400/20 blur-3xl" />
+      <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[1px]" />
+      <Link href="/" className="absolute left-4 top-4 sm:left-6 sm:top-6 z-20 inline-flex items-center gap-3">
+        <div className="p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-xl">
+          <Logo size={28} className="text-teal-300" />
+        </div>
+        <div>
+          <h1 className="text-[1.85rem] font-black italic tracking-tight leading-none">KhataPlus</h1>
+          <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300">Business OS</p>
+        </div>
+      </Link>
 
-        <div className="absolute top-[-15%] left-[-10%] w-[90%] h-[90%] bg-teal-700/20 rounded-full blur-[140px] animate-orbit" />
-        <div className="absolute bottom-[-15%] right-[-10%] w-[80%] h-[80%] bg-blue-700/15 rounded-full blur-[140px] animate-orbit-slow" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] bg-lime-500/10 rounded-full blur-[120px]" />
+      <div className="relative z-10 min-h-svh flex items-center justify-center px-4 py-4 sm:px-6 sm:py-6">
+        <div className="w-full max-w-[90rem] max-h-[calc(100svh-1.5rem)] grid items-center gap-4 lg:grid-cols-1 xl:grid-cols-[minmax(260px,1fr)_minmax(420px,560px)_minmax(260px,1fr)]">
+          <aside className="hidden xl:flex flex-col gap-8 px-4 py-2 justify-center">
+            <div />
 
-        <div className="relative z-20 flex flex-col w-full h-full pt-8 pb-12 px-12 xl:pt-12 xl:pb-20 xl:px-20 text-white">
-          <div className="animate-in fade-in slide-left duration-700">
-            <Link href="/" className="flex items-center gap-4 group">
-              <div className="p-3 bg-white/10 backdrop-blur-xl rounded-[22px] border border-white/20 shadow-2xl group-hover:scale-110 transition-all duration-500">
-                <Logo size={48} className="text-white" />
-              </div>
-              <span className="font-black text-4xl tracking-tighter uppercase italic">KhataPlus</span>
-            </Link>
-          </div>
-
-          <div className="mt-4 mb-auto space-y-6">
-            <div className="animate-in fade-in slide-up duration-1000 delay-200">
-              <h1 className="text-[85px] xl:text-[110px] font-[1000] leading-[0.78] tracking-[-0.07em] uppercase italic mb-10">
-                Manage<br />
-                <span className="text-[#10b981]">Smarter.</span>
-              </h1>
-              <p className="text-xl text-zinc-400 max-w-sm font-bold leading-relaxed tracking-tight">
-                Experience the next generation of business management with India's most powerful OS.
+            <div className="space-y-5">
+              <h2 className="text-[clamp(2.6rem,3.8vw,4.2rem)] font-black leading-[0.92] tracking-[-0.04em]">
+                Create account.
+                <span className="block text-teal-300">Launch cleanly.</span>
+              </h2>
+              <p className="text-zinc-300 text-sm font-semibold max-w-xs">
+                Setup starts in minutes with OTP auth and guided business onboarding.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {benefits.map((benefit, idx) => (
-                <div
-                  key={benefit}
-                  className="flex items-center gap-5 group animate-in fade-in slide-left"
-                  style={{ animationDelay: `${600 + (idx * 150)}ms` }}
-                >
-                  <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-emerald-500/20 group-hover:border-emerald-500/50 group-hover:scale-110 transition-all duration-500">
-                    <CheckCircle2 size={20} className="text-emerald-400" />
-                  </div>
-                  <span className="text-lg font-bold text-zinc-300 group-hover:text-white transition-colors">{benefit}</span>
-                </div>
-              ))}
+            <div className="grid gap-3 text-[11px] font-bold uppercase tracking-widest text-zinc-300">
+              <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-teal-300" /> Fast onboarding flow</div>
+              <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-teal-300" /> Guided setup after signup</div>
+              <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-teal-300" /> Ready for GST and ledger</div>
             </div>
-          </div>
-        </div>
-      </div>
+          </aside>
 
-      {/* Right Panel - Form (Liquid Glass Centered) */}
-      <div className="flex-1 h-full bg-[#f8fafc] dark:bg-zinc-950 relative flex items-center justify-center p-6 md:p-12">
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.08),transparent_70%)]" />
-        </div>
-
-        <div className="w-full max-w-[380px] space-y-7 relative z-10">
-          {!isSuccess ? (
-            <div className="space-y-7">
-              <div className="text-center space-y-4">
-                <h2 className="text-[54px] font-[1000] text-zinc-900 dark:text-white tracking-[-0.07em] leading-none animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                  Digital <span className="text-[#9333ea] inline-block animate-pulse-subtle">India Era.</span>
-                </h2>
-                <p className="text-base text-zinc-500 font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-1200 delay-300">
-                  Empowering India's next generation of entrepreneurs.
-                </p>
+          <section className="relative flex items-center justify-center py-1">
+            <div className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-[radial-gradient(circle,rgba(20,184,166,0.26)_0%,rgba(20,184,166,0.06)_45%,transparent_72%)] blur-2xl" />
+            <div className="relative w-full max-w-[min(560px,92vw)] rounded-[2rem] border border-white/30 bg-white/[0.14] backdrop-blur-3xl p-6 md:p-8 ring-1 ring-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-2xl bg-teal-500/20 border border-teal-400/30">
+                <Logo size={28} className="text-teal-300" />
               </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight">Create Account</h1>
+                <p className="text-xs text-zinc-300">Set up your KhataPlus identity</p>
+              </div>
+            </div>
 
-              <form onSubmit={handleSignUp} className="space-y-4 animate-in fade-in slide-up duration-1000 delay-500">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 px-1">Email Address</label>
-                  <input
-                    type="email"
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-widest text-zinc-300 font-bold">Full Name</label>
+                <div className="relative">
+                  <UserRound className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pl-9 h-11 bg-black/30 border-white/20 text-white placeholder:text-zinc-400"
+                    placeholder="Your name"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-6 py-4 rounded-[20px] bg-[#f4f4f5] dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/5 focus:ring-0 focus:border-zinc-400 outline-none transition-all font-bold text-zinc-600 placeholder:text-zinc-400 text-sm"
-                    placeholder="you@example.com"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-widest text-zinc-300 font-bold">Email</label>
+                <div className="relative">
+                  <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-9 h-11 bg-black/30 border-white/20 text-white placeholder:text-zinc-400"
+                    placeholder="you@shop.com"
+                    disabled={phase === "verify"}
+                    required
+                  />
+                </div>
+              </div>
+
+              {phase === "verify" && (
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 px-1">Set Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-6 py-4 rounded-[20px] bg-[#f4f4f5] dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/5 focus:ring-0 focus:border-zinc-400 outline-none transition-all font-bold text-zinc-600 pr-12 placeholder:text-zinc-400 text-sm"
-                      placeholder="********"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-zinc-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  {password.length > 0 && (
-                    <div className="grid grid-cols-2 gap-1.5 pt-1 px-1">
-                      {requirements.map((r, i) => (
-                        <PasswordRequirement key={i} label={r.label} met={r.check(password)} showChecked={true} />
-                      ))}
-                    </div>
-                  )}
+                  <label className="text-[11px] uppercase tracking-widest text-zinc-300 font-bold">Verification Code</label>
+                  <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
+                    className="h-11 bg-black/30 border-white/20 text-white placeholder:text-zinc-400 tracking-[0.2em] font-black"
+                    placeholder="Enter 6-digit code"
+                    required
+                  />
+                  <p className="text-[11px] text-zinc-300">
+                    Code sent to <span className="font-black">{maskedEmail || email}</span>
+                  </p>
                 </div>
+              )}
 
+              {error && (
+                <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 text-xs uppercase tracking-widest font-black bg-teal-500 hover:bg-teal-400 text-zinc-950"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Continue" : "Send Verification Code"} <ArrowRight className="h-4 w-4 ml-2" /></>}
+              </Button>
+            </form>
+
+            <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-300">{phase === "verify" ? "Need to fix email?" : "Already have an account?"}</span>
+              {phase === "verify" ? (
                 <button
-                  type="submit"
-                  disabled={loading || !isPasswordStrong}
-                  className={cn(
-                    "w-full py-5 rounded-[22px] font-black text-lg tracking-tight transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-zinc-200/80 relative overflow-hidden group bg-white",
-                    (loading || !isPasswordStrong)
-                      ? "text-zinc-300 opacity-60 cursor-not-allowed"
-                      : "text-zinc-900 hover:bg-zinc-50 active:scale-[0.98] hover:shadow-xl"
-                  )}
+                  type="button"
+                  className="text-teal-300 font-black uppercase tracking-widest hover:text-teal-200"
+                  onClick={() => { setPhase("email"); setCode(""); setError(""); setVerifyLoginId("") }}
                 >
-                  {loading ? <Loader2 className="h-6 w-6 animate-spin text-zinc-900" /> : (
-                    <>
-                      Sign Up Now
-                      <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
-                    </>
-                  )}
+                  Change Email
                 </button>
-              </form>
+              ) : (
+                <Link href={loginHref} className="text-teal-300 font-black uppercase tracking-widest hover:text-teal-200">
+                  Sign In
+                </Link>
+              )}
+            </div>
+            </div>
+          </section>
 
-              <div className="space-y-6 animate-in fade-in slide-up duration-1000 delay-700">
-                <div className="relative flex items-center justify-center">
-                  <div className="w-full border-t border-zinc-200/80" />
-                  <div className="absolute px-4 bg-transparent dark:bg-zinc-950">
-                    <span className="px-5 py-1.5 rounded-full bg-[#f4f4f5] border border-zinc-200 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
-                      Social Connect
-                    </span>
-                  </div>
-                </div>
+          <aside className="hidden xl:flex flex-col gap-6 px-4 py-2 justify-center">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] font-black text-teal-300">
+                <span className="h-2 w-2 rounded-full bg-teal-300 shadow-[0_0_12px_rgba(94,234,212,0.8)]" />
+                Setup Track
+              </div>
+              <h3 className="text-[clamp(2rem,2.6vw,2.6rem)] font-black tracking-tight leading-[0.95]">What Happens Next</h3>
+              <p className="text-sm text-zinc-300 font-semibold max-w-sm">Clear 3-step onboarding before you land in your billing workspace.</p>
+            </div>
 
-                <div className="flex justify-center pt-1">
-                  <div className="w-full bg-white border border-zinc-200 rounded-[18px] p-0.5 shadow-sm overflow-hidden flex justify-center items-center">
-                    <Script src="https://accounts.google.com/gsi/client" onLoad={handleGoogleLoad} strategy="afterInteractive" />
-                    <div id="google-button-signup" className="w-full h-[48px] flex items-center justify-center" />
-                  </div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+              <span className="px-2 py-1 rounded-full bg-teal-400/15 text-teal-200 border border-teal-300/30">OTP VERIFY</span>
+              <span className="px-2 py-1 rounded-full bg-indigo-400/15 text-indigo-200 border border-indigo-300/30">ORG SETUP</span>
+              <span className="px-2 py-1 rounded-full bg-zinc-500/20 text-zinc-200 border border-white/15">READY TO BILL</span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded-full border border-teal-300/45 text-teal-200 text-[11px] font-black flex items-center justify-center mt-0.5">1</div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Step 1</p>
+                  <p className="text-xl font-black mt-1 leading-none">Verify email with OTP</p>
                 </div>
               </div>
-
-              <div className="text-center pt-3 animate-in fade-in slide-up duration-1000 delay-800">
-                <p className="text-sm font-bold text-zinc-500">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-[#9333ea] hover:opacity-80 inline-flex items-center gap-1 group font-[1000]">
-                    Sign in
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </p>
-                <div className="mt-3 pt-2 border-t border-zinc-200/50">
-                  <Link href="/demo" className="text-[10px] font-[1000] uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
-                    Or try the demo without signing up {"->"}
-                  </Link>
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded-full border border-teal-300/45 text-teal-200 text-[11px] font-black flex items-center justify-center mt-0.5">2</div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Step 2</p>
+                  <p className="text-lg font-black mt-1 leading-tight">Set up organization basics</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded-full border border-teal-300/45 text-teal-200 text-[11px] font-black flex items-center justify-center mt-0.5">3</div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Step 3</p>
+                  <p className="text-lg font-black mt-1 leading-tight">Enter dashboard and start billing</p>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-8 animate-in fade-in scale-in">
-              <div className="text-center space-y-3">
-                <h3 className="text-[32px] font-[1000] text-zinc-900 dark:text-white uppercase italic tracking-tighter">Verify Code</h3>
-                <p className="text-[15px] text-zinc-500 font-bold max-w-xs mx-auto">Sent to <span className="text-[#9333ea]">{email}</span></p>
-              </div>
 
-              <form onSubmit={handleVerifyOtp} className="space-y-6">
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  className="w-full text-center text-[44px] tracking-[0.4em] font-black py-7 rounded-[22px] bg-[#f4f4f5] dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 outline-none focus:ring-0 focus:border-zinc-400 transition-all text-zinc-600"
-                  placeholder="000000"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={verifyingOtp || otp.length < 6}
-                  className={cn(
-                    "w-full py-6 rounded-[22px] font-black uppercase tracking-widest transition-all",
-                    (verifyingOtp || otp.length < 6)
-                      ? "bg-[#f4f4f5] text-zinc-400 border border-zinc-200"
-                      : "bg-[#10b981] text-white hover:bg-[#059669] shadow-xl shadow-emerald-600/20"
-                  )}
-                >
-                  Confirm Access
-                </button>
-              </form>
-
-              <div className="flex flex-col gap-3 text-center">
-                <button onClick={handleSignUp} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900">Resend Code</button>
-                <button onClick={() => setIsSuccess(false)} className="text-[11px] font-bold text-[#9333ea]">Change Email</button>
-              </div>
+            <div className="text-xs text-zinc-300 font-semibold leading-relaxed pt-4 border-t border-white/10">
+              Use your real business identity to keep invoices, team access, and settings consistent.
             </div>
-          )}
+          </aside>
         </div>
       </div>
     </div>

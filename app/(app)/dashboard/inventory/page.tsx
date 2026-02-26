@@ -3,27 +3,29 @@ import { getSystemSettings } from "@/lib/data/organizations"
 import { getProfile } from "@/lib/data/profiles"
 import { getCurrentOrgId } from "@/lib/data/auth"
 import type { InventoryItem } from "@/lib/types"
-import { InventoryList } from "@/components/inventory-list"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, AlertCircle, ListIcon, SearchIcon } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { AddInventoryDialog } from "@/components/add-inventory-dialog"
-import { ImportDialog } from "@/components/import-dialog"
+import { Package, AlertCircle, ArrowUpRight, Loader2 } from "lucide-react"
 import { Suspense } from "react"
-import { Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { InventoryBrowser } from "@/components/inventory-browser"
 
 export default function InventoryPage() {
     return (
-        <div className="p-4 space-y-6 pb-24 max-w-7xl mx-auto">
-            <div className="flex flex-col gap-1 animate-slide-up stagger-1">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">Inventory Hub</h2>
-                <p className="text-sm text-muted-foreground">Strategic management of stock and valuation</p>
+        <div className="min-h-full space-y-6 md:space-y-10 pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 pt-2 md:pt-4">
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-5xl">
+                        Inventory
+                    </h1>
+                    <p className="text-sm font-medium text-muted-foreground">Manage your products and inventory levels</p>
+                </div>
             </div>
 
             <Suspense fallback={
-                <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-xl animate-pulse">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+                <div className="h-[600px] w-full flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-3xl animate-pulse border border-zinc-100 dark:border-white/5">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/20" />
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading Catalog</p>
+                    </div>
                 </div>
             }>
                 <InventoryContent />
@@ -34,26 +36,16 @@ export default function InventoryPage() {
 
 async function InventoryContent() {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
-    const { getInventory, getLowStockItems } = await import("@/lib/data/inventory")
+    const { getInventory } = await import("@/lib/data/inventory")
     const { getSystemSettings } = await import("@/lib/data/organizations")
     const { getProfile } = await import("@/lib/data/profiles")
     const user = await getCurrentUser()
 
-    if (!user) {
-        return null
-    }
+    if (!user) return null
+
     const { userId, isGuest } = user
-
-    let orgId: string | null = null
-    if (isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(userId)
-    }
-
-    if (!orgId) {
-        return null
-    }
+    const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
+    if (!orgId) return null
 
     const [inventory, settings, profile] = await Promise.all([
         getInventory(orgId),
@@ -69,84 +61,56 @@ async function InventoryContent() {
     const lowStockCount = inventory.filter((i: any) => i.stock < 10).length
 
     return (
-        <>
-            {/* Top Row: Key Metrics */}
-            <Card className="bg-white dark:bg-zinc-900 border-zinc-200 shadow-sm animate-slide-up stagger-1">
-                <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-zinc-100 dark:divide-zinc-800">
-                        {/* Metric 1 */}
-                        <div className="flex items-center gap-4 px-4 first:pl-0">
-                            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                                <Package className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Product Range</p>
-                                <p className="text-3xl font-black text-foreground">{inventory.length}</p>
-                            </div>
-                        </div>
-
-                        {/* Metric 2 */}
-                        <div className="flex items-center gap-4 px-4">
-                            <div className="h-12 w-12 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
-                                <AlertCircle className="h-6 w-6 text-orange-600" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Stock Alerts</p>
-                                <p className="text-3xl font-black text-orange-600">{lowStockCount}</p>
-                            </div>
-                        </div>
-
-                        {/* Metric 3 */}
-                        <div className="flex items-center gap-4 px-4 last:pr-0">
-                            <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                                <span className="text-xl font-bold text-emerald-600">₹</span>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Inventory Value</p>
-                                <p className="text-3xl font-black text-foreground">
-                                    {totalStockValue >= 100000
-                                        ? `₹${(totalStockValue / 100000).toFixed(2)} Lakhs`
-                                        : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalStockValue)}
-                                </p>
-                            </div>
-                        </div>
+        <div className="space-y-5 md:space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                <div className="bg-white dark:bg-zinc-900/50 p-4 md:p-6 rounded-xl md:rounded-2xl border border-zinc-100 dark:border-white/5 shadow-sm flex items-center gap-3 md:gap-4">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                        <Package className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* Main Hub */}
-            <Card className="glass-card border-0 shadow-2xl overflow-hidden animate-slide-up stagger-4">
-                <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <ListIcon className="h-4 w-4 text-primary" />
-                            </div>
-                            <CardTitle className="text-lg">Product Catalog</CardTitle>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="relative group flex-1 md:flex-none">
-                                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    placeholder="Filter inventory..."
-                                    className="pl-9 h-9 w-full md:w-[250px] glass border-0 focus-visible:ring-1 focus-visible:ring-primary/30"
-                                    disabled
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <ImportDialog type="inventory" orgId={orgId} />
-                                {canAdd && (
-                                    <AddInventoryDialog />
-                                )}
-                            </div>
-                        </div>
+                    <div>
+                        <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Total SKUs</p>
+                        <p className="text-xl md:text-2xl font-bold tracking-tight">{inventory.length}</p>
                     </div>
-                </CardHeader>
-                <CardContent className="p-0 sm:p-6 overflow-x-auto">
-                    <InventoryList items={(inventory as InventoryItem[]) || []} />
-                </CardContent>
-            </Card>
-        </>
+                </div>
+
+                <div className={cn(
+                    "p-4 md:p-6 rounded-xl md:rounded-2xl border shadow-sm flex items-center gap-3 md:gap-4",
+                    lowStockCount > 0
+                        ? "bg-orange-50/50 dark:bg-orange-500/5 border-orange-100 dark:border-orange-500/20"
+                        : "bg-white dark:bg-zinc-900/50 border-zinc-100 dark:border-white/5"
+                )}>
+                    <div className={cn(
+                        "h-10 w-10 md:h-12 md:w-12 rounded-xl flex items-center justify-center",
+                        lowStockCount > 0 ? "bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
+                    )}>
+                        <AlertCircle className="h-5 w-5 md:h-6 md:w-6" />
+                    </div>
+                    <div>
+                        <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Low Stock</p>
+                        <p className={cn("text-xl md:text-2xl font-bold tracking-tight", lowStockCount > 0 && "text-orange-600 dark:text-orange-400")}>{lowStockCount}</p>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900/50 p-4 md:p-6 rounded-xl md:rounded-2xl border border-zinc-100 dark:border-white/5 shadow-sm flex items-center gap-3 md:gap-4">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <ArrowUpRight className="h-5 w-5 md:h-6 md:w-6" />
+                    </div>
+                    <div>
+                        <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Stock Value</p>
+                        <p className="text-xl md:text-2xl font-bold tracking-tight">
+                            {"\u20B9"}{totalStockValue >= 100000 ? `${(totalStockValue / 100000).toFixed(2)} L` : totalStockValue.toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900/40 rounded-2xl md:rounded-3xl border border-zinc-100 dark:border-white/5 p-4 md:p-8 shadow-sm">
+                <InventoryBrowser
+                    items={(inventory as InventoryItem[]) || []}
+                    orgId={orgId}
+                    canAdd={Boolean(canAdd)}
+                />
+            </div>
+        </div>
     )
 }

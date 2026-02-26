@@ -7,16 +7,21 @@ import { cn } from "@/lib/utils"
 
 interface FileDropzoneProps {
     onFileAccepted: (file: File) => void
+    onFilesAccepted?: (files: File[]) => void
     onFileRejected?: (error: string) => void
     acceptedFileTypes?: Record<string, string[]>
     maxSize?: number
     currentFile?: File | null
+    currentFiles?: File[]
     onRemoveFile?: () => void
+    onRemoveFileAt?: (index: number) => void
     disabled?: boolean
+    maxFiles?: number
 }
 
 export function FileDropzone({
     onFileAccepted,
+    onFilesAccepted,
     onFileRejected,
     acceptedFileTypes = {
         "text/csv": [".csv"],
@@ -25,8 +30,11 @@ export function FileDropzone({
     },
     maxSize = 10 * 1024 * 1024, // 10MB default
     currentFile,
+    currentFiles,
     onRemoveFile,
-    disabled = false
+    onRemoveFileAt,
+    disabled = false,
+    maxFiles = 1
 }: FileDropzoneProps) {
 
     const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
@@ -43,15 +51,20 @@ export function FileDropzone({
         }
 
         if (acceptedFiles.length > 0) {
-            onFileAccepted(acceptedFiles[0])
+            if (onFilesAccepted) {
+                onFilesAccepted(acceptedFiles)
+            } else {
+                onFileAccepted(acceptedFiles[0])
+            }
         }
-    }, [onFileAccepted, onFileRejected, maxSize])
+    }, [onFileAccepted, onFilesAccepted, onFileRejected, maxSize])
 
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
         onDrop,
         accept: acceptedFileTypes,
         maxSize,
-        maxFiles: 1,
+        maxFiles,
+        multiple: maxFiles > 1,
         disabled
     })
 
@@ -65,7 +78,34 @@ export function FileDropzone({
 
     return (
         <div className="w-full">
-            {currentFile ? (
+            {Array.isArray(currentFiles) && currentFiles.length > 0 ? (
+                <div className="space-y-2">
+                    {currentFiles.map((file, index) => (
+                        <div key={`${file.name}-${index}`} className="border-2 border-emerald-200 bg-emerald-50 rounded-xl p-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                    <div className="p-2 bg-emerald-100 rounded-lg shrink-0">
+                                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-zinc-900 truncate">{file.name}</p>
+                                        <p className="text-sm text-zinc-600 mt-1">{formatFileSize(file.size)}</p>
+                                    </div>
+                                </div>
+                                {onRemoveFileAt && !disabled && (
+                                    <button
+                                        onClick={() => onRemoveFileAt(index)}
+                                        className="p-2 hover:bg-emerald-100 rounded-lg transition-colors shrink-0"
+                                        type="button"
+                                    >
+                                        <X className="h-4 w-4 text-zinc-600" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : currentFile ? (
                 <div className="border-2 border-emerald-200 bg-emerald-50 rounded-xl p-6">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3 flex-1 min-w-0">

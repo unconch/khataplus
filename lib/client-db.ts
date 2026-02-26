@@ -9,6 +9,7 @@ export interface SyncAction {
     createdAt: number;
     status: 'pending' | 'processing' | 'failed';
     retryCount: number;
+    lastTriedAt?: number;
     error?: string;
     tempId?: string; // If this action created a temp item, track it to replace with real ID later
 }

@@ -1,69 +1,67 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
+import { getSession } from "@/lib/session"
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
-    const code = searchParams.get('code')
-    // if "next" is in search params, use it as the redirection URL
-    const next = searchParams.get('next') ?? '/dashboard'
+    const cookieStore = await cookies()
+    const nextFromCookie = cookieStore.get("kp_auth_next")?.value
+    const requestedNext = searchParams.get("next") ?? (nextFromCookie ? decodeURIComponent(nextFromCookie) : "/dashboard")
+    const next =
+        requestedNext &&
+            requestedNext.startsWith("/") &&
+            !requestedNext.startsWith("/auth/")
+            ? requestedNext
+            : "/dashboard"
 
-    if (code) {
-        const cookieStore = await cookies()
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    get(name: string) {
-                        return cookieStore.get(name)?.value
-                    },
-                    set(name: string, value: string, options: CookieOptions) {
-                        cookieStore.set({ name, value, ...options })
-                    },
-                    remove(name: string, options: CookieOptions) {
-                        cookieStore.set({ name, value: '', ...options })
-                    },
-                },
-            }
-        )
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error && data.session && data.user) {
-            try {
-                // Read referral code from cookie if present
-                const referrerCode = cookieStore.get('kp_referral')?.value;
-
-                // Ensure profile is synced with Neon on first login/signup
-                const { ensureProfile } = await import('@/lib/data/profiles');
-                await ensureProfile(
-                    data.user.id,
-                    data.user.email!,
-                    data.user.user_metadata?.full_name,
-                    undefined, // phone
-                    referrerCode
-                );
-
-                // REGISTER SESSION for Governance (ASVS Level 3)
-                const { registerSession } = await import('@/lib/session-governance');
-                await registerSession(data.user.id, data.session.access_token.slice(-16)); // Use a snippet of the token or session ID as key
-
-                // Fetch user orgs to redirect to correct slug
-                const { getUserOrganizations } = await import('@/lib/data/organizations');
-                const userOrgs = await getUserOrganizations(data.user.id);
-
-                if (userOrgs && userOrgs.length > 0) {
-                    return NextResponse.redirect(`${origin}/${userOrgs[0].organization.slug}/dashboard`);
-                }
-
-                return NextResponse.redirect(`${origin}/setup-organization`);
-
-            } catch (syncErr) {
-                console.error("[AuthCallback] Session logic failed:", syncErr);
-            }
-            return NextResponse.redirect(`${origin}${next}`)
+    try {
+        // Descope cookies can arrive a moment after widget success callback.
+        // Retry briefly to avoid false callback_failed redirects.
+        let authSession = await getSession()
+        if (!authSession?.userId) {
+            await sleep(180)
+            authSession = await getSession()
         }
+        if (!authSession?.userId) {
+            await sleep(250)
+            authSession = await getSession()
+        }
+
+        const userId = authSession?.userId
+        const email = authSession?.email || (userId ? `descope_${userId}@local.invalid` : "")
+        const name = authSession?.user?.name as string | undefined
+
+        if (userId) {
+            const referrerCode = cookieStore.get("kp_referral")?.value
+
+            const { ensureProfile } = await import("@/lib/data/profiles")
+            await ensureProfile(
+                userId,
+                email,
+                name,
+                undefined,
+                referrerCode
+            )
+
+            try {
+                const { registerSession } = await import("@/lib/session-governance")
+                const tokenTail = userId.slice(-16)
+                await registerSession(userId, tokenTail)
+            } catch (err) {
+                console.warn("[AuthCallback] Session governance registration skipped:", err)
+            }
+
+            const res = next.startsWith("/")
+                ? NextResponse.redirect(`${origin}${next}`)
+                : NextResponse.redirect(`${origin}/setup-organization`)
+            res.cookies.delete("kp_auth_next")
+            return res
+        }
+    } catch (err) {
+        console.error("[AuthCallback] Session logic failed:", err)
     }
 
-    // return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
 }

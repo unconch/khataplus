@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { IndianRupee, Search, UserPlus, Phone, MapPin, ChevronRight, Store } from "lucide-react"
 import { AddSupplierDialog } from "@/components/add-supplier-dialog"
+import { ImportDialog } from "@/components/import-dialog"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
@@ -25,17 +26,20 @@ export function SupplierList({ initialSuppliers, orgId }: SupplierListProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col md:flex-row items-center gap-4 bg-white/50 backdrop-blur-md p-4 rounded-[2rem] border border-zinc-100 shadow-sm transition-all duration-300">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                     <Input
-                        placeholder="Search suppliers..."
+                        placeholder="Search by supplier name or phone..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 bg-muted/50 border-none"
+                        className="pl-11 h-12 bg-zinc-50 border-none rounded-2xl font-semibold text-sm focus-visible:ring-primary/20"
                     />
                 </div>
-                <AddSupplierDialog orgId={orgId} onSuccess={(newSupplier: Supplier) => setSuppliers([newSupplier, ...suppliers])} />
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <ImportDialog type="supplier" orgId={orgId} />
+                    <AddSupplierDialog orgId={orgId} onSuccess={(newSupplier: Supplier) => setSuppliers([newSupplier, ...suppliers])} />
+                </div>
             </div>
 
             <div className="grid gap-3">

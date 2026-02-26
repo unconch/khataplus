@@ -1,9 +1,14 @@
 {
-  "name": "KhataPlus",
+  "name": "KhataPlus Business",
   "short_name": "KhataPlus",
-  "description": "Simple, powerful billing & khata management for Indian businesses. A modern alternative to Vyapar.",
+  "description": "Premium Billing, Inventory & Credit Ledger for Indian Businesses. Experience the faster way to manage your Khata.",
   "start_url": "/dashboard",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
@@ -34,7 +39,8 @@
   "shortcuts": [
     {
       "name": "New Sale",
-      "url": "/dashboard/sales?action=new",
+      "url": "/dashboard/sales",
+      "description": "Create a new GST or non-GST bill",
       "icons": [
         {
           "src": "/icon.svg",
@@ -43,8 +49,31 @@
       ]
     },
     {
-      "name": "Daily Ledger",
+      "name": "Inventory",
+      "url": "/dashboard/inventory",
+      "description": "Check stock levels and add items",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Credit Ledger",
+      "url": "/dashboard/customers",
+      "description": "View outstanding customer balances",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Daily Reports",
       "url": "/dashboard/reports",
+      "description": "View financial statements",
       "icons": [
         {
           "src": "/icon.svg",

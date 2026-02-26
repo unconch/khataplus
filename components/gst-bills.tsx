@@ -1,16 +1,14 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { Sale } from "@/lib/types"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { FileTextIcon, Printer, Download, Loader2, Package2, Search, Calendar, MessageCircle, QrCode } from "lucide-react"
+import { FileTextIcon, Printer, Download, Loader2, Search, MessageCircle, User, CreditCard } from "lucide-react"
 import { format } from "date-fns"
-import { ReturnDialog } from "./return-dialog"
 import { generateInvoice, type GroupedSale } from "@/lib/invoice-utils"
 import { getWhatsAppUrl, WhatsAppMessages } from "@/lib/whatsapp"
-import { getUPILink, getQRCodeUrl } from "@/lib/payments"
+import { toast } from "sonner"
 
 interface GstBillsProps {
   sales: Sale[]
@@ -18,10 +16,24 @@ interface GstBillsProps {
 }
 
 export function GstBills({ sales, org }: GstBillsProps) {
+  const PAGE_SIZE = 12
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isArchiveLoading, setIsArchiveLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
-  // Group sales by batch_id if present, otherwise treat as individual batches
+  useEffect(() => {
+    setIsArchiveLoading(true)
+    const id = window.setTimeout(() => setIsArchiveLoading(false), 350)
+    return () => window.clearTimeout(id)
+  }, [sales.length])
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [searchQuery, sales.length])
+
   const groupedSales = useMemo(() => {
     return sales.reduce((acc, sale) => {
       const key = sale.batch_id || sale.id
@@ -34,7 +46,7 @@ export function GstBills({ sales, org }: GstBillsProps) {
           paymentMethod: sale.payment_method,
           customerName: sale.customer_name,
           customerPhone: sale.customer_phone,
-          items: []
+          items: [],
         }
       }
       acc[key].items.push(sale)
@@ -42,201 +54,305 @@ export function GstBills({ sales, org }: GstBillsProps) {
     }, {} as Record<string, GroupedSale>)
   }, [sales])
 
-  const filteredGroups = useMemo(() => {
-    const sorted = Object.values(groupedSales).sort((a, b) =>
-      new Date(b.saledate).getTime() - new Date(a.saledate).getTime()
-    )
+  const getInvoiceId = (group: GroupedSale) => {
+    const datePart = format(new Date(group.saledate), "ddMMyy")
+    const idPart = String(group.id || "")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(-6)
+      .toUpperCase()
+      .padStart(6, "0")
+    return `INV-${datePart}-${idPart}`
+  }
 
-    if (!searchQuery) {
-      return sorted
-    }
+  const filteredGroups = useMemo(() => {
+    const sorted = Object.values(groupedSales).sort(
+      (a, b) => new Date(b.saledate).getTime() - new Date(a.saledate).getTime()
+    )
+    if (!searchQuery) return sorted
 
     const query = searchQuery.toLowerCase()
-    return sorted.filter(group => {
-      const billId = `INV-${format(new Date(group.saledate), "ddMMyyHHmm")}`
+    return sorted.filter((group) => {
+      const billId = getInvoiceId(group)
       const matchesId = billId.toLowerCase().includes(query)
-      const matchesItem = group.items.some(item => item.inventory?.name.toLowerCase().includes(query))
+      const matchesItem = group.items.some((item) => (item.inventory?.name || "").toLowerCase().includes(query))
       const totalAmount = group.items.reduce((sum, item) => sum + item.total_amount, 0)
       const matchesAmount = totalAmount.toString().includes(query)
-
-      return matchesId || matchesItem || matchesAmount
+      const matchesCustomer = (group.customerName || "").toLowerCase().includes(query)
+      return matchesId || matchesItem || matchesAmount || matchesCustomer
     })
   }, [groupedSales, searchQuery])
 
-  const handleDownload = async (group: GroupedSale, type: 'A4' | 'THERMAL') => {
+  const handleDownload = async (group: GroupedSale, type: "A4" | "THERMAL") => {
     setGeneratingId(`${group.id}-${type}`)
     try {
       await generateInvoice(group, type, org)
-    } catch (err) {
-      alert("Failed to generate invoice")
+    } catch {
+      toast.error("Failed to generate invoice")
     } finally {
       setGeneratingId(null)
     }
   }
 
+  const visibleGroups = useMemo(() => filteredGroups.slice(0, visibleCount), [filteredGroups, visibleCount])
+  const hasMore = visibleCount < filteredGroups.length
+
+  useEffect(() => {
+    if (isArchiveLoading || !hasMore || !loadMoreRef.current) return
+
+    const node = loadMoreRef.current
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry.isIntersecting || isLoadingMore) return
+
+        setIsLoadingMore(true)
+        window.setTimeout(() => {
+          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredGroups.length))
+          setIsLoadingMore(false)
+        }, 650)
+      },
+      { root: null, rootMargin: "300px 0px", threshold: 0.01 }
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [isArchiveLoading, hasMore, isLoadingMore, filteredGroups.length])
+
+  if (isArchiveLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm top-0 z-20 sticky">
+          <div className="h-11 w-full rounded-xl bg-zinc-100 animate-pulse" />
+        </div>
+        <div className="grid gap-4">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="mx-auto w-full max-w-[1040px] bg-white rounded-2xl border border-zinc-100 p-4 md:p-5 shadow-sm animate-pulse"
+              style={{ animationDelay: `${idx * 140}ms` }}
+            >
+              <div className="h-24 w-full rounded bg-zinc-50" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   if (Object.keys(groupedSales).length === 0) {
     return (
-      <Card className="border-dashed bg-muted/20">
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <FileTextIcon className="h-10 w-10 text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground font-medium">No invoice history</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">Grouped sales will appear here automatically</p>
-        </CardContent>
-      </Card>
+      <div className="bg-white p-8 rounded-2xl border border-dashed border-zinc-200 text-center flex flex-col items-center gap-3">
+        <div className="h-14 w-14 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-300">
+          <FileTextIcon className="h-7 w-7" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-zinc-950">No Invoices Issued</p>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Invoice records will appear here.</p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="relative group sticky top-0 z-10 bg-background/80 backdrop-blur-md pb-2 -mx-4 px-4">
-        <Search className="absolute left-7 top-[calc(50%-4px)] -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-        <Input
-          placeholder="Search by Bill ID, Item or Amount..."
-          className="pl-11 h-12 bg-muted/20 border-zinc-200 dark:border-white/10 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+    <div className="space-y-4">
+      <div className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md p-3 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-sm top-0 z-20 sticky mb-6 group/search">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="relative flex items-center flex-1">
+            <Search className="absolute left-4 h-3.5 w-3.5 text-zinc-400 group-focus-within/search:text-emerald-500 transition-colors" />
+            <Input
+              placeholder="FILTER TRANSACTION ARCHIVES..."
+              className="pl-10 h-9 bg-zinc-50 dark:bg-zinc-900 border-none rounded-lg focus-visible:ring-1 focus-visible:ring-emerald-500/30 transition-all font-black text-[10px] uppercase tracking-widest placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="absolute right-3 hidden sm:flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/50 animate-pulse" />
+              <kbd className="h-6 px-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[9px] font-black text-zinc-400 flex items-center tracking-tighter shadow-sm">SEARCH_FS</kbd>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {filteredGroups.length === 0 ? (
-        <div className="py-20 text-center space-y-3 bg-muted/10 rounded-2xl border border-dashed border-zinc-200 dark:border-white/5">
-          <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto">
-            <Search className="h-6 w-6 text-muted-foreground" />
+      <div className="grid gap-5">
+        {visibleGroups.map((group, idx) => {
+          const totalAmount = group.items.reduce((sum, item) => sum + item.total_amount, 0)
+          const itemCount = group.items.length
+          const invoiceId = getInvoiceId(group)
+
+          return (
+            <div
+              key={group.id}
+              className="mx-auto w-full max-w-[1040px] bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-white/5 p-4 md:p-5 shadow-sm hover:shadow-xl hover:border-emerald-500/20 transition-all duration-500 group/bill animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden"
+              style={{ animationDelay: `${Math.min(idx, 10) * 55}ms` }}
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 via-blue-500 to-emerald-500 opacity-0 group-hover/bill:opacity-100 transition-opacity duration-500" />
+
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-zinc-50 dark:border-white/5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-[12px] font-black text-zinc-950 dark:text-zinc-50 tracking-tighter uppercase">{invoiceId}</h3>
+                    <div className="h-5 px-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-100 dark:border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-center gap-1.5">
+                      <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                      Verified
+                    </div>
+                  </div>
+                  <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                    <span className="h-px w-2 bg-zinc-200 dark:bg-zinc-800" />
+                    {format(new Date(group.saledate), "MMM dd, yyyy HH:mm")}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {group.customerPhone && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 rounded-xl border-zinc-100 dark:border-white/5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-100 transition-all shadow-sm"
+                      onClick={() => {
+                        const msg = WhatsAppMessages.invoiceShare(group.customerName, "Business", totalAmount, group.id)
+                        window.open(getWhatsAppUrl(group.customerPhone!, msg), "_blank")
+                      }}
+                    >
+                      <MessageCircle size={15} />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="py-4">
+                <div className="text-[10px] font-black text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.2em] mb-3 flex items-center gap-3">
+                  <div className="h-px w-6 bg-zinc-100 dark:bg-zinc-800" />
+                  Line Items ({itemCount})
+                </div>
+                <div className="rounded-xl border border-zinc-50 dark:border-white/5 overflow-hidden">
+                  <div className="md:hidden divide-y divide-zinc-100 dark:divide-white/5 bg-white dark:bg-zinc-950">
+                    {group.items.map((sale) => (
+                      <div key={sale.id} className="p-3">
+                        <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-200 uppercase tracking-tight mb-2">
+                          {sale.inventory?.name || "Item"}
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Qty</p>
+                            <p className="text-[12px] font-bold text-zinc-600 dark:text-zinc-300 tabular-nums">{sale.quantity}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Price</p>
+                            <p className="text-[12px] font-bold text-zinc-600 dark:text-zinc-300 tabular-nums whitespace-nowrap">Rs {Number(sale.sale_price).toFixed(0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Sum</p>
+                            <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100 tabular-nums whitespace-nowrap">Rs {Number(sale.total_amount).toFixed(0)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="text-[10px] text-zinc-400 dark:text-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/50">
+                          <th className="py-2 px-4 font-black uppercase tracking-widest">Description</th>
+                          <th className="w-20 py-2 px-4 font-black uppercase tracking-widest text-center tabular-nums">Qty</th>
+                          <th className="w-28 py-2 px-4 font-black uppercase tracking-widest text-center tabular-nums">Price</th>
+                          <th className="w-32 py-2 px-4 font-black uppercase tracking-widest text-center tabular-nums text-emerald-600">Sum</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-50 dark:divide-white/5">
+                        {group.items.map((sale) => (
+                          <tr key={sale.id} className="group/row hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                            <td className="py-3 px-4 text-[12px] font-black text-zinc-900 dark:text-zinc-200 uppercase tracking-tight">{sale.inventory?.name || "Item"}</td>
+                            <td className="w-20 py-3 px-4 text-[12px] text-center font-bold text-zinc-500 dark:text-zinc-400 tabular-nums whitespace-nowrap">{sale.quantity}</td>
+                            <td className="w-28 py-3 px-4 text-[12px] text-center font-bold text-zinc-500 dark:text-zinc-400 tabular-nums whitespace-nowrap">Rs {Number(sale.sale_price).toFixed(0)}</td>
+                            <td className="w-32 py-3 px-4 text-[12px] text-center font-black text-zinc-950 dark:text-zinc-100 tabular-nums whitespace-nowrap">Rs {Number(sale.total_amount).toFixed(0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-zinc-50 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                  <div className="inline-flex max-w-full items-center gap-2 bg-zinc-50 dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-100 dark:border-white/5 shadow-sm">
+                    <User size={12} className="text-blue-500" />
+                    <span className="text-zinc-600 dark:text-zinc-400 whitespace-nowrap truncate">
+                      {group.customerName || "Walk-in Guest"}
+                    </span>
+                  </div>
+                  <div className="inline-flex max-w-full items-center gap-2 bg-zinc-50 dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-100 dark:border-white/5 shadow-sm">
+                    <CreditCard size={12} className="text-emerald-500" />
+                    <span className="text-zinc-600 dark:text-zinc-400 whitespace-nowrap truncate">
+                      {group.paymentMethod || "CASH_SETTLEMENT"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-start sm:items-end gap-2">
+                  <div className="inline-flex items-center gap-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-4 py-2.5 shadow-sm">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400 leading-none">
+                      Settlement
+                    </span>
+                    <span className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
+                    <span className="text-xl font-black italic tracking-tighter leading-none tabular-nums text-zinc-950 dark:text-zinc-100">
+                      <span className="text-emerald-600 mr-1">Rs</span>
+                      {totalAmount.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 px-4 rounded-xl text-zinc-500 dark:text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-100 dark:hover:border-white/5"
+                      onClick={() => handleDownload(group, "THERMAL")}
+                      disabled={generatingId?.startsWith(group.id)}
+                    >
+                      {generatingId === `${group.id}-THERMAL` ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                      ) : (
+                        <Printer className="h-3 w-3 mr-2 text-blue-500" />
+                      )}
+                      Print
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 px-2 rounded-lg text-zinc-600 dark:text-zinc-300 text-[10px] font-black uppercase tracking-widest hover:bg-transparent hover:text-zinc-950 dark:hover:text-zinc-100 shadow-none border-0"
+                      onClick={() => handleDownload(group, "A4")}
+                      disabled={generatingId?.startsWith(group.id)}
+                    >
+                      {generatingId === `${group.id}-A4` ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 mr-2 text-zinc-700 dark:text-zinc-300" />
+                      )}
+                      Export
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {(hasMore || isLoadingMore) && (
+          <div ref={loadMoreRef} className="mx-auto w-full max-w-[1040px] flex flex-col items-center gap-3 py-2">
+            {isLoadingMore && (
+              <div className="w-full space-y-2">
+                <div className="h-20 rounded-2xl border border-zinc-100 bg-zinc-50 animate-pulse" />
+                <div className="h-20 rounded-2xl border border-zinc-100 bg-zinc-50 animate-pulse" style={{ animationDelay: "120ms" }} />
+                <div className="h-20 rounded-2xl border border-zinc-100 bg-zinc-50 animate-pulse" style={{ animationDelay: "240ms" }} />
+              </div>
+            )}
+            {hasMore && (
+              <span className="text-[11px] text-zinc-400">
+                Loading more bills...
+              </span>
+            )}
           </div>
-          <p className="text-sm font-bold text-foreground italic">"No matching invoices found"</p>
-          <p className="text-xs text-muted-foreground">Try a different search term or check the bill ID.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredGroups.map((group) => {
-            const totalAmount = group.items.reduce((sum, item) => sum + item.total_amount, 0)
-            const itemCount = group.items.length
-
-            return (
-              <Card key={group.id} className="group hover:shadow-lg transition-all duration-500 border-zinc-200 dark:border-white/10 overflow-hidden bg-card/50 backdrop-blur-sm rounded-[1.5rem] md:rounded-[2rem]">
-                <CardContent className="p-4 md:p-6">
-                  {/* Desktop Title Bar (Horizontal) */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-sm">
-                        <Package2 className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-black text-base tracking-tight text-foreground uppercase">
-                            INV-{format(new Date(group.saledate), "ddMMyyHHmm")}
-                          </p>
-                          {itemCount > 1 && (
-                            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] px-2 py-0.5 rounded-full uppercase font-black tracking-widest border border-emerald-500/20">
-                              Batch
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Calendar className="h-3 w-3 text-muted-foreground/40" />
-                          <p className="text-[9px] uppercase font-bold text-muted-foreground/40 tracking-widest">
-                            {format(new Date(group.saledate), "dd MMM, yyyy • hh:mm a")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {group.customerPhone && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-11 flex-1 md:flex-none gap-2 text-[10px] font-black uppercase tracking-widest rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 active:scale-95 transition-all shadow-sm"
-                          onClick={() => {
-                            const msg = WhatsAppMessages.invoiceShare(
-                              group.customerName,
-                              org?.name || "My Shop",
-                              totalAmount,
-                              group.id
-                            )
-                            window.open(getWhatsAppUrl(group.customerPhone!, msg), "_blank")
-                          }}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          Share
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-11 flex-1 md:flex-none gap-2 text-[10px] font-black uppercase tracking-widest rounded-xl border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/5 active:scale-95 transition-all shadow-sm"
-                        onClick={() => handleDownload(group, 'THERMAL')}
-                        disabled={generatingId === `${group.id}-THERMAL`}
-                      >
-                        {generatingId === `${group.id}-THERMAL` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                        Receipt
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-11 flex-1 md:flex-none gap-2 text-[10px] font-black uppercase tracking-widest rounded-xl active:scale-95 transition-all shadow-lg"
-                        onClick={() => handleDownload(group, 'A4')}
-                        disabled={generatingId === `${group.id}-A4`}
-                      >
-                        {generatingId === `${group.id}-A4` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        Full Bill
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Summary & Full Item Breakdown */}
-                  <div className="mt-4 pt-4 border-t border-dashed border-zinc-200 dark:border-white/10 space-y-4">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">
-                      <span>Items in Order ({itemCount})</span>
-                      <span className="text-foreground">₹{totalAmount.toFixed(0)}</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {group.items.map((sale) => (
-                        <div key={sale.id} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200 dark:border-white/5 hover:border-primary/20 transition-all">
-                          <div className="flex flex-col flex-1 min-w-0">
-                            <span className="text-sm font-black tracking-tight truncate">{sale.inventory?.name || "Product"}</span>
-                            <span className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest mt-1">
-                              {sale.quantity} × ₹{sale.sale_price.toFixed(0)}
-                            </span>
-                          </div>
-                          <div className="text-right ml-4">
-                            <span className="text-base font-black font-mono tracking-tight">₹{sale.total_amount.toFixed(0)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Invoice Total Summary */}
-                    <div className="flex flex-col md:flex-row gap-4 mt-4">
-                      <div className="flex-1 p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Invoice Total</span>
-                          <span className="text-sm font-medium text-muted-foreground mt-0.5">{format(new Date(group.saledate), "dd MMM yyyy")}</span>
-                        </div>
-                        <span className="text-3xl font-black font-mono tracking-tighter text-primary">₹{totalAmount.toFixed(0)}</span>
-                      </div>
-
-                      {group.paymentMethod === "UPI" && org?.upi_id && (
-                        <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-emerald-500/20">
-                          <img
-                            src={getQRCodeUrl(getUPILink({ pa: org.upi_id, pn: org.name, am: totalAmount.toString(), tn: `Bill INV-${format(new Date(group.saledate), "ddMMyyHHmm")}` }), 64)}
-                            alt="Payment QR"
-                            className="h-12 w-12 rounded-lg"
-                          />
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">UPI Payment</span>
-                            <span className="text-[10px] font-bold text-muted-foreground">Scan to Pay</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

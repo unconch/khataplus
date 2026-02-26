@@ -35,16 +35,32 @@ user_data*/
 .env.sentry-build-plugin
 
 # Local Debug Scripts and Logs
+check-all-orgs.ts
+check-data-sizes*.ts
 check-org-schema.ts
 check-org.ts
+check-reports-size.ts
 clear-org-data.ts
 dev-server*.err
 dev-server*.log
 dev-3000.*
+dev-3010.*
 dev-sdk-check.*
+dev.log
+fresh_dev*.log
+start-3020.*
 start_debug.log
+test-output.log
+failed_sales.csv
 inspect-trigger.ts
 list-tables.ts
+find-org.ts
+generate-all-data.ts
+generate-stress-data.ts
+generate-alpha-test-*.ts
+generate-clothing-data.ts
 scripts/run_migrate_status_direct.ts
 scripts/test-*.mjs
 scripts/check-billing-schema.mjs
+test-db.ts
+test-groq.mjs

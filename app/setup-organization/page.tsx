@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/lib/session"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
-import { getUserOrganizations, getProfile } from "@/lib/data"
+import { getProfile } from "@/lib/data"
+import { getOrganization } from "@/lib/data/organizations"
+import { getUserOrganizationsResolved } from "@/lib/data/auth"
 
 export default async function SetupOrganizationPage() {
     const sessionRes = await getSession()
@@ -11,13 +13,24 @@ export default async function SetupOrganizationPage() {
         redirect("/auth/login")
     }
 
-    const [userOrgs, profile] = await Promise.all([
-        getUserOrganizations(userId),
-        getProfile(userId)
-    ])
+    const [userOrgs, profile] = await Promise.all([getUserOrganizationsResolved(userId), getProfile(userId)])
 
     if (userOrgs.length > 0) {
+        const slug = userOrgs[0]?.organization?.slug
+        if (slug) {
+            redirect(`/${slug}/dashboard`)
+        }
         redirect("/dashboard")
+    }
+
+    if (profile?.organization_id) {
+        const org = await getOrganization(profile.organization_id)
+        if (org?.slug) {
+            redirect(`/${org.slug}/dashboard`)
+        }
+        if (org) {
+            redirect("/dashboard")
+        }
     }
 
     return (

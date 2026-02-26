@@ -1,19 +1,13 @@
-
-import { getProfile } from "@/lib/data/profiles"
-import { getSystemSettings } from "@/lib/data/organizations"
 import { redirect } from "next/navigation"
 import { HomeDashboard } from "@/components/home-dashboard"
 
 export default async function DashboardPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const { getCurrentUser } = await import("@/lib/data/auth")
+  const { getCurrentUser, getUserOrganizationsResolved } = await import("@/lib/data/auth")
   const { getProfile } = await import("@/lib/data/profiles")
-  const { getSystemSettings, getOrganization, getUserOrganizations } = await import("@/lib/data/organizations")
-  const { getInventory } = await import("@/lib/data/inventory")
-  const { getCustomers, getKhataTransactions } = await import("@/lib/data/customers")
-  const { getSales } = await import("@/lib/data/sales")
+  const { getSystemSettings, getOrganization } = await import("@/lib/data/organizations")
+  const { getInventoryStats } = await import("@/lib/data/inventory")
   const { getDailyReports } = await import("@/lib/data/reports")
-  const { getLowStockItems } = await import("@/lib/data/inventory")
-  const { getSuppliers, getSupplierTransactions } = await import("@/lib/data/suppliers")
+  const { getDemoSql, getProductionSql } = await import("@/lib/db")
 
   const user = await getCurrentUser()
 
@@ -47,76 +41,88 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
     return null
   }
 
-  // Redirect to setup-organization if user has no org and is not a guest
-  if (!isGuest && !profile.organization_id) {
-    const orgs = await getUserOrganizations(userId)
+  let orgId = profile.organization_id || ""
+
+  // Resolve org from memberships if profile org_id is missing
+  if (!isGuest && !orgId) {
+    const orgs = await getUserOrganizationsResolved(userId)
     if (orgs.length === 0) {
       redirect("/setup-organization")
       return null
     }
+    orgId = orgs[0].org_id
   }
 
-  const settings = await getSystemSettings(profile.organization_id || "")
-  const orgId = profile.organization_id || ""
+  const settings = await getSystemSettings(orgId)
 
-  // Self-Correction: If we are at /dashboard (no slug) but have an org, redirect to the slug URL
-  const { headers } = await import("next/headers")
-  const headersList = await headers()
-  const currentSlug = headersList.get("x-tenant-slug")
-
-  if (!currentSlug && !isGuest && profile.organization_id) {
-    // Force a fresh fetch from DB directly to bypass any Next.js caching issues for the slug
-    // This ensures that if an org was renamed/slug changed, we don't serve a stale /dashboard
-    const { getSql } = await import("@/lib/db")
-    const db = getSql()
-    const orgResult = await db`SELECT slug FROM organizations WHERE id = ${profile.organization_id}`
-    const dbSlug = orgResult[0]?.slug
-
-    if (dbSlug) {
-      console.log(`[Dashboard] Redirecting to slugged URL: /${dbSlug}/dashboard`);
-      redirect(`/${dbSlug}/dashboard`)
-    }
-  }
+  // Keep /dashboard as canonical to avoid slug rewrite loops.
 
   // Fetch stats for onboarding guide
+  const db = isGuest ? getDemoSql() : getProductionSql()
+
   const [
-    inventory,
-    customers,
-    sales,
+    inventoryStats,
     org,
     reports,
-    lowStockItems,
-    suppliers,
-    khataTransactions,
-    supplierTransactions
+    customersCountResult,
+    salesCountResult,
+    recentSalesRaw,
+    unpaidResult,
+    payableResult
   ] = await Promise.all([
-    getInventory(orgId),
-    getCustomers(orgId),
-    getSales(orgId),
+    getInventoryStats(orgId),
     getOrganization(orgId),
     getDailyReports(orgId),
-    getLowStockItems(orgId),
-    getSuppliers(orgId),
-    getKhataTransactions(orgId),
-    getSupplierTransactions(orgId)
+    db`SELECT COUNT(*)::int as count FROM customers WHERE org_id = ${orgId}`,
+    db`SELECT COUNT(*)::int as count FROM sales WHERE org_id = ${orgId}`,
+    db`
+      SELECT id, customer_name, quantity, sale_date, total_amount
+      FROM sales
+      WHERE org_id = ${orgId}
+      ORDER BY created_at DESC
+      LIMIT 5
+    `,
+    db`
+      SELECT COALESCE(SUM(balance), 0)::numeric as unpaid
+      FROM (
+        SELECT COALESCE(SUM(CASE WHEN k.type = 'credit' THEN k.amount ELSE -k.amount END), 0) as balance
+        FROM customers c
+        LEFT JOIN khata_transactions k ON c.id = k.customer_id
+        WHERE c.org_id = ${orgId}
+        GROUP BY c.id
+      ) t
+      WHERE t.balance > 0
+    `,
+    db`
+      SELECT COALESCE(SUM(balance), 0)::numeric as payable
+      FROM (
+        SELECT COALESCE(SUM(CASE WHEN st.type = 'purchase' THEN st.amount ELSE -st.amount END), 0) as balance
+        FROM suppliers s
+        LEFT JOIN supplier_transactions st ON s.id = st.supplier_id
+        WHERE s.org_id = ${orgId}
+        GROUP BY s.id
+      ) t
+      WHERE t.balance > 0
+    `
   ])
 
+  const sales = recentSalesRaw.map((row: any) => ({
+    ...row,
+    quantity: Number(row.quantity || 0),
+    total_amount: Number(row.total_amount || 0),
+    sale_date: row.sale_date,
+  }))
+
   const onboardingStats = {
-    hasInventory: inventory.length > 0,
-    hasCustomers: customers.length > 0,
-    hasSales: sales.length > 0,
+    hasInventory: inventoryStats.totalCount > 0,
+    hasCustomers: Number(customersCountResult?.[0]?.count || 0) > 0,
+    hasSales: Number(salesCountResult?.[0]?.count || 0) > 0,
     isProfileComplete: !!(org?.gstin && org?.address)
   }
 
-  // Calculate real metrics
-  const unpaidAmount = customers.reduce((acc, c: any) => acc + ((c.balance || 0) > 0 ? (c.balance || 0) : 0), 0)
-  const toPayAmount = suppliers.reduce((acc, s: any) => acc + ((s.balance || 0) > 0 ? (s.balance || 0) : 0), 0)
-
-  // Simple inventory health: % of items in stock
-  const totalItems = inventory.length
-  // Cast to any to access quantity safely without importing type if checking strictness
-  const inStockItems = inventory.filter((i: any) => (i.stock || i.quantity || 0) > 5).length
-  const inventoryHealth = totalItems > 0 ? Math.round((inStockItems / totalItems) * 100) : 100
+  const unpaidAmount = Number(unpaidResult?.[0]?.unpaid || 0)
+  const toPayAmount = Number(payableResult?.[0]?.payable || 0)
+  const inventoryHealth = inventoryStats.health
 
   return (
     <HomeDashboard
@@ -128,12 +134,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
       unpaidAmount={unpaidAmount}
       toPayAmount={toPayAmount}
       inventoryHealth={inventoryHealth}
-      lowStockItems={lowStockItems}
+      lowStockCount={inventoryStats.lowStockCount}
       sales={sales as any}
-      khataTransactions={khataTransactions as any}
-      supplierTransactions={supplierTransactions as any}
-      customers={customers as any}
-      suppliers={suppliers as any}
+      inventoryCount={inventoryStats.totalCount}
     />
   )
 }

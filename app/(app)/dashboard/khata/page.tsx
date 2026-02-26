@@ -1,7 +1,5 @@
 import { Suspense } from "react"
-import { getKhataTransactions, getCustomers } from "@/lib/data/customers"
-import { getCurrentOrgId } from "@/lib/data/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { IndianRupee, ArrowUpRight, ArrowDownLeft, Loader2, Users, Receipt } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -36,14 +34,9 @@ async function KhataDashboardContent() {
     if (!user) {
         return null
     }
-    const { userId, isGuest } = user
 
-    let orgId: string | null = null
-    if (isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(userId)
-    }
+    const { userId, isGuest } = user
+    const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
 
     if (!orgId) {
         return null
@@ -54,12 +47,12 @@ async function KhataDashboardContent() {
         getCustomers(orgId)
     ])
 
+    const customerById = new Map(customers.map((c) => [c.id, c]))
     const totalGet = customers.reduce((acc, c) => (c.balance || 0) > 0 ? acc + (c.balance || 0) : acc, 0)
     const totalGive = customers.reduce((acc, c) => (c.balance || 0) < 0 ? acc + Math.abs(c.balance || 0) : acc, 0)
 
     return (
         <div className="space-y-6">
-            {/* Summary Cards */}
             <div className="grid grid-cols-2 gap-4">
                 <Card className="border-none bg-emerald-50 shadow-sm dark:bg-emerald-500/10">
                     <CardContent className="p-4">
@@ -87,7 +80,6 @@ async function KhataDashboardContent() {
                 </Card>
             </div>
 
-            {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
                 <Link href="/dashboard/customers" className="block">
                     <Card className="hover:bg-muted/50 transition-colors border-none shadow-sm bg-muted/20">
@@ -115,7 +107,6 @@ async function KhataDashboardContent() {
                 </Card>
             </div>
 
-            {/* Recent Transactions */}
             <div className="space-y-4">
                 <h3 className="text-lg font-bold px-1">Recent Transactions</h3>
                 <div className="space-y-3">
@@ -124,34 +115,38 @@ async function KhataDashboardContent() {
                             <p className="text-muted-foreground">No recent entries</p>
                         </div>
                     ) : (
-                        transactions.map((tx) => (
-                            <Link key={tx.id} href={`/dashboard/khata/${tx.customer_id}`} className="block">
-                                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border-l-4 border-l-transparent hover:border-l-primary transition-all">
-                                    <div className="flex items-center gap-3">
+                        transactions.map((tx) => {
+                            const resolvedCustomer = customerById.get(tx.customer_id)
+                            const customerName = resolvedCustomer?.name || tx.customer?.name || "Unknown"
+                            return (
+                                <Link key={tx.id} href={`/dashboard/khata/${tx.customer_id}`} className="block">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border-l-4 border-l-transparent hover:border-l-primary transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "h-10 w-10 rounded-full flex items-center justify-center font-bold text-white",
+                                                tx.type === "credit" ? "bg-rose-500" : "bg-emerald-500"
+                                            )}>
+                                                {customerName?.[0]?.toUpperCase() || "?"}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm">{customerName}</p>
+                                                <p className="text-[10px] text-muted-foreground font-medium">
+                                                    {new Date(tx.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} -
+                                                    {tx.type === "credit" ? " GAVE" : " GOT"}
+                                                </p>
+                                            </div>
+                                        </div>
                                         <div className={cn(
-                                            "h-10 w-10 rounded-full flex items-center justify-center font-bold text-white",
-                                            tx.type === "credit" ? "bg-rose-500" : "bg-emerald-500"
+                                            "font-bold text-lg",
+                                            tx.type === "credit" ? "text-rose-500" : "text-emerald-500"
                                         )}>
-                                            {tx.customer?.name?.[0].toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-sm">{tx.customer?.name}</p>
-                                            <p className="text-[10px] text-muted-foreground font-medium">
-                                                {new Date(tx.created_at).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })} •
-                                                {tx.type === "credit" ? " GAVE" : " GOT"}
-                                            </p>
+                                            <IndianRupee className="inline h-4 w-4 -mt-1 ml-0.5" />
+                                            {Number(tx.amount).toLocaleString()}
                                         </div>
                                     </div>
-                                    <div className={cn(
-                                        "font-bold text-lg",
-                                        tx.type === "credit" ? "text-rose-500" : "text-emerald-500"
-                                    )}>
-                                        <IndianRupee className="inline h-4 w-4 -mt-1 ml-0.5" />
-                                        {Number(tx.amount).toLocaleString()}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))
+                                </Link>
+                            )
+                        })
                     )}
                 </div>
             </div>

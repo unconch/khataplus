@@ -196,12 +196,32 @@ function PricingContent({
                 name: "KhataPlus",
                 description: `${planKey.toUpperCase()} | ${billingCycle}`,
                 order_id: data.orderId,
-                notes: { plan: planKey, cycle: billingCycle },
-                handler: () => {
-                    toast.success("Payment successful. Activating your plan...")
-                    router.push("/pricing?payment=success")
+                handler: async (response: any) => {
+                    setLoadingPlanKey(planKey)
+                    try {
+                        const verifyRes = await fetch("/api/billing/razorpay/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                orgId: orgSlug || "demo-org", // In real flow, get current orgId
+                                plan: planKey,
+                                cycle: billingCycle
+                            })
+                        })
+                        const verifyData = await verifyRes.json()
+                        if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed")
+
+                        toast.success("Payment successful. Plan activated.")
+                        router.push("/pricing?payment=success")
+                    } catch (err: any) {
+                        toast.error(err.message || "Payment verification failed")
+                    } finally {
+                        setLoadingPlanKey(null)
+                    }
                 },
-                theme: { color: "#10b981" }
             })
             rzp.on("payment.failed", (err: any) => {
                 toast.error(err?.error?.description || "Payment failed. Please try again.")
@@ -314,18 +334,31 @@ function PricingContent({
                                 </div>
 
                                 <div className="mb-8">
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
-                                            {formatINR(tier.price[billingCycle])}
-                                        </span>
-                                        <span className="text-zinc-500 font-bold text-[8px] uppercase tracking-widest">
-                                            /{billingCycle === "yearly" ? "yr" : "mo"}
-                                        </span>
-                                    </div>
-                                    {billingCycle === "yearly" && (
-                                        <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest mt-1">
-                                            {formatINR(Math.floor(tier.price.yearly / 12))}/mo
+                                    {tier.planKey === "business" ? (
+                                        <div className="flex flex-col gap-1">
+                                            <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
+                                                Contact
+                                            </span>
+                                            <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest">
+                                                For Enterprise Volume
+                                            </div>
                                         </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-baseline gap-1.5">
+                                                <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
+                                                    {formatINR(tier.price[billingCycle])}
+                                                </span>
+                                                <span className="text-zinc-500 font-bold text-[8px] uppercase tracking-widest">
+                                                    /{billingCycle === "yearly" ? "yr" : "mo"}
+                                                </span>
+                                            </div>
+                                            {billingCycle === "yearly" && (
+                                                <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest mt-1">
+                                                    {formatINR(Math.floor(tier.price.yearly / 12))}/mo
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
 

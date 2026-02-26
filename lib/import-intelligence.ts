@@ -316,7 +316,7 @@ function getTypeMatchBonus(field: string, dataType: string): number {
     const exp = expected[field]
     if (!exp) return 0
 
-    // Hard penalty if name is mapped to a pure number column
+    // Hard penalty: names should not come from numeric columns.
     if ((field === "name" || field === "name_contact") && dataType === "number") return -0.4
 
     return exp.includes(dataType) ? 0.2 : -0.15
@@ -333,6 +333,10 @@ function findBestColumnMatch(
 
     for (const column of columns) {
         if (usedColumns.has(column)) continue
+        const normalizedCol = column.toLowerCase().replace(/[^a-z0-9]/g, "")
+        if ((field === "name" || field === "name_contact") && /(id|code|sku|uuid)/.test(normalizedCol) && !/name|title|desc/.test(normalizedCol)) {
+            continue
+        }
 
         let topScore = 0
         for (const pattern of patterns) {
@@ -439,17 +443,14 @@ export async function analyzeWithAI(
     }
 
     try {
-        // PRIVACY: Send only structure metadata - ZERO actual data
-        const structure = extractStructureOnly(data)
-
+        // The /api/analyze-csv route reads { dataType, data } — send the correct shape.
+        // Cap at 50 rows for efficiency; route handles Groq mapping from there.
         const response = await fetch("/api/analyze-csv", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 dataType: targetType,
-                structure, // Only column names + types - NO actual values
-                existingSchema: patternResult.schema, // What we already detected
-                missingFields: missingRequired // What we need help with
+                data: data.slice(0, 50), // route requires this key — was missing, causing 400 every call
             })
         })
 
@@ -517,7 +518,9 @@ function cleanValue(value: any, field: string): any {
     if (value === null || value === undefined) return null
     const str = value.toString().trim()
 
-    const nullValues = ["", "-", "n/a", "na", "nil", "null", "none", "undefined", "0.00", "--", "---"]
+    // Null-like sentinel values — note: "0.00" is intentionally excluded because
+    // zero is a valid value for price/stock fields (free items, no-GST products, etc.)
+    const nullValues = ["", "-", "n/a", "na", "nil", "null", "none", "undefined", "--", "---"]
     if (nullValues.includes(str.toLowerCase())) return null
 
     // Numeric fields
@@ -530,9 +533,10 @@ function cleanValue(value: any, field: string): any {
         const cleaned = str.replace(/[₹$€£¥,\s]/g, "").replace(/\((.+)\)/, "-$1")
         const num = parseFloat(cleaned)
         if (isNaN(num)) return 0
-        return field === "stock" || field === "quantity" || field === "min_stock"
-            ? Math.max(0, Math.round(num))
-            : Math.abs(Math.round(num * 100) / 100)
+        if (field === "stock" || field === "quantity" || field === "min_stock")
+            return Math.max(0, Math.round(num))
+        // Do NOT use Math.abs — negative values represent returns/credit notes and should be preserved
+        return Math.round(num * 100) / 100
     }
 
     // Phone - normalize to 10 digits
@@ -568,15 +572,17 @@ function cleanValue(value: any, field: string): any {
         return parseDate(str)
     }
 
-    // Payment method normalization
+    // Payment method normalization — order matters: specific before general
     if (field === "payment_method") {
-        const lower = str.toLowerCase()
+        const lower = str.toLowerCase().trim()
+        if (/\bemi\b/.test(lower)) return "EMI"
+        if (/debit\s*card|credit\s*card|\bcard\b/.test(lower)) return "Card"
+        if (/upi|gpay|google\s*pay|paytm|phonepe|phone\s*pe|bhim|razorpay|whatsapp\s*pay/.test(lower)) return "UPI"
+        if (/net\s*banking|internet\s*banking|online/.test(lower)) return "UPI"
+        if (/neft|rtgs|imps|bank\s*transfer|wire/.test(lower)) return "Bank Transfer"
+        if (/cheque|check|\bdd\b|demand\s*draft/.test(lower)) return "Cheque"
+        if (/credit|khata|due|udhar|baaki|baki|credit\s*note/.test(lower)) return "Credit"
         if (/cash|hand|nakit|naqd/.test(lower) || lower === "c") return "Cash"
-        if (/upi|gpay|google pay|paytm|phonepe|phone pe|bhim|razorpay|whatsapp pay/.test(lower)) return "UPI"
-        if (/debit card|credit card|card/.test(lower)) return "Card"
-        if (/credit|khata|due|udhar|baaki|baki|credit note/.test(lower)) return "Credit"
-        if (/bank|neft|rtgs|imps|transfer|cheque|check|dd|draft/.test(lower)) return "Bank Transfer"
-        if (/online|net banking|internet/.test(lower)) return "UPI"
         return "Cash"
     }
 
@@ -600,44 +606,44 @@ function cleanValue(value: any, field: string): any {
 }
 
 function parseDate(str: string): string {
-    if (!str) return new Date().toISOString()
+    if (!str) return new Date().toISOString().split("T")[0]
 
     try {
         const s = str.toString().trim()
 
-        // DD/MM/YYYY or D/M/YYYY
+        // DD/MM/YYYY or D/M/YYYY (Tally / Indian format) - use UTC to prevent IST timezone shift
         const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
         if (dmy) {
-            const d = new Date(`${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`)
-            if (!isNaN(d.getTime())) return d.toISOString()
+            const d = new Date(`${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}T00:00:00Z`)
+            if (!isNaN(d.getTime())) return d.toISOString().split("T")[0]
         }
 
-        // DD-MMM-YYYY (01-Jan-2024)
+        // DD-MMM-YYYY (01-Jan-2024) - use UTC suffix to avoid timezone shift
         const dMonY = s.match(/^(\d{1,2})[- ]([A-Za-z]{3,9})[- ](\d{4})$/)
         if (dMonY) {
-            const d = new Date(`${dMonY[1]} ${dMonY[2]} ${dMonY[3]}`)
-            if (!isNaN(d.getTime())) return d.toISOString()
+            const d = new Date(`${dMonY[1]} ${dMonY[2]} ${dMonY[3]} UTC`)
+            if (!isNaN(d.getTime())) return d.toISOString().split("T")[0]
         }
 
-        // YYYY/MM/DD
+        // YYYY/MM/DD or YYYY-MM-DD
         const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
         if (ymd) {
-            const d = new Date(`${ymd[1]}-${ymd[2].padStart(2, "0")}-${ymd[3].padStart(2, "0")}`)
-            if (!isNaN(d.getTime())) return d.toISOString()
+            const d = new Date(`${ymd[1]}-${ymd[2].padStart(2, "0")}-${ymd[3].padStart(2, "0")}T00:00:00Z`)
+            if (!isNaN(d.getTime())) return d.toISOString().split("T")[0]
         }
 
         // Excel serial number (40000-60000)
         const serial = parseInt(s)
         if (!isNaN(serial) && serial > 40000 && serial < 60000) {
-            return new Date((serial - 25569) * 86400 * 1000).toISOString()
+            return new Date((serial - 25569) * 86400 * 1000).toISOString().split("T")[0]
         }
 
-        // ISO or other parseable formats
+        // ISO or other parseable formats — extract date part only
         const parsed = new Date(s)
-        if (!isNaN(parsed.getTime())) return parsed.toISOString()
+        if (!isNaN(parsed.getTime())) return parsed.toISOString().split("T")[0]
     } catch { }
 
-    return new Date().toISOString()
+    return new Date().toISOString().split("T")[0]
 }
 
 // ============================================================
@@ -655,7 +661,8 @@ function applyAutoGenerationRules(row: any, type: string, index: number): any {
                 : `SKU-AUTO-${String(index + 1).padStart(4, "0")}`
         }
         if (r.buy_price === null || r.buy_price === undefined) r.buy_price = 0
-        if (!r.sell_price || r.sell_price === 0) r.sell_price = r.buy_price > 0 ? r.buy_price : 0
+        // Only set sell_price when it's missing entirely — don't override a valid 0
+        if (r.sell_price === null || r.sell_price === undefined) r.sell_price = r.buy_price > 0 ? r.buy_price : 0
         if (r.stock === null || r.stock === undefined) r.stock = 0
         if (r.gst_percentage === null || r.gst_percentage === undefined) r.gst_percentage = 0
         if (r.min_stock === null || r.min_stock === undefined) r.min_stock = 5
@@ -675,7 +682,8 @@ function applyAutoGenerationRules(row: any, type: string, index: number): any {
     if (type === "sales") {
         if (!r.payment_method) r.payment_method = "Cash"
         if (!r.quantity || r.quantity === 0) r.quantity = 1
-        if (!r.sale_date) r.sale_date = new Date().toISOString()
+        // Store as YYYY-MM-DD date string, not full ISO timestamp
+        if (!r.sale_date) r.sale_date = new Date().toISOString().split("T")[0]
         if (r.sale_price === null || r.sale_price === undefined) r.sale_price = 0
         if (!r.customer_name) r.customer_name = null
         if (!r.customer_phone) r.customer_phone = null

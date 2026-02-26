@@ -27,6 +27,7 @@ export function AddInventoryForm() {
   const [sku, setSku] = useState("")
   const [name, setName] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
+  const [sellPrice, setSellPrice] = useState("")
   const [gstPercentage, setGstPercentage] = useState("18")
   const [stock, setStock] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -44,6 +45,7 @@ export function AddInventoryForm() {
         sku: sku.toUpperCase(),
         name,
         buy_price: Number.parseFloat(buyPrice),
+        sell_price: sellPrice.trim() ? Number.parseFloat(sellPrice) : undefined,
         gst_percentage: Number.parseFloat(gstPercentage),
         stock: Number.parseInt(stock),
       })
@@ -52,6 +54,7 @@ export function AddInventoryForm() {
       setSku("")
       setName("")
       setBuyPrice("")
+      setSellPrice("")
       setGstPercentage("18")
       setStock("")
 
@@ -67,26 +70,26 @@ export function AddInventoryForm() {
   }
 
   // Design Tokens
-  const sectionHeaderClasses = "flex items-center gap-2 mb-4"
-  const sectionTitleClasses = "text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60"
-  const inputContainerClasses = "group relative flex flex-col gap-1.5 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 transition-all duration-300 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/20"
-  const labelClasses = "text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 group-focus-within:text-primary transition-colors"
-  const inputClasses = "h-10 bg-transparent border-none text-xl font-black focus:outline-none p-0 placeholder:text-zinc-200 dark:placeholder:text-white/5 font-mono tracking-tighter"
+  const sectionHeaderClasses = "flex items-center gap-2 mb-3"
+  const sectionTitleClasses = "text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/50"
+  const inputContainerClasses = "group relative flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/5 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/5 focus-within:border-primary/20"
+  const labelClasses = "text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 group-focus-within:text-primary transition-colors"
+  const inputClasses = "h-8 bg-transparent border-none text-sm font-bold focus:outline-none p-0 placeholder:text-zinc-200 dark:placeholder:text-white/10 font-mono tracking-tight"
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center animate-in zoom-in duration-500">
-        <div className="h-20 w-20 rounded-[2rem] bg-emerald-500 flex items-center justify-center mb-6 shadow-2xl shadow-emerald-500/20">
-          <CheckCircle2 className="h-10 w-10 text-white" />
+      <div className="flex flex-col items-center justify-center py-12 text-center animate-in zoom-in duration-500">
+        <div className="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20">
+          <CheckCircle2 className="h-7 w-7 text-white" />
         </div>
-        <h3 className="text-2xl font-black tracking-tight uppercase tracking-[0.1em]">Catalog Registry Updated</h3>
-        <p className="text-sm font-bold text-muted-foreground mt-2">New asset synchronization complete.</p>
+        <h3 className="text-lg font-black tracking-tight uppercase tracking-widest">Catalog Updated</h3>
+        <p className="text-xs font-bold text-muted-foreground mt-1">New asset synchronization complete.</p>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-8 animate-slide-up">
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-6 animate-slide-up">
       {/* 1. Identification */}
       <section>
         <div className={sectionHeaderClasses}>
@@ -150,7 +153,7 @@ export function AddInventoryForm() {
           <Target className="h-3 w-3 text-primary/60" />
           <h3 className={sectionTitleClasses}>Commercial Valuations</h3>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className={inputContainerClasses}>
             <Label htmlFor="buyPrice" className={labelClasses}>Inventory Cost (Per Unit)</Label>
             <div className="flex items-center gap-3">
@@ -165,6 +168,23 @@ export function AddInventoryForm() {
                 onChange={(e) => setBuyPrice(e.target.value)}
                 placeholder="0.00"
                 required
+                className={cn(inputClasses, "w-full")}
+              />
+            </div>
+          </div>
+          <div className={inputContainerClasses}>
+            <Label htmlFor="sellPrice" className={labelClasses}>Selling Price (Per Unit)</Label>
+            <div className="flex items-center gap-3">
+              <IndianRupee className="h-4 w-4 text-blue-500/40" />
+              <input
+                id="sellPrice"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={sellPrice}
+                onChange={(e) => setSellPrice(e.target.value)}
+                placeholder="Optional"
                 className={cn(inputClasses, "w-full")}
               />
             </div>
@@ -193,23 +213,24 @@ export function AddInventoryForm() {
 
       {error && <p className="text-xs font-black text-rose-500 bg-rose-500/10 p-4 rounded-2xl text-center uppercase tracking-tight">{error}</p>}
 
-      <div className="pt-4">
+      <div className="pt-2">
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-16 rounded-[2rem] bg-zinc-900 text-white hover:bg-zinc-800 transition-all font-black text-sm uppercase tracking-[0.2em] shadow-2xl group"
+          className="w-full h-11 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 hover:opacity-90 transition-all font-black text-[11px] uppercase tracking-[0.2em] shadow-xl group"
         >
           {isLoading ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <span className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Register Asset
-              <ArrowRight className="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+              <Plus className="h-3.5 w-3.5" />
+              Add Asset
+              <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
             </span>
           )}
         </Button>
       </div>
+
 
       <div className="flex items-center justify-center gap-2 text-muted-foreground/30 py-4">
         <Zap className="h-3 w-3" />
