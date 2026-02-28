@@ -1,6 +1,6 @@
 import { PublicShopProfile } from "@/components/public-shop-profile"
 import { notFound } from "next/navigation"
-import { hasPlanFeature } from "@/lib/plan-feature-guard"
+import { hasPlanFeature } from "@/lib/plan-features"
 import { getOrganizationBySlug } from "@/lib/data/organizations"
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {

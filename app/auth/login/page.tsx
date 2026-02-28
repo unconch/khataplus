@@ -413,7 +413,7 @@ export default function LoginPage() {
               <h2 className="text-base font-black tracking-tight">Enable Quick Login</h2>
               <p className="text-[11px] text-zinc-300">Add a passkey on this device for OTP-less sign in.</p>
             </div>
-            <div className="p-3 bg-white">
+            <div className="p-3 bg-[#0f1418]">
               {promotePasskeyFlowId ? (
                 <Descope
                   key={promotePasskeyFlowId}
@@ -432,7 +432,7 @@ export default function LoginPage() {
                   debug={false}
                 />
               ) : (
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+                <div className="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-zinc-200">
                   Passkey setup flow is not configured.
                 </div>
               )}

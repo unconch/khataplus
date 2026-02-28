@@ -36,7 +36,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     const { getSession } = await import("@/lib/session")
-    const { hasPlanFeature } = await import("@/lib/plan-feature-guard")
+    const { hasPlanFeature } = await import("@/lib/plan-features")
     const sessionRes = await getSession()
     const userId = sessionRes?.userId
 

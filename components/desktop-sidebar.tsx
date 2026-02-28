@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { hasPlanFeature, type PlanFeature, getRequiredPlanForFeature, formatPlanLabel } from "@/lib/plan-feature-guard"
+import { hasPlanFeature, type PlanFeature, getRequiredPlanForFeature, formatPlanLabel } from "@/lib/plan-features"
 import {
     Home, BarChart3, Users, Settings, Package,
     FileText, BadgeIndianRupee, Database, ChevronRight,

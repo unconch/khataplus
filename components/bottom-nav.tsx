@@ -5,7 +5,7 @@ import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings, Lock } fro
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
-import { hasPlanFeature, type PlanFeature } from "@/lib/plan-feature-guard"
+import { hasPlanFeature, type PlanFeature } from "@/lib/plan-features"
 
 type OrgRole = "admin" | "manager" | "staff"
 
