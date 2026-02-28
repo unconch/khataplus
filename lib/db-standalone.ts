@@ -1,6 +1,11 @@
 import { neon } from '@neondatabase/serverless';
 // Load env vars for standalone execution only in Node context
-if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
+if (
+    typeof process !== 'undefined' &&
+    process.env.NEXT_RUNTIME !== 'edge' &&
+    process.env.VERCEL !== '1' &&
+    process.env.NODE_ENV !== 'production'
+) {
     try {
         const dotenv = require('dotenv');
         dotenv.config({ path: '.env.local' });

@@ -2,7 +2,6 @@ import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
   // Suppress url.parse deprecation warning (Node 24/Next.js 16 compatibility)
-  // This warning often originates from external libraries and can clutter the console/dev overlay.
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const originalEmit = process.emit;
     // @ts-ignore
@@ -19,9 +18,7 @@ export async function register() {
       }
       return originalEmit.apply(process, args as any);
     };
-  }
 
-  if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("./sentry.server.config");
   }
 
