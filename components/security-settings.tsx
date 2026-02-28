@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
-import { Descope } from "@descope/nextjs-sdk"
+import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import type { Profile, SystemSettings } from "@/lib/types"
+import { startRegistration } from "@simplewebauthn/browser"
 
 interface SecuritySettingsProps {
     profile: Profile
@@ -40,14 +40,7 @@ export function SecuritySettings({
     const [isUpdating, setIsUpdating] = useState(false)
     const [isRevoking, setIsRevoking] = useState<string | null>(null)
     const [showPasskeyModal, setShowPasskeyModal] = useState(false)
-
-    const promotePasskeyFlowId = process.env.NEXT_PUBLIC_DESCOPE_PROMOTE_PASSKEYS_FLOW_ID || "promote-passkeys"
-    const reauthPasskeyFlowId =
-        process.env.NEXT_PUBLIC_DESCOPE_PASSKEY_SETUP_FLOW_ID ||
-        process.env.NEXT_PUBLIC_DESCOPE_PASSKEY_LOGIN_FLOW_ID ||
-        ""
-
-    const [activePasskeyFlowId, setActivePasskeyFlowId] = useState(promotePasskeyFlowId)
+    const [isAddingPasskey, setIsAddingPasskey] = useState(false)
     const governanceRows = useMemo(
         () =>
             [
@@ -80,13 +73,55 @@ export function SecuritySettings({
         []
     )
 
-    useEffect(() => {
-        setActivePasskeyFlowId(promotePasskeyFlowId)
-    }, [promotePasskeyFlowId, showPasskeyModal])
-
     const goToLoginForPasskeySetup = () => {
         const nextPath = typeof window !== "undefined" ? window.location.pathname : "/dashboard/settings"
         router.push(`/auth/login?next=${encodeURIComponent(nextPath)}&passkey_setup=1`)
+    }
+
+    const addPasskey = async () => {
+        setIsAddingPasskey(true)
+        // Close modal before native passkey prompt so the UI doesn't look blocked by a dark overlay.
+        setShowPasskeyModal(false)
+        try {
+            const optionsResp = await fetch("/api/auth/webauthn/register/options", {
+                method: "GET",
+                credentials: "include",
+                cache: "no-store",
+            })
+            const optionsData = await optionsResp.json().catch(() => ({} as any))
+            if (!optionsResp.ok) {
+                throw new Error(optionsData?.error || "Failed to get passkey options")
+            }
+
+            const registration = await startRegistration({ optionsJSON: optionsData })
+
+            const verifyResp = await fetch("/api/auth/webauthn/register/verify", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(registration),
+            })
+            const verifyData = await verifyResp.json().catch(() => ({} as any))
+            if (!verifyResp.ok) {
+                throw new Error(verifyData?.error || "Failed to save passkey")
+            }
+
+            toast.success("Passkey added successfully")
+        } catch (error: any) {
+            const message = String(error?.message || "")
+            if (/unauthorized|missing challenge|not logged in|session/i.test(message)) {
+                toast.message("Session refresh needed. Continue via login to add passkey")
+                goToLoginForPasskeySetup()
+                return
+            }
+            if (error?.name === "NotAllowedError") {
+                toast.error("Passkey setup cancelled")
+                return
+            }
+            toast.error(error?.message || "Could not add passkey. Please retry")
+        } finally {
+            setIsAddingPasskey(false)
+        }
     }
 
     const postSettingsUpdate = async (payload: Record<string, unknown>) => {
@@ -171,16 +206,18 @@ export function SecuritySettings({
 
     return (
         <div className="space-y-6">
-            <Card>
-                <CardHeader>
+            <Card className="overflow-hidden border-emerald-200/60 dark:border-emerald-900/40 bg-gradient-to-br from-emerald-50/90 via-white to-cyan-50/50 dark:from-emerald-950/20 dark:via-zinc-950 dark:to-cyan-950/20">
+                <CardHeader className="border-b border-emerald-100/70 dark:border-emerald-900/40">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Fingerprint className="h-5 w-5" />
+                        <span className="h-8 w-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                            <Fingerprint className="h-4 w-4" />
+                        </span>
                         Access Security
                     </CardTitle>
                     <CardDescription>Manage biometric lock and passkey-based quick sign in.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between rounded-xl border p-4">
+                    <div className="flex items-center justify-between rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                         <div>
                             <Label className="text-sm font-semibold">Biometric app lock</Label>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -190,31 +227,33 @@ export function SecuritySettings({
                         <Switch checked={biometricEnabled} onCheckedChange={toggleBiometric} disabled={isUpdating} />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                         <div>
                             <Label className="text-sm font-semibold">Passkey quick login</Label>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Add this device as a passkey for OTP-less sign in.
                             </p>
                         </div>
-                        <Button type="button" onClick={() => setShowPasskeyModal(true)}>
+                        <Button type="button" onClick={() => setShowPasskeyModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
                             <Key className="h-4 w-4 mr-2" /> Add Passkey
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
+            <Card className="overflow-hidden border-indigo-200/60 dark:border-indigo-900/40 bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/50 dark:from-indigo-950/20 dark:via-zinc-950 dark:to-blue-950/20">
+                <CardHeader className="border-b border-indigo-100/70 dark:border-indigo-900/40">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Shield className="h-5 w-5" />
+                        <span className="h-8 w-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <Shield className="h-4 w-4" />
+                        </span>
                         Governance Controls
                     </CardTitle>
                     <CardDescription>Fine-tune what staff can view and modify.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {governanceRows.map((item) => (
-                        <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border p-4">
+                        <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                             <div>
                                 <Label className="text-sm font-semibold">{item.label}</Label>
                                 <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
@@ -229,23 +268,25 @@ export function SecuritySettings({
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
+            <Card className="overflow-hidden border-cyan-200/60 dark:border-cyan-900/40 bg-gradient-to-br from-cyan-50/90 via-white to-sky-50/50 dark:from-cyan-950/20 dark:via-zinc-950 dark:to-sky-950/20">
+                <CardHeader className="border-b border-cyan-100/70 dark:border-cyan-900/40">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Smartphone className="h-5 w-5" />
+                        <span className="h-8 w-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                            <Smartphone className="h-4 w-4" />
+                        </span>
                         Active Sessions
                     </CardTitle>
                     <CardDescription>Review and revoke active sessions for your account.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {sessions.length === 0 ? (
-                        <div className="rounded-xl border p-4 text-sm text-muted-foreground">
+                        <div className="rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4 text-sm text-muted-foreground">
                             No external sessions found.
                         </div>
                     ) : (
                         <>
                             {sessions.map((sid, idx) => (
-                                <div key={sid} className="flex items-center justify-between rounded-xl border p-4">
+                                <div key={sid} className="flex items-center justify-between rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                                     <div>
                                         <p className="text-sm font-semibold">{idx === 0 ? "Current session" : "Other device"}</p>
                                         <p className="text-xs text-muted-foreground mt-1">ID: {sid.slice(0, 16)}...</p>
@@ -285,57 +326,35 @@ export function SecuritySettings({
             </Card>
 
             {showPasskeyModal && (
-                <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center">
-                    <div className="w-full max-w-md rounded-2xl border border-white/20 bg-zinc-950 shadow-2xl overflow-hidden">
-                        <div className="px-4 py-3 border-b border-white/10">
-                            <h4 className="text-base font-bold text-white">Add Passkey</h4>
-                            <p className="text-[11px] text-zinc-300 mt-1">Use this device for faster secure sign in.</p>
+                <div className="fixed inset-0 z-[80] bg-black/30 backdrop-blur-[2px] p-4 flex items-center justify-center">
+                    <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl overflow-hidden">
+                        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                            <h4 className="text-base font-bold text-zinc-900 dark:text-white">Add Passkey</h4>
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-300 mt-1">Use this device for faster secure sign in.</p>
                         </div>
-                        <div className="p-3 bg-white">
-                            {activePasskeyFlowId ? (
-                                <Descope
-                                    key={activePasskeyFlowId}
-                                    flowId={activePasskeyFlowId}
-                                    onSuccess={() => {
-                                        toast.success("Passkey added successfully")
-                                        setShowPasskeyModal(false)
-                                    }}
-                                    onError={(error: any) => {
-                                        const message = String(error?.errorDescription || error?.message || error || "")
-                                        const missingRefreshToken = /refresh token|failed to load user/i.test(message)
-
-                                        if (
-                                            missingRefreshToken &&
-                                            reauthPasskeyFlowId &&
-                                            reauthPasskeyFlowId !== activePasskeyFlowId
-                                        ) {
-                                            setActivePasskeyFlowId(reauthPasskeyFlowId)
-                                            toast.message("Please verify once to add a passkey")
-                                            return
-                                        }
-
-                                        setShowPasskeyModal(false)
-                                        if (missingRefreshToken) {
-                                            toast.message("Session refresh needed. Continue via login to add passkey")
-                                            goToLoginForPasskeySetup()
-                                            return
-                                        }
-                                        toast.error("Could not add passkey. Please retry")
-                                    }}
-                                    theme="light"
-                                    debug={false}
-                                />
-                            ) : (
-                                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-                                    Passkey setup flow is not configured.
-                                </div>
-                            )}
+                        <div className="p-4">
+                            <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-4">
+                                This will open your device passkey prompt (Windows Hello / Face ID / Touch ID).
+                            </p>
+                            <Button
+                                type="button"
+                                className="w-full"
+                                onClick={addPasskey}
+                                disabled={isAddingPasskey}
+                            >
+                                {isAddingPasskey ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <Key className="h-4 w-4 mr-2" />
+                                )}
+                                {isAddingPasskey ? "Adding Passkey..." : "Continue"}
+                            </Button>
                         </div>
-                        <div className="px-4 py-3 border-t border-white/10 bg-zinc-950 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10"
+                                className="w-full"
                                 onClick={() => setShowPasskeyModal(false)}
                             >
                                 Close
@@ -343,7 +362,7 @@ export function SecuritySettings({
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+                                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                                 onClick={() => {
                                     setShowPasskeyModal(false)
                                     goToLoginForPasskeySetup()
@@ -358,4 +377,3 @@ export function SecuritySettings({
         </div>
     )
 }
-

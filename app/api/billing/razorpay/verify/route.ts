@@ -7,8 +7,14 @@ function resolveRazorpayCredentials() {
     const mode = (process.env.RAZORPAY_MODE || "").toLowerCase()
     if (mode === "test") {
         return {
-            keyId: process.env.RAZORPAY_TEST_KEY_ID,
-            keySecret: process.env.RAZORPAY_TEST_KEY_SECRET,
+            keyId: process.env.RAZORPAY_TEST_KEY_ID || process.env.RAZORPAY_KEY_ID,
+            keySecret: process.env.RAZORPAY_TEST_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET,
+        }
+    }
+    if (mode === "live") {
+        return {
+            keyId: process.env.RAZORPAY_LIVE_KEY_ID || process.env.RAZORPAY_KEY_ID,
+            keySecret: process.env.RAZORPAY_LIVE_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET,
         }
     }
     return {

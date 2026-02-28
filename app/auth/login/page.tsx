@@ -3,11 +3,12 @@
 import { FormEvent, useMemo, useState } from "react"
 import Link from "next/link"
 import { Descope } from "@descope/nextjs-sdk"
+import { startAuthentication } from "@simplewebauthn/browser"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowRight, Loader2, Mail, ShieldCheck, KeyRound, X } from "lucide-react"
+import { AlertCircle, ArrowRight, Loader2, Mail, ShieldCheck, KeyRound } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,14 +23,6 @@ export default function LoginPage() {
 
   const signUpHref = `/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`
   const promotePasskeyFlowId = process.env.NEXT_PUBLIC_DESCOPE_PROMOTE_PASSKEYS_FLOW_ID || ""
-  const passkeyFlowCandidates = useMemo(
-    () =>
-      [
-        process.env.NEXT_PUBLIC_DESCOPE_PASSKEY_LOGIN_FLOW_ID,
-      ].filter((v, i, arr): v is string => Boolean(v) && arr.indexOf(v) === i),
-    []
-  )
-  const canUsePasskey = passkeyFlowCandidates.length > 0
 
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
@@ -38,48 +31,78 @@ export default function LoginPage() {
   const [verifyLoginId, setVerifyLoginId] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [showPasskeyFlow, setShowPasskeyFlow] = useState(false)
-  const [passkeyFlowIndex, setPasskeyFlowIndex] = useState(0)
-  const [passkeyFlowChecking, setPasskeyFlowChecking] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [showPostLoginPasskeyPrompt, setShowPostLoginPasskeyPrompt] = useState(false)
   const [pendingRedirect, setPendingRedirect] = useState(next || "/dashboard")
 
-  const validateFlowId = async (flowId: string): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/auth/descope/validate-flow?flowId=${encodeURIComponent(flowId)}`, {
-        method: "GET",
-        cache: "no-store",
-        credentials: "include",
-      })
-      const data = await res.json().catch(() => ({} as any))
-      return Boolean(data?.ok)
-    } catch {
-      return false
-    }
-  }
-
   const openPasskeyFlow = async () => {
-    if (!canUsePasskey) {
-      setError("Passkey login flow is not configured.")
+    const loginId = email.trim().toLowerCase()
+    if (!loginId) {
+      setError("Enter your email first, then use passkey.")
       return
     }
 
     setError("")
-    setPasskeyFlowChecking(true)
+    setPasskeyLoading(true)
     try {
-      for (let i = 0; i < passkeyFlowCandidates.length; i++) {
-        const flowId = passkeyFlowCandidates[i]
-        const valid = await validateFlowId(flowId)
-        if (valid) {
-          setPasskeyFlowIndex(i)
-          setShowPasskeyFlow(true)
-          return
-        }
+      const startRes = await fetch("/api/auth/passkey/login/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginId }),
+      })
+      const startData = await startRes.json().catch(() => ({} as any))
+      if (!startRes.ok) {
+        throw new Error(startData?.error || "Could not start passkey login")
       }
-      setShowPasskeyFlow(false)
-      setError("Passkey flow ID is invalid in Descope. Update NEXT_PUBLIC_DESCOPE_PASSKEY_LOGIN_FLOW_ID.")
+
+      const authOptionsRaw =
+        startData?.options ??
+        startData?.publicKey ??
+        startData?.data?.options ??
+        startData?.data?.publicKey ??
+        null
+      const transactionId =
+        String(
+          startData?.transactionId ??
+          startData?.transactionID ??
+          startData?.data?.transactionId ??
+          startData?.data?.transactionID ??
+          ""
+        ).trim()
+      if (!authOptionsRaw || !transactionId) {
+        throw new Error("Passkey login response is invalid")
+      }
+      const authOptions =
+        (typeof authOptionsRaw === "string"
+          ? JSON.parse(authOptionsRaw)
+          : authOptionsRaw?.publicKey || authOptionsRaw) as any
+
+      const passkeyResponse = await startAuthentication({ optionsJSON: authOptions })
+
+      const finishRes = await fetch("/api/auth/passkey/login/finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginId,
+          transactionId,
+          response: passkeyResponse,
+          next,
+        }),
+      })
+      const finishData = await finishRes.json().catch(() => ({} as any))
+      if (!finishRes.ok) {
+        throw new Error(finishData?.error || "Passkey verification failed")
+      }
+      router.replace(finishData?.next || next || "/dashboard")
+      router.refresh()
+    } catch (err: any) {
+      if (err?.name === "NotAllowedError") {
+        setError("Passkey login was cancelled.")
+      } else {
+        setError(err?.message || "Passkey login failed.")
+      }
     } finally {
-      setPasskeyFlowChecking(false)
+      setPasskeyLoading(false)
     }
   }
 
@@ -243,18 +266,13 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full h-11 text-xs uppercase tracking-widest font-black border-white/25 bg-white/5 hover:bg-white/10 text-zinc-100 disabled:opacity-60"
                   onClick={openPasskeyFlow}
-                  disabled={!canUsePasskey || passkeyFlowChecking}
+                  disabled={passkeyLoading}
                 >
-                  {passkeyFlowChecking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                  {passkeyFlowChecking ? "Checking Passkey Flow..." : "Use Passkey"}
+                  {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                  {passkeyLoading ? "Verifying Passkey..." : "Use Passkey"}
                 </Button>
               )}
             </form>
-            {!canUsePasskey && phase === "email" && (
-              <p className="text-[11px] text-amber-200/90 mt-3">
-                Passkey login is not configured. Set <span className="font-black">NEXT_PUBLIC_DESCOPE_PASSKEY_LOGIN_FLOW_ID</span>.
-              </p>
-            )}
 
             <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
               <span className="text-zinc-300">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
@@ -321,54 +339,6 @@ export default function LoginPage() {
           </aside>
         </div>
       </div>
-
-      {showPasskeyFlow && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-[#0f1418]/95 shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <div>
-                <h2 className="text-base font-black tracking-tight">Passkey Login</h2>
-                <p className="text-[11px] text-zinc-300">Use your device passkey for faster sign in</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Close passkey dialog"
-                className="h-8 w-8 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 flex items-center justify-center"
-                onClick={() => setShowPasskeyFlow(false)}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="p-3 bg-white">
-              {canUsePasskey ? (
-                <Descope
-                  key={passkeyFlowCandidates[passkeyFlowIndex] || "fallback-flow"}
-                  flowId={passkeyFlowCandidates[passkeyFlowIndex] || ""}
-                  onSuccess={() => {
-                    router.replace(`/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`)
-                    router.refresh()
-                  }}
-                  onError={() => {
-                    const nextIndex = passkeyFlowIndex + 1
-                    if (nextIndex < passkeyFlowCandidates.length) {
-                      setPasskeyFlowIndex(nextIndex)
-                      return
-                    }
-                    setShowPasskeyFlow(false)
-                    setError("Passkey flow ID is invalid in Descope. Set NEXT_PUBLIC_DESCOPE_PASSKEY_LOGIN_FLOW_ID to a real sign-in flow.")
-                  }}
-                  theme="light"
-                  debug={false}
-                />
-              ) : (
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-                  No passkey sign-in flow configured.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {showPostLoginPasskeyPrompt && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
