@@ -1,3 +1,8 @@
+// Polyfill for process.versions in Edge Runtime
+if (typeof process !== 'undefined' && !process.versions) {
+    (process as any).versions = { node: 'edge' };
+}
+
 import { NextResponse, NextRequest } from 'next/server'
 import { authMiddleware } from '@descope/nextjs-sdk/server'
 

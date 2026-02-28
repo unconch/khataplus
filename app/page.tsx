@@ -3,6 +3,8 @@ import { getTotalOrganizationCount } from "@/lib/data/organizations"
 import { getCurrentUser } from "@/lib/data/auth"
 import { cookies } from "next/headers"
 
+export const dynamic = "force-dynamic"
+
 export default async function Home() {
   const orgCount = await getTotalOrganizationCount()
   const user = await getCurrentUser()

@@ -2,6 +2,8 @@ import { Navbar, PricingSection, PricingComparison, SiteFooter } from "@/compone
 import { getTotalOrganizationCount } from "@/lib/data/organizations"
 import { getCurrentUser } from "@/lib/data/auth"
 
+export const dynamic = "force-dynamic"
+
 export default async function PricingPage() {
     let orgCount = 0
     let user: Awaited<ReturnType<typeof getCurrentUser>> = null

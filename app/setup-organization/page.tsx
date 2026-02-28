@@ -5,6 +5,8 @@ import { getProfile } from "@/lib/data"
 import { getOrganization } from "@/lib/data/organizations"
 import { getUserOrganizationsResolved } from "@/lib/data/auth"
 
+export const dynamic = "force-dynamic"
+
 export default async function SetupOrganizationPage() {
     const sessionRes = await getSession()
     const userId = sessionRes?.userId
