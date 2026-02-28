@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Descope } from "@descope/nextjs-sdk"
 import { startAuthentication } from "@simplewebauthn/browser"
@@ -23,6 +23,7 @@ export default function LoginPage() {
 
   const signUpHref = `/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`
   const promotePasskeyFlowId = process.env.NEXT_PUBLIC_DESCOPE_PROMOTE_PASSKEYS_FLOW_ID || ""
+  const resendCooldownSeconds = 30
 
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
@@ -30,10 +31,19 @@ export default function LoginPage() {
   const [maskedEmail, setMaskedEmail] = useState("")
   const [verifyLoginId, setVerifyLoginId] = useState("")
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [showPostLoginPasskeyPrompt, setShowPostLoginPasskeyPrompt] = useState(false)
   const [pendingRedirect, setPendingRedirect] = useState(next || "/dashboard")
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   const openPasskeyFlow = async () => {
     const loginId = email.trim().toLowerCase()
@@ -109,6 +119,7 @@ export default function LoginPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError("")
+    setInfo("")
     setLoading(true)
     try {
       const res = await fetch("/api/auth/login", {
@@ -126,6 +137,9 @@ export default function LoginPage() {
         setPhase("verify")
         setMaskedEmail(data?.maskedEmail || email)
         setVerifyLoginId(email.trim().toLowerCase())
+        if (phase === "email") {
+          setResendCooldown(resendCooldownSeconds)
+        }
         return
       }
       const target = data?.next || next || "/dashboard"
@@ -140,6 +154,32 @@ export default function LoginPage() {
       setError(err?.message || "Could not sign in.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const onResendCode = async () => {
+    const loginId = (verifyLoginId || email).trim().toLowerCase()
+    if (!loginId || resendCooldown > 0 || resendLoading) return
+
+    setError("")
+    setInfo("")
+    setResendLoading(true)
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginId, code: "", next }),
+      })
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || "Could not resend code")
+
+      setMaskedEmail(data?.maskedEmail || loginId)
+      setInfo("A new code was sent.")
+      setResendCooldown(resendCooldownSeconds)
+    } catch (err: any) {
+      setError(err?.message || "Could not resend code.")
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -243,6 +283,19 @@ export default function LoginPage() {
                   <p className="text-[11px] text-zinc-300">
                     Code sent to <span className="font-black">{maskedEmail || email}</span>
                   </p>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <button
+                      type="button"
+                      onClick={onResendCode}
+                      disabled={resendLoading || resendCooldown > 0}
+                      className="font-black uppercase tracking-widest text-emerald-300 hover:text-emerald-200 disabled:text-zinc-500 disabled:cursor-not-allowed"
+                    >
+                      {resendLoading ? "Sending..." : "Resend Code"}
+                    </button>
+                    <span className="text-zinc-400">
+                      {resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "You can request a new code now"}
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -250,6 +303,11 @@ export default function LoginPage() {
                 <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>{error}</span>
+                </div>
+              )}
+              {info && (
+                <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                  {info}
                 </div>
               )}
 
@@ -280,7 +338,15 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200"
-                  onClick={() => { setPhase("email"); setCode(""); setError(""); setVerifyLoginId("") }}
+                  onClick={() => {
+                    setPhase("email")
+                    setCode("")
+                    setError("")
+                    setInfo("")
+                    setVerifyLoginId("")
+                    setMaskedEmail("")
+                    setResendCooldown(0)
+                  }}
                 >
                   Change Email
                 </button>
