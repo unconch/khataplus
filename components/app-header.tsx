@@ -100,24 +100,24 @@ export function AppHeader({ profile, orgName, role: currentRole }: AppHeaderProp
               <DropdownMenuSeparator className="bg-zinc-100 dark:bg-white/5 mb-4" />
 
               <div className="space-y-1.5">
-                <p className="text-[9px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.3em] px-4 mb-2">Visual Calibration</p>
+                <p className="text-[9px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.3em] px-4 mb-2">Appearance</p>
                 <div
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="mx-1 group/theme flex items-center justify-between py-3.5 px-5 rounded-2xl border border-transparent hover:border-zinc-100 dark:hover:border-white/5 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-all duration-500"
+                  className="mx-1 group/theme flex items-center justify-between py-3.5 px-5 rounded-2xl border border-zinc-200/70 dark:border-white/10 bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-900/80 hover:border-zinc-300 dark:hover:border-white/20 cursor-pointer transition-all duration-300"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative w-4 h-4">
                       <Sun className="absolute inset-0 h-4 w-4 text-amber-500 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Moon className="absolute inset-0 h-4 w-4 text-blue-400 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </div>
-                    <span className="font-black text-[10px] uppercase tracking-widest text-zinc-500 group-hover/theme:text-zinc-950 dark:group-hover/theme:text-zinc-100">
-                      Interface: <span className="text-zinc-400 dark:text-zinc-500">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                    <span className="font-black text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-300">
+                      Theme: <span className="text-zinc-900 dark:text-zinc-100">{theme === "dark" ? "Dark" : "Light"}</span>
                     </span>
                   </div>
-                  <div className="h-4 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 p-0.5 flex items-center transition-colors">
+                  <div className="h-6 w-11 rounded-full bg-zinc-200/80 dark:bg-zinc-800 p-0.5 flex items-center transition-colors ring-1 ring-zinc-300/50 dark:ring-white/10">
                     <div className={cn(
-                      "h-3 w-3 rounded-full shadow-sm transition-all duration-500",
-                      theme === "dark" ? "translate-x-4 bg-blue-500" : "translate-x-0 bg-white"
+                      "h-5 w-5 rounded-full shadow-sm transition-all duration-300",
+                      theme === "dark" ? "translate-x-5 bg-blue-500" : "translate-x-0 bg-white"
                     )} />
                   </div>
                 </div>

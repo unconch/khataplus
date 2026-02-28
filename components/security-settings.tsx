@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone } from "lucide-react"
+import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -39,7 +39,7 @@ export function SecuritySettings({
     const [sessions, setSessions] = useState(initialSessions)
     const [isUpdating, setIsUpdating] = useState(false)
     const [isRevoking, setIsRevoking] = useState<string | null>(null)
-    const [showPasskeyModal, setShowPasskeyModal] = useState(false)
+    const [showPasskeyPanel, setShowPasskeyPanel] = useState(false)
     const [isAddingPasskey, setIsAddingPasskey] = useState(false)
     const governanceRows = useMemo(
         () =>
@@ -80,8 +80,6 @@ export function SecuritySettings({
 
     const addPasskey = async () => {
         setIsAddingPasskey(true)
-        // Close modal before native passkey prompt so the UI doesn't look blocked by a dark overlay.
-        setShowPasskeyModal(false)
         try {
             const optionsResp = await fetch("/api/auth/webauthn/register/options", {
                 method: "GET",
@@ -234,10 +232,61 @@ export function SecuritySettings({
                                 Add this device as a passkey for OTP-less sign in.
                             </p>
                         </div>
-                        <Button type="button" onClick={() => setShowPasskeyModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                        <Button type="button" onClick={() => setShowPasskeyPanel((v) => !v)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
                             <Key className="h-4 w-4 mr-2" /> Add Passkey
                         </Button>
                     </div>
+
+                    {showPasskeyPanel && (
+                        <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-900/40 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:from-emerald-950/20 dark:to-cyan-950/20 p-4">
+                            <div className="flex items-start gap-3">
+                                <span className="mt-0.5 h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+                                    <Sparkles className="h-4 w-4" />
+                                </span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Set up quick login on this device</p>
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
+                                        Your device will ask for Windows Hello, Face ID, or Touch ID.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <Button
+                                    type="button"
+                                    className="sm:col-span-1 bg-zinc-950 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold"
+                                    onClick={addPasskey}
+                                    disabled={isAddingPasskey}
+                                >
+                                    {isAddingPasskey ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Key className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isAddingPasskey ? "Adding..." : "Add Passkey"}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="sm:col-span-1 border-zinc-300 dark:border-zinc-700"
+                                    onClick={() => setShowPasskeyPanel(false)}
+                                >
+                                    Not now
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="sm:col-span-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40 font-semibold"
+                                    onClick={() => {
+                                        setShowPasskeyPanel(false)
+                                        goToLoginForPasskeySetup()
+                                    }}
+                                >
+                                    Use Login Flow
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -325,55 +374,6 @@ export function SecuritySettings({
                 </CardContent>
             </Card>
 
-            {showPasskeyModal && (
-                <div className="fixed inset-0 z-[80] bg-black/30 backdrop-blur-[2px] p-4 flex items-center justify-center">
-                    <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl overflow-hidden">
-                        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                            <h4 className="text-base font-bold text-zinc-900 dark:text-white">Add Passkey</h4>
-                            <p className="text-[11px] text-zinc-500 dark:text-zinc-300 mt-1">Use this device for faster secure sign in.</p>
-                        </div>
-                        <div className="p-4">
-                            <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-4">
-                                This will open your device passkey prompt (Windows Hello / Face ID / Touch ID).
-                            </p>
-                            <Button
-                                type="button"
-                                className="w-full"
-                                onClick={addPasskey}
-                                disabled={isAddingPasskey}
-                            >
-                                {isAddingPasskey ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                    <Key className="h-4 w-4 mr-2" />
-                                )}
-                                {isAddingPasskey ? "Adding Passkey..." : "Continue"}
-                            </Button>
-                        </div>
-                        <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => setShowPasskeyModal(false)}
-                            >
-                                Close
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                                onClick={() => {
-                                    setShowPasskeyModal(false)
-                                    goToLoginForPasskeySetup()
-                                }}
-                            >
-                                Verify via Login
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

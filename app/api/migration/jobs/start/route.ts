@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { sql } from "@/lib/db"
 import { ensureImportJobsTable } from "../_shared"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
     if (!orgId || tempFiles.length === 0) {
       return NextResponse.json({ error: "orgId and tempFiles are required" }, { status: 400 })
     }
+
+    await requirePlanFeature(orgId, "migration_import")
 
     await ensureImportJobsTable()
 
@@ -31,7 +34,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, jobId })
   } catch (error: any) {
+    if (error instanceof PlanFeatureError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     return NextResponse.json({ error: error?.message || "Failed to start job" }, { status: 500 })
   }
 }
-

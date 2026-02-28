@@ -62,8 +62,8 @@ export function AddInventoryForm() {
         setSuccess(false)
         router.refresh()
       }, 2000)
-    } catch (err) {
-      setError("Unable to add item. Please try again.")
+    } catch (err: any) {
+      setError(err?.message || "Unable to add item. Please try again.")
     } finally {
       setIsLoading(false)
     }

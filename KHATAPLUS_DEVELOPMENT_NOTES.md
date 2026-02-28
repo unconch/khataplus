@@ -38,7 +38,7 @@ KhataPlus is a **multi-tenant SaaS business management platform** for Indian SMB
 | **Charts** | Recharts |
 | **Email** | Resend |
 | **Rate Limiting** | Upstash Redis |
-| **Error Monitoring** | Sentry |
+| **Error Monitoring** | Internal Monitoring |
 | **Deployment** | Vercel |
 | **PWA** | Service Worker + Web App Manifest |
 

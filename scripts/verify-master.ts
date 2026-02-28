@@ -31,17 +31,13 @@ console.log("🔒 STARTING MASTER SECURITY AUDIT...\n");
 // 1. Check Package.json
 checkFileContains('package.json', [], ['debug-ocr']);
 
-// 2. Check Sentry Configs
-checkFileContains('sentry.server.config.ts', ['sendDefaultPii: false'], ['sendDefaultPii: true']);
-checkFileContains('sentry.edge.config.ts', ['sendDefaultPii: false'], ['sendDefaultPii: true']);
-
-// 3. Check Sales Logic (Immutability & Atomicity)
+// 2. Check Sales Logic (Immutability & Atomicity)
 checkFileContains('lib/data/sales.ts', ['INSERT INTO sales', 'is_return', 'true', 'db.transaction'], ['DELETE FROM sales']);
 
-// 4. Check Reports Logic (IDOR)
+// 3. Check Reports Logic (IDOR)
 checkFileContains('lib/data/reports.ts', ['AND org_id = ${actualOrgId}'], []);
 
-// 5. Check Crypto (Entropy)
+// 4. Check Crypto (Entropy)
 checkFileContains('lib/data/organizations.ts', ['crypto.randomBytes'], ['Math.random()']);
 checkFileContains('lib/crypto.ts', ['authTagLength: 16', 'secureCompare'], []);
 

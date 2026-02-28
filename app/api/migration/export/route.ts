@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { exportData } from '@/lib/data/migration';
 import { authorize } from '@/lib/security';
+import { requirePlanFeature, PlanFeatureError } from '@/lib/plan-feature-guard';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
 
     try {
         await authorize(`Export ${type}`, "admin", orgId);
+        await requirePlanFeature(orgId, "migration_import");
 
         const data = await exportData(orgId, type);
 
@@ -33,6 +35,9 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error: any) {
+        if (error instanceof PlanFeatureError) {
+            return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+        }
         console.error(`[API/Migration] Export failed:`, error.message);
         return NextResponse.json({ error: 'Failed to export data' }, { status: 500 });
     }

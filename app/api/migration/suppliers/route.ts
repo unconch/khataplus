@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { importSuppliers } from "@/lib/data/migration"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 const MAX_IMPORT_ROWS = 10000
 
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
                 { status: 400 }
             )
         }
+        await requirePlanFeature(orgId, "migration_import")
         if (data.length === 0) {
             return NextResponse.json({ error: "No records provided for import" }, { status: 400 })
         }
@@ -29,6 +31,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json(results, { status: 200 })
     } catch (error: any) {
+        if (error instanceof PlanFeatureError) {
+            return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+        }
         console.error("[API/Migration/Suppliers] Error:", error)
         return NextResponse.json(
             { error: error.message || "Import failed" },

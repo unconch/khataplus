@@ -60,3 +60,13 @@ Improve settings UX consistency, activate Merchant Academy, add real AI-powered 
   - dashboard AI card loads
   - offline/online transition and sync
 
+## Plan Enforcement Rollout (2026-02-28)
+- [x] Add centralized `requirePlanFeature(...)` helper in `lib/plan-feature-guard.ts`
+- [x] Enforce server-side feature gating for:
+  - analytics dashboard
+  - reports
+  - migration/import APIs
+  - public shop profile route
+- [x] Add plan lock states and upgrade prompts in settings/org + nav
+- [ ] Extend API-level gating to all secondary migration endpoints
+- [ ] Add comprehensive E2E tests for plan gating (free/starter/pro/business)

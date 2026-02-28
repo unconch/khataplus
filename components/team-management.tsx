@@ -87,7 +87,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
       toast.success("Invite link generated and copied.")
     } catch (e) {
       console.error(e)
-      toast.error("Failed to create invite link")
+      toast.error(e instanceof Error ? e.message : "Failed to create invite link")
     } finally {
       setSending(false)
     }

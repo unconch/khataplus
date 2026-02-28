@@ -1,6 +1,8 @@
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import { MigrationView } from "../../../../components/migration-view"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
+import { redirect } from "next/navigation"
 
 export default function MigrationPage() {
     return (
@@ -49,6 +51,15 @@ async function MigrationContent() {
     const { userId, isGuest } = user
     let orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
     if (!orgId) return null
+
+    try {
+        await requirePlanFeature(orgId, "migration_import")
+    } catch (e: any) {
+        if (e instanceof PlanFeatureError) {
+            redirect("/pricing")
+        }
+        throw e
+    }
 
     const [settings, profile] = await Promise.all([
         getSystemSettings(orgId),

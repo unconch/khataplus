@@ -1,5 +1,7 @@
 import { PublicShopProfile } from "@/components/public-shop-profile"
 import { notFound } from "next/navigation"
+import { hasPlanFeature } from "@/lib/plan-feature-guard"
+import { getOrganizationBySlug } from "@/lib/data/organizations"
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
@@ -13,10 +15,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ShopPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
+    const org = await getOrganizationBySlug(slug)
 
-    // In a real app, you'd fetch this from the DB using the slug
-    // For demo/scale, we mimic the shop name from the slug
-    const shopName = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    if (!org) {
+        notFound()
+    }
+
+    if (!hasPlanFeature(org.plan_type, "public_shop_profile")) {
+        notFound()
+    }
+
+    const shopName = org.name || slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
     return (
         <PublicShopProfile

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getProductionSql, sql } from "@/lib/db"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 export async function POST(request: Request) {
   const db = getProductionSql() as any
@@ -7,6 +8,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const orgId = String(body?.orgId || "").trim()
     if (!orgId) return NextResponse.json({ error: "orgId required" }, { status: 400 })
+    await requirePlanFeature(orgId, "migration_import")
 
     const tablesRes = await sql`
       SELECT table_name
@@ -77,6 +79,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (error: any) {
+    if (error instanceof PlanFeatureError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     return NextResponse.json({ error: error?.message || "Discard failed" }, { status: 500 })
   }
 }

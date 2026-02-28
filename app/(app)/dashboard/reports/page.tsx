@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ReportsView } from "@/components/reports-view"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 export default async function ReportsPage() {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
@@ -16,6 +17,15 @@ export default async function ReportsPage() {
 
     if (!orgId) {
         redirect("/setup-organization")
+    }
+
+    try {
+        await requirePlanFeature(orgId, "reports")
+    } catch (e: any) {
+        if (e instanceof PlanFeatureError) {
+            redirect("/pricing")
+        }
+        throw e
     }
 
     const org = await getOrganization(orgId)

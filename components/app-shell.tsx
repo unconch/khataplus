@@ -17,12 +17,13 @@ interface AppShellProps {
   settings: SystemSettings
   orgId?: string
   orgName?: string
+  orgPlanType?: string
   pathPrefix?: string
 }
 
 import { DesktopSidebar } from "@/components/desktop-sidebar"
 
-export function AppShell({ children, profile, role, settings, orgId, orgName, pathPrefix = "" }: AppShellProps) {
+export function AppShell({ children, profile, role, settings, orgId, orgName, orgPlanType, pathPrefix = "" }: AppShellProps) {
   const isAdmin = role === "admin" || role === "main admin"
 
   return (
@@ -32,7 +33,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, pa
       <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
 
         {/* Desktop Sidebar: Visible only on lg+ */}
-        <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} orgName={orgName} />
+        <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} orgName={orgName} orgPlanType={orgPlanType} />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
@@ -47,7 +48,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, pa
 
         {/* Bottom Nav: Visible only on mobile */}
         <div className="lg:hidden">
-          <BottomNav role={role} settings={settings} pathPrefix={pathPrefix} />
+          <BottomNav role={role} settings={settings} pathPrefix={pathPrefix} orgPlanType={orgPlanType} />
         </div>
       </div>
 

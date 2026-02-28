@@ -118,9 +118,9 @@ export default function PrivacyPolicy() {
                                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {[
                                             { name: "Neon", purpose: "Database Infrastructure" },
-                                            { name: "Supabase", purpose: "Authentication & Security" },
+                                            { name: "Descope", purpose: "Authentication & Security" },
                                             { name: "Vercel", purpose: "Hosting & Analytics" },
-                                            { name: "Sentry", purpose: "Reliability & Performance" },
+                                            { name: "Internal Monitoring", purpose: "Reliability & Performance" },
                                             { name: "Resend", purpose: "Transactional Communications" }
                                         ].map((service, i) => (
                                             <li key={i} className="flex flex-col p-4 rounded-xl border border-zinc-100 bg-white shadow-sm">

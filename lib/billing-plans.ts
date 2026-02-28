@@ -75,3 +75,25 @@ export function getPlanPriceId(planKey: BillingPlanKey, cycle: BillingCycle): st
 export function getPlanAmountInr(planKey: BillingPlanKey, cycle: BillingCycle): number {
   return BILLING_PLANS[planKey].amountInr[cycle];
 }
+
+const PLAN_LIMITS: Record<OrganizationPlanType, { staffSeats: number | null; inventoryItems: number | null }> = {
+  free: { staffSeats: 1, inventoryItems: 30 },
+  starter: { staffSeats: 3, inventoryItems: 200 },
+  pro: { staffSeats: 10, inventoryItems: null },
+  business: { staffSeats: null, inventoryItems: null },
+  legacy: { staffSeats: null, inventoryItems: null },
+};
+
+export function normalizeOrganizationPlanType(value?: string | null): OrganizationPlanType {
+  const raw = String(value || "free").toLowerCase();
+  if (raw === "starter" || raw === "pro" || raw === "business" || raw === "legacy") return raw;
+  return "free";
+}
+
+export function getStaffSeatLimit(planType?: string | null): number | null {
+  return PLAN_LIMITS[normalizeOrganizationPlanType(planType)].staffSeats;
+}
+
+export function getInventoryItemLimit(planType?: string | null): number | null {
+  return PLAN_LIMITS[normalizeOrganizationPlanType(planType)].inventoryItems;
+}

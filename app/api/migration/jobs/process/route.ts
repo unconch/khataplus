@@ -8,6 +8,7 @@ import { transformData } from "@/lib/import-intelligence"
 import { importCustomers, importExpenses, importInventory, importSales, importSuppliers } from "@/lib/data/migration"
 import { groqChat, groqWithRetry, isGroqAvailable, parseGroqJSON } from "@/lib/groq"
 import { ensureImportJobsTable, getJob } from "../_shared"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 const BUCKET = "local"
 const LOCAL_DIR = join(tmpdir(), "khataplus-migration-temp")
@@ -358,6 +359,7 @@ export async function POST(request: Request) {
     const job = await getJob(jobId)
     if (!job) return NextResponse.json({ error: "job not found" }, { status: 404 })
     if (job.status === "completed" || job.status === "failed") return NextResponse.json({ ok: true, done: true })
+    await requirePlanFeature(String(job.org_id), "migration_import")
 
     const origin = new URL(request.url).origin
     await sql`UPDATE import_jobs SET status = 'running', updated_at = NOW() WHERE id = ${jobId}`
@@ -455,6 +457,9 @@ export async function POST(request: Request) {
     triggerNext(origin, jobId)
     return NextResponse.json({ ok: true, done: false })
   } catch (error: any) {
+    if (error instanceof PlanFeatureError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     try {
       if (jobId) {
         await sql`

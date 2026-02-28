@@ -60,6 +60,8 @@ export async function POST(
             orgSlug: org?.slug
         })
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 })
+        const message = String(e?.message || "Failed to accept invite")
+        const isLimitError = /seat limit|seat capacity|limit reached|upgrade/i.test(message)
+        return NextResponse.json({ error: message }, { status: isLimitError ? 409 : 500 })
     }
 }

@@ -7,6 +7,7 @@ import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next
 import { authorize, audit } from "../security";
 import { triggerSync } from "../sync-notifier";
 import { recordStockMovement } from "./stock-movements";
+import { getInventoryItemLimit } from "../billing-plans";
 
 export async function getInventory(orgId: string, options: { limit?: number; offset?: number } = { limit: 1000 }) {
     const { isGuestMode } = await import("./auth");
@@ -73,6 +74,20 @@ export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created
     if (!actualOrgId) throw new Error("Organization ID required");
 
     await authorize("Add Inventory", "admin", actualOrgId);
+
+    const orgRows = await sql`SELECT plan_type FROM organizations WHERE id = ${actualOrgId} LIMIT 1`;
+    const itemLimit = getInventoryItemLimit(orgRows[0]?.plan_type);
+    if (itemLimit !== null) {
+        const countRows = await sql`
+            SELECT COUNT(*)::int AS count
+            FROM inventory
+            WHERE org_id = ${actualOrgId}
+        `;
+        const currentCount = Number(countRows[0]?.count || 0);
+        if (currentCount >= itemLimit) {
+            throw new Error(`Inventory item limit reached (${itemLimit}) for current plan. Upgrade to add more items.`);
+        }
+    }
 
     const result = await sql`
         INSERT INTO inventory(sku, name, buy_price, sell_price, gst_percentage, stock, min_stock, org_id)

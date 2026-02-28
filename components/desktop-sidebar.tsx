@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { hasPlanFeature, type PlanFeature, getRequiredPlanForFeature, formatPlanLabel } from "@/lib/plan-feature-guard"
 import {
     Home, BarChart3, Users, Settings, Package,
     FileText, BadgeIndianRupee, Database, ChevronRight,
-    LayoutDashboard, ArrowRight
+    LayoutDashboard, ArrowRight, Lock
 } from "lucide-react"
 import { SystemSettings } from "@/lib/types"
 import { Logo } from "@/components/ui/logo"
@@ -17,9 +18,10 @@ interface DesktopSidebarProps {
     className?: string
     pathPrefix?: string
     orgName?: string
+    orgPlanType?: string
 }
 
-export function DesktopSidebar({ role, settings, className, pathPrefix = "", orgName }: DesktopSidebarProps) {
+export function DesktopSidebar({ role, settings, className, pathPrefix = "", orgName, orgPlanType = "free" }: DesktopSidebarProps) {
     const pathname = usePathname()
     const isAdmin = role === "admin" || role === "main admin" || role === "owner"
     const normalizedPath = (() => {
@@ -36,16 +38,22 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         return pathname
     })()
 
-    const navItems = [
-        { href: `${pathPrefix}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
-        { href: `${pathPrefix}/dashboard/khata`, label: "Khata Rail", icon: Users, show: true },
-        { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
-        { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
-        { href: `${pathPrefix}/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics },
-        { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports },
-        { href: `${pathPrefix}/dashboard/migration`, label: "Migration", icon: Database, show: isAdmin },
-        { href: `${pathPrefix}/dashboard/settings`, label: "Settings", icon: Settings, show: isAdmin },
-    ]
+    const navItems: Array<{
+        href: string
+        label: string
+        icon: any
+        show: boolean
+        feature?: PlanFeature
+    }> = [
+            { href: `${pathPrefix}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
+            { href: `${pathPrefix}/dashboard/khata`, label: "Khata Rail", icon: Users, show: true },
+            { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
+            { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
+            { href: `${pathPrefix}/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics, feature: "analytics_dashboard" },
+            { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports, feature: "reports" },
+            { href: `${pathPrefix}/dashboard/migration`, label: "Migration", icon: Database, show: isAdmin, feature: "migration_import" },
+            { href: `${pathPrefix}/dashboard/settings`, label: "Settings", icon: Settings, show: isAdmin },
+        ]
 
     return (
         <aside className={cn("hidden lg:flex flex-col w-[260px] border-r border-zinc-100 dark:border-white/10 bg-white dark:bg-zinc-950 h-svh sticky top-0 transition-all duration-500 z-50", className)}>
@@ -84,6 +92,27 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                     const isActive = isHome
                         ? (normalizedPath === "/dashboard" || normalizedPath === "/")
                         : normalizedPath.startsWith(normalizedItemHref)
+
+                    const isLocked = Boolean(item.feature && !hasPlanFeature(orgPlanType, item.feature))
+                    const requiredPlan = item.feature ? formatPlanLabel(getRequiredPlanForFeature(item.feature)) : null
+
+                    if (isLocked) {
+                        return (
+                            <div
+                                key={item.href}
+                                className="flex items-center justify-between px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <item.icon className="h-4 w-4 text-zinc-400 dark:text-zinc-600" />
+                                    <span>{item.label}</span>
+                                </div>
+                                <span className="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                                    <Lock className="h-2.5 w-2.5" />
+                                    {requiredPlan}
+                                </span>
+                            </div>
+                        )
+                    }
 
                     return (
                         <Link

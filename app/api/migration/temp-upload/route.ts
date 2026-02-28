@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import { mkdir, writeFile } from "fs/promises"
 import { join } from "path"
 import { tmpdir } from "os"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 const BUCKET = "local"
 const LOCAL_DIR = join(tmpdir(), "khataplus-migration-temp")
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
     if (!orgId || !(file instanceof File)) {
       return NextResponse.json({ error: "orgId and file are required" }, { status: 400 })
     }
+
+    await requirePlanFeature(orgId, "migration_import")
 
     await ensureBucket()
 
@@ -39,6 +42,9 @@ export async function POST(request: Request) {
       size: file.size,
     })
   } catch (error: any) {
+    if (error instanceof PlanFeatureError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     return NextResponse.json({ error: error?.message || "Upload failed" }, { status: 500 })
   }
 }

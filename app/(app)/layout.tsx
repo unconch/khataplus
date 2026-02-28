@@ -36,6 +36,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     const { getSession } = await import("@/lib/session")
+    const { hasPlanFeature } = await import("@/lib/plan-feature-guard")
     const sessionRes = await getSession()
     const userId = sessionRes?.userId
 
@@ -119,6 +120,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             settings={demoSettings}
             orgId={demoTenant.id}
             orgName={demoTenant.name}
+            orgPlanType="business"
             pathPrefix={pathPrefix}
           >
             {children}
@@ -221,6 +223,17 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       redirect("/dashboard")
     }
 
+    const planType = String(tenant?.plan_type || "free")
+    if (xInvokePath.includes("/dashboard/analytics") && !hasPlanFeature(planType, "analytics_dashboard")) {
+      redirect("/pricing")
+    }
+    if (xInvokePath.includes("/dashboard/reports") && !hasPlanFeature(planType, "reports")) {
+      redirect("/pricing")
+    }
+    if (xInvokePath.includes("/dashboard/migration") && !hasPlanFeature(planType, "migration_import")) {
+      redirect("/pricing")
+    }
+
     const { TrialExpiredGuard } = await import("@/components/trial-expired-guard")
 
     return (
@@ -239,6 +252,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
                 settings={settings}
                 orgId={orgId}
                 orgName={tenant.name}
+                orgPlanType={tenant.plan_type}
                 pathPrefix={pathPrefix}
               >
                 {children}

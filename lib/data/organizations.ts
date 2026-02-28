@@ -11,6 +11,7 @@ import { sendWelcomeEmail, sendOrgDeletionRequestEmail, sendOrgDeletionRejectedE
 import { getProfile } from "./profiles";
 import { initializeOrganizationSchema } from "./schema-init";
 import { assertRecentOtpStepUp } from "../step-up";
+import { getStaffSeatLimit } from "../billing-plans";
 
 async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
     await sql`
@@ -317,7 +318,38 @@ export async function getOrganizationMembers(orgId: string): Promise<Organizatio
 
 const OPEN_INVITE_PLACEHOLDER = "open-invite@khataplus.local"
 
+async function assertSeatCapacityAvailable(orgId: string): Promise<void> {
+    const orgRows = await sql`SELECT plan_type FROM organizations WHERE id = ${orgId} LIMIT 1`;
+    const planType = String(orgRows[0]?.plan_type || "free");
+    const seatLimit = getStaffSeatLimit(planType);
+
+    if (seatLimit === null) return;
+
+    const currentMembersRows = await sql`
+        SELECT COUNT(*)::int AS count
+        FROM organization_members
+        WHERE org_id = ${orgId}
+    `;
+    const pendingInvitesRows = await sql`
+        SELECT COUNT(*)::int AS count
+        FROM organization_invites
+        WHERE org_id = ${orgId}
+          AND accepted_at IS NULL
+          AND expires_at > NOW()
+    `;
+
+    const currentMembers = Number(currentMembersRows[0]?.count || 0);
+    const pendingInvites = Number(pendingInvitesRows[0]?.count || 0);
+    const reservedSeats = currentMembers + pendingInvites;
+
+    if (reservedSeats >= seatLimit) {
+        throw new Error(`Seat limit reached (${seatLimit}) for current plan. Upgrade your plan to invite more members.`);
+    }
+}
+
 export async function createInvite(orgId: string, email: string | null, role: string): Promise<OrganizationInvite> {
+    await assertSeatCapacityAvailable(orgId);
+
     const token = generateUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
@@ -351,6 +383,28 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
         if (!profile || !profile.email || profile.email.toLowerCase() !== invite.email.toLowerCase()) {
             console.error(`[AcceptInvite] Hijack Attempt? Invited: ${invite.email}, Accepting: ${profile?.email}`);
             throw new Error("This invitation was sent to a different email address.");
+        }
+    }
+
+    const existingMembershipRows = await sql`
+        SELECT 1 FROM organization_members
+        WHERE org_id = ${invite.org_id} AND user_id = ${userId}
+        LIMIT 1
+    `;
+
+    if (existingMembershipRows.length === 0) {
+        const orgRows = await sql`SELECT plan_type FROM organizations WHERE id = ${invite.org_id} LIMIT 1`;
+        const seatLimit = getStaffSeatLimit(orgRows[0]?.plan_type);
+        if (seatLimit !== null) {
+            const memberCountRows = await sql`
+                SELECT COUNT(*)::int AS count
+                FROM organization_members
+                WHERE org_id = ${invite.org_id}
+            `;
+            const memberCount = Number(memberCountRows[0]?.count || 0);
+            if (memberCount >= seatLimit) {
+                throw new Error(`This organization is at seat capacity (${seatLimit}) for its current plan.`);
+            }
         }
     }
 

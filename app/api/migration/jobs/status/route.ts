@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { ensureImportJobsTable, getJob } from "../_shared"
+import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
     await ensureImportJobsTable()
     const job = await getJob(jobId)
     if (!job) return NextResponse.json({ error: "job not found" }, { status: 404 })
+    await requirePlanFeature(String(job.org_id), "migration_import")
 
     return NextResponse.json({
       id: job.id,
@@ -27,7 +29,9 @@ export async function GET(request: Request) {
       errorMessage: job.error_message || null,
     })
   } catch (error: any) {
+    if (error instanceof PlanFeatureError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     return NextResponse.json({ error: error?.message || "Failed to fetch job status" }, { status: 500 })
   }
 }
-

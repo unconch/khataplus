@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 
 export default async function AnalyticsPage() {
   const { getCurrentUser, getCurrentOrgId, getDailyReports } = await import("@/lib/data")
+  const { requirePlanFeature, PlanFeatureError } = await import("@/lib/plan-feature-guard")
   const user = await getCurrentUser()
 
   if (!user) {
@@ -24,6 +25,17 @@ export default async function AnalyticsPage() {
     const { redirect } = await import("next/navigation")
     redirect("/setup-organization")
     return null;
+  }
+
+  try {
+    await requirePlanFeature(orgId as string, "analytics_dashboard")
+  } catch (e: any) {
+    const { redirect } = await import("next/navigation")
+    if (e instanceof PlanFeatureError) {
+      redirect("/pricing")
+      return null
+    }
+    throw e
   }
 
   const dailyReports = await getDailyReports(orgId as string)

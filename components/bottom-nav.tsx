@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings } from "lucide-react"
+import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings, Lock } from "lucide-react"
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
+import { hasPlanFeature, type PlanFeature } from "@/lib/plan-feature-guard"
 
 type OrgRole = "admin" | "manager" | "staff"
 
@@ -12,12 +13,13 @@ interface BottomNavProps {
   role: OrgRole | Profile["role"]
   settings: SystemSettings
   pathPrefix?: string
+  orgPlanType?: string
 }
 
-export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
+export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free" }: BottomNavProps) {
   const pathname = usePathname()
 
-  const navItems = [
+  const navItems: Array<{ href: string; label: string; icon: any; feature?: PlanFeature }> = [
     { href: `${pathPrefix}/dashboard`, label: "CORE", icon: LayoutDashboard },
     { href: `${pathPrefix}/dashboard/sales`, label: "SALES", icon: BadgeIndianRupee },
     { href: `${pathPrefix}/dashboard/inventory`, label: "INVENTORY", icon: Package },
@@ -40,6 +42,21 @@ export function BottomNav({ role, settings, pathPrefix = "" }: BottomNavProps) {
             if (item.href.includes("/sales") && isStaff && !settings.allow_staff_sales) return null
             if (item.href.includes("/inventory") && isStaff && !settings.allow_staff_inventory) return null
             if (item.href.includes("/settings") && !isAdmin) return null
+            if (item.feature && !hasPlanFeature(orgPlanType, item.feature)) {
+              return (
+                <div
+                  key={item.href}
+                  className="flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl text-zinc-300 dark:text-zinc-700"
+                >
+                  <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900">
+                    <Lock size={16} />
+                  </div>
+                  <span className="h-3 text-[8px] leading-none font-black uppercase tracking-[0.08em] opacity-100">
+                    {item.label}
+                  </span>
+                </div>
+              )
+            }
 
             const href = item.href
             const isHome = href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")

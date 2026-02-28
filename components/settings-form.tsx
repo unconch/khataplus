@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Organization, Profile, SystemSettings } from "@/lib/types"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Save, Loader2, User, Building2, Globe, Shield, Receipt, MapPin, Phone, Mail, Zap, CheckCircle2, Hash, Copy } from "lucide-react"
+import { Save, Loader2, User, Building2, Globe, Shield, Receipt, MapPin, Phone, Mail, Zap, CheckCircle2, Hash, Copy, Rocket } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -120,6 +121,30 @@ export function SettingsForm({
     if (isProfileView) return true
     return isAdmin
   }, [isAdmin, isProfileView])
+
+  const planLabel = useMemo(() => {
+    const raw = String(org.plan_type || "free").toLowerCase()
+    if (raw === "pro") return "Pro"
+    if (raw === "starter") return "Starter"
+    if (raw === "business") return "Business"
+    if (raw === "legacy") return "Legacy"
+    return "Keep"
+  }, [org.plan_type])
+
+  const planStatus = useMemo(() => {
+    const raw = String(org.subscription_status || "active").toLowerCase()
+    if (raw === "trial") return "Trial"
+    if (raw === "past_due") return "Past Due"
+    if (raw === "canceled") return "Canceled"
+    return "Active"
+  }, [org.subscription_status])
+
+  const trialEndsText = useMemo(() => {
+    if (!org.trial_ends_at) return ""
+    const date = new Date(org.trial_ends_at)
+    if (Number.isNaN(date.getTime())) return ""
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+  }, [org.trial_ends_at])
 
   const pinStateValidation = useMemo(() => {
     const pin = (address.pin || "").replace(/\D/g, "")
@@ -244,6 +269,39 @@ export function SettingsForm({
 
       {showOrganizationSections && (
         <div className="space-y-8">
+          <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-900/40 bg-gradient-to-r from-emerald-50/90 to-cyan-50/60 dark:from-emerald-950/20 dark:to-cyan-950/20 p-4 md:p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Current Plan</div>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg font-black tracking-tight text-zinc-900 dark:text-zinc-100">{planLabel}</span>
+                  <span
+                    className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                      planStatus === "Active" && "text-emerald-700 border-emerald-300 bg-emerald-100/70 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950/30",
+                      planStatus === "Trial" && "text-blue-700 border-blue-300 bg-blue-100/70 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30",
+                      planStatus === "Past Due" && "text-amber-700 border-amber-300 bg-amber-100/70 dark:text-amber-300 dark:border-amber-700 dark:bg-amber-950/30",
+                      planStatus === "Canceled" && "text-rose-700 border-rose-300 bg-rose-100/70 dark:text-rose-300 dark:border-rose-700 dark:bg-rose-950/30"
+                    )}
+                  >
+                    {planStatus}
+                  </span>
+                </div>
+                {trialEndsText && planStatus === "Trial" && (
+                  <p className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                    Trial ends on {trialEndsText}
+                  </p>
+                )}
+              </div>
+              <Link href="/pricing" className="w-full md:w-auto">
+                <Button type="button" className="w-full md:w-auto bg-zinc-950 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold">
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Upgrade Plan
+                </Button>
+              </Link>
+            </div>
+          </div>
+
           <div className="space-y-5">
             <div className="flex items-center gap-3 px-2">
               <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
