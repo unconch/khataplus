@@ -1,10 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
 
-// Polyfill for process.versions in Edge Runtime
-if (typeof process !== 'undefined' && !process.versions) {
-    (process as any).versions = { node: 'edge' };
-}
-
 // Routes that should NOT be treated as org slugs
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite', 'join',
