@@ -1,9 +1,6 @@
-import { Navbar, SiteFooter, FaqSection } from "@/components/landing-page/index"
+import { Navbar, SiteFooter } from "@/components/landing-page/index"
 import { getCurrentUser } from "@/lib/data/auth"
-import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GraduationCap, MessageSquare } from "lucide-react"
-import Link from "next/link"
-import { AcademyContentClient } from "./academy-client"
+import { DocsHomeClient } from "./docs-home-client"
 
 export default async function DocsPage() {
     let user: Awaited<ReturnType<typeof getCurrentUser>> = null
@@ -28,46 +25,29 @@ export default async function DocsPage() {
     const isAuthenticated = !!user
 
     return (
-        <main className="min-h-screen bg-white overflow-hidden selection:bg-emerald-500 selection:text-white">
+        <main className="min-h-screen bg-white overflow-hidden selection:bg-green-500 selection:text-white">
             <Navbar
                 isAuthenticated={isAuthenticated}
-                lightMode={false}
+                lightMode={true}
                 orgSlug={orgSlug}
                 isGuest={user?.isGuest}
             />
 
-            {/* Hero Section */}
-            <section className="relative pt-24 pb-16 md:pt-32 md:pb-20 bg-zinc-950 overflow-hidden">
-                <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:40px_40px]" />
-
-                <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-                    <AdvancedScrollReveal variant="slideUp">
-                        <div className="space-y-6">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl">
-                                <GraduationCap size={12} className="text-emerald-400" />
-                                <span className="text-emerald-400 font-black text-[8px] tracking-widest uppercase">Academy v2.0</span>
-                            </div>
-
-                            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-[0.85]">
-                                Learn. Grow. <span className="text-zinc-600 italic">Dominate.</span>
+            <section className="pt-14 pb-6 md:pt-16 md:pb-8 bg-white">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="space-y-4 text-left">
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900">
+                                KhataPlus Documentation
                             </h1>
-
-                            <p className="text-zinc-400 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed">
-                                Definitive guides to build a modern empire with KhataPlus.
+                            <p className="mt-2 text-sm md:text-base text-zinc-600">
+                                Guides for billing, khata, inventory, GST and team workflows.
                             </p>
-
-                            <AcademyContentClient
-                                isAuthenticated={isAuthenticated}
-                                orgSlug={orgSlug}
-                            />
                         </div>
-                    </AdvancedScrollReveal>
+                        <DocsHomeClient />
+                    </div>
                 </div>
             </section>
-
-            <FaqSection />
-
-
 
             <SiteFooter />
         </main>

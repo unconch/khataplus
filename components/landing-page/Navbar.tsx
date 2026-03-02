@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 
 interface NavbarProps {
     isAuthenticated: boolean
+    isLight?: boolean
     lightMode?: boolean
     orgSlug?: string | null
     isGuest?: boolean
@@ -75,7 +76,7 @@ const SOLUTIONS = [
     }
 ]
 
-export function Navbar({ isAuthenticated, lightMode = false, orgSlug }: NavbarProps) {
+export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [isSolutionsHovered, setIsSolutionsHovered] = useState(false)
@@ -99,7 +100,7 @@ export function Navbar({ isAuthenticated, lightMode = false, orgSlug }: NavbarPr
         }
     }, [mobileMenuOpen])
 
-    const isSolid = lightMode || scrolled || mobileMenuOpen
+    const isSolid = isLight || lightMode || scrolled || mobileMenuOpen
 
     const primaryHref = isAuthenticated
         ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")

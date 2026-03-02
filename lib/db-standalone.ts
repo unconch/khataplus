@@ -25,8 +25,24 @@ const sanitizeConnString = (url: string) => {
     return sanitized;
 }
 
+const normalizeConnString = (url: string) => {
+    const sanitized = sanitizeConnString(url);
+    try {
+        const parsed = new URL(sanitized);
+        if (
+            (parsed.protocol === "postgres:" || parsed.protocol === "postgresql:") &&
+            parsed.searchParams.has("channel_binding")
+        ) {
+            parsed.searchParams.delete("channel_binding");
+        }
+        return parsed.toString();
+    } catch {
+        return sanitized;
+    }
+}
+
 if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not defined in .env.local');
 }
 
-export const sql = neon(sanitizeConnString(process.env.DATABASE_URL));
+export const sql = neon(normalizeConnString(process.env.DATABASE_URL));

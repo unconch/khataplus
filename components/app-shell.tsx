@@ -1,6 +1,8 @@
 "use client"
 
 import type React from "react"
+import { useEffect } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { SystemSettings, Profile } from "@/lib/types"
 import { BottomNav } from "@/components/bottom-nav"
@@ -17,14 +19,28 @@ interface AppShellProps {
   settings: SystemSettings
   orgId?: string
   orgName?: string
+  orgSlug?: string
   orgPlanType?: string
   pathPrefix?: string
 }
 
 import { DesktopSidebar } from "@/components/desktop-sidebar"
 
-export function AppShell({ children, profile, role, settings, orgId, orgName, orgPlanType, pathPrefix = "" }: AppShellProps) {
+export function AppShell({ children, profile, role, settings, orgId, orgName, orgSlug, orgPlanType, pathPrefix = "" }: AppShellProps) {
   const isAdmin = role === "admin" || role === "main admin"
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const slug = String(orgSlug || "").trim()
+    if (!slug) return
+    if (!pathname?.startsWith("/dashboard")) return
+    const targetBase = `/${slug}${pathname}`
+    const query = searchParams?.toString() || ""
+    const target = query ? `${targetBase}?${query}` : targetBase
+    router.replace(target)
+  }, [orgSlug, pathname, router, searchParams])
 
   return (
     <PWAProvider>

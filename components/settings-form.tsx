@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Organization, Profile, SystemSettings } from "@/lib/types"
 import Link from "next/link"
@@ -24,27 +24,42 @@ const INDIAN_STATES = [
 
 // Helper: parse a comma-separated address string into structured parts
 function parseAddress(raw?: string | null) {
-  const parts = (raw || "").split(",").map(s => s.trim())
+  const parts = (raw || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
   const pinPattern = /\b\d{6}\b/
 
-  const extractPin = (...fields: string[]) => {
-    for (const f of fields) {
-      const m = String(f || "").match(pinPattern)
-      if (m) return m[0]
+  const stateByNorm = new Map(
+    INDIAN_STATES.map((state) => [normalizeStateName(state), state])
+  )
+
+  let pin = ""
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const m = parts[i].match(pinPattern)
+    if (m) {
+      pin = m[0]
+      parts[i] = parts[i].replace(pinPattern, "").trim()
+      if (!parts[i]) parts.splice(i, 1)
+      break
     }
-    return ""
   }
 
-  const pinFromAny = extractPin(parts[4] || "", parts[3] || "", parts[2] || "", parts[1] || "", parts[0] || "")
-  const stripPin = (v: string) => String(v || "").replace(pinPattern, "").replace(/\s*-\s*$/, "").trim()
-
-  return {
-    street: stripPin(parts[0] || ""),
-    city: stripPin(parts[1] || ""),
-    district: stripPin(parts[2] || ""),
-    state: stripPin(parts[3] || ""),
-    pin: (parts[4] || pinFromAny || "").replace(/\D/g, "").slice(0, 6),
+  let state = ""
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const resolved = stateByNorm.get(normalizeStateName(parts[i]))
+    if (resolved) {
+      state = resolved
+      parts.splice(i, 1)
+      break
+    }
   }
+
+  const city = parts.length > 0 ? parts.pop() || "" : ""
+  const district = parts.length > 0 ? parts.pop() || "" : ""
+  const street = parts.join(", ")
+
+  return { street, city, district, state, pin: pin.replace(/\D/g, "").slice(0, 6) }
 }
 
 function combineAddress(addr: { street: string; city: string; district: string; state: string; pin: string }) {
@@ -52,6 +67,15 @@ function combineAddress(addr: { street: string; city: string; district: string; 
     .map(s => s.trim())
     .filter(Boolean)
     .join(", ")
+}
+
+function normalizeSlug(value?: string | null) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
 }
 
 function normalizeStateName(value: string) {
@@ -112,10 +136,15 @@ export function SettingsForm({
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const [address, setAddress] = useState(() => parseAddress(initialOrg.address))
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid" | "error">("idle")
+  const [slugMessage, setSlugMessage] = useState("")
+  const [slugSuggestions, setSlugSuggestions] = useState<string[]>([])
 
   const isProfileView = viewMode === "profile"
   const showProfileSection = viewMode !== "organization"
   const showOrganizationSections = viewMode !== "profile"
+  const normalizedSlug = useMemo(() => normalizeSlug(org.slug), [org.slug])
+  const initialNormalizedSlug = useMemo(() => normalizeSlug(initialOrg.slug), [initialOrg.slug])
 
   const canSave = useMemo(() => {
     if (isProfileView) return true
@@ -170,6 +199,77 @@ export function SettingsForm({
 
   const isPinStateMismatch = pinStateValidation.kind === "mismatch"
   const hasAddressValidationError = pinStateValidation.kind === "mismatch" || pinStateValidation.kind === "invalid"
+  const hasSlugValidationError = isAdmin && showOrganizationSections && !isProfileView && (slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error")
+
+  useEffect(() => {
+    if (!isAdmin || isProfileView || !showOrganizationSections) {
+      setSlugStatus("idle")
+      setSlugMessage("")
+      setSlugSuggestions([])
+      return
+    }
+
+    if (!normalizedSlug) {
+      setSlugStatus("idle")
+      setSlugMessage("Use lowercase letters, numbers, and hyphens.")
+      setSlugSuggestions([])
+      return
+    }
+
+    if (normalizedSlug.length < 3) {
+      setSlugStatus("invalid")
+      setSlugMessage("Slug must be at least 3 characters.")
+      setSlugSuggestions([])
+      return
+    }
+
+    if (normalizedSlug === initialNormalizedSlug) {
+      setSlugStatus("available")
+      setSlugMessage("Current slug in use.")
+      setSlugSuggestions([])
+      return
+    }
+
+    const ctrl = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setSlugStatus("checking")
+      setSlugMessage("Checking slug availability...")
+      setSlugSuggestions([])
+      try {
+        const params = new URLSearchParams({
+          slug: normalizedSlug,
+          currentOrgId: String(org.id || ""),
+          limit: "4",
+        })
+        const res = await fetch(`/api/organizations/slug-suggestions?${params.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: ctrl.signal,
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || "Could not verify slug")
+        if (data?.available) {
+          setSlugStatus("available")
+          setSlugMessage("Slug is available.")
+          setSlugSuggestions([])
+        } else {
+          setSlugStatus("taken")
+          setSlugMessage("Slug is already taken. Try one of these:")
+          setSlugSuggestions(Array.isArray(data?.suggestions) ? data.suggestions.slice(0, 4) : [])
+        }
+      } catch (error: any) {
+        if (error?.name === "AbortError") return
+        setSlugStatus("error")
+        setSlugMessage("Could not check slug right now. Retry in a moment.")
+        setSlugSuggestions([])
+      }
+    }, 350)
+
+    return () => {
+      ctrl.abort()
+      window.clearTimeout(timer)
+    }
+  }, [initialNormalizedSlug, isAdmin, isProfileView, normalizedSlug, org.id, showOrganizationSections])
 
   const handleSave = async () => {
     if (!canSave) {
@@ -180,10 +280,14 @@ export function SettingsForm({
       toast.error("Address validation failed. Fix PIN/State before saving.")
       return
     }
+    if (hasSlugValidationError) {
+      toast.error("Fix slug validation before saving.")
+      return
+    }
 
     setLoading(true)
-    const currentSlug = initialOrg.slug
-    const nextSlug = org.slug?.toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+    const currentSlug = normalizeSlug(initialOrg.slug)
+    const nextSlug = normalizeSlug(org.slug)
     const slugChanged = !!nextSlug && nextSlug !== currentSlug
 
     try {
@@ -358,11 +462,43 @@ export function SettingsForm({
                 <div className="relative">
                   <Input
                     value={org.slug || ""}
-                    onChange={(e) => setOrg({ ...org, slug: e.target.value })}
+                    onChange={(e) => setOrg({ ...org, slug: normalizeSlug(e.target.value) })}
                     disabled={!isAdmin}
-                    className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold pl-14 text-xs"
+                    className={cn(
+                      "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold pl-14 text-xs",
+                      slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error"
+                        ? "border-rose-300 dark:border-rose-500/40"
+                        : slugStatus === "available"
+                          ? "border-emerald-300 dark:border-emerald-500/40"
+                          : ""
+                    )}
                   />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-zinc-400 uppercase tracking-tighter border-r pr-2 border-zinc-100 dark:border-zinc-800 leading-none">kh+/</div>
+                </div>
+                <div className="mt-1.5 space-y-1.5">
+                  <p className={cn(
+                    "text-[10px] font-semibold",
+                    slugStatus === "available" && "text-emerald-600 dark:text-emerald-400",
+                    slugStatus === "checking" && "text-zinc-500 dark:text-zinc-400",
+                    (slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error") && "text-rose-600 dark:text-rose-400",
+                    slugStatus === "idle" && "text-zinc-500 dark:text-zinc-400"
+                  )}>
+                    {slugMessage || "Use lowercase letters, numbers, and hyphens."}
+                  </p>
+                  {slugSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {slugSuggestions.map((candidate) => (
+                        <button
+                          key={candidate}
+                          type="button"
+                          onClick={() => setOrg({ ...org, slug: candidate })}
+                          className="px-2 py-1 rounded-md text-[10px] font-bold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-500/30 dark:text-emerald-300 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20"
+                        >
+                          {candidate}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </SettingField>
 
@@ -491,7 +627,7 @@ export function SettingsForm({
         </div>
         <Button
           onClick={handleSave}
-          disabled={loading || !canSave || hasAddressValidationError}
+          disabled={loading || !canSave || hasAddressValidationError || hasSlugValidationError}
           className={cn(
             "h-11 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500 shadow-xl",
             canSave ? "bg-zinc-950 dark:bg-zinc-100 hover:scale-105 active:scale-95 shadow-zinc-200 dark:shadow-zinc-950" : "bg-zinc-100 grayscale cursor-not-allowed"

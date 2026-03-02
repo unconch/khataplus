@@ -1,6 +1,7 @@
 "use client"
 
 import type { Profile } from "@/lib/types"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -9,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOutIcon, Building2, Bell, HardDrive, Sun, Moon } from "lucide-react"
+import { LogOutIcon, Building2, Bell, HardDrive, Sun, Moon, AlertTriangle, ShieldAlert, Info, CheckCircle2, RefreshCw } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTenant } from "@/components/tenant-provider"
 import { cn } from "@/lib/utils"
@@ -21,11 +22,26 @@ interface AppHeaderProps {
   pathPrefix?: string
 }
 
-export function AppHeader({ profile, orgName, role: currentRole }: AppHeaderProps) {
+type HeaderNotification = {
+  id: string
+  kind: "warning" | "info" | "success" | "security"
+  title: string
+  message: string
+  href?: string
+  timestamp: string
+}
+
+export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = "" }: AppHeaderProps) {
   const { tenant } = useTenant()
   const { theme, setTheme } = useTheme()
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([])
+  const [readMap, setReadMap] = useState<Record<string, boolean>>({})
 
   const currentOrgName = tenant?.name || orgName || "KhataPlus"
+  const orgId = String(tenant?.id || "global")
+  const readStoreKey = `kp-notif-read:${orgId}`
 
   const displayName = profile?.name ||
     profile?.email?.split('@')[0] ||
@@ -37,6 +53,77 @@ export function AppHeader({ profile, orgName, role: currentRole }: AppHeaderProp
     displayRole === "owner" ? "Primary Owner" :
       displayRole === "staff" ? "Associate" :
         displayRole || "Viewer"
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(readStoreKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === "object") setReadMap(parsed)
+    } catch {
+      // Ignore malformed local storage payload.
+    }
+  }, [readStoreKey])
+
+  const persistReadMap = (next: Record<string, boolean>) => {
+    setReadMap(next)
+    try {
+      window.localStorage.setItem(readStoreKey, JSON.stringify(next))
+    } catch {
+      // Best-effort persistence.
+    }
+  }
+
+  const markNotificationRead = (id: string) => {
+    if (!id) return
+    persistReadMap({ ...readMap, [id]: true })
+  }
+
+  const markAllRead = () => {
+    const next = { ...readMap }
+    for (const n of notifications) next[n.id] = true
+    persistReadMap(next)
+  }
+
+  const openNotificationHref = (href?: string) => {
+    if (!href) return
+    const isDashboardRoute = href.startsWith("/dashboard")
+    const target = isDashboardRoute && pathPrefix ? `${pathPrefix}${href}` : href
+    window.location.href = target
+  }
+
+  const loadNotifications = async () => {
+    setNotificationsLoading(true)
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to load notifications")
+      setNotifications(Array.isArray(data?.notifications) ? data.notifications : [])
+    } catch {
+      setNotifications([])
+    } finally {
+      setNotificationsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!notificationsOpen) return
+    void loadNotifications()
+    const timer = window.setInterval(() => void loadNotifications(), 30000)
+    return () => window.clearInterval(timer)
+  }, [notificationsOpen])
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !readMap[n.id]).length,
+    [notifications, readMap]
+  )
+
+  const iconForKind = (kind: HeaderNotification["kind"]) => {
+    if (kind === "security") return <ShieldAlert className="h-4 w-4 text-rose-500" />
+    if (kind === "warning") return <AlertTriangle className="h-4 w-4 text-amber-500" />
+    if (kind === "success") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+    return <Info className="h-4 w-4 text-sky-500" />
+  }
 
   const handleLogout = async () => {
     window.location.href = "/api/auth/logout?returnTo=/auth/login"
@@ -63,13 +150,90 @@ export function AppHeader({ profile, orgName, role: currentRole }: AppHeaderProp
             <span className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1 leading-none opacity-60">{formattedRole}</span>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-xl border border-zinc-100 dark:border-white/5 bg-white dark:bg-zinc-900 text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
-          >
-            <Bell size={16} />
-          </Button>
+          <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-xl border border-zinc-100 dark:border-white/5 bg-white dark:bg-zinc-900 text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 text-[9px] font-black text-zinc-950 flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[360px] p-0 rounded-2xl border-zinc-100 dark:border-white/10 shadow-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-100 dark:border-white/10 bg-zinc-50/80 dark:bg-zinc-900/80">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Notifications</p>
+                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void loadNotifications()}
+                      className="h-7 w-7 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-center"
+                      aria-label="Refresh notifications"
+                    >
+                      <RefreshCw className={cn("h-3.5 w-3.5", notificationsLoading && "animate-spin")} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={markAllRead}
+                      className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-500"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="max-h-[340px] overflow-auto p-2">
+                {notificationsLoading && notifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-zinc-500">Loading notifications...</div>
+                ) : notifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-zinc-500">No notifications right now.</div>
+                ) : (
+                  notifications.map((n) => {
+                    const unread = !readMap[n.id]
+                    return (
+                      <button
+                        key={n.id}
+                        type="button"
+                        onClick={() => {
+                          markNotificationRead(n.id)
+                          openNotificationHref(n.href)
+                          setNotificationsOpen(false)
+                        }}
+                        className={cn(
+                          "w-full text-left p-3 rounded-xl border mb-1.5 transition-colors",
+                          unread
+                            ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-500/20 dark:bg-emerald-500/10"
+                            : "border-zinc-100 bg-white dark:border-white/10 dark:bg-zinc-900"
+                        )}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5">{iconForKind(n.kind)}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">{n.title}</p>
+                              {unread && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />}
+                            </div>
+                            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">{n.message}</p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

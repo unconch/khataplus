@@ -14,7 +14,6 @@ import {
     Zap,
     Activity,
     AlertCircle,
-    Sparkles,
 } from "lucide-react"
 import {
     DropdownMenu,
@@ -75,8 +74,6 @@ export function HomeDashboard({
     const firstName = profile.name?.split(" ")[0] || "User"
     const [greeting, setGreeting] = useState("Hello")
     const [greetingAnimationClass, setGreetingAnimationClass] = useState("animate-in fade-in duration-500")
-    const [aiCoach, setAiCoach] = useState<{ headline: string; action: string; rationale: string } | null>(null)
-    const [aiCoachLoading, setAiCoachLoading] = useState(false)
 
     useEffect(() => {
         const resetVersionKey = "kh:greeting:reset-version"
@@ -167,49 +164,6 @@ export function HomeDashboard({
         return { revenue, profit }
     }, [reports, timeRange])
 
-    useEffect(() => {
-        const storageKey = `kh:ai-coach:last:${org?.id || "unknown"}`
-        const cachedAt = Number(window.localStorage.getItem(storageKey) || "0")
-        const isFresh = Date.now() - cachedAt < 1000 * 60 * 60 * 4 // 4h
-        if (isFresh && aiCoach) return
-
-        let cancelled = false
-        setAiCoachLoading(true)
-        ; (async () => {
-            try {
-                const response = await fetch("/api/ai/dashboard-coach", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        revenue: metrics.revenue,
-                        profit: metrics.profit,
-                        receivables: unpaidAmount,
-                        lowStockCount,
-                        inventoryCount,
-                    }),
-                })
-                const data = await response.json().catch(() => null)
-                if (!cancelled && response.ok && data?.headline) {
-                    setAiCoach({
-                        headline: String(data.headline),
-                        action: String(data.action || ""),
-                        rationale: String(data.rationale || ""),
-                    })
-                    window.localStorage.setItem(storageKey, String(Date.now()))
-                }
-            } catch {
-                // silent fallback
-            } finally {
-                if (!cancelled) setAiCoachLoading(false)
-            }
-        })()
-
-        return () => {
-            cancelled = true
-        }
-    }, [aiCoach, inventoryCount, lowStockCount, metrics.profit, metrics.revenue, org?.id, unpaidAmount])
-
     const chartData = useMemo(() => {
         return reports
             .slice()
@@ -273,28 +227,6 @@ export function HomeDashboard({
                 <MetricStripItem icon={AlertCircle} label="Stock Alerts" value={stockAlertsCount.toString()} color="orange" isAlert={stockAlertsCount > 0} />
                 <MetricStripItem icon={IndianRupee} label="Receivables" value={formatCurrency(unpaidAmount)} color="emerald" />
                 <MetricStripItem icon={TrendingUp} label="Net Profit" value={formatCurrency(metrics.profit)} color="blue" />
-            </div>
-
-            <div className="rounded-2xl border bg-card/70 shadow-sm p-4 md:p-5">
-                <div className="flex items-start gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <Sparkles className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">AI Business Coach</p>
-                        {aiCoachLoading ? (
-                            <p className="text-sm font-semibold mt-1">Preparing today's recommendation...</p>
-                        ) : aiCoach ? (
-                            <div className="space-y-1 mt-1">
-                                <p className="text-sm font-bold">{aiCoach.headline}</p>
-                                <p className="text-xs text-muted-foreground">{aiCoach.action}</p>
-                                <p className="text-xs text-muted-foreground/80">{aiCoach.rationale}</p>
-                            </div>
-                        ) : (
-                            <p className="text-sm font-semibold mt-1">No recommendation right now.</p>
-                        )}
-                    </div>
-                </div>
             </div>
 
             <div className="grid gap-4 md:gap-8 lg:grid-cols-12">

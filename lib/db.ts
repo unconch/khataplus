@@ -30,13 +30,47 @@ const sanitizeConnString = (url: string) => {
   return sanitized
 }
 
-const getClient = (url: string, isGuest: boolean) => {
-  const sanitizedUrl = sanitizeConnString(url)
+const normalizeConnString = (url: string) => {
+  const sanitized = sanitizeConnString(url)
+  try {
+    const parsed = new URL(sanitized)
+    if (
+      (parsed.protocol === "postgres:" || parsed.protocol === "postgresql:") &&
+      parsed.searchParams.has("channel_binding")
+    ) {
+      // libpq option; not needed for Neon HTTP mode and can cause transport issues in some runtimes.
+      parsed.searchParams.delete("channel_binding")
+    }
+    return parsed.toString()
+  } catch {
+    return sanitized
+  }
+}
+
+const resetClient = (isGuest: boolean) => {
   if (isGuest) {
-    if (!demoSqlInstance) demoSqlInstance = neon(sanitizedUrl)
+    demoSqlInstance = null
+  } else {
+    prodSqlInstance = null
+  }
+}
+
+const getUrlHost = (url: string | null | undefined) => {
+  if (!url) return "null"
+  try {
+    return new URL(normalizeConnString(url)).host
+  } catch {
+    return sanitizeConnString(url).split("@")[1] || "unknown"
+  }
+}
+
+const getClient = (url: string, isGuest: boolean) => {
+  const normalizedUrl = normalizeConnString(url)
+  if (isGuest) {
+    if (!demoSqlInstance) demoSqlInstance = neon(normalizedUrl)
     return demoSqlInstance
   }
-  if (!prodSqlInstance) prodSqlInstance = neon(sanitizedUrl)
+  if (!prodSqlInstance) prodSqlInstance = neon(normalizedUrl)
   return prodSqlInstance
 }
 
@@ -172,6 +206,7 @@ export const sql = async (
       }
 
       if (/fetch failed/i.test(message) && attempt < MAX_RETRIES) {
+        resetClient(isGuest)
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt - 1)
         console.warn(
           `[DB/sql] Connection failed (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delay}ms...`
@@ -180,7 +215,7 @@ export const sql = async (
         continue
       }
 
-      const urlHost = connectionUrl ? connectionUrl.split("@")[1] : "null"
+      const urlHost = getUrlHost(connectionUrl)
       console.error(
         `[DB/sql] Query Error code=${code} message=${message} host=${urlHost} guest=${isGuest}`
       )
@@ -227,4 +262,3 @@ export const sql = async (
   ; (sql as any).unsafe = async (query: string, params: any[] = []) => {
     return sql(query, params)
   }
-

@@ -7,7 +7,11 @@ import { authorize, audit } from "../security";
 import { triggerSync } from "../sync-notifier";
 import { isGuestMode, getCurrentOrgId } from "./auth";
 
-export async function getDailyReports(orgId: string, range: string = "month") {
+export async function getDailyReports(
+    orgId: string,
+    range: string = "month",
+    options?: { strictWindow?: boolean }
+) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
     const cacheVersion = "v4-today-strict-fix";
@@ -137,8 +141,8 @@ export async function getDailyReports(orgId: string, range: string = "month") {
                 return mappedDerived;
             }
 
-            // "Today" should be strict; do not backfill with older historical days.
-            if (range === "today") {
+            // Strict mode: never backfill with historical rows outside selected window.
+            if (options?.strictWindow || range === "today") {
                 return [];
             }
 

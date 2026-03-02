@@ -1,176 +1,98 @@
 "use client"
 
 import Link from "next/link"
-import { Calculator, Tag, Sparkles, ArrowUpRight, Smartphone, Share2, MessageCircle } from "lucide-react"
+import { Calculator, Tag, MessageCircle, ArrowRight } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
-import { cn } from "@/lib/utils"
 
 export function FreeToolsSection() {
     return (
-        <section id="growth-tools" className="py-16 md:py-20 bg-white relative overflow-hidden">
-            {/* Background Decorations - Subtle Grid */}
-            <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:40px_40px]" />
+        <section id="growth-tools" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden">
+            {/* Subtle Neon Backdrop - Light Mode */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-emerald-200/40 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
 
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
-                <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
+            <div className="max-w-6xl mx-auto relative z-10 text-center">
+                <AdvancedScrollReveal variant="slideUp">
+                    <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-6">
+                        More than just billing. <br className="hidden md:block" />
+                        <span className="text-zinc-500">Tools to grow your business.</span>
+                    </h2>
+                    <p className="text-lg text-zinc-500 font-medium max-w-2xl mx-auto mb-16 tracking-wide">
+                        Access our suite of free digital utilities designed to simplify daily operations and multiply your customer reach.
+                    </p>
+                </AdvancedScrollReveal>
 
-                    {/* Content Column */}
-                    <div className="flex-1 space-y-8">
-                        <AdvancedScrollReveal variant="slideRight">
-                            <div className="space-y-4">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100/50">
-                                    <Sparkles size={12} className="text-emerald-600" />
-                                    <span className="text-emerald-600 font-black text-[9px] tracking-widest uppercase">Growth Engine</span>
-                                </div>
-                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-zinc-900 leading-[0.95] uppercase italic">
-                                    Grow your daily <br />
-                                    <span className="text-zinc-400">reach & profits.</span>
-                                </h2>
-                                <p className="text-zinc-500 text-base font-medium leading-relaxed max-w-md">
-                                    Scale your business operations with free digital tools built for every modern retailer.
-                                </p>
-                            </div>
-                        </AdvancedScrollReveal>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <ToolCard
-                                href="/tools/gst-calculator"
-                                icon={Calculator}
-                                title="GST Intelligence"
-                                description="Calculate tax and HSN codes."
-                                color="emerald"
-                            />
-                            <ToolCard
-                                href="/tools/business-card"
-                                icon={Tag}
-                                title="Card Designer"
-                                description="Create digital visiting cards."
-                                color="blue"
-                            />
-                            <div className="sm:col-span-2">
-                                <ToolCard
-                                    href="#whatsapp"
-                                    icon={MessageCircle}
-                                    title="WhatsApp Marketing"
-                                    description="Broadcast promotions & reminders with one tap."
-                                    color="green"
-                                    isComingSoon
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Visual Mockup Column */}
-                    <div className="flex-1 w-full lg:w-auto">
-                        <AdvancedScrollReveal variant="scaleUp">
-                            <div className="relative">
-                                <div className="relative bg-zinc-950 rounded-[2.5rem] p-1 border border-white/10 shadow-2xl overflow-hidden group">
-                                    <div className="bg-zinc-900 rounded-[2.2rem] p-8 md:p-10 overflow-hidden relative">
-                                        <div className="space-y-8 relative z-10">
-                                            <div className="space-y-2">
-                                                <div className="h-1 w-10 bg-emerald-500 rounded-full mb-4" />
-                                                <h3 className="text-3xl md:text-4xl font-black text-white italic tracking-tighter leading-none uppercase">
-                                                    10x your <br />
-                                                    <span className="text-emerald-400">customer reach.</span>
-                                                </h3>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
-                                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                                        <Share2 size={20} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-white font-black text-sm uppercase tracking-tight">Auto-Sharing</div>
-                                                        <div className="text-zinc-500 text-[10px] font-bold">Instant WhatsApp distribution</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
-                                                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                                        <Smartphone size={20} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-white font-black text-sm uppercase tracking-tight">Shop QR Code</div>
-                                                        <div className="text-zinc-500 text-[10px] font-bold">Your custom storefront QR</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <button className="w-full py-4 rounded-2xl bg-emerald-500 text-zinc-950 font-black uppercase tracking-widest text-[10px] hover:bg-emerald-400 transition-all shadow-xl">
-                                                Get Your Free Kit
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Floating Badge - Compact */}
-                                <div className="absolute -bottom-4 -right-4 bg-white p-4 rounded-2xl shadow-2xl border border-zinc-100 hidden md:block">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
-                                            <Sparkles size={16} />
-                                        </div>
-                                        <div>
-                                            <div className="text-[8px] text-zinc-400 font-black uppercase tracking-widest">New Growth</div>
-                                            <div className="text-sm font-black text-zinc-900">+1,420 Today</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </AdvancedScrollReveal>
-                    </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                    <ToolCard
+                        href="/tools/gst-calculator"
+                        icon={Calculator}
+                        title="GST Calculator"
+                        desc="Instantly calculate SGST, CGST, and reverse calculations."
+                        colorHover="hover:border-emerald-200"
+                        glow="group-hover:bg-emerald-50/50"
+                        iconGlow="text-emerald-600"
+                        bgIcon="bg-emerald-50"
+                    />
+                    <ToolCard
+                        href="/tools/business-card"
+                        icon={Tag}
+                        title="Digital Card Maker"
+                        desc="Design and download beautiful visiting cards in seconds."
+                        colorHover="hover:border-blue-200"
+                        glow="group-hover:bg-blue-50/50"
+                        iconGlow="text-blue-600"
+                        bgIcon="bg-blue-50"
+                    />
+                    <ToolCard
+                        href="/whatsapp"
+                        icon={MessageCircle}
+                        title="WhatsApp CRM"
+                        desc="Bulk broadcast your daily offers directly to customers."
+                        isComingSoon
+                        colorHover=""
+                        glow=""
+                        iconGlow="text-zinc-400"
+                        bgIcon="bg-zinc-100"
+                    />
                 </div>
             </div>
         </section>
     )
 }
 
-function ToolCard({ href, icon: Icon, title, description, color, isNew, isComingSoon }: { href: string, icon: any, title: string, description: string, color: "emerald" | "blue" | "green", isNew?: boolean, isComingSoon?: boolean }) {
-    const colorStyles = {
-        emerald: "group-hover:text-emerald-600 bg-emerald-50 border-emerald-500/10",
-        blue: "group-hover:text-blue-600 bg-blue-50 border-blue-500/10",
-        green: "group-hover:text-green-600 bg-green-50 border-green-500/10"
+function ToolCard({ href, icon: Icon, title, desc, isComingSoon, colorHover, glow, iconGlow, bgIcon }: any) {
+    if (isComingSoon) {
+        return (
+            <div className="relative p-10 rounded-3xl bg-zinc-50/50 border border-zinc-200 flex flex-col items-center text-center opacity-60">
+                <div className="absolute top-6 right-6 px-3 py-1 bg-zinc-200 text-zinc-500 rounded-full text-[10px] uppercase font-bold tracking-[0.2em] border border-zinc-300">
+                    Soon
+                </div>
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-zinc-400 mb-8 border border-zinc-200 shadow-sm">
+                    <Icon size={26} strokeWidth={1.5} />
+                </div>
+                <h3 className="text-2xl font-semibold text-zinc-500 mb-3">{title}</h3>
+                <p className="text-base text-zinc-400 font-medium">{desc}</p>
+            </div>
+        )
     }
 
     return (
-        <div className={cn(
-            "group p-6 rounded-[2rem] bg-zinc-50/50 border border-zinc-100 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-full",
-            isComingSoon ? "cursor-not-allowed opacity-80" : "hover:bg-white hover:border-zinc-200 hover:shadow-xl cursor-pointer"
-        )}>
-            {isComingSoon ? (
-                <div className="h-full flex flex-col justify-between">
-                    <div>
-                        <div className={cn("w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm", colorStyles[color])}>
-                            <Icon size={20} />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-black italic tracking-tight text-zinc-900 uppercase leading-none">{title}</h3>
-                                <span className="text-[7px] font-black uppercase px-2 py-0.5 bg-zinc-950 text-white rounded-full">Coming Soon</span>
-                            </div>
-                            <p className="text-zinc-500 text-[11px] font-medium leading-relaxed max-w-[180px]">{description}</p>
-                        </div>
+        <AdvancedScrollReveal variant="scaleUp" className="h-full">
+            <Link href={href} className="group block h-full">
+                <div className={`p-10 rounded-3xl bg-white border border-zinc-200/80 ${colorHover} flex flex-col items-center text-center transition-all duration-500 h-full relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)]`}>
+
+                    {/* Hover Glow Background */}
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none ${glow} mix-blend-multiply`} />
+
+                    <div className={`w-16 h-16 ${bgIcon} border border-zinc-100 rounded-2xl flex items-center justify-center shadow-sm mb-8 group-hover:scale-110 transition-transform duration-500 relative z-10 ${iconGlow}`}>
+                        <Icon size={26} strokeWidth={1.5} />
+                    </div>
+                    <h3 className="text-2xl font-semibold text-zinc-900 mb-3 group-hover:text-black transition-colors relative z-10">{title}</h3>
+                    <p className="text-base text-zinc-500 font-medium mb-8 relative z-10">{desc}</p>
+                    <div className={`mt-auto flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-all duration-500 -translate-x-4 group-hover:translate-x-0 relative z-10 ${iconGlow}`}>
+                        Try Tool <ArrowRight size={16} />
                     </div>
                 </div>
-            ) : (
-                <Link href={href} className="h-full flex flex-col justify-between">
-                    <div>
-                        <div className={cn("w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-all", colorStyles[color])}>
-                            <Icon size={20} />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-black italic tracking-tight text-zinc-900 uppercase leading-none">{title}</h3>
-                                {isNew && <span className="text-[7px] font-black uppercase px-2 py-0.5 bg-emerald-500 text-white rounded-full">New</span>}
-                            </div>
-                            <p className="text-zinc-500 text-[11px] font-medium leading-relaxed max-w-[180px]">{description}</p>
-                        </div>
-                    </div>
-                </Link>
-            )}
-        </div>
+            </Link>
+        </AdvancedScrollReveal>
     )
 }
-

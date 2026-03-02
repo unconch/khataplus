@@ -37,8 +37,21 @@ export async function getCurrentOrgId(explicitUserId?: string): Promise<string |
 
     if (await isGuestMode() || !userId || userId === "guest-user") return "demo-org";
 
-    const orgs = await getUserOrganizationsResolved(userId);
-    return orgs[0]?.org_id || null;
+    try {
+        const orgs = await getUserOrganizationsResolved(userId);
+        return orgs[0]?.org_id || null;
+    } catch (error: any) {
+        const msg = String(error?.message || error || "").toLowerCase()
+        const dbConnectivityIssue =
+            msg.includes("error connecting to database") ||
+            msg.includes("fetch failed") ||
+            msg.includes("econnreset") ||
+            msg.includes("etimedout") ||
+            msg.includes("enotfound") ||
+            msg.includes("socket hang up")
+        if (dbConnectivityIssue) return null
+        throw error
+    }
 }
 
 /**
@@ -49,15 +62,29 @@ export async function getUserOrganizationsResolved(userId: string): Promise<any[
     const orgs = await getUserOrganizations(userId);
     if (orgs.length > 0) return orgs as any[];
 
-    const { getProductionSql } = await import("../db");
-    const db = getProductionSql();
-    const rows = await db`
-        SELECT om.id, om.org_id, om.user_id, om.role, om.created_at, to_jsonb(o.*) as org_data
-        FROM organization_members om
-        JOIN organizations o ON o.id = om.org_id
-        WHERE om.user_id = ${userId}
-        ORDER BY om.created_at ASC
-    `;
+    let rows: any[] = []
+    try {
+        const { getProductionSql } = await import("../db");
+        const db = getProductionSql();
+        rows = await db`
+            SELECT om.id, om.org_id, om.user_id, om.role, om.created_at, to_jsonb(o.*) as org_data
+            FROM organization_members om
+            JOIN organizations o ON o.id = om.org_id
+            WHERE om.user_id = ${userId}
+            ORDER BY om.created_at ASC
+        `;
+    } catch (error: any) {
+        const msg = String(error?.message || error || "").toLowerCase()
+        const dbConnectivityIssue =
+            msg.includes("error connecting to database") ||
+            msg.includes("fetch failed") ||
+            msg.includes("econnreset") ||
+            msg.includes("etimedout") ||
+            msg.includes("enotfound") ||
+            msg.includes("socket hang up")
+        if (dbConnectivityIssue) return []
+        throw error
+    }
 
     return rows.map((row: any) => ({
         id: row.id,

@@ -1,46 +1,59 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
-import { Download, X, Sparkles, Smartphone } from "lucide-react"
+import { Download, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { useHaptic } from "@/hooks/use-haptic"
-import { cn } from "@/lib/utils"
 
 export function PwaInstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
     const [isVisible, setIsVisible] = useState(false)
+    const [isIOS, setIsIOS] = useState(false)
     const { trigger } = useHaptic()
 
     useEffect(() => {
+        const DISMISS_KEY = "kp_pwa_prompt_dismissed_until"
+        const dismissedUntil = Number(localStorage.getItem(DISMISS_KEY) || "0")
+        if (dismissedUntil > Date.now()) return
+
+        const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+        if (isStandalone) return
+
+        const ua = navigator.userAgent.toLowerCase()
+        const ios = /iphone|ipad|ipod/.test(ua)
+        setIsIOS(ios)
+
         const handler = (e: any) => {
             e.preventDefault()
             setDeferredPrompt(e)
-            // Show prompt after a small delay to not annoy immediately
-            setTimeout(() => setIsVisible(true), 5000)
+            setTimeout(() => setIsVisible(true), 12000)
         }
 
         window.addEventListener("beforeinstallprompt", handler)
 
-        // Check if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setIsVisible(false)
+        if (ios) {
+            setTimeout(() => setIsVisible(true), 15000)
         }
 
         return () => window.removeEventListener("beforeinstallprompt", handler)
     }, [])
 
+    const handleDismiss = () => {
+        setIsVisible(false)
+        localStorage.setItem("kp_pwa_prompt_dismissed_until", String(Date.now() + 7 * 24 * 60 * 60 * 1000))
+    }
+
     const handleInstall = async () => {
         trigger("medium")
-        if (!deferredPrompt) {
-            return
-        }
+        if (!deferredPrompt) return
 
         deferredPrompt.prompt()
         const { outcome } = await deferredPrompt.userChoice
 
-        if (outcome === 'accepted') {
+        if (outcome === "accepted") {
             setIsVisible(false)
+            localStorage.setItem("kp_pwa_prompt_dismissed_until", String(Date.now() + 30 * 24 * 60 * 60 * 1000))
         }
         setDeferredPrompt(null)
     }
@@ -48,49 +61,43 @@ export function PwaInstallPrompt() {
     if (!isVisible) return null
 
     return (
-        <div
-            className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-[100] max-w-[320px] w-full animate-in fade-in slide-up duration-500"
-        >
-            <div className="relative group p-1">
-                {/* Animated Border Glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse" />
-
-                <div className="relative bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/20 dark:border-white/10 p-6 rounded-[2rem] shadow-2xl overflow-hidden">
-                    {/* Decorative Sparkle */}
-                    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                        <Sparkles size={60} className="text-emerald-500" />
+        <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-[100] max-w-[320px] w-full animate-in fade-in slide-up duration-500">
+            <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 p-5 rounded-3xl shadow-xl">
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-start justify-between">
+                        <div className="h-12 w-12 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center">
+                            <Logo size={30} />
+                        </div>
+                        <button
+                            aria-label="Dismiss install prompt"
+                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={handleDismiss}
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
 
-                    <div className="flex flex-col gap-5">
-                        <div className="flex items-start justify-between">
-                            <div className="h-14 w-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
-                                <Logo size={36} />
-                            </div>
-                            <button
-                                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                                onClick={() => setIsVisible(false)}
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
+                    <div className="space-y-1">
+                        <h4 className="font-black text-base tracking-tight">Install KhataPlus</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                            Get quicker access, better offline reliability, and app-like performance.
+                        </p>
+                    </div>
 
-                        <div className="space-y-1">
-                            <h4 className="font-black italic text-lg tracking-tight">KhataPlus Business</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                                Install the native experience for lightning fast access and
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold italic ml-1">full offline power</span>.
-                            </p>
+                    {isIOS && !deferredPrompt ? (
+                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-300">
+                            On iPhone: tap <span className="font-semibold">Share</span> then <span className="font-semibold">Add to Home Screen</span>.
                         </div>
-
+                    ) : (
                         <Button
                             size="lg"
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black italic tracking-tight rounded-2xl h-14 shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black tracking-tight rounded-2xl h-12 transition-colors"
                             onClick={handleInstall}
                         >
-                            <Download className="mr-2 h-5 w-5" />
-                            Get App
+                            <Download className="mr-2 h-4 w-4" />
+                            Install App
                         </Button>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

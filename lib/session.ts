@@ -105,6 +105,42 @@ function normalizeSession(raw: any) {
     return { userId, email, name }
 }
 
+async function getFallbackRefreshedSession() {
+    const cookieStore = await cookies()
+    const sessionToken =
+        cookieStore.get("DS")?.value ||
+        cookieStore.get("__Secure-DS")?.value ||
+        ""
+    const refreshToken =
+        cookieStore.get("DSR")?.value ||
+        cookieStore.get("__Secure-DSR")?.value ||
+        ""
+
+    if (!refreshToken) return null
+
+    try {
+        const { createSdk } = await import("@descope/nextjs-sdk/server")
+        const sdk = createSdk()
+        const refreshed = await sdk.validateAndRefreshSession(sessionToken || undefined, refreshToken)
+
+        if (!refreshed?.token?.sub && !refreshed?.token?.userId) return null
+
+        const parsed = normalizeSession({
+            token: refreshed.token,
+            user: {
+                userId: refreshed?.token?.sub || refreshed?.token?.userId,
+                email: refreshed?.token?.email || refreshed?.token?.loginId,
+                name: refreshed?.token?.name || refreshed?.token?.given_name,
+            },
+        })
+
+        if (!parsed) return null
+        return { raw: { token: refreshed.token }, parsed }
+    } catch {
+        return null
+    }
+}
+
 /**
  * Validates and retrieves the current Descope session.
  */
@@ -112,13 +148,22 @@ export async function getSession() {
     try {
         const { session: descopeSession } = await import("@descope/nextjs-sdk/server")
         const raw = await descopeSession()
-        const parsed = normalizeSession(raw)
+        let parsed = normalizeSession(raw)
+        let effectiveRaw = raw
+
+        if (!parsed) {
+            const fallback = await getFallbackRefreshedSession()
+            if (fallback?.parsed) {
+                parsed = fallback.parsed
+                effectiveRaw = fallback.raw as typeof raw
+            }
+        }
 
         if (!parsed) return null
 
         const cookieStore = await cookies()
         const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
-        const stepUp = extractStepUpClaims(raw)
+        const stepUp = extractStepUpClaims(effectiveRaw)
 
         return {
             user: {

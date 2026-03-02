@@ -24,6 +24,8 @@ export default function LoginPage() {
   const signUpHref = `/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`
   const promotePasskeyFlowId = process.env.NEXT_PUBLIC_DESCOPE_PROMOTE_PASSKEYS_FLOW_ID || ""
   const resendCooldownSeconds = 30
+  const pendingLoginStorageKey = "kp_login_pending"
+  const pendingLoginMaxAgeMs = 1000 * 60 * 15
 
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
@@ -39,6 +41,46 @@ export default function LoginPage() {
   const [showPostLoginPasskeyPrompt, setShowPostLoginPasskeyPrompt] = useState(false)
   const [pendingRedirect, setPendingRedirect] = useState(next || "/dashboard")
 
+  const clearPendingLogin = () => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.removeItem(pendingLoginStorageKey)
+  }
+
+  const savePendingLogin = (loginId: string, masked: string) => {
+    if (typeof window === "undefined" || !loginId) return
+    window.sessionStorage.setItem(
+      pendingLoginStorageKey,
+      JSON.stringify({
+        email: loginId,
+        maskedEmail: masked || loginId,
+        createdAt: Date.now(),
+      })
+    )
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const raw = window.sessionStorage.getItem(pendingLoginStorageKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as { email?: string; maskedEmail?: string; createdAt?: number }
+      const loginId = String(parsed?.email || "").trim().toLowerCase()
+      const masked = String(parsed?.maskedEmail || loginId).trim()
+      const createdAt = Number(parsed?.createdAt || 0)
+      if (!loginId || !createdAt || Date.now() - createdAt > pendingLoginMaxAgeMs) {
+        clearPendingLogin()
+        return
+      }
+      setEmail(loginId)
+      setVerifyLoginId(loginId)
+      setMaskedEmail(masked || loginId)
+      setPhase("verify")
+    } catch {
+      clearPendingLogin()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (resendCooldown <= 0) return
     const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
@@ -53,6 +95,7 @@ export default function LoginPage() {
     }
 
     setError("")
+    setInfo("")
     setPasskeyLoading(true)
     try {
       const startRes = await fetch("/api/auth/passkey/login/start", {
@@ -106,6 +149,26 @@ export default function LoginPage() {
       router.replace(finishData?.next || next || "/dashboard")
       router.refresh()
     } catch (err: any) {
+      const fallbackEmail = loginId
+      try {
+        const otpRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: fallbackEmail, code: "", next }),
+        })
+        const otpData = await otpRes.json().catch(() => ({} as any))
+        if (otpRes.ok && otpData?.phase === "verify") {
+          setPhase("verify")
+          setMaskedEmail(otpData?.maskedEmail || fallbackEmail)
+          setVerifyLoginId(fallbackEmail)
+          setResendCooldown(resendCooldownSeconds)
+          setInfo("No passkey found or passkey is unavailable. We sent you a login code instead.")
+          return
+        }
+      } catch {
+        // No-op: keep original passkey error below.
+      }
+
       if (err?.name === "NotAllowedError") {
         setError("Passkey login was cancelled.")
       } else {
@@ -134,9 +197,11 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok) throw new Error(data?.error || "Login failed")
       if (data?.phase === "verify") {
+        const loginId = email.trim().toLowerCase()
         setPhase("verify")
         setMaskedEmail(data?.maskedEmail || email)
-        setVerifyLoginId(email.trim().toLowerCase())
+        setVerifyLoginId(loginId)
+        savePendingLogin(loginId, data?.maskedEmail || loginId)
         if (phase === "email") {
           setResendCooldown(resendCooldownSeconds)
         }
@@ -144,6 +209,7 @@ export default function LoginPage() {
       }
       const target = data?.next || next || "/dashboard"
       if (!promotePasskeyFlowId) {
+        clearPendingLogin()
         router.replace(target)
         router.refresh()
         return
@@ -174,6 +240,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data?.error || "Could not resend code")
 
       setMaskedEmail(data?.maskedEmail || loginId)
+      savePendingLogin(loginId, data?.maskedEmail || loginId)
       setInfo("A new code was sent.")
       setResendCooldown(resendCooldownSeconds)
     } catch (err: any) {
@@ -346,6 +413,7 @@ export default function LoginPage() {
                     setVerifyLoginId("")
                     setMaskedEmail("")
                     setResendCooldown(0)
+                    clearPendingLogin()
                   }}
                 >
                   Change Email

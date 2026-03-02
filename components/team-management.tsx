@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Users, UserPlus, Copy, Check, Trash2, Loader2, Sparkles, ShieldCheck, UserCog } from "lucide-react"
+import { Users, UserPlus, Copy, Check, Trash2, Loader2, Sparkles, ShieldCheck, UserCog, AlertTriangle, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -29,6 +29,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
   const [inviteLink, setInviteLink] = useState("")
   const [copied, setCopied] = useState(false)
   const [sending, setSending] = useState(false)
+  const [inviteWarning, setInviteWarning] = useState("")
 
   useEffect(() => {
     void fetchMembers()
@@ -72,6 +73,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
 
   const handleInvite = async () => {
     setSending(true)
+    setInviteWarning("")
     try {
       const res = await fetch(`/api/organizations/${orgId}/members`, {
         method: "POST",
@@ -87,7 +89,15 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
       toast.success("Invite link generated and copied.")
     } catch (e) {
       console.error(e)
-      toast.error(e instanceof Error ? e.message : "Failed to create invite link")
+      const message = e instanceof Error ? e.message : "Failed to create invite link"
+      if (/seat limit reached|seat capacity|upgrade your plan/i.test(message)) {
+        const compact = message
+          .replace(/Seat limit reached/i, "Team member limit reached")
+          .replace(/for current plan/i, "on your current plan")
+        setInviteWarning(compact)
+        return
+      }
+      toast.error(message)
     } finally {
       setSending(false)
     }
@@ -173,6 +183,27 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
               </div>
             )}
           </div>
+
+          {inviteWarning && (
+            <div className="relative z-10 mt-4 rounded-2xl border border-emerald-300/60 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </span>
+                  <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">{inviteWarning}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => (window.location.href = "/pricing")}
+                  className="h-10 px-5 rounded-xl border-emerald-400 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40 font-black tracking-tight"
+                >
+                  Upgrade Plan <ArrowUpRight className="h-4 w-4 ml-1.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

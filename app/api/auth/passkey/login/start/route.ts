@@ -3,13 +3,34 @@ import { createSdk } from "@descope/nextjs-sdk/server"
 import { cookies } from "next/headers"
 
 function resolveOrigin(request: Request): string {
-  const envOrigin = process.env.NEXT_PUBLIC_ORIGIN?.trim()
-  if (envOrigin) return envOrigin
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.trim()
+  const forwardedHost = request.headers.get("x-forwarded-host")?.trim()
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  const host = request.headers.get("host")?.trim()
+  if (host) {
+    const protocol = host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https"
+    return `${protocol}://${host}`
+  }
+
   try {
     return new URL(request.url).origin
   } catch {
-    return "http://localhost:3000"
+    return "https://khataplus.online"
   }
+}
+
+function mapStartError(message: string): string {
+  const msg = (message || "").toLowerCase()
+  if (msg.includes("not found") || msg.includes("no credential") || msg.includes("passkey")) {
+    return "No passkey found for this email on this device. Use login code or add a passkey from Settings."
+  }
+  if (msg.includes("origin") || msg.includes("rp id")) {
+    return "Passkey is not available for this domain configuration yet. Use login code and try again later."
+  }
+  return message || "Failed to start passkey login."
 }
 
 export async function POST(request: Request) {
@@ -25,7 +46,7 @@ export async function POST(request: Request) {
     const start = await sdk.webauthn.signIn.start(email, origin)
 
     if (!start?.ok || !start?.data?.transactionId || !start?.data?.options) {
-      const message = start?.error?.errorMessage || "Failed to start passkey login."
+      const message = mapStartError(start?.error?.errorMessage || "")
       return NextResponse.json({ error: message }, { status: 400 })
     }
 

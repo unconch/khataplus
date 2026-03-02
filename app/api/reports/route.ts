@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
         await requirePlanFeature(orgId, "reports")
 
-        const reports = await getDailyReports(orgId, range)
+        const reports = await getDailyReports(orgId, range, { strictWindow: true })
         return NextResponse.json({ reports })
     } catch (error: any) {
         if (error instanceof PlanFeatureError) {

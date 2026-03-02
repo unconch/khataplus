@@ -21,6 +21,7 @@ export function AccountingSummary({ summaries }: AccountingSummaryProps) {
   )
 
   const margin = totals.revenue > 0 ? ((totals.netProfit / totals.revenue) * 100).toFixed(1) : "0"
+  const collectedPayments = totals.cash + totals.online
 
   const MetricItem = ({ icon: Icon, label, value, subLabel, isDark }: any) => (
     <div
@@ -47,7 +48,7 @@ export function AccountingSummary({ summaries }: AccountingSummaryProps) {
           {label}
         </span>
         <div className="flex flex-col items-start gap-1">
-          <span className="text-2xl font-black tracking-tight whitespace-nowrap tabular-nums">Rs {Math.round(value).toLocaleString("en-IN")}</span>
+          <span className="text-2xl font-black tracking-tight whitespace-nowrap tabular-nums">₹ {Math.round(value).toLocaleString("en-IN")}</span>
           {subLabel && (
             <span className={cn("text-[10px] font-bold uppercase whitespace-nowrap", isDark ? "text-white/85" : "opacity-40")}>
               {subLabel}
@@ -60,10 +61,10 @@ export function AccountingSummary({ summaries }: AccountingSummaryProps) {
 
   return (
     <div className="rounded-2xl border border-zinc-100 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden divide-y md:divide-y-0 md:divide-x divide-zinc-100 dark:divide-white/10 flex flex-col md:flex-row transition-all hover:shadow-md">
-      <MetricItem icon={TrendingUp} label="Gross Revenue" value={totals.revenue} subLabel="Total Flow" />
-      <MetricItem icon={Banknote} label="Net Profit" value={totals.netProfit} subLabel={`${margin}% Margin`} />
-      <MetricItem icon={TrendingDown} label="Expenses" value={totals.expenses} subLabel="Total Drain" />
-      <MetricItem icon={Wallet} label="Cash Reserve" value={totals.cash} subLabel="Liquid Assets" />
+      <MetricItem icon={TrendingUp} label="Total Sales" value={totals.revenue} subLabel="Before costs" />
+      <MetricItem icon={Banknote} label="Net Profit" value={totals.netProfit} subLabel={`${margin}% margin`} />
+      <MetricItem icon={TrendingDown} label="Expenses" value={totals.expenses} subLabel="Operational spend" />
+      <MetricItem icon={Wallet} label="Collected Payments" value={collectedPayments} subLabel={`Cash ₹${Math.round(totals.cash).toLocaleString("en-IN")} + UPI ₹${Math.round(totals.online).toLocaleString("en-IN")}`} />
     </div>
   )
 }

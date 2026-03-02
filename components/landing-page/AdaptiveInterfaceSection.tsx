@@ -1,201 +1,208 @@
 "use client"
 
-import { useState } from "react"
-import { Monitor, Smartphone, Layout, Zap, Layers, Bell, Shield, Cloud, HardDrive } from "lucide-react"
+import { Monitor, Smartphone, Zap, Layers, RefreshCw, ArrowRight } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 export function AdaptiveInterfaceSection() {
-    const [activeTab, setActiveTab] = useState<"desktop" | "pwa">("desktop")
-
     return (
-        <section id="interface" className="py-12 md:py-20 px-6 bg-zinc-950 text-white relative overflow-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <section id="interface" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden text-zinc-900">
+            {/* Massive Ambient Background Glows - Light Mode */}
+            <div className="absolute top-1/4 -left-1/4 w-[800px] h-[800px] bg-indigo-300/30 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
+            <div className="absolute bottom-1/4 -right-1/4 w-[800px] h-[800px] bg-emerald-300/30 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
 
             <div className="max-w-7xl mx-auto relative z-10">
-                <div className="flex flex-col lg:flex-row items-center justify-between mb-10 gap-8">
-                    <AdvancedScrollReveal variant="slideRight">
-                        <div className="space-y-3">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-400">
-                                <Layers size={10} />
-                                <span className="font-black text-[9px] tracking-widest uppercase">Everything Stays Synced</span>
-                            </div>
-                            <h2 className="text-3xl md:text-5xl font-black tracking-tighter leading-none uppercase italic">
-                                One App. <span className="text-zinc-500">Works Everywhere.</span>
-                            </h2>
+                <div className="text-center mb-24 mt-12 space-y-4">
+                    <AdvancedScrollReveal variant="slideUp">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-md mb-8 shadow-sm">
+                            <Layers size={14} className="text-emerald-500" />
+                            <span className="text-zinc-600 font-bold text-[11px] tracking-[0.2em] uppercase">Universal Access</span>
                         </div>
+                        <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-900 leading-[1.05] max-w-4xl mx-auto">
+                            Available everywhere. <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500">Always in sync.</span>
+                        </h2>
+                        <p className="text-zinc-500 text-xl md:text-2xl max-w-3xl mx-auto mt-8 font-light tracking-wide">
+                            Start billing on your computer, finish on your phone. <br className="hidden md:block" />Everything updates instantly, flowing with real-time intelligence.
+                        </p>
                     </AdvancedScrollReveal>
+                </div>
 
-                    <div className="flex items-center justify-center p-1 bg-white/5 rounded-xl border border-white/10 backdrop-blur-xl">
-                        {[
-                            { id: "desktop" as const, label: "On Desktop", icon: Monitor },
-                            { id: "pwa" as const, label: "On Mobile", icon: Smartphone }
-                        ].map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => setActiveTab(t.id)}
-                                className={cn(
-                                    "flex items-center gap-2 px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest",
-                                    activeTab === t.id ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500 hover:text-white"
-                                )}
+                {/* Abstract UI Mockup */}
+                <AdvancedScrollReveal variant="scaleUp">
+                    <div className="relative w-full max-w-5xl mx-auto min-h-[500px] flex items-center justify-center p-4 md:p-12 mb-32 z-20">
+
+                        <div className="relative w-full h-full flex flex-col items-center justify-center">
+
+                            {/* Main Desktop-ish Card (Light Mode) */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                                className="w-full max-w-4xl bg-white/40 backdrop-blur-3xl border border-zinc-200/50 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-2 relative overflow-hidden ring-1 ring-white"
                             >
-                                <t.icon size={14} /> {t.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                                {/* Inner Desktop Chrome */}
+                                <div className="bg-white rounded-[2rem] border border-zinc-100 overflow-hidden h-full flex flex-col shadow-sm pb-8 relative">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100 blur-[80px] rounded-full pointer-events-none" />
 
-                <div className="relative">
-                    <AdvancedScrollReveal variant="scaleUp">
-                        <div className="relative w-full max-w-5xl mx-auto rounded-[2.5rem] bg-zinc-900 border border-white/5 shadow-2xl overflow-hidden group min-h-[400px]">
-                            {/* Filling the space with a grid background and data noise */}
-                            <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:20px_20px]" />
-
-                            <div className="relative z-10 p-6 md:p-10 h-full">
-                                {activeTab === "desktop" ? (
-                                    <div className="flex flex-col md:flex-row gap-6 animate-in fade-in duration-700 h-full items-stretch">
-                                        <div className="w-full md:w-56 bg-black/40 rounded-2xl border border-white/10 p-5 space-y-4">
-                                            <div className="h-4 w-24 bg-white/10 rounded-full" />
-                                            <div className="space-y-2 pt-4">
-                                                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 w-full bg-white/5 rounded-xl border border-white/5" />)}
-                                            </div>
+                                    <div className="h-14 flex items-center px-6 shrink-0 border-b border-zinc-50 bg-zinc-50/50">
+                                        <div className="flex gap-2">
+                                            <div className="w-3 h-3 rounded-full bg-red-400" />
+                                            <div className="w-3 h-3 rounded-full bg-amber-400" />
+                                            <div className="w-3 h-3 rounded-full bg-emerald-400" />
                                         </div>
-                                        <div className="flex-1 space-y-6">
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                {[
-                                                    { label: "Daily Sale", val: "₹18.4k" },
-                                                    { label: "Item Stock", val: "₹4.2L" },
-                                                    { label: "Customer List", val: "1,202" }
-                                                ].map((stat, i) => (
-                                                    <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                                        <div className="text-[8px] font-black uppercase text-zinc-500 mb-1">{stat.label}</div>
-                                                        <div className="text-lg font-black italic">{stat.val}</div>
+                                    </div>
+
+                                    {/* Dashboard Content Area */}
+                                    <div className="flex-1 px-6 md:px-10 flex gap-8 md:gap-14 bg-gradient-to-b from-white to-zinc-50/30">
+                                        {/* Sidebar */}
+                                        <div className="w-48 hidden md:flex flex-col gap-5 shrink-0 pt-8 border-r border-zinc-50 pr-8">
+                                            <div className="h-8 w-28 bg-zinc-100 rounded-xl mb-4" />
+                                            <div className="h-4 w-full bg-emerald-100 rounded-full" />
+                                            <div className="h-3 w-3/4 bg-zinc-100 rounded-full" />
+                                            <div className="h-3 w-5/6 bg-zinc-100 rounded-full" />
+                                            <div className="h-3 w-2/3 bg-zinc-100 rounded-full mb-6" />
+
+                                            <div className="h-3 w-3/4 bg-zinc-100 rounded-full" />
+                                            <div className="h-3 w-1/2 bg-zinc-100 rounded-full" />
+                                        </div>
+
+                                        {/* Main Content Grid */}
+                                        <div className="flex-1 flex flex-col gap-8 pt-8 relative z-10">
+                                            <div className="h-8 w-56 bg-zinc-200 rounded-full" />
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                <div className="h-40 rounded-2xl bg-white border border-zinc-100 p-6 space-y-4 shadow-sm flex flex-col justify-between group relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 blur-xl rounded-full" />
+                                                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 relative z-10">
+                                                        <div className="w-6 h-6 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.3)]" />
                                                     </div>
-                                                ))}
+                                                    <div className="space-y-3 pb-2 relative z-10">
+                                                        <div className="h-3 w-24 bg-zinc-100 rounded-full" />
+                                                    </div>
+                                                    <div className="h-8 w-32 bg-zinc-200 rounded-full relative z-10" />
+                                                </div>
+                                                <div className="h-40 rounded-2xl bg-white border border-zinc-100 p-6 space-y-4 shadow-sm flex flex-col justify-between group relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 blur-xl rounded-full" />
+                                                    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100 relative z-10">
+                                                        <div className="w-6 h-6 bg-orange-400 rounded-full shadow-[0_0_15px_rgba(249,115,22,0.3)]" />
+                                                    </div>
+                                                    <div className="space-y-3 pb-2 relative z-10">
+                                                        <div className="h-3 w-24 bg-zinc-100 rounded-full" />
+                                                    </div>
+                                                    <div className="h-8 w-32 bg-zinc-200 rounded-full relative z-10" />
+                                                </div>
                                             </div>
-                                            <div className="bg-black/40 rounded-3xl border border-white/10 p-6">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <div className="h-3 w-32 bg-white/10 rounded-full" />
-                                                    <div className="h-6 w-16 bg-emerald-500/10 rounded-full border border-emerald-500/20" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {[1, 2, 3].map(i => (
-                                                        <div key={i} className="flex gap-4 items-center">
-                                                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/5" />
-                                                            <div className="h-2 flex-1 bg-white/5 rounded-full" />
-                                                            <div className="h-2 w-12 bg-white/10 rounded-full" />
-                                                        </div>
-                                                    ))}
-                                                </div>
+
+                                            <div className="flex-1 min-h-[160px] rounded-2xl bg-white border border-zinc-100 p-6 flex flex-col justify-end shadow-sm">
                                             </div>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center animate-in fade-in zoom-in duration-700">
-                                        {/* Left Side: System Status */}
-                                        <div className="hidden lg:flex flex-col gap-4">
-                                            <StatusCard icon={Zap} title="Bina Internet" status="Available" color="text-amber-500" />
-                                            <StatusCard icon={HardDrive} title="Memory" status="Optimized" color="text-blue-500" />
-                                            <StatusCard icon={Bell} title="WhatsApp Notifications" status="Ready" color="text-emerald-500" />
+                                </div>
+                            </motion.div>
+
+                            {/* Floating Mobile-ish Card */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 60, y: 30 }}
+                                whileInView={{ opacity: 1, x: 0, y: 15 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute -right-4 md:-right-8 -bottom-16 w-[280px] h-[580px] bg-white border border-zinc-200 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.1),_0_0_0_8px_#f4f4f5] p-1 flex flex-col z-30 transform md:rotate-3 overflow-visible"
+                            >
+                                {/* Inner Phone Screen */}
+                                <div className="flex-1 bg-[#fafafa] rounded-[2.8rem] overflow-hidden relative flex flex-col border border-zinc-100">
+                                    {/* Notch */}
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-zinc-200 rounded-b-2xl z-30" />
+
+                                    <div className="flex-1 relative flex flex-col gap-4 pt-16 px-4 z-10">
+                                        <div className="space-y-2 px-2">
+                                            <div className="h-2 w-16 bg-zinc-300 rounded-full" />
+                                            <div className="h-4 w-24 bg-zinc-800 rounded-full" />
                                         </div>
 
-                                        {/* Center: Mobile Mockup - Larger */}
-                                        <div className="flex justify-center relative">
-                                            <div className="absolute inset-0 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
-                                            <div className="w-[200px] md:w-[220px] aspect-[9/19] rounded-[2.5rem] border-[6px] border-zinc-800 bg-black shadow-2xl relative overflow-hidden ring-4 ring-white/5">
-                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-zinc-800 rounded-b-xl z-20" />
-                                                <div className="p-4 pt-8 space-y-4">
-                                                    <div className="h-28 bg-gradient-to-br from-emerald-600 to-teal-500 rounded-2xl p-4 flex flex-col justify-between">
-                                                        <div className="h-2 w-10 bg-white/30 rounded" />
-                                                        <div className="space-y-1">
-                                                            <div className="text-[7px] font-black uppercase text-white/60">Balance Today</div>
-                                                            <div className="text-lg font-black italic text-white leading-none">₹8,402</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[
-                                                            { label: 'Sale', icon: Layout },
-                                                            { label: 'Stock', icon: Layers },
-                                                            { label: 'Cloud', icon: Cloud },
-                                                            { label: 'Vault', icon: Shield }
-                                                        ].map((item, i) => (
-                                                            <div key={i} className="aspect-square bg-white/5 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-1.5 group/icon transition-colors hover:bg-white/10">
-                                                                <item.icon size={16} className="text-zinc-500 group-hover/icon:text-emerald-500" />
-                                                                <span className="text-[6px] font-black uppercase tracking-widest text-zinc-600">{item.label}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                        {/* Glow Card */}
+                                        <div className="h-44 rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-teal-400 p-6 shadow-md flex flex-col justify-between relative overflow-hidden mt-2 border border-emerald-400">
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-2xl rounded-full" />
+                                            <div className="h-8 w-3/4 bg-black/10 rounded-full p-1.5 flex items-center backdrop-blur-sm">
+                                                <div className="h-full w-2/3 bg-white/90 rounded-full" />
                                             </div>
-                                        </div>
-
-                                        {/* Right Side: Deployment Stats */}
-                                        <div className="hidden lg:flex flex-col gap-4">
-                                            <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4">
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Live Syncing</div>
+                                            <div className="flex items-end justify-between relative z-10">
                                                 <div className="space-y-3">
-                                                    {[
-                                                        { label: "Other Devices", val: "Connected" },
-                                                        { label: "Data Safety", val: "Verified" },
-                                                        { label: "Sync Speed", val: "Fast" }
-                                                    ].map((item, i) => (
-                                                        <div key={i} className="flex justify-between items-center text-[9px] font-bold">
-                                                            <span className="text-zinc-400 capitalize">{item.label}</span>
-                                                            <span className="text-white">{item.val}</span>
-                                                        </div>
-                                                    ))}
+                                                    <div className="h-3 w-20 bg-white/70 rounded-full" />
+                                                    <div className="h-4 w-16 bg-white rounded-full" />
                                                 </div>
-                                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-emerald-500 w-[92%] animate-[shimmer_2s_infinite]" />
-                                                </div>
-                                            </div>
-                                            <div className="p-6 rounded-3xl bg-zinc-800/50 border border-white/5 backdrop-blur-sm">
-                                                <p className="text-[10px] font-medium text-zinc-500 leading-relaxed italic">
-                                                    "Whether on Desktop or Mobile, KhataPlus runs everywhere without manual setup."
-                                                </p>
+                                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm"><ArrowRight size={16} className="text-white" /></div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </AdvancedScrollReveal>
 
-                    {/* Footer Features - Tight & Semantic */}
-                    <div className="mt-8 flex flex-wrap justify-between gap-6 px-4">
-                        <SimpleFeature icon={Monitor} title="Billing Counter" desc="Works on PC." />
-                        <SimpleFeature icon={Smartphone} title="Mobile Billing" desc="Use your phone." />
-                        <SimpleFeature icon={Zap} title="Always Sync" desc="Data is always safe." />
+                                        {/* List Items */}
+                                        <div className="space-y-3 mt-4">
+                                            <div className="h-16 border border-zinc-200 rounded-2xl bg-white shadow-sm flex items-center px-4 gap-4">
+                                                <div className="w-8 h-8 rounded-full bg-zinc-100" />
+                                                <div className="space-y-2 flex-1">
+                                                    <div className="h-2 w-full bg-zinc-200 rounded-full" />
+                                                    <div className="h-2 w-2/3 bg-zinc-100 rounded-full" />
+                                                </div>
+                                            </div>
+                                            <div className="h-16 border border-zinc-200 rounded-2xl bg-white shadow-sm flex items-center px-4 gap-4">
+                                                <div className="w-8 h-8 rounded-full bg-zinc-100" />
+                                                <div className="space-y-2 flex-1">
+                                                    <div className="h-2 w-full bg-zinc-200 rounded-full" />
+                                                    <div className="h-2 w-1/2 bg-zinc-100 rounded-full" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Sync Notification Pop */}
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                                            transition={{ duration: 0.5, delay: 1.8, type: "spring" }}
+                                            className="absolute bottom-10 left-4 right-4 h-16 bg-white border border-emerald-100 rounded-2xl shadow-[0_15px_30px_rgba(0,0,0,0.08),_0_0_15px_rgba(16,185,129,0.1)] flex items-center px-4 gap-4"
+                                        >
+                                            <motion.div
+                                                animate={{ rotate: 360 }}
+                                                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                                className="w-8 h-8 rounded-full border border-emerald-100 bg-emerald-50 text-emerald-500 flex items-center justify-center shadow-sm"
+                                            >
+                                                <RefreshCw size={14} />
+                                            </motion.div>
+                                            <div className="space-y-2 flex-1">
+                                                <div className="h-2 w-20 bg-zinc-800 rounded-full" />
+                                                <div className="h-1.5 w-16 bg-zinc-300 rounded-full" />
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                    <div className="h-2 w-32 bg-zinc-200 rounded-full mx-auto mb-2 relative z-30" />
+                                </div>
+                            </motion.div>
+                        </div>
                     </div>
-                </div>
+                </AdvancedScrollReveal>
+
+                {/* Refined Footer Features */}
+                <AdvancedScrollReveal variant="slideUp" delay={200}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto border-t border-zinc-100 pt-16 mt-16">
+                        <FeatureItem icon={Monitor} title="Desktop Command" desc="Massive analytics on your primary screen." />
+                        <FeatureItem icon={Smartphone} title="Mobile Access" desc="Pocket-ready power for on-the-go billing." />
+                        <FeatureItem icon={Zap} title="Instant Relay" desc="Data propagates across your devices within milliseconds." />
+                    </div>
+                </AdvancedScrollReveal>
             </div>
         </section>
     )
 }
 
-function StatusCard({ icon: Icon, title, status, color }: any) {
+function FeatureItem({ icon: Icon, title, desc }: any) {
     return (
-        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 group hover:bg-white/10 transition-all">
-            <div className={cn("w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center", color)}>
-                <Icon size={16} />
+        <div className="flex flex-col items-center text-center space-y-4 group">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-600 shadow-sm group-hover:scale-110 group-hover:bg-emerald-50 group-hover:border-emerald-100 group-hover:text-emerald-600 transition-all duration-500">
+                <Icon size={24} strokeWidth={1.5} />
             </div>
             <div>
-                <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">{title}</div>
-                <div className="text-xs font-black text-white">{status}</div>
-            </div>
-        </div>
-    )
-}
-
-function SimpleFeature({ icon: Icon, title, desc }: any) {
-    return (
-        <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-zinc-400">
-                <Icon size={12} />
-            </div>
-            <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase text-white leading-none mb-0.5">{title}</span>
-                <span className="text-[8px] font-medium text-zinc-500 leading-none">{desc}</span>
+                <h4 className="font-semibold text-zinc-900 tracking-tight text-lg mb-2">{title}</h4>
+                <p className="text-zinc-500 font-medium leading-relaxed">{desc}</p>
             </div>
         </div>
     )

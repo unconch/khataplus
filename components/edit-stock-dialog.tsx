@@ -200,10 +200,10 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
                 disabled={saving || !selectedId}
                 className="h-11 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-black text-[11px] uppercase tracking-widest transition-all hover:opacity-90 active:scale-95 shadow-xl"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Commit Synchronization"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
               </Button>
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving} className="h-9 rounded-lg font-black text-[9px] uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
-                Cancel Operation
+                Cancel
               </Button>
             </div>
           </div>

@@ -114,17 +114,18 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
       return (
         <TenantProvider tenant={demoTenant}>
-          <AppShell
-            profile={null}
-            role="admin"
-            settings={demoSettings}
-            orgId={demoTenant.id}
-            orgName={demoTenant.name}
-            orgPlanType="business"
-            pathPrefix={pathPrefix}
-          >
-            {children}
-          </AppShell>
+            <AppShell
+              profile={null}
+              role="admin"
+              settings={demoSettings}
+              orgId={demoTenant.id}
+              orgName={demoTenant.name}
+              orgSlug={demoTenant.slug}
+              orgPlanType="business"
+              pathPrefix={pathPrefix}
+            >
+              {children}
+            </AppShell>
         </TenantProvider>
       )
     }
@@ -211,6 +212,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const orgId = currentOrgMembership.org_id
     const tenant = currentOrgMembership.organization
     const settings = await getSystemSettings(orgId)
+    const resolvedPathPrefix = pathPrefix || (tenant?.slug ? `/${tenant.slug}` : "")
 
     // Role-based route protection
     if (orgRole === "staff") {
@@ -252,8 +254,9 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
                 settings={settings}
                 orgId={orgId}
                 orgName={tenant.name}
+                orgSlug={tenant.slug}
                 orgPlanType={tenant.plan_type}
-                pathPrefix={pathPrefix}
+                pathPrefix={resolvedPathPrefix}
               >
                 {children}
               </AppShell>

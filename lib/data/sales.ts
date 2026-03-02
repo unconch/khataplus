@@ -18,6 +18,7 @@ function resolveInitialPaymentStatus(
 ): "pending" | "paid" {
     if (paymentMethod === "Credit") return "pending";
     if (paymentMethod === "UPI" && requestedStatus === "pending") return "pending";
+    if (paymentMethod === "Split") return "paid";
     return "paid";
 }
 

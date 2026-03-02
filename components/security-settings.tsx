@@ -24,6 +24,7 @@ type ToggleKey =
     | "allow_staff_sales"
     | "allow_staff_add_inventory"
     | "gst_enabled"
+    | "gst_inclusive"
     | "show_buy_price_in_sales"
 
 export function SecuritySettings({
@@ -45,26 +46,37 @@ export function SecuritySettings({
         () =>
             [
                 {
+                    group: "Sales Workflow",
                     key: "allow_staff_inventory" as ToggleKey,
                     label: "Staff inventory access",
                     description: "Let staff view inventory and stock status.",
                 },
                 {
+                    group: "Sales Workflow",
                     key: "allow_staff_sales" as ToggleKey,
                     label: "Staff sales access",
                     description: "Allow staff to create sales and invoices.",
                 },
                 {
+                    group: "Inventory Operations",
                     key: "allow_staff_add_inventory" as ToggleKey,
                     label: "Staff inventory edits",
                     description: "Allow staff to add and update stock entries.",
                 },
                 {
+                    group: "Tax & Compliance",
                     key: "gst_enabled" as ToggleKey,
                     label: "GST engine",
                     description: "Enable GST calculations across billing flows.",
                 },
                 {
+                    group: "Tax & Compliance",
+                    key: "gst_inclusive" as ToggleKey,
+                    label: "GST pricing mode",
+                    description: "Choose whether entered prices include GST or GST is added on top.",
+                },
+                {
+                    group: "Sales Workflow",
                     key: "show_buy_price_in_sales" as ToggleKey,
                     label: "Show buy price in sales",
                     description: "Expose buy price during sales item selection.",
@@ -301,19 +313,57 @@ export function SecuritySettings({
                     <CardDescription>Fine-tune what staff can view and modify.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    {governanceRows.map((item) => (
-                        <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
-                            <div>
-                                <Label className="text-sm font-semibold">{item.label}</Label>
-                                <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                    {(["Sales Workflow", "Inventory Operations", "Tax & Compliance"] as const).map((group) => {
+                        const rows = governanceRows.filter((row) => row.group === group)
+                        if (!rows.length) return null
+                        return (
+                            <div key={group} className="space-y-2.5">
+                                <div className="px-1 pt-2">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/80 dark:text-indigo-300/80">
+                                        {group}
+                                    </p>
+                                </div>
+                                {rows.map((item) => (
+                                    <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                                        <div>
+                                            <Label className="text-sm font-semibold">{item.label}</Label>
+                                            <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                                        </div>
+                                        {item.key === "gst_inclusive" ? (
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={settings.gst_inclusive ? "default" : "outline"}
+                                                    className="h-8"
+                                                    onClick={() => updateGovernanceToggle("gst_inclusive", true)}
+                                                    disabled={!isAdmin || isUpdating || !settings.gst_enabled}
+                                                >
+                                                    Inclusive
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={!settings.gst_inclusive ? "default" : "outline"}
+                                                    className="h-8"
+                                                    onClick={() => updateGovernanceToggle("gst_inclusive", false)}
+                                                    disabled={!isAdmin || isUpdating || !settings.gst_enabled}
+                                                >
+                                                    Exclusive
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Switch
+                                                checked={Boolean(settings[item.key])}
+                                                onCheckedChange={(val) => updateGovernanceToggle(item.key, val)}
+                                                disabled={!isAdmin || isUpdating}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                            <Switch
-                                checked={Boolean(settings[item.key])}
-                                onCheckedChange={(val) => updateGovernanceToggle(item.key, val)}
-                                disabled={!isAdmin || isUpdating}
-                            />
-                        </div>
-                    ))}
+                        )
+                    })}
                 </CardContent>
             </Card>
 

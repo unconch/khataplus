@@ -22,24 +22,31 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         setIsOnline(navigator.onLine)
         setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
         let lastToastAt = 0
+        let hasMounted = false
+
+        setTimeout(() => {
+            hasMounted = true
+        }, 350)
 
         const handleOnline = () => {
             setIsOnline(true)
+            if (!hasMounted) return
             if (Date.now() - lastToastAt < 2000) return
             lastToastAt = Date.now()
             toast.success("Back Online", {
-                description: "Synchronizing data with the secure ledger...",
-                duration: 4000,
+                description: "Your queued updates are syncing automatically.",
+                duration: 3000,
             })
         }
 
         const handleOffline = () => {
             setIsOnline(false)
+            if (!hasMounted) return
             if (Date.now() - lastToastAt < 2000) return
             lastToastAt = Date.now()
-            toast.warning("Sailing Offline", {
-                description: "Transactions will be queued for background sync.",
-                duration: 6000,
+            toast.warning("Offline Mode", {
+                description: "You can continue working. Changes will sync once connected.",
+                duration: 4500,
             })
         }
 
@@ -56,24 +63,21 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             let shown = false
-            // Reload when new SW takes control (skipWaiting: true in config makes this happen immediately)
-            // But we might want to just toast.
-            // With skipWaiting: true, the new SW activates instantly.
-            // We should notify user to refresh.
-
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
+            const onControllerChange = () => {
                 if (shown) return
                 shown = true
-                // This fires when the standard SW is replaced by a new one
                 toast.info("Update Available", {
-                    description: "A new version of the app is ready.",
+                    description: "A new version is ready. Reload when convenient.",
                     action: {
                         label: "Reload",
                         onClick: () => window.location.reload()
                     },
-                    duration: Infinity // Stay until clicked
+                    duration: 12000
                 })
-            })
+            }
+
+            navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+            return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
         }
     }, [])
 

@@ -49,7 +49,7 @@ const tiers: PricingTier[] = [
             "10 Billing / Month",
             "30 Stock items",
             "Digital Khata Ledger",
-            "WhatsApp Sharing"
+            "Analytics, Reports & Import"
         ],
         cta: "Start Free",
         color: "zinc"
@@ -65,7 +65,7 @@ const tiers: PricingTier[] = [
             "200 Stock Items",
             "3 Staff Member Seats",
             "A4 + Thermal Printing",
-            "Daily Profit Reports"
+            "Analytics, Reports & Import"
         ],
         cta: "Scale Up",
         color: "blue"
@@ -78,7 +78,7 @@ const tiers: PricingTier[] = [
         desc: "For growing retailers.",
         features: [
             "Unlimited Stock",
-            "Advanced Analytics",
+            "Advanced Analytics Views",
             "GST Sync Ready",
             "Works fully Offline",
             "3 Store Locations"

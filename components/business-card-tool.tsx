@@ -12,7 +12,7 @@ import {
     Facebook, Twitter, Wand2, Trash2, Save, Cloud,
     Music, Gamepad, Paintbrush, Utensils, Scissors,
     Ghost, Sparkles, Gem, Link, Plane, Heart,
-    Coffee, Film, Gift
+    Coffee, Film, Gift, ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,25 +41,21 @@ const FONTS = {
 }
 
 const PURPOSES: { id: CardPurpose, label: string, icon: any, desc: string }[] = [
-    { id: 'professional', label: 'Pro', icon: Briefcase, desc: 'Business' },
-    { id: 'social', label: 'Creator', icon: Camera, desc: 'Social' },
-    { id: 'commerce', label: 'Shop', icon: ShoppingBag, desc: 'Offers' },
-    { id: 'event', label: 'Event', icon: Calendar, desc: 'Invites' },
+    { id: 'professional', label: 'Pro Business', icon: Briefcase, desc: 'Corporate & Personal Identity' },
+    { id: 'social', label: 'Creator Link', icon: Camera, desc: 'Digital Presence & Social handles' },
+    { id: 'commerce', label: 'Store Offer', icon: Store, desc: 'Promotions, Discounts & Coupons' },
+    { id: 'event', label: 'Invite Pass', icon: Ticket, desc: 'Exclusive Access & Invitations' },
 ]
 
 const PALETTES = [
-    { name: "Emerald City", primary: "#10b981", text: "#064e3b", bg: "#ecfdf5" },
-    { name: "Royal Blue", primary: "#2563eb", text: "#1e3a8a", bg: "#eff6ff" },
-    { name: "Midnight Gold", primary: "#fbbf24", text: "#fffbeb", bg: "#18181b" },
-    { name: "Crimson Red", primary: "#dc2626", text: "#7f1d1d", bg: "#fef2f2" },
-    { name: "Slate Minimal", primary: "#475569", text: "#0f172a", bg: "#f8fafc" },
-    { name: "Violet Vibes", primary: "#8b5cf6", text: "#4c1d95", bg: "#f5f3ff" },
-    { name: "Barbie Pink", primary: "#db2777", text: "#831843", bg: "#fdf2f8" },
-    { name: "Forest Dark", primary: "#22c55e", text: "#f0fdf4", bg: "#052e16" },
-    { name: "Cyber Black", primary: "#00ff9d", text: "#ffffff", bg: "#000000" },
-    { name: "Luxury Gold", primary: "#d4af37", text: "#ffffff", bg: "#1a1a1a" },
-    { name: "Cotton Candy", primary: "#f472b6", text: "#831843", bg: "#fff1f2" },
-    { name: "Ocean Breeze", primary: "#0ea5e9", text: "#0c4a6e", bg: "#f0f9ff" },
+    { name: "Emerald Elite", primary: "#10b981", text: "#064e3b", bg: "#ecfdf5" },
+    { name: "Deep Obsidian", primary: "#18181b", text: "#ffffff", bg: "#09090b" },
+    { name: "Alpine Blue", primary: "#3b82f6", text: "#1e3a8a", bg: "#eff6ff" },
+    { name: "Luxury Gold", primary: "#d4af37", text: "#422006", bg: "#fefce8" },
+    { name: "Rose Quartz", primary: "#f43f5e", text: "#881337", bg: "#fff1f2" },
+    { name: "Royal Purple", primary: "#8b5cf6", text: "#4c1d95", bg: "#f5f3ff" },
+    { name: "Matte Black", primary: "#2dd4bf", text: "#ffffff", bg: "#111827" },
+    { name: "Cyber Neon", primary: "#00ff9d", text: "#000000", bg: "#ffffff" },
 ]
 
 const PRESETS_BG = [
@@ -216,118 +212,159 @@ export function BusinessCardTool() {
         <div className={cn("w-full h-full relative overflow-hidden flex", FONTS[font], layout === "layout2" ? "border-4 border-black" : "")} style={{ color: palette.text }}>
 
             {/* ... Existing Layouts 1-6 ... */}
-            {layout === "layout1" && ( /* Modern Split */
+            {layout === "layout1" && ( /* High-End Split */
                 <>
-                    <div className="w-[35%] h-full p-6 flex flex-col items-center justify-center text-center relative z-10" style={{ backgroundColor: activeColor, color: "#fff" }}>
-                        <div className="flex items-center justify-center mb-4 overflow-hidden bg-white/20 backdrop-blur-sm shadow-inner" style={{ width: `${logoSize}px`, height: `${logoSize}px`, borderRadius: `${logoRadius}%` }}> {logo ? <img src={logo} className="w-full h-full object-cover" /> : <Store size={32} />} </div>
-                        <h3 className="font-bold leading-tight text-shadow-sm">{shopName}</h3>
-                        <p className="text-[10px] opacity-80 mt-1 uppercase tracking-wider">{tagline}</p>
+                    <div className="w-[38%] h-full p-8 flex flex-col items-center justify-center text-center relative z-10" style={{ backgroundColor: activeColor, color: "#fff" }}>
+                        <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
+                        <div className="flex items-center justify-center mb-6 overflow-hidden bg-white shadow-2xl transition-transform hover:scale-105" style={{ width: `${logoSize}px`, height: `${logoSize}px`, borderRadius: `${logoRadius}%` }}> {logo ? <img src={logo} className="w-full h-full object-cover" /> : <Store size={32} className="text-zinc-900" />} </div>
+                        <h3 className="font-black text-xs uppercase tracking-[0.2em] leading-tight mb-2">{shopName}</h3>
+                        <div className="w-6 h-0.5 bg-white/40 mb-2" />
+                        <p className="text-[8px] font-bold opacity-70 uppercase tracking-[0.3em]">{tagline}</p>
                     </div>
-                    <div className="flex-1 p-8 flex flex-col justify-center bg-white relative z-10">
+                    <div className="flex-1 p-10 flex flex-col justify-between bg-white relative z-10">
                         <BackgroundLayer />
                         <div className="relative z-10">
-                            <h2 className="text-2xl font-bold uppercase" style={{ color: "#18181b" }}>{ownerName}</h2>
-                            <p className="text-sm font-medium mb-6 opacity-60">Manager</p>
-                            <div className="space-y-2 text-xs font-medium opacity-80">
-                                <div className="flex items-center gap-3"><Smartphone size={14} style={{ color: activeColor }} /> {phone}</div>
-                                <div className="flex items-center gap-3"><Mail size={14} style={{ color: activeColor }} /> {email}</div>
-                                <div className="flex items-center gap-3"><MapPin size={14} style={{ color: activeColor }} /> {address}</div>
+                            <h2 className="text-3xl font-black tracking-tighter uppercase italic mb-1" style={{ color: "#000" }}>{ownerName}</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-zinc-400">Chief Executive</p>
+                            <div className="space-y-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeColor }} /> {phone}</div>
+                                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeColor }} /> {email}</div>
+                                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeColor }} /> {address}</div>
                             </div>
                         </div>
-                        {showQr && <div className="absolute bottom-4 right-4 opacity-10 mix-blend-multiply"><QRCode value={qrValue} size={60} /></div>}
+                        {showQr && <div className="absolute bottom-8 right-8 grayscale opacity-20"><QRCode value={qrValue} size={64} /></div>}
                     </div>
                 </>
             )}
 
-            {layout === "layout2" && ( /* Neo-Brutalism */
-                <div className="w-full h-full p-6 bg-[#fffdf5] font-mono relative z-10">
-                    <div className="w-full h-full border-4 border-black p-4 flex flex-col justify-between" style={{ boxShadow: "8px 8px 0px 0px rgba(0,0,0,1)" }}>
-                        <div className="flex justify-between items-start border-b-4 border-black pb-2">
-                            <div><h1 className="text-2xl font-black uppercase tracking-tighter">{shopName}</h1><p className="text-xs font-bold bg-black text-white inline-block px-1">{tagline}</p></div>
-                            {logo && <img src={logo} className="w-10 h-10 object-contain border-2 border-black rounded-full" />}
+            {layout === "layout2" && ( /* Matrix Tech Grid */
+                <div className="w-full h-full p-8 bg-zinc-950 text-white relative flex flex-col justify-between overflow-hidden">
+                    <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:14px_14px]" />
+                    <div className="flex justify-between items-start relative z-10">
+                        <div className="space-y-2">
+                            <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">{shopName}</h1>
+                            <div className="h-0.5 w-12" style={{ backgroundColor: activeColor }} />
                         </div>
-                        <div className="space-y-1 text-sm font-bold"><p>CONTACT: {phone}</p><p>MAIL: {email}</p></div>
-                        <div className="bg-black text-white p-2 text-center text-xs font-bold uppercase">{ownerName}</div>
+                        <div className="text-[9px] font-mono text-zinc-500 border border-zinc-800 px-2 py-1 uppercase">ID: KH-8820</div>
                     </div>
-                </div>
-            )}
-
-            {layout === "layout3" && ( /* Clean Minimal */
-                <div className="w-full h-full p-8 flex flex-col justify-center bg-white relative">
-                    <BackgroundLayer />
-                    <div className="relative z-10 flex gap-6 items-center">
-                        <div className="h-24 w-1 bg-zinc-900" style={{ backgroundColor: activeColor }} />
-                        <div><h1 className="text-3xl font-light tracking-wide text-zinc-800">{ownerName}</h1><p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-4">{shopName}</p><div className="flex gap-4 text-[10px] text-zinc-400 font-medium uppercase tracking-wider"><span>{phone}</span> • <span>{email}</span></div></div>
-                    </div>
-                </div>
-            )}
-
-            {layout === "layout4" && ( /* Dark Executive */
-                <div className="w-full h-full p-8 flex items-center justify-between bg-zinc-900 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-black/50 to-transparent z-0" />
-                    <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ backgroundColor: activeColor }} />
-                    <div className="relative z-10 space-y-4">
-                        <div className="w-12 h-1 mb-6" style={{ backgroundColor: activeColor }} />
-                        <h1 className="text-3xl font-serif">{ownerName}</h1>
-                        <p className="text-xs opacity-60 tracking-widest uppercase">{tagline}</p>
-                        <div className="pt-4 text-[10px] opacity-80 font-light space-y-1"><p>{phone}</p><p>{email}</p></div>
-                    </div>
-                    <div className="relative z-10 flex flex-col items-end gap-4">
-                        {logo ? <img src={logo} className="w-16 h-16 object-contain filter brightness-0 invert opacity-80" /> : <Store className="w-12 h-12 opacity-50" />}
-                    </div>
-                </div>
-            )}
-
-            {layout === "layout5" && ( /* Centered Studio */
-                <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-white border-[12px] border-double" style={{ borderColor: activeColor }}>
-                    {logo && <img src={logo} className="w-14 h-14 object-contain mb-3" />}
-                    <h1 className="text-2xl font-bold uppercase tracking-widest text-zinc-900">{shopName}</h1>
-                    <div className="w-10 h-1 bg-black my-3 mx-auto" style={{ backgroundColor: activeColor }} />
-                    <h2 className="text-lg font-medium text-zinc-600">{ownerName}</h2>
-                </div>
-            )}
-
-            {layout === "layout6" && ( /* Geometric / Swiss */
-                <div className="w-full h-full grid grid-cols-2 bg-white">
-                    <div className="p-8 flex flex-col justify-between">
-                        <h1 className="text-3xl font-bold leading-none">{ownerName.split(' ')[0]}<br />{ownerName.split(' ')[1]}</h1>
-                        <div className="text-[10px] font-bold space-y-1"><p>{phone}</p><p>{email}</p></div>
-                    </div>
-                    <div className="relative flex flex-col items-center justify-center p-6 text-white text-center" style={{ backgroundColor: activeColor }}>
-                        <h2 className="text-xl font-bold mb-2">{shopName}</h2>
-                        <p className="text-[9px] opacity-80">{tagline}</p>
-                    </div>
-                </div>
-            )}
-
-            {/* NEW TEMPLATES */}
-            {layout === "layout7" && ( /* Architect Blueprint */
-                <div className="w-full h-full bg-[#0a4da2] text-white p-6 relative font-mono overflow-hidden">
-                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
-                    <div className="border-2 border-white/50 w-full h-full p-4 relative z-10 flex flex-col justify-between">
-                        <div className="flex justify-between items-start">
-                            <h1 className="text-xl font-bold uppercase border-b-2 border-white/50 pb-1">{shopName}</h1>
-                            <div className="text-[8px] border border-white p-1">PLAN: A-01</div>
-                        </div>
-                        <div className="text-right">
-                            <h2 className="text-2xl font-bold">{ownerName}</h2>
-                            <p className="text-[10px] opacity-70">ARCHITECT</p>
-                        </div>
-                        <div className="text-[9px] font-mono flex gap-4 opacity-80 pt-4 border-t border-white/30">
-                            <span>{phone}</span> <span>{email}</span>
+                    <div className="relative z-10">
+                        <h2 className="text-5xl font-black tracking-tighter uppercase leading-[0.8] mb-4 overflow-hidden">{ownerName.split(' ')[0]}<br /><span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(255,255,255,0.3)" }}>{ownerName.split(' ')[1]}</span></h2>
+                        <div className="flex gap-8 text-[9px] font-mono text-zinc-400 uppercase tracking-widest">
+                            <div className="flex flex-col gap-1"><span>TEL: {phone}</span><span>EML: {email}</span></div>
+                            <div className="flex flex-col gap-1"><span>LOC: {address.split(',')[0]}</span><span>WEB: {website.replace('www.', '')}</span></div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {layout === "layout8" && ( /* Classic Serif / Law Firm */
-                <div className="w-full h-full bg-[#fdfbf7] p-8 flex flex-col items-center justify-center text-center relative border border-zinc-200">
-                    <div className="absolute top-4 bottom-4 left-4 right-4 border border-zinc-300 pointer-events-none" />
-                    <div className="w-12 h-12 mb-4 opacity-80" style={{ color: activeColor }}>{logo ? <img src={logo} className="w-full h-full object-contain" /> : <Building size={48} />}</div>
-                    <h1 className="font-serif text-2xl text-zinc-800 tracking-wide mb-1">{shopName}</h1>
-                    <div className="w-8 h-px bg-zinc-400 my-4" />
-                    <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-zinc-500">{ownerName}</h2>
-                    <p className="font-serif text-[10px] italic text-zinc-400 mt-2">{phone}</p>
+            {layout === "layout3" && ( /* Boutique Ivory */
+                <div className="w-full h-full p-12 bg-[#faf9f6] text-zinc-900 border border-zinc-200 relative overflow-hidden flex flex-col items-center justify-between text-center">
+                    <div className="absolute top-0 left-0 w-24 h-24 border-t-2 border-l-2 m-4 opacity-20" style={{ borderColor: activeColor }} />
+                    <div className="absolute bottom-0 right-0 w-24 h-24 border-b-2 border-r-2 m-4 opacity-20" style={{ borderColor: activeColor }} />
+                    <div className="relative z-10">
+                        <h1 className="font-serif italic text-4xl mb-2">{ownerName}</h1>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-zinc-400 mb-8">{shopName}</p>
+                    </div>
+                    <div className="relative z-10 w-full max-w-xs h-px bg-zinc-200 mb-8" />
+                    <div className="relative z-10 flex flex-col gap-2 text-[10px] font-medium tracking-widest text-zinc-500 uppercase">
+                        <span>{phone} • {email}</span>
+                        <span className="opacity-60">{address}</span>
+                    </div>
+                </div>
+            )}
+
+            {layout === "layout4" && ( /* Obsidian Gold */
+                <div className="w-full h-full p-10 bg-black text-white relative overflow-hidden flex items-center justify-between">
+                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-zinc-800/10 to-transparent pointer-events-none" />
+                    <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full blur-[100px] opacity-20" style={{ backgroundColor: activeColor }} />
+                    <div className="relative z-10">
+                        <div className="w-16 h-px mb-6" style={{ backgroundColor: activeColor }} />
+                        <h1 className="text-4xl font-serif mb-2 tracking-tight">{ownerName}</h1>
+                        <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-40 mb-12">{tagline}</p>
+                        <div className="space-y-2 text-[10px] font-mono opacity-60">
+                            <p className="flex items-center gap-2">P // {phone}</p>
+                            <p className="flex items-center gap-2">E // {email}</p>
+                        </div>
+                    </div>
+                    <div className="relative z-10">
+                        <div className="w-24 h-24 border border-zinc-800 rounded-full p-6 backdrop-blur-sm flex items-center justify-center">
+                            {logo ? <img src={logo} className="w-full h-full object-contain brightness-0 invert" /> : <Gem size={32} className="opacity-20" />}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {layout === "layout5" && ( /* Minimal Gallery */
+                <div className="w-full h-full bg-white flex flex-col relative">
+                    <div className="h-[70%] w-full bg-zinc-50 border-b border-zinc-100 p-12 flex flex-col justify-center">
+                        <h1 className="text-4xl font-black tracking-tighter uppercase mb-2">{ownerName}</h1>
+                        <p className="text-xs font-bold uppercase tracking-[0.5em] text-zinc-300">{shopName}</p>
+                    </div>
+                    <div className="flex-1 p-8 flex items-center justify-between bg-white px-12">
+                        <div className="text-[9px] font-black uppercase tracking-widest leading-loose text-zinc-400">
+                            {phone} <br /> {email}
+                        </div>
+                        <div className="h-8 w-8 rounded-full border border-zinc-900 flex items-center justify-center p-2" style={{ borderColor: activeColor }}>
+                            <ArrowRight size={14} style={{ color: activeColor }} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {layout === "layout6" && ( /* Modernist Swiss */
+                <div className="w-full h-full grid grid-cols-[1fr,250px] bg-white border border-zinc-100">
+                    <div className="p-10 flex flex-col justify-between">
+                        <div className="space-y-1">
+                            {ownerName.split(' ').map((name, i) => (
+                                <h1 key={i} className="text-5xl font-black italic tracking-tighter leading-[0.8] overflow-hidden">{name}</h1>
+                            ))}
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] space-y-2 text-zinc-900">
+                            <div className="flex items-center gap-2"><Smartphone size={12} strokeWidth={3} /> {phone}</div>
+                            <div className="flex items-center gap-2"><Mail size={12} strokeWidth={3} /> {email}</div>
+                        </div>
+                    </div>
+                    <div className="p-10 flex flex-col justify-between text-white border-l border-zinc-100" style={{ backgroundColor: activeColor }}>
+                        <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                            {logo ? <img src={logo} className="w-full h-full object-cover p-2" /> : <Store size={32} />}
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-black uppercase tracking-tighter leading-tight italic">{shopName}</h2>
+                            <p className="text-[8px] font-bold opacity-70 uppercase tracking-widest mt-1">{tagline}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {layout === "layout7" && ( /* Architectural Ledger */
+                <div className="w-full h-full bg-[#f4f4f5] text-zinc-900 p-8 relative flex flex-col justify-between border-t-8 border-zinc-900">
+                    <div className="absolute top-0 right-0 p-8 text-[60px] font-black opacity-[0.03] leading-none select-none">DESIGN // 01</div>
+                    <div className="flex justify-between items-start pt-4 border-t border-zinc-300">
+                        <div><h1 className="text-xl font-black uppercase tracking-tighter italic">{shopName}</h1></div>
+                        <div className="text-[9px] font-black uppercase tracking-widest">K.PLUS STUDIO</div>
+                    </div>
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <h2 className="text-3xl font-black tracking-tighter italic uppercase mb-2">{ownerName}</h2>
+                            <div className="flex gap-6 text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+                                <span>{phone}</span> <span>{email}</span>
+                            </div>
+                        </div>
+                        <div className="w-12 h-12 grayscale opacity-20"><QRCode value={qrValue} size={48} /></div>
+                    </div>
+                </div>
+            )}
+
+            {layout === "layout8" && ( /* Heritage Card */
+                <div className="w-full h-full bg-[#fdfbf7] p-12 flex flex-col items-center justify-center text-center relative border border-zinc-200">
+                    <div className="absolute inset-4 border border-zinc-200 pointer-events-none" />
+                    <div className="relative z-10 mb-6">
+                        {logo ? <img src={logo} className="w-16 h-16 object-contain grayscale" /> : <Building size={48} className="text-zinc-300" />}
+                    </div>
+                    <h1 className="font-serif italic text-3xl text-zinc-800 mb-1">{shopName}</h1>
+                    <div className="w-8 h-px bg-zinc-300 my-4" />
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-400 mb-2">{ownerName}</h2>
+                    <p className="font-mono text-[8px] uppercase tracking-widest text-zinc-400">{phone} — {email}</p>
                 </div>
             )}
 
@@ -503,121 +540,239 @@ export function BusinessCardTool() {
 
     // --- EDITOR UI START ---
     return (
-        <div className="w-full h-screen bg-zinc-950 flex overflow-hidden">
+        <div className="w-full h-full pt-16 flex bg-transparent relative z-10">
 
-            {/* 1. SIDEBAR NAV */}
-            <div className="w-20 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-6 gap-6 z-20">
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center mb-4">
-                    <Wand2 className="text-white" size={20} />
+            {/* 1. SIDEBAR NAV - SLEEK TOOL SHELF */}
+            <div className="w-24 bg-black/40 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-10">
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(16,185,129,0.3)] group cursor-help relative">
+                    <Wand2 className="text-white group-hover:rotate-12 transition-transform" size={24} />
+                    <div className="absolute left-full ml-4 px-3 py-1 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded hidden group-hover:block whitespace-nowrap z-50">Studio Core v4</div>
                 </div>
-                {PURPOSES.map(p => (
-                    <button key={p.id} onClick={() => setPurpose(p.id)}
-                        className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                            purpose === p.id ? "bg-white text-zinc-900 shadow-lg scale-110" : "text-zinc-500 hover:bg-zinc-800")}>
-                        <p.icon size={22} strokeWidth={purpose === p.id ? 2.5 : 2} />
+
+                <div className="flex flex-col gap-6">
+                    {PURPOSES.map(p => (
+                        <button
+                            key={p.id}
+                            onClick={() => setPurpose(p.id)}
+                            className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all relative group",
+                                purpose === p.id
+                                    ? "bg-white text-black shadow-[0_15px_30px_-10px_rgba(255,255,255,0.3)] scale-110"
+                                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")}
+                        >
+                            <p.icon size={22} strokeWidth={purpose === p.id ? 2.5 : 2} />
+                            {purpose === p.id && <div className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full" />}
+                            <div className="absolute left-full ml-4 px-3 py-1 bg-zinc-900 text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded hidden group-hover:block whitespace-nowrap z-50 border border-zinc-800 shadow-xl">{p.label}</div>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-auto pb-8 flex flex-col gap-6 items-center">
+                    <button
+                        onClick={handleRandomize}
+                        className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-emerald-500 transition-all group"
+                        title="Randomize Style"
+                    >
+                        <RotateCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
                     </button>
-                ))}
-                <div className="mt-auto flex flex-col gap-4">
-                    <button onClick={handleRandomize} className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400"><RotateCw size={18} /></button>
                 </div>
             </div>
 
             {/* 2. MAIN PANEL (Split View) */}
             <div className="flex-1 flex flex-col lg:flex-row relative">
 
-                {/* 2A. EDITOR (Left) */}
-                <div className="w-full lg:w-[400px] xl:w-[480px] bg-zinc-950 border-r border-zinc-800 flex flex-col">
-                    <div className="p-6 border-b border-zinc-800">
-                        <h2 className="text-white font-bold text-xl">{PURPOSES.find(p => p.id === purpose)?.label} Settings</h2>
-                        <p className="text-zinc-500 text-xs">Customize details and design.</p>
+                {/* 2A. EDITOR (Left Side) */}
+                <div className="w-full lg:w-[450px] xl:w-[500px] bg-black/60 backdrop-blur-2xl border-r border-white/5 flex flex-col animate-in slide-in-from-left duration-700">
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-white font-black text-2xl tracking-tighter uppercase italic">{PURPOSES.find(p => p.id === purpose)?.label}</h2>
+                            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">{PURPOSES.find(p => p.id === purpose)?.desc}</p>
+                        </div>
+                        <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-widest">Live Editor</div>
                     </div>
 
-                    <ScrollArea className="flex-1">
-                        <div className="p-6 space-y-8">
+                    <ScrollArea className="flex-1 px-8 py-10">
+                        <div className="space-y-12">
 
-                            {/* SECTION: CONTENT */}
-                            <div className="space-y-4">
-                                <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">Content</h3>
-                                <div className="space-y-3">
-                                    {/* Common Fields */}
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <Input value={shopName} onChange={(e) => setShopName(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200 h-10" placeholder="Brand Name" />
-                                        {purpose === 'professional' && <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Full Name" />}
-                                        {purpose === 'social' && <Input value={handle} onChange={(e) => setHandle(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200 font-bold" placeholder="@handle" />}
-                                        {purpose === 'commerce' && <Input value={offerCode} onChange={(e) => setOfferCode(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200 font-mono" placeholder="CODE" />}
-                                        {purpose === 'event' && <Input value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Event Name" />}
+                            {/* SECTION: IDENTITY */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-px bg-emerald-500/50" />
+                                    <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Core Identity</h3>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Brand Name</Label>
+                                        <Input value={shopName} onChange={(e) => setShopName(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 focus:ring-emerald-500/20 focus:border-emerald-500/40 rounded-xl" placeholder="KhataPlus Retail" />
                                     </div>
 
-                                    {/* Sub Fields */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {purpose === 'professional' && (
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Member Name</Label>
+                                                <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="Full Name" />
+                                            </div>
+                                        )}
+                                        {purpose === 'social' && (
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Handle</Label>
+                                                <Input value={handle} onChange={(e) => setHandle(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl font-bold" placeholder="@username" />
+                                            </div>
+                                        )}
+                                        {purpose === 'commerce' && (
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Promo Code</Label>
+                                                <Input value={offerCode} onChange={(e) => setOfferCode(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl font-mono" placeholder="SALE50" />
+                                            </div>
+                                        )}
+                                        {purpose === 'event' && (
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Event Name</Label>
+                                                <Input value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="Grand Opening" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
                                         {purpose === 'professional' && <>
-                                            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Phone" />
-                                            <Input value={email} onChange={(e) => setEmail(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Email" />
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Phone</Label>
+                                                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="+91" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Email</Label>
+                                                <Input value={email} onChange={(e) => setEmail(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="Email" />
+                                            </div>
                                         </>}
                                         {purpose === 'social' && <>
-                                            <Input value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Platform" />
-                                            <Input value={bio} onChange={(e) => setBio(e.target.value)} className="bg-zinc-900 border-zinc-800 text-zinc-200" placeholder="Bio" />
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Platform</Label>
+                                                <Input value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="e.g. Instagram" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Bio</Label>
+                                                <Input value={bio} onChange={(e) => setBio(e.target.value)} className="bg-zinc-900/50 border-zinc-800 text-white h-12 rounded-xl" placeholder="Creator" />
+                                            </div>
                                         </>}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION: STYLE */}
-                            <div className="space-y-4">
-                                <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">Style</h3>
-                                <div className="grid grid-cols-4 gap-2">
+                            {/* SECTION: TEMPLATE SELECTION */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-px bg-emerald-500/50" />
+                                    <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Signature Layouts</h3>
+                                </div>
+                                <div className="grid grid-cols-4 gap-3">
                                     {Array.from({ length: 8 }, (_, i) => i + 1).map(i => (
-                                        <button key={i} onClick={() => setLayout(`layout${i}`)} className={cn("aspect-square rounded-lg border-2 flex flex-col items-center justify-center transition-all", layout === `layout${i}` ? "border-emerald-500 bg-emerald-500/10 text-emerald-500" : "border-zinc-800 bg-zinc-900 text-zinc-600 hover:bg-zinc-800")}>
-                                            <span className="text-lg font-bold">{i}</span>
+                                        <button
+                                            key={i}
+                                            onClick={() => setLayout(`layout${i}`)}
+                                            className={cn("aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all group relative overflow-hidden",
+                                                layout === `layout${i}`
+                                                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-500"
+                                                    : "border-zinc-800 bg-zinc-900/50 text-zinc-600 hover:border-zinc-700 hover:bg-zinc-800")}
+                                        >
+                                            <span className="text-xl font-black italic tracking-tighter">{i}</span>
+                                            {layout === `layout${i}` && <div className="absolute inset-0 border-4 border-emerald-500/20 blur-sm pointer-events-none" />}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* SECTION: PALETTE */}
-                            <div className="space-y-4">
-                                <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">Color & Brand</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {PALETTES.map(p => (<button key={p.name} onClick={() => { setPalette(p); setCustomColor("") }} className={cn("w-8 h-8 rounded-full border-2 transition-transform hover:scale-110", palette.name === p.name && !customColor ? "border-white" : "border-transparent")} style={{ backgroundColor: p.primary }} />))}
-                                    <div className="w-8 h-8 rounded-full border-2 border-zinc-700 flex items-center justify-center overflow-hidden relative">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-blue-500 opacity-50" />
-                                        <Input type="color" className="absolute opacity-0 w-full h-full cursor-pointer" onChange={(e) => setCustomColor(e.target.value)} />
+                            {/* SECTION: FINISH & BRANDING */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-px bg-emerald-500/50" />
+                                    <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Brand Finish</h3>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Signature Palettes</Label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {PALETTES.map(p => (
+                                                <button
+                                                    key={p.name}
+                                                    onClick={() => { setPalette(p); setCustomColor("") }}
+                                                    className={cn("w-10 h-10 rounded-full border-2 transition-all hover:scale-110 relative group",
+                                                        palette.name === p.name && !customColor ? "border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110" : "border-zinc-800")}
+                                                    style={{ backgroundColor: p.primary }}
+                                                >
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800 text-[8px] font-bold text-zinc-400 whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{p.name}</div>
+                                                </button>
+                                            ))}
+                                            <div className="w-10 h-10 rounded-full border-2 border-zinc-800 flex items-center justify-center overflow-hidden relative group hover:border-zinc-600">
+                                                <div className="absolute inset-0 bg-[conic-gradient(from_0deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)]" />
+                                                <Input type="color" className="absolute opacity-0 w-full h-full cursor-pointer" onChange={(e) => setCustomColor(e.target.value)} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-8 border-t border-white/5 space-y-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Brand Assets</Label>
+                                            <div className="text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">SVG Supported</div>
+                                        </div>
+                                        <div className="relative group">
+                                            <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 rounded-xl border border-dashed border-zinc-800 group-hover:border-emerald-500/30 transition-all flex items-center justify-center gap-3">
+                                                <Upload size={16} className="text-zinc-500 group-hover:text-emerald-500" />
+                                                <span className="text-[10px] font-bold text-zinc-500 group-hover:text-zinc-400 uppercase tracking-widest">{logo ? 'Replace Logo' : 'Drop Logo Here'}</span>
+                                            </div>
+                                            <Input type="file" onChange={handleLogoUpload} className="relative z-10 w-full h-12 opacity-0 cursor-pointer" />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="pt-4 border-t border-zinc-800">
-                                    <Label className="text-zinc-500 text-xs uppercase font-bold mb-2 block">Logo</Label>
-                                    <Input type="file" onChange={handleLogoUpload} className="bg-zinc-900 border-zinc-800 text-zinc-400 text-xs" />
-                                </div>
                             </div>
-
                         </div>
                     </ScrollArea>
 
-                    {/* BOTTOM BAR */}
-                    <div className="p-4 border-t border-zinc-800 bg-zinc-950 flex gap-2">
-                        <Button className="flex-1 bg-white text-black hover:bg-zinc-200" onClick={() => handleExport('png')}>
-                            <Download size={16} className="mr-2" /> Download
+                    {/* BOTTOM ACTION BAR */}
+                    <div className="p-8 border-t border-white/5 bg-black/40 backdrop-blur-3xl flex gap-4">
+                        <Button
+                            className="flex-1 h-14 bg-white text-black hover:bg-zinc-200 rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] transition-all shadow-[0_20px_40px_-15px_rgba(255,255,255,0.2)] group overflow-hidden"
+                            onClick={() => handleExport('png')}
+                        >
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                            <Download size={18} className="mr-3" />
+                            Download Asset
                         </Button>
                     </div>
                 </div>
 
-                {/* 2B. PREVIEW (Right) */}
-                <div className="flex-1 bg-[#0c0c0e] relative overflow-hidden flex items-center justify-center p-8 lg:p-16">
-                    {/* Background Grid */}
-                    <div className="absolute inset-0 opacity-20 pointer-events-none"
-                        style={{ backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+                {/* 2B. PREVIEW (Right Side Canvas) */}
+                <div className="flex-1 bg-transparent relative overflow-hidden flex items-center justify-center p-8 lg:p-24 overflow-y-auto">
+                    {/* Atmospheric Lighting Behind the Card */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/10 blur-[180px] rounded-full pointer-events-none mix-blend-screen opacity-50" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] rounded-full pointer-events-none mix-blend-screen opacity-30" />
 
-                    {/* Card Container */}
-                    <div
-                        ref={cardRef}
-                        className="relative w-full max-w-[500px] aspect-[1.75/1] bg-white text-black shadow-2xl rounded-xl overflow-hidden animate-in fade-in scale-in duration-500"
-                    >
-                        {purpose === 'professional' && <ProfessionalCard />}
-                        {purpose === 'social' && <SocialCard />}
-                        {purpose === 'commerce' && <CommerceCard />}
-                        {purpose === 'event' && <EventCard />}
+                    {/* Industrial Texture Layer */}
+                    <div className="absolute inset-0 opacity-[0.2] pointer-events-none mix-blend-overlay"
+                        style={{ backgroundImage: "radial-gradient(#333 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+
+                    {/* Card Container - Suspended in Space */}
+                    <div className="relative group perspective-1000 w-full max-w-[650px]">
+                        <div
+                            ref={cardRef}
+                            className="relative w-full aspect-[1.75/1] bg-white text-black shadow-[0_50px_100px_-30px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden animate-in fade-in zoom-in duration-1000 transform hover:scale-[1.02] transition-transform duration-700"
+                        >
+                            {purpose === 'professional' && <ProfessionalCard />}
+                            {purpose === 'social' && <SocialCard />}
+                            {purpose === 'commerce' && <CommerceCard />}
+                            {purpose === 'event' && <EventCard />}
+                        </div>
+
+                        {/* Shadow Reflection */}
+                        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[80%] h-12 bg-black/60 blur-[30px] rounded-full opacity-20 pointer-events-none" />
                     </div>
 
+                    {/* Context Hints */}
+                    <div className="absolute bottom-12 inset-x-0 flex justify-center gap-12 text-zinc-500 text-[9px] font-black uppercase tracking-[0.4em] opacity-40">
+                        <span className="flex items-center gap-2"><Layers size={12} /> CMYK Optimized</span>
+                        <span className="flex items-center gap-2"><Printer size={12} /> 300 DPI Rendering</span>
+                        <span className="flex items-center gap-2"><Share2 size={12} /> High-Res Vectoring</span>
+                    </div>
                 </div>
 
             </div>

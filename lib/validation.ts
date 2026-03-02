@@ -18,7 +18,7 @@ export const SaleSchema = z.object({
     total_amount: z.number().nonnegative(),
     gst_amount: z.number().nonnegative(),
     profit: z.number(),
-    payment_method: z.enum(["Cash", "UPI", "Card", "Credit"]),
+    payment_method: z.enum(["Cash", "UPI", "Card", "Credit", "Split"]),
     payment_status: z.enum(["pending", "paid", "failed"]).optional(),
     hsn_code: z.string().optional().nullable(),
     customer_gstin: z.string().optional().nullable(),

@@ -2,96 +2,88 @@
 
 import Link from "next/link"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
-import { ArrowRight, UserPlus, PackagePlus, Rocket, Sparkles, CheckCircle2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Sparkles, UserPlus, PackagePlus, Rocket, ArrowRight } from "lucide-react"
 
 export function HowItWorksSection() {
     return (
-        <section id="how" className="py-12 md:py-20 px-6 bg-white relative overflow-hidden">
-            {/* Architectural Background */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.02]">
-                <div className="absolute inset-0 bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:32px_32px]" />
+        <section id="how" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden">
+            {/* Ambient Background Glows - Faded Boundary */}
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+                style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
+            >
+                <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-rose-400/20 blur-[150px] rounded-full mix-blend-multiply" />
+                <div className="absolute bottom-1/4 left-1/4 w-[600px] h-[600px] bg-fuchsia-400/20 blur-[150px] rounded-full mix-blend-multiply" />
             </div>
 
-            <div className="max-w-6xl mx-auto relative z-10">
-                <div className="flex flex-col md:flex-row items-end justify-between mb-12 md:mb-16 gap-8">
+            <div className="max-w-4xl mx-auto relative z-10">
+                <div className="text-center mb-24 space-y-4 flex flex-col items-center">
                     <AdvancedScrollReveal variant="slideUp">
-                        <div className="space-y-4">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-950 text-white">
-                                <Sparkles size={12} className="text-emerald-400" />
-                                <span className="font-black text-[9px] tracking-widest uppercase text-white/90">3 Simple Steps</span>
-                            </div>
-
-                            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-900 leading-none uppercase italic">
-                                Get Started <br />
-                                <GradientText className="inline" colors={["#10b981", "#3b82f6", "#000000"]}>
-                                    Today.
-                                </GradientText>
-                            </h2>
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-md mb-8 shadow-sm">
+                            <Sparkles size={14} className="text-rose-500" />
+                            <span className="text-zinc-600 font-bold text-[11px] tracking-[0.2em] uppercase">Simple Onboarding</span>
                         </div>
+                        <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-900 leading-[1.05]">
+                            Start billing in <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-fuchsia-500 to-purple-600">under 5 minutes.</span>
+                        </h2>
                     </AdvancedScrollReveal>
-
-                    <div className="max-w-sm space-y-3 hidden md:block">
-                        <p className="text-zinc-500 text-base font-medium leading-relaxed">
-                            Replace paper registers with KhataPlus. Professional billing in minutes.
-                        </p>
-                        <div className="flex items-center gap-3 text-emerald-600 font-black text-[9px] uppercase tracking-widest">
-                            <CheckCircle2 size={14} />
-                            Free Trial • 5 min Setup
-                        </div>
-                    </div>
                 </div>
 
-                {/* Visual Step Timeline */}
-                <div className="relative">
-                    {/* Progress Track (Desktop) */}
-                    <div className="hidden lg:block absolute top-[36px] left-0 right-0 h-px bg-zinc-100 z-0 overflow-hidden">
-                        <div className="h-full bg-emerald-500 w-1/4 animate-[shimmer_3s_infinite]" />
-                    </div>
+                {/* Elegant Vertical Timeline */}
+                <div className="relative isolate pt-8">
+                    {/* The glowing active line */}
+                    <div className="absolute left-10 md:left-1/2 top-0 bottom-0 w-[2px] bg-gradient-to-b from-rose-400 via-fuchsia-400 to-transparent -translate-x-1/2 -z-10 opacity-60 blur-[1px]" />
+                    <div className="absolute left-10 md:left-1/2 top-0 bottom-0 w-px bg-zinc-200 -translate-x-1/2 -z-10" />
 
-                    <div className="grid lg:grid-cols-3 gap-8 lg:gap-12 relative z-10">
-                        <Step
+                    <div className="space-y-20">
+                        <TimelineStep
                             number="01"
                             icon={UserPlus}
-                            title="Create Profile"
-                            desc="Enter your business and GST details. Ready in seconds."
-                            features={["GST Compliant", "Staff Profile"]}
+                            title="Create your profile"
+                            desc="Enter basic business details. Add your GST number if you have one, or skip it. Set up staff accounts in seconds."
+                            align="right"
+                            color="text-rose-600"
+                            shadow="shadow-[0_4px_20px_rgba(244,63,94,0.15)]"
+                            glowBar="bg-rose-100"
                         />
-                        <Step
+                        <TimelineStep
                             number="02"
                             icon={PackagePlus}
-                            title="Add Inventory"
-                            desc="Import items via Excel or add manually with barcode support."
-                            features={["Excel Import", "Barcode Ready"]}
+                            title="Import inventory"
+                            desc="Upload your existing items via Excel, or add them manually with our built-in barcode scanner support."
+                            align="left"
+                            color="text-fuchsia-600"
+                            shadow="shadow-[0_4px_20px_rgba(217,70,239,0.15)]"
+                            glowBar="bg-fuchsia-100"
                         />
-                        <Step
+                        <TimelineStep
                             number="03"
                             icon={Rocket}
-                            title="Start Selling"
-                            desc="Create invoices and track credit—anywhere, anytime."
-                            features={["Offline Billing", "Mobile & PC"]}
+                            title="Begin selling"
+                            desc="Create your first invoice, track customer credit, and watch your daily analytics update in real-time."
+                            align="right"
+                            color="text-purple-600"
+                            shadow="shadow-[0_4px_20px_rgba(168,85,247,0.15)]"
+                            glowBar="bg-purple-100"
                         />
                     </div>
                 </div>
 
-                <AdvancedScrollReveal variant="slideUp" delay={400}>
-                    <div className="mt-20 p-8 md:p-12 rounded-[3rem] bg-zinc-950 border border-white/5 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                        <div className="relative z-10 flex flex-col gap-2">
-                            <h3 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none text-white">Ready to Grow?</h3>
-                            <div className="flex items-center justify-center md:justify-start gap-2 text-[8px] font-black uppercase tracking-widest text-zinc-500">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Live Sync Enabled
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-center md:items-end gap-3">
-                            <Link href="/auth/sign-up" className="relative z-10 px-10 py-5 rounded-2xl bg-white text-zinc-950 font-black uppercase tracking-widest text-[10px] hover:bg-emerald-400 transition-all shadow-2xl hover:scale-105 active:scale-95">
+                {/* Highly Vibrant CTA Banner */}
+                <AdvancedScrollReveal variant="slideUp" delay={300} className="mt-40">
+                    <div className="bg-white border border-zinc-200/80 rounded-[3rem] p-10 md:p-16 text-center max-w-3xl mx-auto shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-rose-100/50 via-fuchsia-100/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-rose-200/40 blur-[100px] rounded-full pointer-events-none mix-blend-multiply" />
+
+                        <h3 className="text-3xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-8 relative z-10">Ready to command <br /> your business?</h3>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 relative z-10 mt-10">
+                            <Link href="/auth/sign-up" className="px-8 py-4 rounded-2xl bg-zinc-900 text-white font-semibold tracking-wide hover:bg-zinc-800 transition-colors shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 duration-300 w-full sm:w-auto">
                                 Start Free Trial
                             </Link>
-                            <Link href="/roadmap" className="relative z-10 text-[9px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors flex items-center gap-2 group/roadmap">
-                                View Product Roadmap
-                                <ArrowRight size={12} className="group-hover/roadmap:translate-x-1 transition-transform" />
+                            <Link href="#demo" className="px-8 py-4 rounded-2xl bg-white border border-zinc-200 text-zinc-900 font-semibold tracking-wide hover:bg-zinc-50 transition-colors w-full sm:w-auto flex items-center justify-center gap-2 group/demo shadow-sm">
+                                Book a Demo
+                                <ArrowRight size={18} className="text-zinc-500 group-hover/demo:translate-x-1 transition-transform" />
                             </Link>
                         </div>
                     </div>
@@ -101,32 +93,28 @@ export function HowItWorksSection() {
     )
 }
 
-function Step({ number, icon: Icon, title, desc, features }: { number: string, icon: any, title: string, desc: string, features: string[] }) {
+function TimelineStep({ number, icon: Icon, title, desc, align, color, shadow, glowBar }: any) {
     return (
-        <AdvancedScrollReveal variant="slideUp">
-            <div className="group space-y-6">
-                <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-900 shadow-sm group-hover:scale-110 group-hover:bg-zinc-950 group-hover:text-white transition-all duration-700">
-                        <Icon size={24} />
+        <AdvancedScrollReveal variant={align === 'left' ? 'slideRight' : 'slideLeft'} className="group">
+            <div className={`flex flex-col md:flex-row items-start md:items-center gap-8 md:gap-16 relative ${align === 'left' ? 'md:flex-row-reverse' : ''}`}>
+
+                {/* Content Side */}
+                <div className={`w-full md:w-[calc(50%-4rem)] ${align === 'left' ? 'md:text-left' : 'md:text-right'} pl-20 md:pl-0`}>
+                    <div className={`inline-flex items-center gap-4 mb-4 ${align === 'left' ? '' : 'md:flex-row-reverse'}`}>
+                        <span className={`${color} font-mono text-base font-bold tracking-widest`}>{number}</span>
+                        <div className={`h-1 w-12 ${glowBar} rounded-full`} />
                     </div>
-                    <div className="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] font-black italic tracking-tighter border-2 border-white shadow-lg">
-                        {number}
-                    </div>
+                    <h3 className="text-3xl font-semibold tracking-tight text-zinc-900 mb-4 group-hover:text-black transition-colors">{title}</h3>
+                    <p className="text-zinc-500 leading-relaxed font-medium text-lg">{desc}</p>
                 </div>
 
-                <div className="space-y-3">
-                    <h3 className="text-xl font-black italic tracking-tighter text-zinc-900 leading-none group-hover:text-emerald-600 transition-colors uppercase">{title}</h3>
-                    <p className="text-zinc-500 text-sm font-medium leading-relaxed">{desc}</p>
-
-                    <ul className="space-y-1.5">
-                        {features.map((f, i) => (
-                            <li key={i} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-zinc-900 transition-colors">
-                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                {f}
-                            </li>
-                        ))}
-                    </ul>
+                {/* Center Node */}
+                <div className={`absolute left-10 md:left-1/2 top-0 md:top-1/2 -translate-y-1/2 -translate-x-1/2 w-16 h-16 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center z-10 transition-transform duration-500 group-hover:scale-110 group-hover:border-zinc-300 ${shadow}`}>
+                    <Icon size={24} strokeWidth={1.5} className={color} />
                 </div>
+
+                {/* Empty Side for Spacing */}
+                <div className="hidden md:block w-[calc(50%-4rem)]" />
             </div>
         </AdvancedScrollReveal>
     )

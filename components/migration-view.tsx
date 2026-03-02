@@ -97,6 +97,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
     const [importStartedAt, setImportStartedAt] = useState<number | null>(null)
     const [statusIndex, setStatusIndex] = useState(0)
     const [isDiscardingImport, setIsDiscardingImport] = useState(false)
+    const [lastProgressAt, setLastProgressAt] = useState<number | null>(null)
 
     const steps = [
         { number: 1, label: "Upload", icon: Upload },
@@ -110,8 +111,31 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
         "Writing batches to secure ledger...",
         "Finalizing import checkpoints..."
     ]
+    const formatImportStage = (stage: string | null) => {
+        if (!stage) return "Preparing import pipeline..."
+        const normalized = stage.trim().toLowerCase()
+        if (normalized === "inventory") return "Importing products and inventory..."
+        if (normalized === "customers") return "Importing customers..."
+        if (normalized === "sales") return "Importing sales..."
+        if (normalized === "suppliers") return "Importing suppliers..."
+        if (normalized === "expenses") return "Importing expenses..."
+        return stage
+    }
     const inflightKey = `migration-inflight:${orgId}`
     const completionKey = `migration-complete:${orgId}`
+    const completionPercent = (() => {
+        const recordsTotal = Number(importProgress.totalRecords || 0)
+        const recordsDone = Number(importProgress.processedRecords || 0)
+        if (recordsTotal > 0) {
+            return Math.max(0, Math.min(100, Math.round((recordsDone / recordsTotal) * 100)))
+        }
+        const stepsTotal = Number(importProgress.totalSteps || 0)
+        const stepsDone = Number(importProgress.completedSteps || 0)
+        if (stepsTotal > 0) {
+            return Math.max(0, Math.min(99, Math.round((stepsDone / stepsTotal) * 100)))
+        }
+        return isUploading ? 5 : 0
+    })()
 
     const discardIncompleteImport = useCallback(() => {
         if (typeof window === "undefined") return
@@ -137,7 +161,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
     }, [inflightKey, orgId])
 
     useEffect(() => {
-        if (!(isUploading && selectedType === "everything" && importProgress.totalSteps > 0)) {
+        if (!(isUploading && selectedType === "everything")) {
             setStatusIndex(0)
             return
         }
@@ -145,7 +169,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
             setStatusIndex((prev) => (prev + 1) % importStatusMessages.length)
         }, 1400)
         return () => window.clearInterval(id)
-    }, [isUploading, selectedType, importProgress.totalSteps])
+    }, [isUploading, selectedType])
 
     useEffect(() => {
         if (typeof window === "undefined") return
@@ -441,7 +465,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                     reasoning: result.reasoning
                 })
 
-                // Ask targeted Groq-powered clarification questions when needed.
+                // Ask targeted AI clarification questions when needed.
                 try {
                     const qRes = await fetch("/api/migration/clarify/questions", {
                         method: "POST",
@@ -490,6 +514,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
         setActiveImportType(null)
         setImportProgress({ totalSteps: 0, completedSteps: 0, processedRecords: 0, totalRecords: 0 })
         setImportStartedAt(Date.now())
+        setLastProgressAt(Date.now())
         if (typeof window !== "undefined") {
             window.localStorage.removeItem(completionKey)
             window.localStorage.setItem(`migration-inflight:${orgId}`, "1")
@@ -543,7 +568,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
             }
 
             if (selectedType === "everything") {
-                // Groq-dynamic server pipeline: temp upload -> start job -> poll status.
+                // AI dynamic server pipeline: temp upload -> start job -> poll status.
                 const uploaded: Array<{ bucket: string; path: string; name: string }> = []
                 for (const file of selectedFiles) {
                     setActiveImportType(`Uploading ${file.name}`)
@@ -559,7 +584,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                     uploaded.push({ bucket: up.bucket, path: up.path, name: up.name })
                 }
 
-                setActiveImportType("Starting Groq import job")
+                setActiveImportType("Starting KhataPlus AI import job")
                 const startRes = await fetch("/api/migration/jobs/start", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -573,22 +598,54 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                 const jobId = String(started?.jobId || "")
                 if (!jobId) throw new Error("Import job id missing")
 
-                const maxPolls = 1200 // ~30 minutes at 1.5s interval
+                const maxPolls = 2400 // ~40 minutes at 1s interval
+                let notFoundRetries = 0
+                let lastProcessed = -1
+                let lastCompleted = -1
+                let lastProgressChangeAt = Date.now()
                 for (let poll = 0; poll < maxPolls; poll++) {
-                    await new Promise((resolve) => setTimeout(resolve, 1500))
+                    await new Promise((resolve) => setTimeout(resolve, 1000))
                     const stRes = await fetch(`/api/migration/jobs/status?jobId=${encodeURIComponent(jobId)}`, { cache: "no-store" })
                     if (!stRes.ok) {
+                        if (stRes.status === 404 && notFoundRetries < 120) {
+                            notFoundRetries += 1
+                            setActiveImportType("Initializing import job...")
+                            if (notFoundRetries % 6 === 0) {
+                                void fetch("/api/migration/jobs/process", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ jobId }),
+                                }).catch(() => { })
+                            }
+                            continue
+                        }
                         const err = await stRes.json().catch(() => ({}))
                         throw new Error(err?.error || "Failed to read import status")
                     }
+                    notFoundRetries = 0
                     const status = await stRes.json()
-                    setActiveImportType(status?.currentType || "Processing with Groq")
+                    setActiveImportType(formatImportStage(status?.currentType || null))
                     setImportProgress({
                         totalSteps: Number(status?.totalSteps || 0),
                         completedSteps: Number(status?.completedSteps || 0),
                         processedRecords: Number(status?.processedRecords || 0),
                         totalRecords: Number(status?.totalRecords || 0),
                     })
+                    const processed = Number(status?.processedRecords || 0)
+                    const completed = Number(status?.completedSteps || 0)
+                    if (processed !== lastProcessed || completed !== lastCompleted) {
+                        lastProcessed = processed
+                        lastCompleted = completed
+                        lastProgressChangeAt = Date.now()
+                        setLastProgressAt(lastProgressChangeAt)
+                    } else if (Date.now() - lastProgressChangeAt > 10000 && poll % 5 === 0) {
+                        // Re-kick stalled jobs; safe no-op if worker already active.
+                        void fetch("/api/migration/jobs/process", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ jobId }),
+                        }).catch(() => { })
+                    }
 
                     if (status?.status === "completed") {
                         const result = status?.result || {}
@@ -650,6 +707,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
             setIsUploading(false)
             setImportProgress({ totalSteps: 0, completedSteps: 0, processedRecords: 0, totalRecords: 0 })
             setImportStartedAt(null)
+            setLastProgressAt(null)
         }
     }
 
@@ -729,7 +787,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                 usedAI: true,
                 warnings: result.warnings || [],
                 errors: result.errors || [],
-                reasoning: "Groq clarification answers applied."
+                reasoning: "KhataPlus AI clarification answers applied."
             })
             setClarificationQuestions([])
             toast.success("Mappings updated from your answers")
@@ -871,7 +929,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                                     <div className="flex items-center justify-between gap-4 mb-3">
                                         <div>
                                             <h3 className="text-sm font-bold text-emerald-800">Quick Clarifications</h3>
-                                            <p className="text-xs text-emerald-700">Answer these so Groq can fix mapping before import.</p>
+                                            <p className="text-xs text-emerald-700">Answer these so KhataPlus AI can fix mapping before import.</p>
                                         </div>
                                         <Button
                                             onClick={resolveClarifications}
@@ -1146,24 +1204,20 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                             </div>
 
                             {/* Action Bar */}
-                            {isUploading && selectedType === "everything" && importProgress.totalSteps > 0 && (
+                            {isUploading && selectedType === "everything" && (
                                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
                                     <div className="flex items-center justify-between text-xs mb-2">
                                         <span className="font-semibold text-emerald-700">
-                                            Importing {activeImportType || "data"}...
+                                            {activeImportType || importStatusMessages[statusIndex]}
                                         </span>
                                         <span className="text-emerald-700">
-                                            Step {Math.min(importProgress.completedSteps + 1, importProgress.totalSteps)} / {importProgress.totalSteps}
+                                            {completionPercent}% complete
                                         </span>
                                     </div>
                                     <div className="h-2 rounded-full bg-emerald-100 overflow-hidden">
                                         <div
-                                            className="h-full bg-emerald-500 transition-all duration-500"
-                                            style={{
-                                                width: `${importProgress.totalRecords > 0
-                                                    ? Math.round((importProgress.processedRecords / importProgress.totalRecords) * 100)
-                                                    : 0}%`
-                                            }}
+                                            className="h-full bg-emerald-500 transition-all duration-500 animate-pulse"
+                                            style={{ width: `${completionPercent}%` }}
                                         />
                                     </div>
                                     <div className="mt-2 flex items-center justify-between text-[11px]">
@@ -1185,8 +1239,17 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                                         </span>
                                     </div>
                                     <div className="mt-1 text-[11px] text-emerald-800">
-                                        Processed {importProgress.processedRecords} / {importProgress.totalRecords} records
+                                        {importProgress.totalRecords > 0
+                                            ? `Processed ${importProgress.processedRecords} / ${importProgress.totalRecords} records`
+                                            : importProgress.totalSteps > 0
+                                                ? `Completed ${importProgress.completedSteps} / ${importProgress.totalSteps} stages`
+                                                : "Preparing files and detecting sheets..."}
                                     </div>
+                                    {isUploading && lastProgressAt && Date.now() - lastProgressAt > 8000 && (
+                                        <div className="mt-1 text-[10px] text-emerald-700">
+                                            Processing large dataset... progress updates may arrive in bursts.
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             <div className="flex justify-between items-center bg-white/80 backdrop-blur-sm p-3 border-t border-zinc-100 mt-4 rounded-b-2xl">
@@ -1203,7 +1266,7 @@ export function MigrationView({ orgId, role, settings }: MigrationViewProps) {
                                         disabled={isUploading || clarificationQuestions.length > 0 || (previewStats?.errors?.length || 0) > 50 || (previewStats?.count || 0) === 0}
                                     >
                                         {isUploading
-                                            ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing{activeImportType ? ` ${activeImportType}` : ""}...</>
+                                            ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing ({completionPercent}%)</>
                                             : <>Start Import <ArrowRight className="h-4 w-4 ml-2" /></>}
                                     </Button>
                                 </div>

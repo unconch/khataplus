@@ -2,102 +2,134 @@
 
 import { WifiOff, TrendingUp, ShieldCheck, FileText, Smartphone, Zap, Clock, Globe } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
-import { BentoGrid, BentoCard } from "@/components/bento-grid"
-import { cn } from "@/lib/utils"
+import { motion, useScroll, useTransform } from "framer-motion"
+import { useRef } from "react"
 
 export function FeaturesSection() {
+    const sectionRef = useRef<HTMLElement>(null)
+    const { scrollYProgress } = useScroll({
+        target: sectionRef,
+        offset: ["start end", "end start"]
+    })
+
+    // Parallax logic for background orbs and cards
+    const y1 = useTransform(scrollYProgress, [0, 1], [100, -100])
+    const y2 = useTransform(scrollYProgress, [0, 1], [-50, 50])
+    const y3 = useTransform(scrollYProgress, [0, 1], [0, -150])
+
     return (
-        <section id="features" className="py-24 md:py-32 px-6 bg-white relative">
-            <div className="max-w-7xl mx-auto">
+        <section ref={sectionRef} id="features" className="py-24 md:py-40 px-6 bg-transparent relative overflow-hidden text-zinc-900">
+            {/* Massive Parallax Ambient Background Glows - Faded Boundary */}
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+                style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
+            >
+                <motion.div style={{ y: y1 }} className="absolute top-0 left-1/4 w-[800px] h-[600px] bg-fuchsia-400/20 blur-[120px] rounded-full mix-blend-multiply" />
+                <motion.div style={{ y: y2 }} className="absolute bottom-0 right-1/4 w-[600px] h-[500px] bg-orange-400/20 blur-[120px] rounded-full mix-blend-multiply" />
+                <motion.div style={{ y: y3 }} className="absolute top-1/2 left-1/2 w-[1000px] h-[400px] bg-blue-400/20 blur-[150px] rounded-full -translate-x-1/2 -translate-y-1/2 mix-blend-multiply" />
+            </div>
+
+            <div className="max-w-7xl mx-auto relative z-10">
                 <AdvancedScrollReveal variant="slideUp">
-                    <div className="text-center mb-20 md:mb-28">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 mb-6">
-                            <Zap size={14} className="text-blue-600" />
-                            <span className="text-blue-600 font-bold text-[10px] tracking-widest uppercase">Core Capabilities</span>
+                    <div className="mb-24 mt-12 flex flex-col md:flex-row md:items-end justify-between gap-12">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-md mb-8 shadow-sm">
+                                <Zap size={14} className="text-orange-500" />
+                                <span className="text-zinc-600 font-bold text-[11px] tracking-[0.2em] uppercase">Core Capabilities</span>
+                            </div>
+                            <h2 className="text-5xl md:text-[5.5rem] font-bold tracking-tighter text-zinc-900 leading-[0.95] max-w-2xl">
+                                Everything you need. <br className="hidden md:block" />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-rose-500 to-fuchsia-600">Built for speed.</span>
+                            </h2>
                         </div>
-                        <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-900 leading-[0.9]">
-                            Everything you need to <br />
-                            <GradientText className="inline" colors={["#1d4ed8", "#3b82f6", "#60a5fa"]}>
-                                Run at Light Speed.
-                            </GradientText>
-                        </h2>
-                        <p className="text-zinc-500 text-xl max-w-2xl mx-auto mt-8 font-medium">
-                            We've consolidated every shop management essential into one seamless interface.
+                        <p className="text-zinc-500 text-xl max-w-md font-light tracking-wide md:pb-6">
+                            We've consolidated every shop management essential into one seamless, blazingly fast intelligence engine.
                         </p>
                     </div>
                 </AdvancedScrollReveal>
 
-                <BentoGrid className="grid-rows-1 md:grid-rows-2">
-                    <BentoCard
-                        name="True Offline First"
-                        className="md:col-span-2 md:row-span-1"
-                        Icon={WifiOff}
-                        description="No internet? No problem. Create entries, generate bills, and manage inventory anytime. Data syncs automatically when you're back."
-                        href="/#offline"
-                        cta="Explore Offline Tech"
-                        background={
-                            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:20px_20px]" />
-                        }
-                    />
-                    <BentoCard
-                        name="Smart Analytics"
-                        className="md:col-span-1 md:row-span-2"
-                        Icon={TrendingUp}
-                        description="Deep insights into your daily sales, credit cycles, and high-turnover inventory. Data-driven growth."
-                        href="/#analytics"
-                        cta="View Analytics"
-                        background={
-                            <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-emerald-50 to-transparent opacity-60" />
-                        }
-                    />
-                    <BentoCard
-                        name="GST Compliance"
-                        className="md:col-span-1 md:row-span-1"
-                        Icon={FileText}
-                        description="Professional tax invoices generated in seconds. Share directly via WhatsApp."
-                        href="/#gst"
-                        cta="See Templates"
-                        background={
-                            <div className="absolute -right-10 bottom-0 opacity-10 rotate-12">
-                                <FileText size={180} />
-                            </div>
-                        }
-                    />
-                    <BentoCard
-                        name="Ironclad Security"
-                        className="md:col-span-1 md:row-span-1"
-                        Icon={ShieldCheck}
-                        description="AES-256 encryption for every transaction. Your data is your property, protected by enterprise-grade protocols."
-                        href="/#security"
-                        cta="Security Audit"
-                        background={
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-transparent" />
-                        }
-                    />
-                </BentoGrid>
+                {/* Asymmetrical Parallax Feature Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 pt-20 border-t border-zinc-100">
-                    <FeaturePulse icon={Clock} title="Real-time Sync" desc="Cloud-first architecture" />
-                    <FeaturePulse icon={Smartphone} title="Native App" desc="PWA & Mobile ready" />
-                    <FeaturePulse icon={Globe} title="Multi-Store" desc="Manage all from one" />
-                    <FeaturePulse icon={Zap} title="Instant Bills" desc="0.2s generation time" />
+                    {/* Left Column (Huge span, scrolls slower) */}
+                    <motion.div style={{ y: y2 }} className="lg:col-span-7 space-y-6 md:space-y-8">
+                        <FeatureCard
+                            icon={WifiOff}
+                            title="True Offline Synchronization"
+                            desc="Continue generating bills without internet interruption. The engine inherently caches data and performs high-speed delta-syncs the moment connectivity is robustly restored."
+                            colorFrom="from-blue-500"
+                            colorTo="to-cyan-400"
+                            bgLight="bg-blue-50"
+                            textColors="text-blue-600"
+                            large
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                            <FeatureCard
+                                icon={ShieldCheck}
+                                title="Ironclad Vault"
+                                desc="Military-grade AES-256 encryption. Your operational data."
+                                colorFrom="from-emerald-500"
+                                colorTo="to-teal-400"
+                                bgLight="bg-emerald-50"
+                                textColors="text-emerald-600"
+                            />
+                            <FeatureCard
+                                icon={Globe}
+                                title="Multi-Store Sync"
+                                desc="Command center for every single branch you own."
+                                colorFrom="from-zinc-500"
+                                colorTo="to-slate-400"
+                                bgLight="bg-zinc-100"
+                                textColors="text-zinc-600"
+                            />
+                        </div>
+                    </motion.div>
+
+                    {/* Right Column (Standard span, scrolls faster for parallax overlap) */}
+                    <motion.div style={{ y: y3 }} className="lg:col-span-5 space-y-6 md:space-y-8 lg:mt-32">
+                        <FeatureCard
+                            icon={TrendingUp}
+                            title="Deep Intelligence Analytics"
+                            desc="Neural-like insights into daily sales trends, dead stock identification, and high-turnover inventory patterns visualized beautifully."
+                            colorFrom="from-rose-500"
+                            colorTo="to-orange-400"
+                            bgLight="bg-rose-50"
+                            textColors="text-rose-600"
+                            large
+                        />
+                        <FeatureCard
+                            icon={FileText}
+                            title="Instant Tax Compliance"
+                            desc="Professional GST invoices auto-generated in 0.2 milliseconds. Ready to share via WhatsApp."
+                            colorFrom="from-fuchsia-500"
+                            colorTo="to-purple-500"
+                            bgLight="bg-fuchsia-50"
+                            textColors="text-fuchsia-600"
+                        />
+                    </motion.div>
+
                 </div>
             </div>
         </section>
     )
 }
 
-function FeaturePulse({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
+function FeatureCard({ icon: Icon, title, desc, colorFrom, colorTo, bgLight, textColors, large }: any) {
     return (
-        <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-3xl hover:bg-zinc-50 transition-colors duration-300">
-            <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-900 shadow-sm">
-                <Icon size={20} />
+        <AdvancedScrollReveal variant="scaleUp" className="group h-full relative">
+            <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none -m-4 z-0" />
+
+            <div className={`relative z-10 ${large ? 'p-10 md:p-14 rounded-[3rem]' : 'p-8 md:p-10 rounded-[2.5rem]'} bg-white/70 backdrop-blur-xl border border-zinc-200/60 hover:border-zinc-300 transition-all duration-500 hover:bg-white h-full flex flex-col justify-start overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]`}>
+
+                {/* Internal Glow Effect */}
+                <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${colorFrom} ${colorTo} opacity-5 group-hover:opacity-20 blur-3xl transition-opacity duration-500 rounded-full translate-x-1/2 -translate-y-1/2 mix-blend-multiply`} />
+
+                <div className={`w-14 h-14 rounded-2xl ${bgLight} border border-white/50 flex items-center justify-center shadow-sm mb-8 group-hover:scale-110 transition-transform duration-500 relative overflow-hidden`}>
+                    <Icon size={24} strokeWidth={1.5} className={`${textColors} relative z-10`} />
+                </div>
+
+                <h3 className={`${large ? 'text-3xl lg:text-4xl' : 'text-2xl'} font-semibold text-zinc-900 tracking-tight mb-4 relative z-10 group-hover:text-black`}>{title}</h3>
+                <p className={`text-zinc-500 leading-relaxed relative z-10 font-medium ${large ? 'text-lg' : 'text-base'}`}>{desc}</p>
             </div>
-            <div>
-                <h4 className="font-bold text-zinc-900 text-sm tracking-tight">{title}</h4>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{desc}</p>
-            </div>
-        </div>
+        </AdvancedScrollReveal>
     )
 }

@@ -38,7 +38,7 @@ export interface Sale {
   total_amount: number
   gst_amount: number
   profit: number
-  payment_method: "Cash" | "UPI" | "Credit"
+  payment_method: "Cash" | "UPI" | "Card" | "Credit" | "Split"
   batch_id?: string
   sale_date: string
   created_at: string

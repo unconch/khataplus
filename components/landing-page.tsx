@@ -10,16 +10,16 @@ const FeaturesSection = dynamic(() => import("@/components/landing-page/Features
 const SolutionsSection = dynamic(() => import("@/components/landing-page/SolutionsSection").then(mod => mod.SolutionsSection), { ssr: false })
 const PlatformSection = dynamic(() => import("@/components/landing-page/PlatformSection").then(mod => mod.PlatformSection), { ssr: false })
 const HowItWorksSection = dynamic(() => import("@/components/landing-page/HowItWorksSection").then(mod => mod.HowItWorksSection), { ssr: false })
-const AdaptiveInterfaceSection = dynamic(() => import("@/components/landing-page/AdaptiveInterfaceSection").then(mod => mod.AdaptiveInterfaceSection), { ssr: false })
+const MarqueeSection = dynamic(() => import("@/components/landing-page/MarqueeSection").then(mod => mod.MarqueeSection), { ssr: false })
 const SiteFooter = dynamic(() => import("@/components/landing-page/SiteFooter").then(mod => mod.SiteFooter), { ssr: false })
 
 export function LandingPage({ isAuthenticated, orgSlug, isGuest }: { isAuthenticated: boolean, orgCount?: number, orgSlug?: string | null, isGuest?: boolean }) {
     return (
-        <main className="min-h-screen bg-white">
+        <main className="min-h-screen bg-[#fafafa] selection:bg-emerald-100 scroll-smooth">
             <HeroSection isAuthenticated={isAuthenticated} orgSlug={orgSlug} isGuest={isGuest} />
 
-            {/* Hook: Free Growth Tools */}
-            <FreeToolsSection />
+            {/* Kinetic Scrolling Marquee */}
+            <MarqueeSection />
 
             {/* Evidence: Core Features */}
             <FeaturesSection />
@@ -27,14 +27,14 @@ export function LandingPage({ isAuthenticated, orgSlug, isGuest }: { isAuthentic
             {/* Target: Industry Specifics */}
             <SolutionsSection />
 
-            {/* Power: Unified Platform Deep-dive (Consolidated Technology) */}
+            {/* Power: Unified Platform Deep-dive */}
             <PlatformSection />
 
             {/* Ease: Step-by-step Onboarding */}
             <HowItWorksSection />
 
-            {/* Flexibility: Cross-device Experience */}
-            <AdaptiveInterfaceSection />
+            {/* Hook: Free Growth Tools */}
+            <FreeToolsSection />
 
             <SiteFooter />
         </main>

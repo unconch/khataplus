@@ -27,6 +27,15 @@ function resolveMaxAge(raw: unknown, fallbackSeconds: number): number {
   return Math.max(Math.floor(value), fallbackSeconds)
 }
 
+function deriveSessionId(sessionJwt?: string, fallbackUserId?: string | null): string {
+  const token = String(sessionJwt || "")
+  if (token.length >= 24) return token.slice(-24)
+  return String(fallbackUserId || "session").slice(-24)
+}
+
+const SESSION_COOKIE_FALLBACK_SECONDS = 60 * 60 * 24 * 30 // 30d
+const REFRESH_COOKIE_FALLBACK_SECONDS = 60 * 60 * 24 * 90 // 90d
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({} as any))
@@ -70,8 +79,8 @@ export async function POST(request: Request) {
     const secure = process.env.NODE_ENV === "production"
     // Use app-wide cookie path and safe TTL floor to avoid short-lived sessions across routes.
     const path = "/"
-    const sessionMaxAge = resolveMaxAge(data.cookieMaxAge, 60 * 60 * 12) // 12h minimum
-    const refreshMaxAge = resolveMaxAge(data.cookieMaxAge, 60 * 60 * 24 * 30) // 30d minimum
+    const sessionMaxAge = resolveMaxAge(data.cookieMaxAge, SESSION_COOKIE_FALLBACK_SECONDS)
+    const refreshMaxAge = resolveMaxAge(data.cookieMaxAge, REFRESH_COOKIE_FALLBACK_SECONDS)
 
     response.cookies.set("DS", data.sessionJwt, {
       httpOnly: true,
@@ -97,6 +106,12 @@ export async function POST(request: Request) {
         await ensureProfile(user.userId, user.email, user.name || name)
       } catch (err) {
         console.warn("[Auth Register] ensureProfile failed:", err)
+      }
+      try {
+        const { registerSession } = await import("@/lib/session-governance")
+        await registerSession(user.userId, deriveSessionId(data.sessionJwt, user.userId))
+      } catch (err) {
+        console.warn("[Auth Register] registerSession failed:", err)
       }
     }
 

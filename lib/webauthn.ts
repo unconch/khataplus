@@ -5,13 +5,12 @@ import {
     verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
 import { sql } from './db';
-import { getSession } from './session';
 
-const RP_ID = process.env.NEXT_PUBLIC_RP_ID || 'localhost';
+const RP_ID = process.env.NEXT_PUBLIC_RP_ID || process.env.NEXT_PUBLIC_ORIGIN?.replace(/^https?:\/\//, '').replace(/:\d+$/, '') || 'localhost';
 const RP_NAME = 'KhataPlus';
 const ORIGIN = process.env.NEXT_PUBLIC_ORIGIN || 'http://localhost:3000';
 
-export async function getWebAuthnRegistrationOptions(userId: string, userEmail: string) {
+export async function getWebAuthnRegistrationOptions(userId: string, userEmail: string, rpID: string = RP_ID) {
     // Fetch existing credentials to prevent re-registration of same authenticator
     const userCredentials = await sql`
         SELECT credential_id FROM webauthn_credentials WHERE user_id = ${userId}
@@ -19,7 +18,7 @@ export async function getWebAuthnRegistrationOptions(userId: string, userEmail: 
 
     const options = await generateRegistrationOptions({
         rpName: RP_NAME,
-        rpID: RP_ID,
+        rpID,
         userID: Buffer.from(userId),
         userName: userEmail,
         attestationType: 'none',
@@ -40,13 +39,15 @@ export async function getWebAuthnRegistrationOptions(userId: string, userEmail: 
 export async function verifyWebAuthnRegistration(
     userId: string,
     body: any,
-    expectedChallenge: string
+    expectedChallenge: string,
+    expectedOrigin: string = ORIGIN,
+    expectedRPID: string = RP_ID
 ) {
     const verification = await verifyRegistrationResponse({
         response: body,
         expectedChallenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin,
+        expectedRPID,
     });
 
     if (verification.verified && verification.registrationInfo) {
@@ -62,13 +63,13 @@ export async function verifyWebAuthnRegistration(
     return verification;
 }
 
-export async function getWebAuthnAuthenticationOptions(userId: string) {
+export async function getWebAuthnAuthenticationOptions(userId: string, rpID: string = RP_ID) {
     const userCredentials = await sql`
         SELECT credential_id FROM webauthn_credentials WHERE user_id = ${userId}
     `;
 
     const options = await generateAuthenticationOptions({
-        rpID: RP_ID,
+        rpID,
         allowCredentials: userCredentials.map((cred: any) => ({
             id: cred.credential_id,
             type: 'public-key',
@@ -82,7 +83,9 @@ export async function getWebAuthnAuthenticationOptions(userId: string) {
 export async function verifyWebAuthnAuthentication(
     userId: string,
     body: any,
-    expectedChallenge: string
+    expectedChallenge: string,
+    expectedOrigin: string = ORIGIN,
+    expectedRPID: string = RP_ID
 ) {
     const credResult = await sql`
         SELECT credential_id, public_key, counter, transports FROM webauthn_credentials 
@@ -98,8 +101,8 @@ export async function verifyWebAuthnAuthentication(
     const verification = await verifyAuthenticationResponse({
         response: body,
         expectedChallenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin,
+        expectedRPID,
         credential: {
             id: dbCredential.credential_id,
             publicKey: dbCredential.public_key,

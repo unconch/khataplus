@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
+import { resolveSlugDashboardPath } from "@/lib/auth-redirect"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -53,8 +54,9 @@ export async function GET(request: Request) {
                 console.warn("[AuthCallback] Session governance registration skipped:", err)
             }
 
-            const res = next.startsWith("/")
-                ? NextResponse.redirect(`${origin}${next}`)
+            const redirectPath = await resolveSlugDashboardPath(userId, next)
+            const res = redirectPath.startsWith("/")
+                ? NextResponse.redirect(`${origin}${redirectPath}`)
                 : NextResponse.redirect(`${origin}/setup-organization`)
             res.cookies.delete("kp_auth_next")
             return res

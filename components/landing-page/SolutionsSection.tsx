@@ -1,133 +1,192 @@
 "use client"
 
-import { Store, Truck, Briefcase, HandCoins, ArrowRight, Zap, Target } from "lucide-react"
-import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
-import { BentoGrid, BentoCard } from "@/components/bento-grid"
-import Link from "next/link"
+import { motion, useScroll, useTransform, useSpring } from "framer-motion"
+import { useRef } from "react"
+import { Store, Truck, Briefcase, HandCoins, ArrowRight, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+const SOLUTIONS = [
+    {
+        id: "retail",
+        icon: Store,
+        title: "Retail & Kirana",
+        tagline: "High-Volume Ready",
+        description: "Process bills instantly with barcode support. Keep queues moving and automate stock management without breaking a sweat.",
+        iconColor: "text-emerald-600",
+        borderColor: "border-emerald-100",
+        bgLight: "bg-emerald-50/50",
+        accent: "bg-emerald-500"
+    },
+    {
+        id: "wholesale",
+        icon: Truck,
+        title: "B2B Distribution",
+        tagline: "Enterprise Control",
+        description: "Manage multiple warehouses, track complex supplier payouts, and handle customized volume pricing flawlessly.",
+        iconColor: "text-blue-600",
+        borderColor: "border-blue-100",
+        bgLight: "bg-blue-50/50",
+        accent: "bg-blue-500"
+    },
+    {
+        id: "services",
+        icon: Briefcase,
+        title: "Service Agencies",
+        tagline: "Professional Billing",
+        description: "Generate compliant tax invoices for your clients. Track project-based expenses and maintain clear P&L documentation.",
+        iconColor: "text-fuchsia-600",
+        borderColor: "border-fuchsia-100",
+        bgLight: "bg-fuchsia-50/50",
+        accent: "bg-fuchsia-500"
+    },
+    {
+        id: "credit",
+        icon: HandCoins,
+        title: "Finance & Credit",
+        tagline: "Digital Ledger",
+        description: "Replace physical registers. Experience transparent, secure credit tracking with automated SMS reminders.",
+        iconColor: "text-orange-600",
+        borderColor: "border-orange-100",
+        bgLight: "bg-orange-50/50",
+        accent: "bg-orange-500"
+    }
+]
+
 export function SolutionsSection() {
+    const ref = useRef(null)
+
+    const { scrollYProgress } = useScroll({
+        target: ref,
+        offset: ["start start", "end end"],
+    })
+
+    // Smooth out the progress for the background atmospheric elements
+    const smoothProgress = useSpring(scrollYProgress, {
+        stiffness: 100,
+        damping: 30,
+        restDelta: 0.001
+    })
+
     return (
-        <section id="solutions" className="py-16 md:py-20 px-6 bg-zinc-950 text-white relative overflow-hidden">
-            {/* Architectural Grid Background */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:40px_40px]" />
+        <section ref={ref} id="solutions" className="relative h-[400vh] bg-transparent">
+            <div className="sticky top-0 h-screen flex items-center overflow-hidden">
 
-            <div className="max-w-7xl mx-auto relative z-10">
-                <div className="flex flex-col lg:flex-row items-end justify-between mb-12 md:mb-16 gap-8">
-                    <AdvancedScrollReveal variant="slideRight">
-                        <div className="space-y-4">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                                <Target size={12} className="text-emerald-400" />
-                                <span className="text-emerald-400 font-black text-[9px] tracking-widest uppercase text-white/70">Industry Solutions</span>
+                {/* SARVAM-STYLE RADIANCE - CENTERPIECE */}
+                <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden"
+                    style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
+                >
+                    <motion.div
+                        style={{
+                            scale: useTransform(smoothProgress, [0, 1], [0.9, 1.3]),
+                            opacity: useTransform(smoothProgress, [0, 0.5, 1], [0.45, 0.65, 0.45]),
+                            x: useTransform(smoothProgress, [0, 1], ["-12%", "12%"])
+                        }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-[radial-gradient(circle,rgba(16,185,129,0.28)_0%,rgba(59,130,246,0.15)_45%,transparent_70%)] blur-[160px] rounded-full"
+                    />
+
+                    {/* Noise texture for depth */}
+                    <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }} />
+                </div>
+
+                <div className="grid md:grid-cols-2 max-w-7xl mx-auto w-full px-6 gap-12 lg:gap-24 items-center">
+
+                    {/* Left: Sticky Static Narrative */}
+                    <div className="flex flex-col justify-center space-y-8">
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.8 }}
+                            viewport={{ once: true }}
+                        >
+                            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 mb-6">
+                                <ShieldCheck size={14} className="text-emerald-600" />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Specialized Intelligence</span>
                             </div>
-                            <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] uppercase italic">
-                                Built for <br />
-                                <span className="text-zinc-600">Every Industry.</span>
+                            <h2 className="text-6xl md:text-8xl font-bold tracking-tighter text-zinc-900 leading-[1.05]">
+                                Tailored for <br />
+                                <span className="text-zinc-400">your industry.</span>
                             </h2>
-                        </div>
-                    </AdvancedScrollReveal>
+                            <p className="max-w-md text-zinc-500 text-xl md:text-2xl font-light tracking-tight mt-8 leading-relaxed">
+                                One unified platform that intuitively adapts to the unique pulse of your specific business.
+                            </p>
+                        </motion.div>
+                    </div>
 
-                    <AdvancedScrollReveal variant="fadeIn" delay={300}>
-                        <p className="text-zinc-500 text-base max-w-sm font-medium leading-relaxed">
-                            One app, infinite possibilities. We've tailored KhataPlus to solve the specific needs of modern business.
-                        </p>
-                    </AdvancedScrollReveal>
-                </div>
+                    {/* Right: Cross-fading Animated Stack */}
+                    <div className="relative h-[500px] flex items-center justify-center">
+                        {SOLUTIONS.map((solution, i) => {
+                            const start = i * 0.25
+                            const end = start + 0.25
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-12 gap-5 auto-rows-[240px] md:auto-rows-[260px]">
-                    <SolutionCard
-                        className="lg:col-span-7 lg:row-span-1"
-                        icon={Store}
-                        title="Retail & Kirana"
-                        tagline="Fast Billing, No Waiting."
-                        description="Lightning-fast billing with barcode support, automated stock alerts, and WhatsApp reminders that recover credit 2x faster."
-                        color="emerald"
-                        dataPoints={["Barcode Ready", "Auto Ledger"]}
-                    />
-                    <SolutionCard
-                        className="lg:col-span-5 lg:row-span-1"
-                        icon={Briefcase}
-                        title="Services"
-                        tagline="Advanced Analytics."
-                        description="Professional tax invoices for service firms, detailed expense tracking, and clear reports for your business growth."
-                        color="blue"
-                        dataPoints={["Tax Ready", "P&L Docs"]}
-                    />
-                    <SolutionCard
-                        className="lg:col-span-5 lg:row-span-1"
-                        icon={HandCoins}
-                        title="Credit Tracking"
-                        tagline="Digital Credit Ledger."
-                        description="The end of paper registers. Clear, safe, and transparent credit tracking for all your loyal customers."
-                        color="amber"
-                        dataPoints={["Secure Ledger", "1-Tap SMS"]}
-                    />
-                    <SolutionCard
-                        className="lg:col-span-7 lg:row-span-1"
-                        icon={Truck}
-                        title="Wholesale"
-                        tagline="Enterprise Distribution."
-                        description="Manage massive inventory volumes, track supplier payouts, and handle volume-based pricing with ease."
-                        color="indigo"
-                        dataPoints={["Multi-store", "Bulk Price"]}
-                    />
+                            const opacity = useTransform(
+                                scrollYProgress,
+                                [start, start + 0.05, end - 0.05, end],
+                                [0, 1, 1, 0]
+                            )
 
+                            const scale = useTransform(
+                                scrollYProgress,
+                                [start, start + 0.15, end],
+                                [0.9, 1, 0.95]
+                            )
+
+                            const y = useTransform(
+                                scrollYProgress,
+                                [start, start + 0.25],
+                                [20, -20]
+                            )
+
+                            return (
+                                <motion.div
+                                    key={solution.id}
+                                    style={{ opacity, scale, y }}
+                                    className="absolute inset-0 flex items-center"
+                                >
+                                    <IndustryCard solution={solution} />
+                                </motion.div>
+                            )
+                        })}
+                    </div>
 
                 </div>
-
             </div>
         </section>
     )
 }
 
-function SolutionCard({ className, icon: Icon, title, tagline, description, color, dataPoints }: { className: string, icon: any, title: string, tagline: string, description: string, color: "emerald" | "blue" | "amber" | "indigo", dataPoints?: string[] }) {
-    const colorStyles = {
-        emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/10 group-hover:bg-emerald-500/20",
-        blue: "bg-blue-500/10 text-blue-400 border-blue-500/10 group-hover:bg-blue-500/20",
-        amber: "bg-amber-500/10 text-amber-400 border-amber-500/10 group-hover:bg-amber-500/20",
-        indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/10 group-hover:bg-indigo-500/20"
-    }
-
+function IndustryCard({ solution }: { solution: any }) {
     return (
         <div className={cn(
-            "group rounded-[2rem] bg-zinc-900 border border-white/5 p-6 flex flex-col justify-between transition-all duration-500 relative overflow-hidden",
-            "hover:border-white/20 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:bg-zinc-900/80",
-            className
+            "w-full bg-white rounded-[2.5rem] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.1)] p-10 md:p-14 border border-zinc-100 flex flex-col justify-between group overflow-hidden relative",
+            solution.bgLight
         )}>
-            {/* Dynamic Hover Glow */}
-            <div className={cn(
-                "absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] -mr-32 -mt-32 opacity-0 group-hover:opacity-20 transition-all duration-1000",
-                color === "emerald" ? "bg-emerald-500" : color === "blue" ? "bg-blue-500" : color === "amber" ? "bg-amber-500" : "bg-indigo-500"
-            )} />
+            <div className={cn("absolute top-0 right-0 w-32 h-32 blur-3xl rounded-full opacity-10 group-hover:opacity-20 transition-opacity", solution.accent)} />
 
-            <div className="flex justify-between items-start relative z-10">
-                <div className="space-y-3">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-6", colorStyles[color])}>
-                        <Icon size={20} className="transition-transform duration-500 group-hover:scale-110" />
+            <div className="relative z-10 space-y-10">
+                <div className="flex justify-between items-start">
+                    <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center border border-zinc-100 bg-white shadow-sm transition-transform duration-500 group-hover:scale-110", solution.iconColor)}>
+                        <solution.icon size={36} strokeWidth={1.5} />
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black italic tracking-tighter leading-none mb-1 uppercase group-hover:text-white transition-colors">{title}</h3>
-                        <p className={cn("text-[8px] font-black uppercase tracking-widest", color === "emerald" ? "text-emerald-500" : color === "blue" ? "text-blue-500" : color === "amber" ? "text-amber-500" : "text-indigo-500")}>{tagline}</p>
+                    <div className="w-12 h-12 rounded-full border border-zinc-100 flex items-center justify-center text-zinc-300 bg-white">
+                        <ArrowRight size={20} />
                     </div>
                 </div>
 
-                {dataPoints && (
-                    <div className="flex flex-col gap-1 items-end">
-                        {dataPoints.map((pt, i) => (
-                            <div key={i} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-[7px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-400 group-hover:border-white/10 transition-colors">
-                                {pt}
-                            </div>
-                        ))}
+                <div className="space-y-4">
+                    <div className={cn("text-[11px] font-bold uppercase tracking-[0.25em] mb-4", solution.iconColor)}>
+                        {solution.tagline}
                     </div>
-                )}
-            </div>
+                    <h3 className="text-4xl font-bold tracking-tight text-zinc-900 leading-tight">
+                        {solution.title}
+                    </h3>
+                    <p className="text-zinc-500 text-lg font-light leading-relaxed max-w-sm">
+                        {solution.description}
+                    </p>
+                </div>
 
-            <div className="space-y-4 relative z-10">
-                <p className="text-zinc-500 text-xs font-medium leading-relaxed max-w-sm group-hover:text-zinc-400 transition-colors">{description}</p>
-                <div className="flex items-center gap-2 text-white font-black text-[9px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-500">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Explore solution</span>
-                    <ArrowRight size={12} className={cn("transition-transform duration-500 group-hover:translate-x-1", color === "emerald" ? "text-emerald-400" : color === "blue" ? "text-blue-400" : color === "amber" ? "text-amber-400" : "text-indigo-400")} />
+                <div className="pt-6 flex items-center gap-3">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", solution.accent)} />
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Integrated Intelligence</div>
                 </div>
             </div>
         </div>

@@ -50,17 +50,16 @@ function fallbackCoach(data: CoachPayload): CoachResponse {
 }
 
 export async function POST(request: Request) {
+  const payload = (await request.json().catch(() => ({}))) as CoachPayload
+  const fallback = fallbackCoach(payload)
   try {
     const session = await getSession()
     if (!session?.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const payload = (await request.json().catch(() => ({}))) as CoachPayload
-    const fallback = fallbackCoach(payload)
-
     if (!isGroqAvailable()) {
-      return NextResponse.json({ ...fallback, source: "rules" })
+      return NextResponse.json({ ...fallback, source: "khataplus-ai-rules" })
     }
 
     const prompt = `You are an assistant for Indian SMB operations.
@@ -85,11 +84,10 @@ Metrics:
       headline: parsed.headline || fallback.headline,
       action: parsed.action || fallback.action,
       rationale: parsed.rationale || fallback.rationale,
-      source: "groq",
+      source: "khataplus-ai",
     })
-  } catch (error) {
-    console.error("[dashboard-coach] failed:", error)
-    return NextResponse.json({ error: "Failed to generate coach insight" }, { status: 500 })
+  } catch (error: any) {
+    console.warn("[dashboard-coach] model path failed, using fallback:", error?.message || error)
+    return NextResponse.json({ ...fallback, source: "khataplus-ai-fallback" })
   }
 }
-

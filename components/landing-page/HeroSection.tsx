@@ -1,9 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Play, Sparkles, TrendingUp, DollarSign, Users, Package } from "lucide-react"
+import {
+    ArrowRight, Play, TrendingUp, DollarSign, Package,
+    ShieldCheck, Zap, Globe, Sparkles, Smartphone, Monitor, RefreshCw, Layers
+} from "lucide-react"
 import { Navbar } from "./Navbar"
-import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
+import { motion, Variants } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 interface HeroSectionProps {
@@ -12,327 +15,359 @@ interface HeroSectionProps {
     isGuest?: boolean
 }
 
+const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+    }
+}
+
+const childVariants: Variants = {
+    hidden: { opacity: 0, y: 32, rotateX: -30, filter: "blur(8px)" },
+    visible: {
+        opacity: 1,
+        y: 0,
+        rotateX: 0,
+        filter: "blur(0px)",
+        transition: { type: "spring", bounce: 0.3, duration: 0.8 } as any
+    }
+}
+
+const fadeUpVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: 0.5 + (i * 0.12), duration: 0.8, ease: "easeOut" }
+    })
+}
+
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
     const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
-    const secondaryHref = "/auth/login"
+    const secondaryHref = "/demo/dashboard"
 
     return (
         <>
-            <Navbar isAuthenticated={isAuthenticated} />
+            <Navbar isAuthenticated={isAuthenticated} isLight />
 
-            <section className="relative min-h-[85svh] md:min-h-[750px] flex items-center overflow-hidden bg-[#0f4ad3] text-white">
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_35%,#67dcff_0%,rgba(103,220,255,0.2)_26%,transparent_56%)]" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_86%_18%,rgba(157,234,255,0.95)_0%,rgba(24,118,255,0.3)_30%,transparent_65%)]" />
-                    <div className="absolute inset-0 bg-[linear-gradient(102deg,#0b2b92_0%,#1b65f1_48%,#66d4ff_100%)] opacity-85" />
-                    <div className="absolute inset-0 opacity-[0.1] [background-image:radial-gradient(#ffffff_2px,transparent_2px)] [background-size:24px_24px]" />
+            <section className="relative pt-12 md:pt-20 pb-40 overflow-hidden bg-transparent text-zinc-900 selection:bg-emerald-100">
+                {/* ULTIMATE SARVAM-STYLE RADIANCE (Cinematic Atmospheric Mesh) */}
+                <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+                    style={{ maskImage: "linear-gradient(to bottom, black 80%, transparent)" }}
+                >
+                    {/* Primary Atmospheric Glow - Deep Emerald */}
+                    <motion.div
+                        animate={{
+                            x: ["-10%", "5%", "-10%"],
+                            y: ["-5%", "5%", "-5%"],
+                            scale: [1, 1.1, 1],
+                            rotate: [0, 5, 0]
+                        }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute top-[-35%] left-[-25%] w-[140vw] h-[140vw] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.35)_0%,rgba(16,185,129,0.1)_40%,transparent_70%)] blur-[180px] rounded-full"
+                    />
+
+                    {/* Secondary Accented Glow - Royal Indigo */}
+                    <motion.div
+                        animate={{
+                            x: ["8%", "-8%", "8%"],
+                            y: ["5%", "-5%", "5%"],
+                            scale: [1.1, 1, 1.1],
+                            rotate: [0, -5, 0]
+                        }}
+                        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                        className="absolute top-[-30%] right-[-25%] w-[120vw] h-[120vw] bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25)_0%,rgba(99,102,241,0.05)_50%,transparent_70%)] blur-[200px] rounded-full"
+                    />
+
+                    {/* Tertiary Harmony Glow - Cyan/Teal (Ensures center isn't dead) */}
+                    <motion.div
+                        animate={{
+                            scale: [0.8, 1.2, 0.8],
+                            opacity: [0.3, 0.5, 0.3]
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute top-[10%] left-[20%] w-[80vw] h-[60vw] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.15)_0%,transparent_60%)] blur-[150px] rounded-full"
+                    />
+
+                    {/* Premium Detail - Softened Dot Grid Layer */}
+                    <div className="absolute inset-0 opacity-[0.25] [background-image:radial-gradient(#cbd5e1_1.2px,transparent_1.2px)] [background-size:32px_32px]" />
+
+                    {/* Noise Texture layer for high-end grain */}
+                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }} />
                 </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 w-full pt-12 pb-8">
-                    <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                        <div className="space-y-6">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 w-full text-center">
 
-                            <AdvancedScrollReveal variant="slideUp" delay={220}>
-                                <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] uppercase italic">
-                                    GST Billing & <br />
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-100 via-white to-blue-300">Advance Khata.</span>
-                                </h1>
-                            </AdvancedScrollReveal>
+                    {/* Integrated Universal Access Badge */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-xl shadow-sm mb-10"
+                    >
+                        <Layers size={14} className="text-emerald-500" />
+                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-zinc-600">Universal Access & Real-Time Sync</span>
+                    </motion.div>
 
-                            <AdvancedScrollReveal variant="slideUp" delay={340}>
-                                <p className="max-w-xl text-lg md:text-xl font-medium leading-relaxed text-blue-100/70 border-l-2 border-white/20 pl-6">
-                                    Manage your business efficiently with professional GST billing, automated stock tracking, and digital credit records.
-                                </p>
-                            </AdvancedScrollReveal>
+                    <div className="flex flex-col items-center mb-12">
+                        <motion.h1
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] font-bold tracking-tighter leading-[1.05] perspective-1000"
+                        >
+                            <span className="block overflow-hidden py-4 sm:py-6">
+                                <motion.span variants={childVariants} className="inline-block">Billing Flow</motion.span>
+                            </span>
+                            <span className="block overflow-hidden py-4 sm:py-6 -mt-8 sm:-mt-12">
+                                <motion.span
+                                    variants={childVariants}
+                                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 pb-2"
+                                >
+                                    Evolved.
+                                </motion.span>
+                            </span>
+                        </motion.h1>
 
-                            <AdvancedScrollReveal variant="slideUp" delay={430}>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                                    {[
-                                        "GST & Non-GST Billing",
-                                        "Automated Credit Reminders",
-                                        "Offline Billing Mode",
-                                        "Daily Profit Reports",
-                                    ].map((item) => (
-                                        <div key={item} className="flex items-center gap-3 text-xs font-black text-blue-50/80 uppercase tracking-widest group">
-                                            <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)] transition-all group-hover:scale-150" />
-                                            <span className="group-hover:text-white transition-colors">{item}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </AdvancedScrollReveal>
+                        <motion.p
+                            custom={1}
+                            variants={fadeUpVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="max-w-3xl mx-auto mt-6 text-xl sm:text-2xl md:text-3xl font-light text-zinc-500 leading-relaxed tracking-tight"
+                        >
+                            Start on your computer, finish on your phone. <br className="hidden sm:block" />
+                            Professional GST invoicing that updates <span className="text-zinc-900 font-medium">instantly, everywhere.</span>
+                        </motion.p>
+                    </div>
 
-                            <AdvancedScrollReveal variant="slideUp" delay={560}>
-                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center pt-6">
-                                    <Link
-                                        href={primaryHref}
-                                        className="inline-flex items-center justify-center gap-4 rounded-2xl bg-white px-14 py-6 text-[13px] font-black uppercase tracking-widest text-blue-700 shadow-2xl transition hover:bg-cyan-50 hover:scale-[1.03] active:scale-[0.98] relative overflow-hidden group/btn"
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                                        <span className="relative z-10">Get Started Free</span>
-                                        <ArrowRight className="h-5 w-5 relative z-10" />
-                                    </Link>
-                                    <Link
-                                        href={secondaryHref}
-                                        className="inline-flex items-center justify-center gap-4 rounded-2xl border border-white/30 bg-white/5 px-14 py-6 text-[13px] font-black uppercase tracking-widest text-white backdrop-blur-xl transition hover:bg-white/10 hover:border-white/50"
-                                    >
-                                        <Play className="h-5 w-5 fill-white stroke-0" />
-                                        Login to Dashboard
-                                    </Link>
-                                </div>
-                            </AdvancedScrollReveal>
-                        </div>
+                    {/* Integrated Action Buttons */}
+                    <motion.div
+                        custom={2}
+                        variants={fadeUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-28"
+                    >
+                        <Link
+                            href={primaryHref}
+                            className="relative group w-full sm:w-auto"
+                        >
+                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-600 to-teal-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-500" />
+                            <div className="relative inline-flex items-center justify-center gap-3 rounded-2xl bg-zinc-950 px-12 py-5 text-[13px] font-black uppercase tracking-[0.25em] text-white shadow-2xl transition-all hover:bg-zinc-900 hover:-translate-y-1 active:translate-y-0 overflow-hidden">
+                                {/* Button Shine Effect */}
+                                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
 
-                        <AdvancedScrollReveal variant="slideLeft" delay={280} className="relative hidden lg:block">
-                            <div className="visual-stack">
-                                {/* Dashboard Mockup */}
-                                <div className="dash-frame">
-                                    <div className="dash-sidebar">
-                                        <div className="dash-logo">K</div>
-                                        {[1, 2, 3, 4, 5].map(idx => (
-                                            <div key={idx} className={cn("dash-nav", idx === 1 && "active")} />
-                                        ))}
+                                <span className="relative z-10">Get Started Free</span>
+                                <ArrowRight className="relative z-10 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </div>
+                        </Link>
+
+                        <Link
+                            href={secondaryHref}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl border border-zinc-200/50 bg-white/40 backdrop-blur-xl px-12 py-5 text-[13px] font-black uppercase tracking-[0.25em] text-zinc-800 transition-all hover:bg-white/80 hover:border-emerald-200/50 hover:shadow-2xl group hover:-translate-y-1 active:translate-y-0"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-emerald-100/50 flex items-center justify-center transition-colors group-hover:bg-emerald-50">
+                                <Play className="h-3 w-3 fill-emerald-600 stroke-emerald-600 transition-transform group-hover:scale-125" />
+                            </div>
+                            Live Demo
+                        </Link>
+                    </motion.div>
+
+                    {/* Master Composition: The Adaptive Interface Visual */}
+                    <div className="relative w-full max-w-6xl mx-auto min-h-[500px] flex items-center justify-center z-10">
+
+                        {/* Desktop Window Shell (Base Layer) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 60, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ duration: 1.5, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                            className="relative w-full max-w-5xl bg-white/40 backdrop-blur-3xl border border-zinc-200/50 rounded-[3rem] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.1)] p-2 group"
+                        >
+                            <div className="absolute -inset-1 bg-gradient-to-br from-emerald-500/10 to-indigo-500/10 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition duration-1000 -z-10" />
+
+                            <div className="bg-white rounded-[2.8rem] border border-zinc-100 overflow-hidden flex flex-col h-full min-h-[480px]">
+                                {/* Browser Chrome */}
+                                <div className="h-14 flex items-center justify-between px-8 border-b border-zinc-50 bg-zinc-50/30">
+                                    <div className="flex gap-2.5">
+                                        <div className="w-3 h-3 rounded-full bg-rose-400/80" />
+                                        <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                                        <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
                                     </div>
-                                    <div className="dash-main">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <div className="space-y-1">
-                                                <div className="h-2 w-20 bg-white/10 rounded-full" />
-                                                <div className="h-4 w-32 bg-white/20 rounded-full" />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="h-6 w-16 bg-white/5 border border-white/10 rounded-lg" />
-                                                <div className="h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-500/40" />
-                                            </div>
-                                        </div>
+                                    <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.3em]">khata.plus / dashboard</div>
+                                    <div className="w-10" />
+                                </div>
 
-                                        <div className="grid grid-cols-3 gap-3 mb-6">
-                                            {[
-                                                { label: "Sales Today", val: "₹1.4L", icon: TrendingUp, color: "text-emerald-400" },
-                                                { label: "Items in Stock", val: "842", icon: Package, color: "text-blue-400" },
-                                                { label: "Pending Credit", val: "₹12k", icon: DollarSign, color: "text-rose-400" }
-                                            ].map((stat, i) => (
-                                                <div key={i} className="p-3 bg-white/5 rounded-2xl border border-white/5 space-y-2">
-                                                    <stat.icon size={12} className={stat.color} />
-                                                    <div>
-                                                        <div className="text-[7px] font-bold text-zinc-500 uppercase">{stat.label}</div>
-                                                        <div className="text-xs font-black italic">{stat.val}</div>
-                                                    </div>
-                                                </div>
+                                {/* Dashboard Mockup Content */}
+                                <div className="p-8 md:p-12 grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12 text-left">
+                                    <div className="hidden md:block space-y-8 pt-2">
+                                        <div className="h-10 w-full bg-emerald-50 rounded-2xl border border-emerald-100/50" />
+                                        <div className="space-y-4">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <div key={i} className="h-3 w-full bg-zinc-100 rounded-full" style={{ width: `${80 - (i * 5)}%` }} />
                                             ))}
                                         </div>
-
-                                        <div className="bg-black/30 rounded-2xl border border-white/5 p-4 flex-1">
-                                            <div className="flex justify-between items-end h-20 gap-1">
-                                                {[40, 70, 45, 90, 65, 80, 55, 95, 40, 60, 85].map((h, i) => (
-                                                    <div key={i} className="flex-1 bg-gradient-to-t from-blue-600/40 to-cyan-400/20 rounded-t-sm" style={{ height: `${h}%` }} />
-                                                ))}
-                                            </div>
-                                            <div className="mt-4 flex justify-between">
-                                                <div className="h-2 w-24 bg-white/5 rounded-full" />
-                                                <div className="h-2 w-10 bg-white/10 rounded-full" />
-                                            </div>
-                                        </div>
                                     </div>
-                                </div>
-
-                                {/* Floating Phone - High Resolution Details */}
-                                <div className="phone-card">
-                                    <div className="phone-glow" />
-                                    <div className="phone-shell">
-                                        <div className="phone-notch" />
-                                        <div className="phone-header">
-                                            <div className="phone-avatar">K</div>
-                                            <div className="space-y-1">
-                                                <div className="h-1.5 w-12 bg-white/20 rounded-full" />
-                                                <div className="h-1 w-8 bg-white/10 rounded-full" />
-                                            </div>
+                                    <div className="space-y-10">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                            <MetricCard label="Total Sales" value="₹24.8L" color="text-emerald-600" />
+                                            <MetricCard label="Receivables" value="₹3.2L" color="text-rose-600" />
+                                            <MetricCard label="Stock Value" value="₹12.5L" color="text-indigo-600" />
                                         </div>
-
-                                        <div className="p-4 space-y-4">
-                                            <div className="h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
-                                                <div className="flex justify-between">
-                                                    <div className="h-1.5 w-8 bg-white/30 rounded" />
-                                                    <div className="h-1.5 w-4 bg-white/30 rounded" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-[6px] font-black uppercase text-white/50 tracking-widest">Balance</div>
-                                                    <div className="text-sm font-black italic text-white leading-none">₹82,410.00</div>
-                                                </div>
+                                        <div className="h-48 rounded-3xl bg-zinc-50/50 border border-zinc-100 flex items-end p-6 gap-2 pt-16 relative overflow-hidden">
+                                            <div className="absolute top-6 left-6 flex items-center gap-2">
+                                                <div className="h-2 w-24 bg-zinc-200 rounded-full" />
+                                                <TrendingUp size={14} className="text-emerald-500" />
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {[1, 2, 3, 4].map(i => (
-                                                    <div key={i} className="h-12 bg-white/5 border border-white/5 rounded-xl flex items-center justify-center">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                {[1, 2].map(i => (
-                                                    <div key={i} className="flex justify-between items-center bg-black/20 p-2 rounded-lg border border-white/5">
-                                                        <div className="flex gap-2 items-center">
-                                                            <div className="w-4 h-4 bg-white/5 rounded" />
-                                                            <div className="h-1 w-12 bg-white/10 rounded-full" />
-                                                        </div>
-                                                        <div className="h-1 w-6 bg-emerald-500/40 rounded-full" />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            {[40, 70, 45, 90, 65, 80, 55, 95, 40, 60, 85, 30, 75, 50, 90, 60, 40, 70, 50].map((h, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    initial={{ height: 0 }}
+                                                    animate={{ height: `${h}%` }}
+                                                    transition={{ delay: 1.5 + (i * 0.04), duration: 1, ease: "easeOut" }}
+                                                    className="flex-1 bg-zinc-200 hover:bg-emerald-400 transition-colors duration-300 rounded-t-[2px]"
+                                                />
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </AdvancedScrollReveal>
+                        </motion.div>
+
+                        {/* Mobile Device (Overlapping Layer) */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 100, y: 50, rotate: 10 }}
+                            animate={{ opacity: 1, x: 0, y: 20, rotate: -4 }}
+                            transition={{ duration: 1.5, delay: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                            className="absolute -right-4 md:-right-12 -bottom-20 w-[260px] h-[520px] bg-white border border-zinc-200 rounded-[3rem] shadow-[0_40px_80px_rgba(0,0,0,0.15),_0_0_0_8px_#fafafa] p-1.5 z-20 group/phone hidden lg:block"
+                        >
+                            <div className="h-full bg-white rounded-[2.8rem] overflow-hidden relative flex flex-col border border-zinc-100 shrink-0">
+                                {/* Notch */}
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-zinc-100 rounded-b-2xl z-20" />
+
+                                <div className="p-5 pt-12 flex-1 flex flex-col gap-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="space-y-2">
+                                            <div className="h-2 w-20 bg-zinc-800 rounded-full" />
+                                            <div className="h-3 w-12 bg-zinc-200 rounded-full" />
+                                        </div>
+                                        <div className="w-10 h-10 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-emerald-500">
+                                            <RefreshCw size={18} className="animate-spin-slow" />
+                                        </div>
+                                    </div>
+
+                                    {/* Integrated Phone List */}
+                                    <div className="h-40 rounded-[2rem] bg-emerald-500 p-6 flex flex-col justify-between text-white relative overflow-hidden group/card shadow-lg shadow-emerald-500/20 mb-4">
+                                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 blur-3xl rounded-full" />
+                                        <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">
+                                            <motion.div
+                                                animate={{ x: ["-100%", "100%"] }}
+                                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                                className="h-full w-1/3 bg-white/60"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Synced Sales</div>
+                                            <div className="text-3xl font-black tabular-nums">₹2,450</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center px-4 gap-4 shadow-sm group/item">
+                                                <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover/item:text-emerald-500 transition-colors">
+                                                    <DollarSign size={18} strokeWidth={2.5} />
+                                                </div>
+                                                <div className="space-y-2 flex-1">
+                                                    <div className="h-2 w-full bg-zinc-200 rounded-full" />
+                                                    <div className="h-2 w-2/3 bg-zinc-100 rounded-full" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Phone Sync Badge */}
+                                <div className="p-4 bg-zinc-50/50 border-t border-zinc-100 flex justify-center">
+                                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Smartphone size={10} /> Pocket Intelligence Ready
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Connection Visual (Sync Line) */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none -z-10 hidden lg:block">
+                            <svg className="w-full h-full opacity-30" viewBox="0 0 1000 600" fill="none">
+                                <motion.path
+                                    d="M600 300 Q 800 300 900 450"
+                                    stroke="url(#gradient-sync)"
+                                    strokeWidth="2"
+                                    strokeDasharray="8 8"
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: 1 }}
+                                    transition={{ duration: 2, delay: 2 }}
+                                />
+                                <defs>
+                                    <linearGradient id="gradient-sync" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" />
+                                        <stop offset="100%" stopColor="#6366f1" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+
+                        {/* Floating Feature Pills (Merged) */}
+                        <div className="absolute top-20 -left-12 hidden xl:block">
+                            <HeroPill icon={ShieldCheck} text="Encrypted Ledger" color="text-indigo-600" />
+                        </div>
+                        <div className="absolute -top-16 right-48 hidden xl:block">
+                            <HeroPill icon={Globe} text="Offline-First" color="text-emerald-600" />
+                        </div>
                     </div>
                 </div>
 
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 to-transparent" />
-
                 <style jsx global>{`
-                    .visual-stack {
-                        position: relative;
-                        width: 550px;
-                        height: 420px;
-                        margin-inline: auto;
-                        perspective: 1500px;
-                        transition: transform 0.8s ease-out;
-                    }
-                    .visual-stack:hover {
-                        transform: translateY(-5px);
-                    }
-                    .dash-frame {
-                        width: 100%;
-                        height: 350px;
-                        background: #080b18;
-                        border-radius: 24px;
-                        border: 1px solid rgba(255,255,255,0.08);
-                        display: grid;
-                        grid-template-columns: 80px 1fr;
-                        transform: rotateY(-12deg) rotateX(5deg);
+                    .perspective-1000 { perspective: 1000px; }
+                    .glass-panel {
                         box-shadow: 
-                            -15px 30px 60px -15px rgba(0,0,0,0.6);
-                        transition: all 0.8s ease-out;
-                        overflow: hidden;
+                            0 0 0 1px rgba(255,255,255,0.4) inset,
+                            0 40px 100px -15px rgba(0,0,0,0.1);
                     }
-                    .visual-stack:hover .dash-frame {
-                        transform: rotateY(-8deg) rotateX(3deg);
-                        box-shadow: 
-                            -20px 40px 80px -20px rgba(0,0,0,0.7);
+                    @keyframes spin-slow {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
                     }
-                    .dash-sidebar {
-                        padding: 20px 12px;
-                        border-right: 1px solid rgba(255,255,255,0.05);
-                        display: flex;
-                        flex-direction: column;
-                        gap: 12px;
-                        align-items: center;
-                        background: #030610;
-                    }
-                    .dash-logo {
-                        width: 32px;
-                        height: 32px;
-                        border-radius: 10px;
-                        background: #3b82f6;
-                        display: grid;
-                        place-items: center;
-                        font-weight: 900;
-                        font-size: 14px;
-                        color: white;
-                        margin-bottom: 20px;
-                        box-shadow: 0 0 15px rgba(59,130,246,0.3);
-                    }
-                    .dash-nav {
-                        width: 24px;
-                        height: 24px;
-                        border-radius: 6px;
-                        background: rgba(255,255,255,0.03);
-                    }
-                    .dash-nav.active {
-                        background: rgba(255,255,255,0.1);
-                        border: 1px solid rgba(255,255,255,0.1);
-                    }
-                    .dash-main {
-                        padding: 30px;
-                        background: linear-gradient(135deg, #080b18 0%, #030610 100%);
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .phone-card {
-                        position: absolute;
-                        right: -25px;
-                        bottom: -15px;
-                        width: 190px;
-                        height: 360px;
-                        transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px);
-                        animation: float 6s ease-in-out infinite;
-                        transition: all 0.8s ease-out;
-                    }
-                    .visual-stack:hover .phone-card {
-                        transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px);
-                        right: -35px;
-                    }
-                    .phone-shell {
-                        width: 100%;
-                        height: 100%;
-                        background: #000;
-                        border-radius: 32px;
-                        border: 4px solid #1e293b;
-                        box-shadow: 0 40px 80px -15px rgba(0,0,0,0.85);
-                        position: relative;
-                        overflow: hidden;
-                        display: flex;
-                        flex-direction: column;
-                        ring: 1px solid rgba(255,255,255,0.1);
-                    }
-                    .phone-notch {
-                        width: 60px;
-                        height: 18px;
-                        background: #1e293b;
-                        position: absolute;
-                        top: 0;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        border-bottom-left-radius: 12px;
-                        border-bottom-right-radius: 12px;
-                        z-index: 20;
-                    }
-                    .phone-header {
-                        padding: 24px 16px 12px;
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        border-bottom: 1px solid rgba(255,255,255,0.05);
-                    }
-                    .phone-avatar {
-                        width: 24px;
-                        height: 24px;
-                        border-radius: 8px;
-                        background: #22c55e;
-                        display: grid;
-                        place-items: center;
-                        font-weight: 900;
-                        font-size: 10px;
-                        color: black;
-                    }
-                    .phone-glow {
-                        position: absolute;
-                        inset: -30px;
-                        background: radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%);
-                        filter: blur(30px);
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px) translateY(0); }
-                        50% { transform: rotateY(-8deg) rotateZ(6deg) translateZ(50px) translateY(-12px); }
-                    }
-                    .visual-stack:hover .phone-card {
-                        animation: float-hover 6s ease-in-out infinite;
-                    }
-                    @keyframes float-hover {
-                        0%, 100% { transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px) translateY(8px); }
-                        50% { transform: rotateY(-3deg) rotateZ(3deg) translateZ(80px) translateY(-2px); }
+                    .animate-spin-slow {
+                        animation: spin-slow 6s linear infinite;
                     }
                 `}</style>
             </section>
         </>
+    )
+}
+
+function MetricCard({ label, value, color }: any) {
+    return (
+        <div className="bg-white/50 backdrop-blur-sm border border-zinc-100 p-6 rounded-3xl hover:shadow-lg transition-all duration-500">
+            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-2">{label}</div>
+            <div className={cn("text-2xl font-black tracking-tight", color)}>{value}</div>
+        </div>
+    )
+}
+
+function HeroPill({ icon: Icon, text, color }: any) {
+    return (
+        <motion.div
+            animate={{ y: [0, -12, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="flex items-center gap-3 px-5 py-3 bg-white/80 rounded-2xl border border-zinc-200 shadow-xl backdrop-blur-xl"
+        >
+            <div className={cn("w-9 h-9 rounded-xl bg-zinc-50 flex items-center justify-center", color)}>
+                <Icon size={18} />
+            </div>
+            <span className="text-[11px] font-black text-zinc-800 tracking-wider uppercase">{text}</span>
+        </motion.div>
     )
 }

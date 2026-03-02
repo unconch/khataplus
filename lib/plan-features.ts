@@ -15,9 +15,9 @@ const PLAN_RANK: Record<OrganizationPlanType, number> = {
 };
 
 const FEATURE_MIN_PLAN: Record<PlanFeature, OrganizationPlanType> = {
-  analytics_dashboard: "pro",
-  reports: "starter",
-  migration_import: "starter",
+  analytics_dashboard: "free",
+  reports: "free",
+  migration_import: "free",
   public_shop_profile: "pro",
 };
 

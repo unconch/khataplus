@@ -1,14 +1,25 @@
 "use client"
 
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, ArrowUpRight, Github } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 
 export function SiteFooter() {
     return (
-        <footer className="bg-white text-zinc-900 pt-24 pb-12 px-6 border-t border-zinc-100 relative overflow-hidden">
-            {/* Subtle background detail */}
-            <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-zinc-200 to-transparent" />
+        <footer className="bg-transparent text-zinc-900 pt-24 pb-12 px-6 relative overflow-hidden">
+            {/* SARVAM-STYLE RADIANCE - BOTTOM FINISH */}
+            <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden"
+                style={{ maskImage: "linear-gradient(to bottom, transparent, black 15% 100%)" }}
+            >
+                <div className="absolute bottom-[-35%] left-[-20%] w-[110vw] h-[110vw] bg-[radial-gradient(circle_at_30%_70%,rgba(16,185,129,0.35)_0%,rgba(59,130,246,0.15)_45%,transparent_70%)] blur-[160px] rounded-full" />
+                <div className="absolute bottom-[-25%] right-[-20%] w-[90vw] h-[90vw] bg-[radial-gradient(circle_at_70%_70%,rgba(99,102,241,0.28)_0%,rgba(6,182,212,0.12)_45%,transparent_70%)] blur-[140px] rounded-full" />
+
+                {/* Noise overlay to match hero */}
+                <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }} />
+            </div>
+
+            {/* Subtle top border detail */}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-zinc-200 to-transparent opacity-40" />
 
             <div className="max-w-7xl mx-auto relative z-10">
                 <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-16 mb-24">
@@ -18,26 +29,9 @@ export function SiteFooter() {
                             <span className="text-3xl font-black tracking-tighter text-zinc-950">KhataPlus</span>
                         </Link>
                         <p className="text-zinc-500 max-w-sm text-lg font-medium leading-relaxed">
-                            Empowering millions of Indian businesses with simple, powerful, and secure digital tools. Made with high precision for the modern merchant.
+                            Built for hardworking shop owners. Simple tools to bill faster, manage stock, and keep every rupee clear.
                         </p>
-                        <div className="flex gap-4">
-                            {[
-                                { Icon: Twitter, label: "Twitter" },
-                                { Icon: Github, label: "GitHub" },
-                                { Icon: Instagram, label: "Instagram" },
-                                { Icon: Linkedin, label: "LinkedIn" }
-                            ].map(({ Icon, label }, i) => (
-                                <a
-                                    key={i}
-                                    href="#"
-                                    className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400 hover:bg-zinc-950 hover:text-white hover:border-zinc-950 transition-all duration-500 group shadow-sm"
-                                    aria-label={`Follow us on ${label}`}
-                                    title={`Follow us on ${label}`}
-                                >
-                                    <Icon size={20} className="group-hover:scale-110 transition-transform" />
-                                </a>
-                            ))}
-                        </div>
+                        {/* Social links intentionally hidden for now */}
                     </div>
 
                     <FooterCol title="Product" links={[
@@ -49,8 +43,8 @@ export function SiteFooter() {
 
                     <FooterCol title="Resources" links={[
                         { label: "Help Center", href: "/docs" },
-                        { label: "API Docs", href: "#" },
-                        { label: "Community", href: "#" },
+                        { label: "API Docs", href: "#", comingSoon: true },
+                        { label: "Community", href: "#", comingSoon: true },
                         { label: "Roadmap", href: "/roadmap" }
                     ]} />
 
@@ -81,7 +75,7 @@ export function SiteFooter() {
     )
 }
 
-function FooterCol({ title, links }: { title: string, links: { label: string, href: string }[] }) {
+function FooterCol({ title, links }: { title: string, links: { label: string, href: string, comingSoon?: boolean }[] }) {
     return (
         <div className="space-y-8">
             <h4 className="font-black italic tracking-tighter text-zinc-950 text-xl">{title}</h4>
@@ -90,10 +84,17 @@ function FooterCol({ title, links }: { title: string, links: { label: string, hr
                     <li key={i}>
                         <Link
                             href={link.href}
-                            className="text-zinc-500 hover:text-zinc-950 transition-colors duration-300 font-bold flex items-center gap-1 group"
+                            className="group inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-950 transition-colors duration-300 font-bold"
                         >
                             {link.label}
-                            <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all text-emerald-600" />
+                            {link.comingSoon ? (
+                                <span className="inline-flex shrink-0 items-center rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] leading-none text-amber-700 whitespace-nowrap">
+                                    Coming Soon
+                                </span>
+                            ) : null}
+                            {!link.comingSoon ? (
+                                <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all text-emerald-600" />
+                            ) : null}
                         </Link>
                     </li>
                 ))}
