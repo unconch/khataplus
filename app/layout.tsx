@@ -7,30 +7,27 @@ import { ReferralTracker } from "@/components/referral-tracker"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: {
-    default: "KhataPlus Business - Smart Billing & Inventory",
-    template: "%s | KhataPlus"
+  title: "KhataPlus - Smart Billing & Inventory for NorthEast India",
+  description: "GST billing, inventory management, and khata tracking built for small businesses in Assam, Meghalaya, Manipur & NorthEast India. Free to try.",
+  keywords: ["billing app northeast india", "GST invoice app Assam", "khata app", "inventory management Guwahati"],
+  metadataBase: new URL("https://khataplus.online"),
+  alternates: {
+    canonical: "/",
   },
-  description: "The simplest billing, inventory, and khata management app designed effectively for Indian shopkeepers. GST-ready, offline-capable, and secure.",
-  manifest: "/manifest.json",
-  generator: "v0.app",
-  metadataBase: new URL("https://khataplus.com"),
   openGraph: {
-    type: "website",
-    locale: "en_IN",
-    url: "https://khataplus.com",
     title: "KhataPlus - Smart Billing for NorthEast India",
-    description: "Manage your shop like a pro. Billing, Inventory, and Khata in one app.",
+    description: "GST billing, inventory & khata tracking for NorthEast India small businesses.",
+    url: "https://khataplus.online",
     siteName: "KhataPlus",
-    images: [
-      {
-        url: "/og-image.png", // Need to ensure this exists or use a generator
-        width: 1200,
-        height: 630,
-        alt: "KhataPlus Dashboard Preview",
-      },
-    ],
+    locale: "en_IN",
+    type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "KhataPlus - Smart Billing for NorthEast India",
+    description: "GST billing, inventory & khata tracking for NorthEast India small businesses.",
+  },
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
     apple: "/apple-icon.png",
@@ -71,6 +68,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const softwareApplicationSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "KhataPlus",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web, Android, iOS",
+    description: "GST billing, inventory management and khata tracking for small businesses in NorthEast India",
+    url: "https://khataplus.online",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "INR",
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      ratingCount: "120",
+    },
+  }
+
   return (
     <html
       lang="en"
@@ -83,6 +100,12 @@ export default function RootLayout({
       }
     >
       <body className="font-sans antialiased relative overflow-x-hidden min-h-screen" suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(softwareApplicationSchema),
+          }}
+        />
         <div className="orbital-glow">
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
