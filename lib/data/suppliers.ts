@@ -11,8 +11,7 @@ export async function getSuppliers(orgId: string) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async (): Promise<Supplier[]> => {
+    const fetchSuppliers = async (): Promise<Supplier[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -29,7 +28,14 @@ export async function getSuppliers(orgId: string) {
                 ...row,
                 balance: parseFloat(row.balance)
             })) as Supplier[];
-        },
+        };
+
+    if (isGuest) {
+        return fetchSuppliers();
+    }
+
+    return nextCache(
+        fetchSuppliers,
         [`suppliers-list-${flavor}-${orgId}`],
         { tags: ["suppliers", `suppliers-${orgId}`, `suppliers-${flavor}`], revalidate: 300 }
     )();

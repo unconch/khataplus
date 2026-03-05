@@ -26,8 +26,7 @@ export async function getDailyReports(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    return nextCache(
-        async (): Promise<DailyReport[]> => {
+    const fetchReports = async (): Promise<DailyReport[]> => {
             const db = isGuest ? getDemoSql() : getProductionSql();
             const startDateText = range === "all" ? "1900-01-01" : startDate.toISOString().split('T')[0]
             const salesCols = await db`
@@ -301,7 +300,14 @@ export async function getDailyReports(
                 created_at: String(d.created_at || ""),
                 updated_at: String(d.updated_at || ""),
             })) as DailyReport[];
-        },
+        };
+
+    if (isGuest) {
+        return fetchReports();
+    }
+
+    return nextCache(
+        fetchReports,
         [`reports-list-${cacheVersion}-${flavor}-${orgId}-${range}`],
         { tags: ["reports", `reports-${orgId}`, `reports-${flavor}`], revalidate: 300 }
     )();

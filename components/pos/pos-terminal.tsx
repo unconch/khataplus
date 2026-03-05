@@ -58,6 +58,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   const { trigger: haptic } = useHaptic()
 
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const customerNameRef = useRef<HTMLInputElement | null>(null)
   const barcodeBufferRef = useRef("")
   const lastBarcodeKeyTimeRef = useRef(0)
 
@@ -739,6 +740,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
               <div className="relative group">
                 <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
                 <input
+                  ref={customerNameRef}
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="Customer name (F3)"

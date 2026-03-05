@@ -8,8 +8,7 @@ export async function getDailyPulse(orgId: string) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async () => {
+    const fetchDailyPulse = async () => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -55,7 +54,14 @@ export async function getDailyPulse(orgId: string) {
                     amount: parseFloat(item.total_amount)
                 }))
             };
-        },
+        };
+
+    if (isGuest) {
+        return fetchDailyPulse();
+    }
+
+    return nextCache(
+        fetchDailyPulse,
         [`daily-pulse-${flavor}-${orgId}`],
         { tags: ["sales", `sales-${orgId}`, `sales-${flavor}`], revalidate: 300 }
     )();
@@ -66,8 +72,7 @@ export async function getExecutiveAnalytics(orgId: string) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async () => {
+    const fetchExecutiveAnalytics = async () => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -140,7 +145,14 @@ export async function getExecutiveAnalytics(orgId: string) {
                     lowStock: parseInt(stockSummary[0]?.low_stock_count || "0")
                 }
             };
-        },
+        };
+
+    if (isGuest) {
+        return fetchExecutiveAnalytics();
+    }
+
+    return nextCache(
+        fetchExecutiveAnalytics,
         [`executive-analytics-${flavor}-${orgId}`],
         { tags: ["sales", "inventory", `analytics-${orgId}`, `analytics-${flavor}`], revalidate: 60 }
     )();

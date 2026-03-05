@@ -12,8 +12,7 @@ export async function getCustomers(orgId: string, options: { limit?: number; off
     const limit = options.limit ?? 1000;
     const offset = options.offset ?? 0;
 
-    return nextCache(
-        async (): Promise<Customer[]> => {
+    const fetchCustomers = async (): Promise<Customer[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -62,7 +61,14 @@ export async function getCustomers(orgId: string, options: { limit?: number; off
                     balance: parseFloat(row.balance)
                 };
             })) as unknown as Customer[];
-        },
+        };
+
+    if (isGuest) {
+        return fetchCustomers();
+    }
+
+    return nextCache(
+        fetchCustomers,
         [`customers-list-${flavor}-${orgId}-${limit}-${offset}`],
         { tags: ["customers", `customers-${orgId}`, `customers-${flavor}`], revalidate: 3600 }
     )();

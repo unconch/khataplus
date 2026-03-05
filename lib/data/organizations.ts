@@ -465,8 +465,7 @@ export async function getSystemSettings(orgId?: string) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async (): Promise<SystemSettings> => {
+    const fetchSettings = async (): Promise<SystemSettings> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -493,7 +492,14 @@ export async function getSystemSettings(orgId?: string) {
                 show_buy_price_in_sales: Boolean(s?.show_buy_price_in_sales),
                 updated_at: result[0].updated_at instanceof Date ? result[0].updated_at.toISOString() : String(result[0].updated_at),
             } as SystemSettings;
-        },
+        };
+
+    if (isGuest) {
+        return fetchSettings();
+    }
+
+    return nextCache(
+        fetchSettings,
         [`org-settings-${flavor}-${orgId}`],
         { tags: ["settings", `settings-${orgId}`, `settings-${flavor}`], revalidate: 3600 }
     )();

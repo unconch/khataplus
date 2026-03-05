@@ -578,8 +578,7 @@ export async function getRecentSales(orgId: string, limit: number = 10) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async (): Promise<(Sale & { inventory?: InventoryItem })[]> => {
+    const fetchRecentSales = async (): Promise<(Sale & { inventory?: InventoryItem })[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
@@ -605,7 +604,14 @@ export async function getRecentSales(orgId: string, limit: number = 10) {
                     buy_price: parseFloat(row.inventory_buy_price),
                 } : undefined
             })) as any;
-        },
+        };
+
+    if (isGuest) {
+        return fetchRecentSales();
+    }
+
+    return nextCache(
+        fetchRecentSales,
         [`recent-sales-${flavor}-${orgId}-${limit}`],
         { tags: ["sales", `sales-${orgId}`, `sales-${flavor}`], revalidate: 3600 }
     )();
