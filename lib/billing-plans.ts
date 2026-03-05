@@ -17,7 +17,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Keep",
     orgPlanType: "free",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 49, yearly: 399 },
+    amountInr: { monthly: 49, yearly: 499 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_KEEP_MONTHLY",
       yearly: "PADDLE_PRICE_KEEP_YEARLY",
@@ -28,7 +28,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Starter",
     orgPlanType: "starter",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 179, yearly: 1499 },
+    amountInr: { monthly: 199, yearly: 1999 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_STARTER_MONTHLY",
       yearly: "PADDLE_PRICE_STARTER_YEARLY",
@@ -39,7 +39,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Pro",
     orgPlanType: "pro",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 449, yearly: 3999 },
+    amountInr: { monthly: 599, yearly: 5999 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_PRO_MONTHLY",
       yearly: "PADDLE_PRICE_PRO_YEARLY",
@@ -76,12 +76,12 @@ export function getPlanAmountInr(planKey: BillingPlanKey, cycle: BillingCycle): 
   return BILLING_PLANS[planKey].amountInr[cycle];
 }
 
-const PLAN_LIMITS: Record<OrganizationPlanType, { staffSeats: number | null; inventoryItems: number | null }> = {
-  free: { staffSeats: 1, inventoryItems: 30 },
-  starter: { staffSeats: 3, inventoryItems: 200 },
-  pro: { staffSeats: 10, inventoryItems: null },
-  business: { staffSeats: null, inventoryItems: null },
-  legacy: { staffSeats: null, inventoryItems: null },
+const PLAN_LIMITS: Record<OrganizationPlanType, { staffSeats: number | null; inventoryItems: number | null; storeLocations: number | null; invoiceLimit: number | null }> = {
+  free: { staffSeats: 1, inventoryItems: 50, storeLocations: 1, invoiceLimit: 25 },
+  starter: { staffSeats: 3, inventoryItems: 500, storeLocations: 2, invoiceLimit: null },
+  pro: { staffSeats: 10, inventoryItems: null, storeLocations: null, invoiceLimit: null },
+  business: { staffSeats: null, inventoryItems: null, storeLocations: null, invoiceLimit: null },
+  legacy: { staffSeats: null, inventoryItems: null, storeLocations: null, invoiceLimit: null },
 };
 
 export function normalizeOrganizationPlanType(value?: string | null): OrganizationPlanType {
@@ -96,4 +96,12 @@ export function getStaffSeatLimit(planType?: string | null): number | null {
 
 export function getInventoryItemLimit(planType?: string | null): number | null {
   return PLAN_LIMITS[normalizeOrganizationPlanType(planType)].inventoryItems;
+}
+
+export function getStoreLimit(planType?: string | null): number | null {
+  return PLAN_LIMITS[normalizeOrganizationPlanType(planType)].storeLocations;
+}
+
+export function getInvoiceLimit(planType?: string | null): number | null {
+  return PLAN_LIMITS[normalizeOrganizationPlanType(planType)].invoiceLimit;
 }

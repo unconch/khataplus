@@ -55,7 +55,7 @@ export function FeaturesSection() {
                         <FeatureCard
                             icon={WifiOff}
                             title="True Offline Synchronization"
-                            desc="Continue generating bills without internet interruption. The engine inherently caches data and performs high-speed delta-syncs the moment connectivity is robustly restored."
+                            desc="Keep billing even when internet is off. Your data is saved locally and syncs automatically when connection returns."
                             colorFrom="from-blue-500"
                             colorTo="to-cyan-400"
                             bgLight="bg-blue-50"
@@ -65,8 +65,8 @@ export function FeaturesSection() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                             <FeatureCard
                                 icon={ShieldCheck}
-                                title="Ironclad Vault"
-                                desc="Military-grade AES-256 encryption. Your operational data."
+                                title="Data Security"
+                                desc="Your business data is encrypted and protected."
                                 colorFrom="from-emerald-500"
                                 colorTo="to-teal-400"
                                 bgLight="bg-emerald-50"
@@ -74,8 +74,8 @@ export function FeaturesSection() {
                             />
                             <FeatureCard
                                 icon={Globe}
-                                title="Multi-Store Sync"
-                                desc="Command center for every single branch you own."
+                                title="Supplier Management"
+                                desc="Track suppliers, add purchases, and record payments in one place."
                                 colorFrom="from-zinc-500"
                                 colorTo="to-slate-400"
                                 bgLight="bg-zinc-100"
@@ -89,7 +89,7 @@ export function FeaturesSection() {
                         <FeatureCard
                             icon={TrendingUp}
                             title="Deep Intelligence Analytics"
-                            desc="Neural-like insights into daily sales trends, dead stock identification, and high-turnover inventory patterns visualized beautifully."
+                            desc="See sales trends, find slow-moving items, and spot your best-selling products at a glance."
                             colorFrom="from-rose-500"
                             colorTo="to-orange-400"
                             bgLight="bg-rose-50"
@@ -98,8 +98,8 @@ export function FeaturesSection() {
                         />
                         <FeatureCard
                             icon={FileText}
-                            title="Instant Tax Compliance"
-                            desc="Professional GST invoices auto-generated in 0.2 milliseconds. Ready to share via WhatsApp."
+                            title="GST Billing"
+                            desc="Create GST-ready invoices quickly and share them with customers."
                             colorFrom="from-fuchsia-500"
                             colorTo="to-purple-500"
                             bgLight="bg-fuchsia-50"

@@ -69,20 +69,24 @@ export function HowItWorksSection() {
                     </div>
                 </div>
 
-                {/* Highly Vibrant CTA Banner */}
+                {/* Fluid Glass CTA Banner */}
                 <AdvancedScrollReveal variant="slideUp" delay={300} className="mt-40">
-                    <div className="bg-white border border-zinc-200/80 rounded-[3rem] p-10 md:p-16 text-center max-w-3xl mx-auto shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-rose-100/50 via-fuchsia-100/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-rose-200/40 blur-[100px] rounded-full pointer-events-none mix-blend-multiply" />
+                    <div className="bg-white/30 backdrop-blur-2xl border border-white/70 rounded-[3rem] p-10 md:p-16 text-center max-w-3xl mx-auto shadow-[0_35px_90px_-22px_rgba(0,0,0,0.2)] relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-sky-100/45 via-rose-100/35 to-white/15 opacity-95 transition-opacity duration-1000 pointer-events-none" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.92),transparent_38%),radial-gradient(circle_at_88%_84%,rgba(255,255,255,0.38),transparent_45%)] pointer-events-none" />
+                        <div className="absolute -top-10 -left-6 w-56 h-56 rounded-full bg-white/40 blur-3xl pointer-events-none" />
+                        <div className="absolute -bottom-16 -right-8 w-72 h-72 rounded-full bg-cyan-200/30 blur-3xl pointer-events-none" />
+                        <div className="absolute inset-[1px] rounded-[calc(3rem-1px)] border border-white/70 pointer-events-none" />
+                        <div className="absolute -inset-x-16 -top-24 h-48 bg-white/55 blur-2xl rotate-6 group-hover:translate-x-8 transition-transform duration-1000 pointer-events-none" />
 
-                        <h3 className="text-3xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-8 relative z-10">Ready to command <br /> your business?</h3>
+                        <h3 className="text-3xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-8 relative z-10">Ready to run your <br /> business smarter?</h3>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 relative z-10 mt-10">
-                            <Link href="/auth/sign-up" className="px-8 py-4 rounded-2xl bg-zinc-900 text-white font-semibold tracking-wide hover:bg-zinc-800 transition-colors shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 duration-300 w-full sm:w-auto">
-                                Start Free Trial
+                            <Link href="/auth/sign-up" className="px-8 py-4 rounded-2xl bg-zinc-900/88 text-white font-semibold tracking-wide hover:bg-zinc-900 transition-colors shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 duration-300 w-full sm:w-auto border border-white/15 backdrop-blur-md">
+                                Start Free
                             </Link>
-                            <Link href="#demo" className="px-8 py-4 rounded-2xl bg-white border border-zinc-200 text-zinc-900 font-semibold tracking-wide hover:bg-zinc-50 transition-colors w-full sm:w-auto flex items-center justify-center gap-2 group/demo shadow-sm">
-                                Book a Demo
+                            <Link href="#demo" className="px-8 py-4 rounded-2xl bg-white/55 backdrop-blur-xl border border-white/85 text-zinc-900 font-semibold tracking-wide hover:bg-white/75 transition-colors w-full sm:w-auto flex items-center justify-center gap-2 group/demo shadow-sm">
+                                See Demo
                                 <ArrowRight size={18} className="text-zinc-500 group-hover/demo:translate-x-1 transition-transform" />
                             </Link>
                         </div>

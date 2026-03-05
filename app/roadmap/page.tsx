@@ -1,249 +1,240 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Sparkles, Zap, Shield, Crown, Rocket, CheckCircle2, Clock, Calendar, Star } from "lucide-react"
+import { ArrowLeft, Zap, Shield, Crown, Rocket, CheckCircle2, Clock, Calendar, Star, ChevronRight } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/logo"
+import Image from "next/image"
 
 const roadmapData = [
     {
         phase: "Phase 1: Core",
         status: "Completed",
         title: "Solid Foundation",
+        description: "The essential building blocks for complete digital ledger and inventory management.",
         icon: Shield,
         items: [
-            { title: "Simplified GST Billing", date: "Jan 12" },
-            { title: "Offline-First Engine", date: "Jan 28" },
-            { title: "Digital Khata Ledger", date: "Feb 15" },
-            { title: "Inventory Management", date: "Feb 22" },
-            { title: "Real-time Sync", date: "Mar 05" }
+            { title: "Simplified GST Billing", date: "Jan 12", completed: true },
+            { title: "Offline-First Engine", date: "Jan 28", completed: true },
+            { title: "Digital Khata Ledger", date: "Feb 15", completed: true },
+            { title: "Inventory Management", date: "Feb 22", completed: true },
+            { title: "Real-time Sync", date: "Mar 05", completed: true }
         ],
-        color: "zinc"
+        theme: "zinc"
     },
     {
         phase: "Phase 2: Scale",
         status: "In Progress",
         title: "Growth & Analysis",
+        description: "Advanced tools to understand your business performance and engage customers directly.",
         icon: Zap,
         items: [
-            { title: "WhatsApp Marketing", date: "Apr 10" },
-            { title: "Stock Forecasting", date: "May 05" },
-            { title: "Profit Analytics", date: "May 22" },
-            { title: "Payment Links", date: "June 12" },
-            { title: "Staff Permissions", date: "June 28" }
+            { title: "WhatsApp Marketing", date: "Apr 10", completed: false },
+            { title: "Stock Forecasting", date: "May 05", completed: false },
+            { title: "Profit Analytics", date: "May 22", completed: false },
+            { title: "Payment Links", date: "June 12", completed: false },
+            { title: "Staff Permissions", date: "June 28", completed: false }
         ],
         current: true,
-        color: "emerald"
+        theme: "emerald"
     },
     {
         phase: "Phase 3: Ecosystem",
-        status: "Development",
+        status: "Planned",
         title: "Retail Network",
+        description: "Expanding beyond the single store to connect your entire retail ecosystem.",
         icon: Crown,
         items: [
-            { title: "Online Storefront", date: "Aug 15" },
-            { title: "Loyalty Program", date: "Sept 10" },
-            { title: "Multi-Store Sync", date: "Oct 05" },
-            { title: "Purchase Orders", date: "Oct 28" },
-            { title: "Vendor Portal", date: "Nov 15" }
+            { title: "Online Storefront", date: "Aug 15", completed: false },
+            { title: "Loyalty Program", date: "Sept 10", completed: false },
+            { title: "Multi-Store Sync", date: "Oct 05", completed: false },
+            { title: "Purchase Orders", date: "Oct 28", completed: false },
+            { title: "Vendor Portal", date: "Nov 15", completed: false }
         ],
-        color: "blue"
+        theme: "blue"
     },
     {
         phase: "Phase 4: Future",
         status: "Research",
         title: "Intelligence",
+        description: "AI-driven algorithms to automate your operations and unlock new revenue streams.",
         icon: Rocket,
         items: [
-            { title: "AI Tax Assistant", date: "Dec 10" },
-            { title: "Supply Chain Finance", date: "Jan 20" },
-            { title: "B2B Marketplace", date: "Feb 08" },
-            { title: "Sales Algorithms", date: "Feb 28" },
-            { title: "Multi-Currency", date: "Mar 15" }
+            { title: "AI Tax Assistant", date: "Dec 10", completed: false },
+            { title: "Supply Chain Finance", date: "Jan 20", completed: false },
+            { title: "B2B Marketplace", date: "Feb 08", completed: false },
+            { title: "Sales Algorithms", date: "Feb 28", completed: false },
+            { title: "Multi-Currency", date: "Mar 15", completed: false }
         ],
-        color: "indigo"
+        theme: "indigo"
     }
 ]
 
 export default function RoadmapPage() {
     return (
-        <main className="min-h-screen bg-white text-zinc-900 selection:bg-emerald-100">
+        <main className="min-h-screen bg-[#0a0a0a] text-zinc-100 selection:bg-emerald-500/30">
             {/* Header / Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100 px-6 py-4">
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-zinc-800/50 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-2 group">
-                        <Logo size={32} />
-                        <span className="text-xl font-black tracking-tighter text-zinc-950">KhataPlus</span>
+                        <Logo size={28} />
+                        <span className="text-lg font-bold tracking-tight text-white">KhataPlus</span>
                     </Link>
-                    <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-950 transition-colors flex items-center gap-2">
-                        <ArrowLeft size={14} />
-                        Back to Home
+                    <Link href="/" className="text-xs font-medium tracking-wide text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
+                        <ArrowLeft size={16} />
+                        Back Context
                     </Link>
                 </div>
             </nav>
 
             {/* Hero Section */}
-            <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-50 opacity-[0.05] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+            <section className="pt-32 pb-24 px-6 relative overflow-hidden">
+                {/* Background Glow */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-                <div className="max-w-4xl mx-auto text-center space-y-8">
+                <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
                     <AdvancedScrollReveal variant="slideUp">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/50">
-                            <Calendar size={12} className="text-emerald-500" />
-                            <span className="text-zinc-600 font-black text-[9px] tracking-widest uppercase">Rollout Schedule 2026</span>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/50 border border-zinc-800 backdrop-blur-sm">
+                            <Calendar size={14} className="text-emerald-400" />
+                            <span className="text-zinc-300 font-medium text-xs tracking-wide">Rollout Schedule 2026</span>
                         </div>
                     </AdvancedScrollReveal>
 
                     <AdvancedScrollReveal variant="slideUp" delay={100}>
-                        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter text-zinc-900 leading-[0.85] uppercase italic">
-                            Planned <br />
-                            <span className="text-zinc-400">Milestones.</span>
+                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-white leading-[1.1]">
+                            Building the future of <br className="hidden md:block" />
+                            <span className="text-emerald-400">KhataPlus.</span>
                         </h1>
                     </AdvancedScrollReveal>
 
                     <AdvancedScrollReveal variant="slideUp" delay={200}>
-                        <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-zinc-400 text-lg md:text-xl font-normal max-w-2xl mx-auto leading-relaxed">
                             A clear look at when each feature hits your dashboard. We're shipping fast to keep your business ahead.
                         </p>
                     </AdvancedScrollReveal>
                 </div>
             </section>
 
-            {/* Roadmap Timeline */}
+            {/* Clean Timeline Section */}
             <section className="pb-32 px-6">
-                <div className="max-w-5xl mx-auto relative">
-                    {/* Vertical Line */}
-                    <div className="absolute left-[20px] md:left-1/2 top-0 bottom-0 w-px bg-zinc-100 -translate-x-1/2 hidden md:block" />
-
-                    <div className="space-y-12 md:space-y-24">
-                        {roadmapData.map((phase, i) => (
-                            <AdvancedScrollReveal
-                                key={phase.phase}
-                                variant={i % 2 === 0 ? "slideRight" : "slideLeft"}
-                                className={cn(
-                                    "relative grid md:grid-cols-2 gap-8 md:gap-24 items-center",
-                                    i % 2 !== 0 && "md:text-right"
+                <div className="max-w-4xl mx-auto space-y-6">
+                    {roadmapData.map((phase, i) => (
+                        <AdvancedScrollReveal key={phase.phase} variant="slideUp" delay={i * 100}>
+                            <div className={cn(
+                                "group relative flex flex-col md:flex-row gap-6 md:gap-8 rounded-2xl border p-6 md:p-8 transition-all duration-300",
+                                phase.current
+                                    ? "bg-zinc-900/80 border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20"
+                                    : "bg-zinc-900/30 border-zinc-800/80 hover:bg-zinc-900/50 hover:border-zinc-700"
+                            )}>
+                                {/* Current Indicator Glow */}
+                                {phase.current && (
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
                                 )}
-                            >
-                                {/* Timeline Dot */}
-                                <div className={cn(
-                                    "absolute left-[20px] md:left-1/2 top-0 w-8 h-8 rounded-full border-4 border-white shadow-xl z-20 -translate-x-1/2 items-center justify-center hidden md:flex",
-                                    phase.current ? "bg-emerald-500 animate-pulse" : "bg-zinc-200"
-                                )}>
-                                    <phase.icon size={12} className={phase.current ? "text-white" : "text-zinc-400"} />
+
+                                {/* Left Column: Phase Info */}
+                                <div className="md:w-1/3 flex flex-col space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "flex items-center justify-center w-10 h-10 rounded-xl border",
+                                            phase.status === "Completed" ? "bg-zinc-800 border-zinc-700 text-zinc-300" :
+                                                phase.current ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                                                    "bg-zinc-900 border-zinc-800 text-zinc-500"
+                                        )}>
+                                            <phase.icon size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-0.5">{phase.phase}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                {phase.status === "Completed" ? (
+                                                    <CheckCircle2 size={12} className="text-zinc-400" />
+                                                ) : (
+                                                    <Clock size={12} className={phase.current ? "text-emerald-400" : "text-zinc-500"} />
+                                                )}
+                                                <span className={cn(
+                                                    "text-sm font-medium",
+                                                    phase.current ? "text-emerald-400" : "text-zinc-400"
+                                                )}>
+                                                    {phase.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-left">
+                                        <h3 className="text-2xl font-semibold tracking-tight text-white">{phase.title}</h3>
+                                        <p className="text-zinc-400 text-sm mt-2 leading-relaxed pr-4">
+                                            {phase.description}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                <div className={cn(
-                                    "space-y-6",
-                                    i % 2 !== 0 ? "md:order-2" : "md:order-1"
-                                )}>
-                                    <div className={cn(
-                                        "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase",
-                                        phase.status === "Completed" ? "bg-emerald-50 text-emerald-600" :
-                                            phase.status === "In Progress" ? "bg-blue-50 text-blue-600" :
-                                                "bg-zinc-100 text-zinc-600"
-                                    )}>
-                                        {phase.status === "Completed" ? <CheckCircle2 size={10} /> : <Clock size={10} />}
-                                        {phase.phase} • {phase.status}
-                                    </div>
-                                    <h3 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase text-zinc-900 leading-none">
-                                        {phase.title}
-                                    </h3>
-                                    <div className={cn(
-                                        "space-y-4",
-                                        i % 2 !== 0 && "md:items-end flex flex-col"
-                                    )}>
+                                {/* Right Column: Line Items */}
+                                <div className="md:w-2/3 md:pl-8 md:border-l border-zinc-800/50 flex flex-col justify-center">
+                                    <div className="space-y-4">
                                         {phase.items.map((item, j) => (
-                                            <div key={j} className="flex flex-col group">
-                                                <div className={cn(
-                                                    "flex items-center gap-3",
-                                                    i % 2 !== 0 && "md:flex-row-reverse"
-                                                )}>
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                    <span className="text-zinc-950 font-black uppercase text-[11px] tracking-tight">{item.title}</span>
-                                                    <span className="text-zinc-300 font-mono text-[9px] font-bold">{item.date}</span>
+                                            <div key={j} className="flex items-center justify-between group/item">
+                                                <div className="flex items-center gap-3">
+                                                    {item.completed ? (
+                                                        <CheckCircle2 size={16} className="text-zinc-500 group-hover/item:text-zinc-400 transition-colors" />
+                                                    ) : (
+                                                        <div className={cn(
+                                                            "w-1.5 h-1.5 rounded-full ml-1",
+                                                            phase.current ? "bg-emerald-500" : "bg-zinc-700"
+                                                        )} />
+                                                    )}
+                                                    <span className={cn(
+                                                        "text-[15px] font-medium transition-colors",
+                                                        item.completed ? "text-zinc-500 line-through decoration-zinc-800" : "text-zinc-200 group-hover/item:text-white"
+                                                    )}>
+                                                        {item.title}
+                                                    </span>
                                                 </div>
+                                                <span className="text-zinc-500 font-mono text-sm group-hover/item:text-zinc-400 transition-colors">
+                                                    {item.date}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
-                                <div className={cn(
-                                    "hidden md:block relative group",
-                                    i % 2 !== 0 ? "md:order-1" : "md:order-2"
-                                )}>
-                                    <div className={cn(
-                                        "aspect-video rounded-[2.5rem] bg-zinc-50 border border-zinc-100 overflow-hidden relative shadow-sm transition-all duration-700 group-hover:shadow-2xl group-hover:-translate-y-2",
-                                        phase.current && "ring-1 ring-emerald-500/30"
-                                    )}>
-                                        {/* Abstract Visual Pattern */}
-                                        <div className="absolute inset-0 opacity-[0.4]">
-                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,#10b981_0%,transparent_50%)] opacity-10" />
-                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,#3b82f6_0%,transparent_50%)] opacity-10" />
-                                            <div className="grid grid-cols-6 h-full gap-px p-px">
-                                                {Array.from({ length: 24 }).map((_, k) => (
-                                                    <div key={k} className="bg-zinc-100/50 rounded-lg animate-pulse" style={{ animationDelay: `${k * 100}ms` }} />
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="p-8 bg-white rounded-3xl border border-zinc-100 shadow-xl scale-95 transition-transform group-hover:scale-100 duration-700">
-                                                <phase.icon className={cn(
-                                                    "w-12 h-12",
-                                                    phase.color === "emerald" ? "text-emerald-500" :
-                                                        phase.color === "blue" ? "text-blue-500" :
-                                                            phase.color === "indigo" ? "text-indigo-500" :
-                                                                "text-zinc-500"
-                                                )} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </AdvancedScrollReveal>
-                        ))}
-                    </div>
+                            </div>
+                        </AdvancedScrollReveal>
+                    ))}
                 </div>
             </section>
 
-            {/* Feedback Section */}
-            <section className="py-32 px-6 bg-zinc-950 text-white text-center relative overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500 opacity-[0.1] blur-[100px] rounded-full" />
-
-                <div className="max-w-3xl mx-auto space-y-12 relative z-10">
+            {/* Feedback / CTA Section */}
+            <section className="py-24 px-6 border-t border-zinc-900 bg-zinc-950 text-center relative overflow-hidden">
+                <div className="max-w-2xl mx-auto space-y-8 relative z-10">
                     <AdvancedScrollReveal variant="slideUp">
-                        <div className="inline-flex items-center gap-2 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
-                            <Star size={12} fill="currentColor" />
-                            Community Driven
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 mb-6">
+                            <Star size={20} className="text-emerald-400" fill="currentColor" />
                         </div>
+                        <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
+                            Shape our future
+                        </h2>
+                        <p className="text-zinc-400 text-lg leading-relaxed mb-8">
+                            Missing a feature you need? We prioritize our roadmap based on what matters most to you.
+                        </p>
+                        <Link
+                            href="mailto:hello@khataplus.com"
+                            className="inline-flex items-center justify-center gap-2 bg-white text-zinc-950 px-6 py-3 rounded-lg font-medium text-sm hover:bg-zinc-100 transition-all border border-transparent hover:border-white shadow-xl"
+                        >
+                            Request a Feature
+                            <ChevronRight size={16} className="text-zinc-500" />
+                        </Link>
                     </AdvancedScrollReveal>
-
-                    <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-[0.9]">
-                        Your feedback defines <br />
-                        <span className="text-zinc-600">Our future.</span>
-                    </h2>
-
-                    <p className="text-zinc-400 text-lg font-medium">
-                        Missing a feature you need? We prioritize our roadmap based on what matters most to our business owners. Let us know how we can help you grow.
-                    </p>
-
-                    <Link href="mailto:hello@khataplus.com" className="inline-flex items-center gap-4 bg-white text-zinc-950 px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-400 transition-all hover:scale-105 active:scale-95 shadow-2xl">
-                        Request a Feature
-                    </Link>
                 </div>
             </section>
 
-            {/* Footer Copy */}
-            <footer className="py-12 px-6 text-center border-t border-zinc-100">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest">
+            {/* Clean Footer */}
+            <footer className="py-8 px-6 border-t border-zinc-900 bg-[#0a0a0a]">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p className="text-zinc-500 text-xs font-medium">
                         &copy; 2026 KhataPlus Inc. All rights reserved.
                     </p>
-                    <div className="flex gap-8">
-                        <Link href="/privacy" className="text-zinc-400 hover:text-zinc-950 text-[10px] font-black uppercase tracking-widest transition-colors">Privacy</Link>
-                        <Link href="/terms" className="text-zinc-400 hover:text-zinc-950 text-[10px] font-black uppercase tracking-widest transition-colors">Terms</Link>
+                    <div className="flex gap-6">
+                        <Link href="/privacy" className="text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors">Privacy</Link>
+                        <Link href="/terms" className="text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors">Terms</Link>
                     </div>
                 </div>
             </footer>

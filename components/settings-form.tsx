@@ -122,6 +122,12 @@ interface SettingsFormProps {
   isAdmin: boolean
   orgRole?: string
   viewMode?: "full" | "profile" | "organization"
+  billingNudge?: {
+    showAnnualNudge: boolean
+    spentThisYear: number
+    saveWithAnnual: number
+    targetPlan: "keep" | "starter" | "pro"
+  }
 }
 
 export function SettingsForm({
@@ -130,6 +136,7 @@ export function SettingsForm({
   initialProfile,
   isAdmin,
   viewMode = "full",
+  billingNudge,
 }: SettingsFormProps) {
   const [org, setOrg] = useState(initialOrg)
   const [profile, setProfile] = useState(initialProfile)
@@ -404,6 +411,23 @@ export function SettingsForm({
                 </Button>
               </Link>
             </div>
+
+            {billingNudge?.showAnnualNudge && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-white/80 px-4 py-3">
+                <p className="text-sm font-semibold text-zinc-900">
+                  You&apos;ve spent ₹{Math.round(billingNudge.spentThisYear).toLocaleString("en-IN")} so far this year.
+                </p>
+                <p className="mt-1 text-sm text-zinc-700">
+                  Switch to annual and save ₹{Math.round(billingNudge.saveWithAnnual).toLocaleString("en-IN")}.
+                </p>
+                <Link
+                  href={`/pricing?highlight=${billingNudge.targetPlan}&from=annual-nudge`}
+                  className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-600 px-3 text-xs font-black uppercase tracking-wide text-white hover:bg-emerald-500"
+                >
+                  Switch to Annual -&gt;
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="space-y-5">

@@ -130,221 +130,247 @@ export function DocArticleClient({ slug }: { slug: string }) {
     }
 
     return (
-        <section className="pt-4 pb-12">
-            <div className="max-w-6xl mx-auto px-6">
-                <div className="mb-3">
-                    <Link href="/docs" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
-                        Back to Documentation
+        <section className="pt-24 pb-32">
+            <div className="max-w-7xl mx-auto px-6 lg:px-12">
+                <div className="mb-10 flex items-center gap-2">
+                    <Link href="/docs" className="text-[13px] font-medium text-zinc-500 hover:text-zinc-300 transition-colors">
+                        Docs
                     </Link>
+                    <span className="text-zinc-600">/</span>
+                    <span className="text-[13px] font-medium text-zinc-100">{article.title}</span>
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
-                    <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-auto lg:pr-2">
-                        <details className="rounded-md border border-zinc-200 bg-white lg:hidden" open>
-                            <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium text-zinc-700">
-                                On this page
-                                <ChevronDown className="h-4 w-4 text-zinc-500" />
-                            </summary>
-                            <nav className="border-t border-zinc-200 px-3 py-2 space-y-1">
-                                {ARTICLE_ANCHORS.map((anchor) => (
-                                    <a
-                                        key={anchor.id}
-                                        href={`#${anchor.id}`}
-                                        className={cn(
-                                            "block border-l-2 py-1 pl-2 text-xs transition-colors",
-                                            activeAnchor === anchor.id
-                                                ? "border-zinc-500 text-zinc-900"
-                                                : "border-transparent text-zinc-600 hover:text-zinc-900"
-                                        )}
-                                    >
-                                        {anchor.label}
-                                    </a>
-                                ))}
-                            </nav>
-                        </details>
+                <div className="grid gap-16 lg:grid-cols-[1fr_260px]">
+                    <article className="min-w-0">
+                        <header className="pb-10 border-b border-zinc-800">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="rounded-xl bg-[#1e1e1e] border border-zinc-800 p-3 shadow-sm">
+                                    <Icon className="h-6 w-6 text-zinc-300" />
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                        {GROUP_LABELS[article.group]}
+                                    </p>
+                                    <h1 className="mt-1 text-3xl md:text-5xl font-semibold tracking-tight text-white">
+                                        {article.title}
+                                    </h1>
+                                </div>
+                            </div>
 
-                        <div className="hidden lg:block space-y-3">
-                            <details open className="rounded-md border border-zinc-200 bg-white">
-                                <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium text-zinc-700">
-                                    On this page
-                                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                                </summary>
-                                <nav className="border-t border-zinc-200 px-3 py-2 space-y-1">
+                            <p className="text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl">
+                                {article.purpose}
+                            </p>
+
+                            <div className="mt-8 flex flex-wrap items-center gap-6 text-[13px] text-zinc-500">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
+                                    Updated {article.lastUpdated}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
+                                    {article.readTime} min read
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="mt-12 space-y-20">
+                            <section id="when-to-use" className="scroll-mt-32">
+                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">When to Use This</h2>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {article.whenToUse.map((item) => (
+                                        <div key={item} className="group relative rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5 transition-all hover:bg-[#252525]">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+                                                    <Check className="h-3 w-3 text-zinc-300" />
+                                                </div>
+                                                <p className="text-[15px] text-zinc-300 leading-relaxed">{item}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 rounded-xl border border-zinc-800 bg-[#1e1e1e] p-8">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-3">Strategic Value</p>
+                                    <p className="text-base text-zinc-300 leading-relaxed max-w-2xl">"{GROUP_WHY[article.group]}"</p>
+                                </div>
+                            </section>
+
+                            <section id="workflow" className="scroll-mt-32">
+                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Workflow Process</h2>
+
+                                <div className="rounded-xl border border-zinc-800 bg-[#1e1e1e] p-8 shadow-sm">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        {workflow.map((step, idx) => (
+                                            <div key={step} className="flex items-center gap-4">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[10px] font-medium text-zinc-500 mb-2">Step {idx + 1}</span>
+                                                    <span className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-[13px] font-medium text-zinc-200">
+                                                        {step}
+                                                    </span>
+                                                </div>
+                                                {idx < workflow.length - 1 ? (
+                                                    <div className="mt-6 flex items-center">
+                                                        <div className="h-px w-8 bg-zinc-700" />
+                                                        <ChevronDown className="h-3 w-3 text-zinc-500 -rotate-90 -ml-1.5" />
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                                    {uiFocus.map((shot) => (
+                                        <div key={shot.title} className="group rounded-xl border border-zinc-800 bg-[#1e1e1e] p-6 transition-all hover:bg-[#252525]">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="rounded-lg bg-zinc-800 p-2 border border-zinc-700">
+                                                    <ScanLine className="h-4 w-4 text-zinc-400 group-hover:text-zinc-200" />
+                                                </div>
+                                                <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                                                    UI Reference
+                                                </p>
+                                            </div>
+                                            <h3 className="text-[15px] font-medium text-zinc-200">{shot.title}</h3>
+                                            <p className="mt-2 text-sm text-zinc-500 leading-relaxed">
+                                                <span className="text-zinc-400">{shot.hint}</span>
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section id="steps" className="scroll-mt-32">
+                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Detailed Instructions</h2>
+                                <div className="space-y-4">
+                                    {article.steps.map((step, index) => (
+                                        <div key={index} className="group rounded-xl border border-zinc-800 bg-[#1e1e1e] p-6 transition-all hover:bg-[#252525]">
+                                            <div className="flex items-start gap-5">
+                                                <div className="flex-shrink-0 flex items-center justify-center mt-0.5">
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 text-[13px] font-medium text-zinc-300 border border-zinc-700">
+                                                        {index + 1}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[15px] leading-relaxed text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                                                        {step}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section id="example" className="scroll-mt-32">
+                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Practical Application</h2>
+                                <div className="rounded-2xl border border-zinc-800 bg-[#1e1e1e] p-8 md:p-10">
+                                    <div className="max-w-2xl">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-3">Real Scenario</p>
+                                        <p className="text-lg font-medium text-zinc-200 leading-relaxed">
+                                            "{article.example}"
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-10 grid gap-4 sm:grid-cols-2">
+                                        {article.tip && (
+                                            <div className="rounded-xl border border-zinc-700 bg-zinc-800 p-5">
+                                                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Pro Tip</p>
+                                                <p className="text-sm text-zinc-300 leading-relaxed">{article.tip}</p>
+                                            </div>
+                                        )}
+                                        {article.warning && (
+                                            <div className="rounded-xl border border-zinc-700 bg-zinc-800 p-5">
+                                                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Important Check</p>
+                                                <p className="text-sm text-zinc-300 leading-relaxed">{article.warning}</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {article.copyExample && (
+                                        <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl">
+                                            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-[#1e1e1e]">
+                                                <div className="flex gap-2">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={doCopy}
+                                                    className={cn(
+                                                        "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all border",
+                                                        copied
+                                                            ? "bg-zinc-700 text-white border-zinc-600"
+                                                            : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700"
+                                                    )}
+                                                >
+                                                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                                    {copied ? "Copied" : "Copy snippet"}
+                                                </button>
+                                            </div>
+                                            <div className="p-5 overflow-x-auto bg-[#1a1a1a]">
+                                                <pre className="text-[13px] text-zinc-300 font-mono leading-relaxed">
+                                                    <code>{article.copyExample}</code>
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section id="issues" className="scroll-mt-32">
+                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Common Gotchas</h2>
+                                <div className="space-y-3">
+                                    {article.commonMistakes.map((item) => (
+                                        <div key={item} className="flex items-start gap-4 rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5 group transition-colors hover:bg-[#252525]">
+                                            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500" />
+                                            <p className="text-[15px] text-zinc-300 leading-relaxed">{item}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    </article>
+
+                    <aside className="hidden lg:block">
+                        <div className="sticky top-32 space-y-10">
+                            <div>
+                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-4">On this page</h4>
+                                <nav className="space-y-1 border-l border-zinc-800 pl-4">
                                     {ARTICLE_ANCHORS.map((anchor) => (
                                         <a
                                             key={anchor.id}
                                             href={`#${anchor.id}`}
                                             className={cn(
-                                                "block border-l-2 py-1 pl-2 text-xs transition-colors",
+                                                "block text-[13px] transition-all duration-200 py-1.5 relative group/nav",
                                                 activeAnchor === anchor.id
-                                                    ? "border-zinc-500 text-zinc-900"
-                                                    : "border-transparent text-zinc-600 hover:text-zinc-900"
+                                                    ? "text-white font-medium"
+                                                    : "text-zinc-500 hover:text-zinc-300"
                                             )}
                                         >
                                             {anchor.label}
                                         </a>
                                     ))}
                                 </nav>
-                            </details>
+                            </div>
 
-                            <details open className="rounded-md border border-zinc-200 bg-white">
-                                <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium text-zinc-700">
-                                    Quick actions
-                                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                                </summary>
-                                <div className="border-t border-zinc-200 px-3 py-2 space-y-1">
-                                    {article.quickActions.map((action) => (
-                                        <Link key={action.label} href={action.href} className="block text-xs text-zinc-600 hover:text-zinc-900">
-                                            {action.label}
-                                        </Link>
-                                    ))}
+                            {article.quickActions.length > 0 && (
+                                <div className="rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-4">Related Actions</h4>
+                                    <div className="space-y-2">
+                                        {article.quickActions.map((action) => (
+                                            <Link
+                                                key={action.label}
+                                                href={action.href}
+                                                className="flex items-center gap-2 text-[13px] font-medium text-zinc-300 hover:text-white transition-colors group/link bg-zinc-800/50 hover:bg-zinc-800 py-2 px-3 rounded-lg border border-zinc-700/50"
+                                            >
+                                                {action.label}
+                                            </Link>
+                                        ))}
+                                    </div>
                                 </div>
-                            </details>
+                            )}
                         </div>
                     </aside>
-
-                    <article className="min-w-0">
-                        <header className="pb-8 border-b border-zinc-200">
-                            <div className="rounded-md border border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-4 py-3">
-                                <div className="flex items-start gap-3">
-                                    <span className="mt-0.5 rounded-sm bg-white p-1.5 border border-zinc-200">
-                                        <Icon className="h-4 w-4 text-zinc-700" />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-600">
-                                            {GROUP_LABELS[article.group]}
-                                        </p>
-                                        <p className="mt-1 text-sm text-zinc-700">{article.purpose}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h1 className="mt-5 text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900">
-                                {article.title}
-                            </h1>
-                            <p className="mt-2 text-sm text-zinc-500">
-                                Updated {article.lastUpdated} | {article.readTime} read
-                            </p>
-                            <p className="mt-3 rounded-md border border-blue-200 bg-blue-50/60 px-3 py-2 text-sm text-zinc-700">
-                                {GROUP_REASSURE[article.group]}
-                            </p>
-                        </header>
-
-                        <section id="when-to-use" className="scroll-mt-24 mt-12">
-                            <h2 className="text-xl font-semibold text-zinc-900">When to Use This</h2>
-                            <ul className="mt-4 list-disc pl-5 space-y-2">
-                                {article.whenToUse.map((item) => (
-                                    <li key={item} className="text-sm text-zinc-600">
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50/60 p-4">
-                                <p className="text-xs font-medium uppercase tracking-[0.08em] text-emerald-700">Why this matters</p>
-                                <p className="mt-2 text-sm text-zinc-700">{GROUP_WHY[article.group]}</p>
-                            </div>
-                        </section>
-
-                        <section id="workflow" className="scroll-mt-24 mt-12">
-                            <h2 className="text-xl font-semibold text-zinc-900">Workflow</h2>
-                            <div className="mt-4 overflow-x-auto">
-                                <div className="inline-flex min-w-full items-center gap-2 rounded-md border border-zinc-200 bg-white p-3">
-                                    {workflow.map((step, idx) => (
-                                        <div key={step} className="inline-flex items-center gap-2">
-                                            <span className="rounded-sm border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-700">
-                                                {step}
-                                            </span>
-                                            {idx < workflow.length - 1 ? <span className="text-zinc-400">{"->"}</span> : null}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                                {uiFocus.map((shot) => (
-                                    <div key={shot.title} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-                                        <p className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-[0.08em] text-zinc-600">
-                                            <ScanLine className="h-3.5 w-3.5" />
-                                            UI Snapshot
-                                        </p>
-                                        <h3 className="mt-1 text-sm font-semibold text-zinc-900">{shot.title}</h3>
-                                        <p className="mt-1 text-xs text-zinc-600">{shot.hint}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section id="steps" className="scroll-mt-24 mt-12">
-                            <h2 className="text-xl font-semibold text-zinc-900">Steps</h2>
-                            <ol className="mt-4 space-y-3">
-                                {article.steps.map((step, index) => (
-                                    <li key={step} className="rounded-md border border-zinc-200 bg-white p-4">
-                                        <div className="flex items-start gap-3">
-                                            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-xs font-semibold text-zinc-700">
-                                                {index + 1}
-                                            </span>
-                                            <p className="text-sm leading-relaxed text-zinc-700">{step}</p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ol>
-                        </section>
-
-                        <section id="example" className="scroll-mt-24 mt-12">
-                            <h2 className="text-xl font-semibold text-zinc-900">Real Example</h2>
-                            <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-4">
-                                <p className="text-xs font-medium uppercase tracking-[0.08em] text-zinc-500">Example</p>
-                                <p className="mt-2 text-sm text-zinc-700">{article.example}</p>
-                            </div>
-
-                            {article.tip ? (
-                                <div className="mt-3 rounded-md border border-blue-200 bg-blue-50/60 p-4">
-                                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-blue-700">Helpful note</p>
-                                    <p className="mt-2 text-sm text-zinc-700">{article.tip}</p>
-                                </div>
-                            ) : null}
-
-                            {article.warning ? (
-                                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/70 p-4">
-                                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-amber-700">Common mistake</p>
-                                    <p className="mt-2 text-sm text-zinc-700">{article.warning}</p>
-                                </div>
-                            ) : null}
-
-                            {article.copyExample ? (
-                                <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 p-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <p className="text-xs font-medium uppercase tracking-[0.08em] text-zinc-500">Structured Example</p>
-                                        <button
-                                            type="button"
-                                            onClick={doCopy}
-                                            className={cn(
-                                                "inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium",
-                                                copied
-                                                    ? "border-green-300 bg-green-50 text-green-700"
-                                                    : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100"
-                                            )}
-                                        >
-                                            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                            {copied ? "Copied" : "Copy"}
-                                        </button>
-                                    </div>
-                                    <pre className="mt-2 overflow-x-auto text-xs text-zinc-700">{article.copyExample}</pre>
-                                </div>
-                            ) : null}
-                        </section>
-
-                        <section id="issues" className="scroll-mt-24 mt-12 pt-10 border-t border-zinc-200">
-                            <h2 className="text-xl font-semibold text-zinc-900">Common Issues</h2>
-                            <ul className="mt-4 list-disc pl-5 space-y-2">
-                                {article.commonMistakes.map((item) => (
-                                    <li key={item} className="text-sm text-zinc-600">
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    </article>
                 </div>
             </div>
         </section>

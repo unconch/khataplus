@@ -26,7 +26,7 @@ interface NewSaleDialogProps {
     gstEnabled: boolean
     defaultOpen?: boolean
     orgId: string
-    org?: { name: string; gstin?: string; upi_id?: string }
+    org?: { name: string; gstin?: string; upi_id?: string; plan_type?: string }
     trigger?: React.ReactNode
 }
 

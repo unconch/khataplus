@@ -43,15 +43,15 @@ const fadeUpVariants: Variants = {
     })
 }
 
-export function HeroSection({ isAuthenticated }: HeroSectionProps) {
+export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionProps) {
     const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
     const secondaryHref = "/demo/dashboard"
 
     return (
         <>
-            <Navbar isAuthenticated={isAuthenticated} isLight />
+            <Navbar isAuthenticated={isAuthenticated} isLight orgSlug={orgSlug} isGuest={isGuest} />
 
-            <section className="relative pt-12 md:pt-20 pb-40 overflow-hidden bg-transparent text-zinc-900 selection:bg-emerald-100">
+            <section className="relative pt-24 md:pt-28 pb-28 md:pb-36 overflow-hidden bg-transparent text-zinc-900 selection:bg-emerald-100">
                 {/* ULTIMATE SARVAM-STYLE RADIANCE (Cinematic Atmospheric Mesh) */}
                 <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
                     style={{ maskImage: "linear-gradient(to bottom, black 80%, transparent)" }}
@@ -99,33 +99,22 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
 
                 <div className="relative z-10 max-w-7xl mx-auto px-6 w-full text-center">
 
-                    {/* Integrated Universal Access Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-xl shadow-sm mb-10"
-                    >
-                        <Layers size={14} className="text-emerald-500" />
-                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-zinc-600">Universal Access & Real-Time Sync</span>
-                    </motion.div>
-
-                    <div className="flex flex-col items-center mb-12">
+                    <div className="flex flex-col items-center mb-10 md:mb-12">
                         <motion.h1
                             variants={containerVariants}
                             initial="hidden"
                             animate="visible"
-                            className="text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] font-bold tracking-tighter leading-[1.05] perspective-1000"
+                            className="mx-auto max-w-[14ch] text-[clamp(4rem,10vw,9.5rem)] font-black tracking-[-0.03em] leading-[1.05] perspective-1000"
                         >
-                            <span className="block overflow-hidden py-4 sm:py-6">
-                                <motion.span variants={childVariants} className="inline-block">Billing Flow</motion.span>
+                            <span className="block overflow-visible pb-2 relative z-10">
+                                <motion.span variants={childVariants} className="inline-block">Billing</motion.span>
                             </span>
-                            <span className="block overflow-hidden py-4 sm:py-6 -mt-8 sm:-mt-12">
+                            <span className="block overflow-visible py-2 relative z-20">
                                 <motion.span
                                     variants={childVariants}
-                                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 pb-2"
+                                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 pb-4"
                                 >
-                                    Evolved.
+                                    Perfected
                                 </motion.span>
                             </span>
                         </motion.h1>
@@ -135,10 +124,10 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                             variants={fadeUpVariants}
                             initial="hidden"
                             animate="visible"
-                            className="max-w-3xl mx-auto mt-6 text-xl sm:text-2xl md:text-3xl font-light text-zinc-500 leading-relaxed tracking-tight"
+                            className="max-w-4xl mx-auto mt-6 md:mt-8 text-[clamp(1.2rem,2vw,2.2rem)] font-light text-zinc-500 leading-relaxed tracking-tight"
                         >
-                            Start on your computer, finish on your phone. <br className="hidden sm:block" />
-                            Professional GST invoicing that updates <span className="text-zinc-900 font-medium">instantly, everywhere.</span>
+                            Start on desktop, finish on mobile. <br className="hidden sm:block" />
+                            <span className="text-zinc-900 font-medium">Smart billing for Indian business.</span>
                         </motion.p>
                     </div>
 
@@ -148,7 +137,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                         variants={fadeUpVariants}
                         initial="hidden"
                         animate="visible"
-                        className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-28"
+                        className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-20 md:mb-24"
                     >
                         <Link
                             href={primaryHref}

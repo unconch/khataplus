@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-    ChevronDown, Menu, X, Store, Briefcase, HandCoins, Truck,
-    ArrowRight, Sparkles, Pill, UtensilsCrossed, Smartphone, Shirt
+    Menu, X, ArrowRight
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
@@ -17,69 +16,9 @@ interface NavbarProps {
     isGuest?: boolean
 }
 
-const SOLUTIONS = [
-    {
-        title: "Retail & Kirana",
-        icon: Store,
-        desc: "Lightning-fast billing & barcode support.",
-        color: "text-emerald-500",
-        bg: "bg-emerald-50"
-    },
-    {
-        title: "Professional Services",
-        icon: Briefcase,
-        desc: "Tax invoices & detailed expense tracking.",
-        color: "text-blue-500",
-        bg: "bg-blue-50"
-    },
-    {
-        title: "Pharmacy & Medical",
-        icon: Pill,
-        desc: "Batch tracking and expiry management.",
-        color: "text-rose-500",
-        bg: "bg-rose-50"
-    },
-    {
-        title: "Digital Udhaar",
-        icon: HandCoins,
-        desc: "Modernizing the traditional paper ledger.",
-        color: "text-amber-500",
-        bg: "bg-amber-50"
-    },
-    {
-        title: "Wholesale & Distribution",
-        icon: Truck,
-        desc: "Bulk inventory & multi-store management.",
-        color: "text-indigo-500",
-        bg: "bg-indigo-50"
-    },
-    {
-        title: "Restaurants & Cafes",
-        icon: UtensilsCrossed,
-        desc: "Table management & kitchen KOT system.",
-        color: "text-orange-500",
-        bg: "bg-orange-50"
-    },
-    {
-        title: "Electronics & Mobile",
-        icon: Smartphone,
-        desc: "IMEI/Serial tracking & service logs.",
-        color: "text-cyan-500",
-        bg: "bg-cyan-50"
-    },
-    {
-        title: "Fashion & Apparel",
-        icon: Shirt,
-        desc: "Size-color variants & catalog management.",
-        color: "text-pink-500",
-        bg: "bg-pink-50"
-    }
-]
-
 export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [isSolutionsHovered, setIsSolutionsHovered] = useState(false)
 
     useEffect(() => {
         const handleScroll = () => {
@@ -135,61 +74,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </Link>
 
                         <nav className="hidden md:flex items-center gap-10">
-                            <DesktopNavLink href="/#features" label="Features" solid={isSolid} />
-
-                            {/* Solutions Mega Menu Trigger */}
-                            <div
-                                className="relative py-8"
-                                onMouseEnter={() => setIsSolutionsHovered(true)}
-                                onMouseLeave={() => setIsSolutionsHovered(false)}
-                            >
-                                <Link
-                                    href="/solutions"
-                                    className={cn(
-                                        "inline-flex items-center gap-1.5 text-sm font-black uppercase tracking-widest transition-all",
-                                        isSolid ? "text-slate-700 hover:text-emerald-600" : "text-white/90 hover:text-white"
-                                    )}
-                                >
-                                    <span>Solutions</span>
-                                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-300", isSolutionsHovered && "rotate-180")} />
-                                </Link>
-
-                                {/* Mega Menu */}
-                                <div className={cn(
-                                    "absolute top-full left-1/2 -translate-x-1/2 w-[800px] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 p-8 transition-all duration-500 origin-top",
-                                    isSolutionsHovered ? "opacity-100 translate-y-0 scale-100 visible" : "opacity-0 -translate-y-4 scale-95 invisible"
-                                )}>
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                                        {SOLUTIONS.map((sol, i) => (
-                                            <Link
-                                                key={i}
-                                                href="/solutions"
-                                                className="group p-4 rounded-3xl hover:bg-slate-50 transition-all duration-300 border border-transparent hover:border-slate-100"
-                                            >
-                                                <div className="flex items-start gap-4">
-                                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", sol.bg, sol.color)}>
-                                                        <sol.icon size={22} />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <div className="text-base font-black italic tracking-tighter text-slate-900 leading-none">{sol.title}</div>
-                                                        <p className="text-xs text-slate-400 font-medium leading-tight">{sol.desc}</p>
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                    <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
-                                            <Sparkles size={14} />
-                                            Deep Intelligence for Every Industry
-                                        </div>
-                                        <Link href="/solutions" className="flex items-center gap-2 text-slate-900 font-black text-[10px] uppercase tracking-widest group">
-                                            Explore Detailed Scenarios <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-
+                            <DesktopNavLink href="/features" label="Features" solid={isSolid} />
                             <DesktopNavLink href="/pricing" label="Pricing" solid={isSolid} />
                             <DesktopNavLink href="/docs" label="Merchant Academy" solid={isSolid} />
                         </nav>
@@ -239,8 +124,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                 )}
             >
                 <div className="max-w-7xl mx-auto px-6 py-10 space-y-4">
-                    <MobileNavLink href="/#features" label="Features" onClick={() => setMobileMenuOpen(false)} />
-                    <MobileNavLink href="/solutions" label="Solutions" onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/features" label="Features" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/pricing" label="Pricing" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/docs" label="Academy" onClick={() => setMobileMenuOpen(false)} />
 

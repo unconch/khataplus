@@ -3,10 +3,11 @@
 import { Monitor, Smartphone, Zap, Layers, RefreshCw, ArrowRight } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 
-export function AdaptiveInterfaceSection() {
+export function AdaptiveInterfaceSection({ whiteTheme = false }: { whiteTheme?: boolean }) {
     return (
-        <section id="interface" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden text-zinc-900">
+        <section id="interface" className={cn("py-24 md:py-32 px-6 bg-transparent relative overflow-hidden text-zinc-900", whiteTheme ? "bg-white" : "bg-transparent")}>
             {/* Massive Ambient Background Glows - Light Mode */}
             <div className="absolute top-1/4 -left-1/4 w-[800px] h-[800px] bg-indigo-300/30 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
             <div className="absolute bottom-1/4 -right-1/4 w-[800px] h-[800px] bg-emerald-300/30 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
@@ -124,7 +125,7 @@ export function AdaptiveInterfaceSection() {
                                         {/* Glow Card */}
                                         <div className="h-44 rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-teal-400 p-6 shadow-md flex flex-col justify-between relative overflow-hidden mt-2 border border-emerald-400">
                                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-2xl rounded-full" />
-                                            <div className="h-8 w-3/4 bg-black/10 rounded-full p-1.5 flex items-center backdrop-blur-sm">
+                                            <div className={cn("h-8 w-3/4 rounded-full p-1.5 flex items-center backdrop-blur-sm", whiteTheme ? "bg-black/5" : "bg-black/10")}>
                                                 <div className="h-full w-2/3 bg-white/90 rounded-full" />
                                             </div>
                                             <div className="flex items-end justify-between relative z-10">
@@ -169,7 +170,7 @@ export function AdaptiveInterfaceSection() {
                                                 <RefreshCw size={14} />
                                             </motion.div>
                                             <div className="space-y-2 flex-1">
-                                                <div className="h-2 w-20 bg-zinc-800 rounded-full" />
+                                                <div className={cn("h-2 w-20 rounded-full", whiteTheme ? "bg-zinc-900" : "bg-zinc-800")} />
                                                 <div className="h-1.5 w-16 bg-zinc-300 rounded-full" />
                                             </div>
                                         </motion.div>

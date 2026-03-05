@@ -5,9 +5,9 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
 import { cn } from "@/lib/utils"
 
-export function OfflineModeSection() {
+export function OfflineModeSection({ whiteTheme = false }: { whiteTheme?: boolean }) {
     return (
-        <section id="offline" className="py-24 md:py-40 bg-zinc-950 text-white relative overflow-hidden">
+        <section id="offline" className={cn("py-24 md:py-40 relative overflow-hidden", whiteTheme ? "bg-white text-zinc-900" : "bg-zinc-950 text-white")}>
             {/* Ambient Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -16,15 +16,15 @@ export function OfflineModeSection() {
                     <div className="w-full lg:w-1/2 space-y-12">
                         <AdvancedScrollReveal variant="slideLeft">
                             <div className="space-y-6">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em]">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em]">
                                     <WifiOff size={14} />
                                     Zero Connectivity
                                 </div>
                                 <h2 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.95]">
                                     Engineered for <br />
-                                    <span className="text-zinc-500">The Real World.</span>
+                                    <span className={whiteTheme ? "text-zinc-400" : "text-zinc-500"}>The Real World.</span>
                                 </h2>
-                                <p className="text-zinc-400 text-xl font-medium leading-relaxed max-w-xl">
+                                <p className={cn("text-xl font-medium leading-relaxed max-w-xl", whiteTheme ? "text-zinc-500" : "text-zinc-400")}>
                                     Don't let patchy internet cripple your checkout counter. KhataPlus functions 100% offline, storing data locally and syncing in the background when the web returns.
                                 </p>
                             </div>
@@ -59,13 +59,13 @@ export function OfflineModeSection() {
                             <div className="relative group">
                                 <div className="absolute -inset-10 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
-                                <div className="relative bg-zinc-900 border border-white/5 rounded-[3.5rem] p-12 overflow-hidden shadow-2xl">
+                                <div className={cn("relative border rounded-[3.5rem] p-12 overflow-hidden shadow-2xl", whiteTheme ? "bg-white border-zinc-200" : "bg-zinc-900 border-white/5")}>
                                     <div className="flex justify-between items-center mb-12">
                                         <div className="space-y-1">
                                             <div className="h-1 w-8 bg-emerald-500 rounded-full" />
                                             <div className="text-xs font-black uppercase tracking-widest text-zinc-500">Device Status</div>
                                         </div>
-                                        <div className="flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-full border border-white/5">
+                                        <div className={cn("flex items-center gap-3 px-4 py-2 rounded-full border", whiteTheme ? "bg-zinc-50 border-zinc-200" : "bg-zinc-950 border-white/5")}>
                                             <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                                             <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Offline Mode</span>
                                         </div>
@@ -73,13 +73,13 @@ export function OfflineModeSection() {
 
                                     <div className="space-y-4">
                                         {[1, 2, 3].map((i) => (
-                                            <div key={i} className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-colors">
-                                                <div className="w-10 h-10 rounded-xl bg-zinc-950 flex items-center justify-center text-zinc-400">
-                                                    <div className="h-4 w-4 bg-zinc-800 rounded-sm" />
+                                            <div key={i} className={cn("flex items-center gap-4 p-4 rounded-2xl border transition-colors", whiteTheme ? "bg-zinc-50 border-zinc-200" : "bg-white/5 border-white/5 group-hover:bg-white/10")}>
+                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-zinc-400", whiteTheme ? "bg-white border border-zinc-200 shadow-sm" : "bg-zinc-950")}>
+                                                    <div className={cn("h-4 w-4 rounded-sm", whiteTheme ? "bg-zinc-200" : "bg-zinc-800")} />
                                                 </div>
                                                 <div className="flex-1 space-y-2">
-                                                    <div className="h-2 w-1/2 bg-zinc-800 rounded-full" />
-                                                    <div className="h-2 w-1/4 bg-zinc-800/50 rounded-full" />
+                                                    <div className={cn("h-2 w-1/2 rounded-full", whiteTheme ? "bg-zinc-200" : "bg-zinc-800")} />
+                                                    <div className={cn("h-2 w-1/4 rounded-full", whiteTheme ? "bg-zinc-100" : "bg-zinc-800/50")} />
                                                 </div>
                                                 <div className="text-[10px] font-black uppercase tracking-tighter text-emerald-500/50 italic">Cached</div>
                                             </div>

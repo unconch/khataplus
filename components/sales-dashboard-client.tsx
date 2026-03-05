@@ -14,7 +14,7 @@ interface SalesDashboardClientProps {
   inventory: InventoryItem[]
   reports: DailyReport[]
   settings: SystemSettings
-  org: { name: string; gstin?: string; upi_id?: string }
+  org: { name: string; gstin?: string; upi_id?: string; plan_type?: string }
   userId: string
   orgId: string
   autoOpen: boolean

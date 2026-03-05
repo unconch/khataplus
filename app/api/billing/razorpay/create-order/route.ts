@@ -8,28 +8,18 @@ const PRICING_PAISE: Record<string, { monthly: number; yearly: number }> = {
 }
 
 function resolveRazorpayCredentials() {
-  const mode = (process.env.RAZORPAY_MODE || "").toLowerCase()
-
-  if (mode === "test") {
-    return {
-      keyId: process.env.RAZORPAY_TEST_KEY_ID || process.env.RAZORPAY_KEY_ID,
-      keySecret: process.env.RAZORPAY_TEST_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET,
-      mode: "test" as const,
-    }
-  }
+  const mode = (process.env.RAZORPAY_MODE || "test").toLowerCase()
 
   if (mode === "live") {
     return {
       keyId: process.env.RAZORPAY_LIVE_KEY_ID || process.env.RAZORPAY_KEY_ID,
       keySecret: process.env.RAZORPAY_LIVE_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET,
-      mode: "live" as const,
     }
   }
 
   return {
-    keyId: process.env.RAZORPAY_KEY_ID,
-    keySecret: process.env.RAZORPAY_KEY_SECRET,
-    mode: "default" as const,
+    keyId: process.env.RAZORPAY_TEST_KEY_ID || process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_TEST_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET,
   }
 }
 

@@ -88,15 +88,19 @@ export function TrialExpiredGuard({ children, trialEndsAt, subscriptionStatus, o
                                         Back to Home
                                     </Button>
                                 </Link>
-                                <Button variant="ghost" className="flex-1 h-12 text-zinc-500 hover:text-zinc-300 font-bold gap-2">
-                                    <Mail size={16} /> Contact Support
-                                </Button>
+                                <Link href="/security" className="flex-1">
+                                    <Button variant="ghost" className="w-full h-12 text-zinc-500 hover:text-zinc-300 font-bold gap-2">
+                                        <Mail size={16} /> Contact Support
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-zinc-800 flex items-center justify-center gap-2 text-zinc-600 text-xs font-medium">
                             <Logo size={16} className="opacity-20 grayscale" />
-                            <span>KhataPlus Security Compliance</span>
+                            <Link href="/security" className="hover:text-zinc-400 transition-colors">
+                                KhataPlus Security Compliance
+                            </Link>
                         </div>
                     </div>
                 </div>

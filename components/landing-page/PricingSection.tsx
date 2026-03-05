@@ -2,13 +2,11 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Check, Loader2, Sparkles, Zap, Shield, Crown, Building2 } from "lucide-react"
+import { Check, Loader2, Lock, Shield, Zap, Crown } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
-import { GradientText } from "@/components/gradient-text"
 import { toast } from "sonner"
 import type { BillingPlanKey } from "@/lib/billing-plans"
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const formatINR = (value: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
@@ -33,8 +31,8 @@ interface PricingTier {
     desc: string
     features: string[]
     cta: string
-    color: string
     popular?: boolean
+    lockedGst?: boolean
 }
 
 const tiers: PricingTier[] = [
@@ -42,71 +40,58 @@ const tiers: PricingTier[] = [
         planKey: "keep",
         name: "Keep",
         icon: Shield,
-        price: { monthly: 49, yearly: 399 },
-        desc: "Essential data safety.",
+        price: { monthly: 49, yearly: 499 },
+        desc: "For shops getting started.",
         features: [
-            "Data preserved & safe",
-            "10 Billing / Month",
-            "30 Stock items",
-            "Digital Khata Ledger",
-            "Analytics, Reports & Import"
+            "25 Invoices / Month",
+            "1 Staff Seat",
+            "1 Store Location",
+            "50 Inventory Items",
+            "Vyapar Import",
+            "Basic Billing Reports"
         ],
-        cta: "Start Free",
-        color: "zinc"
+        cta: "GET STARTED",
+        lockedGst: true
     },
     {
         planKey: "starter",
         name: "Starter",
         icon: Zap,
-        price: { monthly: 179, yearly: 1499 },
-        desc: "For small retail shops.",
+        price: { monthly: 199, yearly: 1999 },
+        desc: "For growing local shops.",
         features: [
             "Unlimited Billing",
-            "200 Stock Items",
-            "3 Staff Member Seats",
-            "A4 + Thermal Printing",
-            "Analytics, Reports & Import"
+            "3 Staff Seats",
+            "2 Store Locations",
+            "500 Inventory Items",
+            "GST Billing",
+            "WhatsApp Sharing",
+            "Basic Analytics"
         ],
-        cta: "Scale Up",
-        color: "blue"
+        cta: "SCALE UP",
     },
     {
         planKey: "pro",
         name: "Pro",
         icon: Crown,
-        price: { monthly: 449, yearly: 3999 },
-        desc: "For growing retailers.",
+        price: { monthly: 599, yearly: 5999 },
+        desc: "For serious multi-store growth.",
         features: [
-            "Unlimited Stock",
-            "Advanced Analytics Views",
-            "GST Sync Ready",
-            "Works fully Offline",
-            "3 Store Locations"
+            "Full POS Terminal",
+            "10 Staff Seats",
+            "Unlimited Store Locations",
+            "Unlimited Inventory Items",
+            "Full Analytics",
+            "Works Offline"
         ],
-        cta: "Go Pro",
+        cta: "GO PRO",
         popular: true,
-        color: "emerald"
-    },
-    {
-        planKey: "business",
-        name: "Business",
-        icon: Building2,
-        price: { monthly: 899, yearly: 7999 },
-        desc: "For large store chains.",
-        features: [
-            "Unlimited Staff",
-            "WhatsApp Automation",
-            "Advanced GST Filing",
-            "AI Stock Forecasting",
-            "Audit & Activity Logs"
-        ],
-        cta: "Enquire",
-        color: "indigo"
     }
 ]
 
 
 function PricingContent({
+    orgCount: _orgCount = 0,
     isAuthenticated = false,
     orgSlug = null
 }: {
@@ -119,15 +104,7 @@ function PricingContent({
     const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
-    const [showEnquiry, setShowEnquiry] = useState(false)
-    const [enquirySubmitting, setEnquirySubmitting] = useState(false)
-    const [enquiry, setEnquiry] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        message: ""
-    })
+    const [pulseStarterCard, setPulseStarterCard] = useState(false)
 
     useEffect(() => {
         const payment = searchParams.get("payment")
@@ -137,6 +114,20 @@ function PricingContent({
         else if (payment === "failed") toast.error(message || "Payment verification failed.")
         setPaymentToastShown(true)
     }, [searchParams, paymentToastShown])
+
+    useEffect(() => {
+        const highlight = searchParams.get("highlight")
+        if (highlight !== "starter") return
+
+        setPulseStarterCard(true)
+        const timeout = window.setTimeout(() => setPulseStarterCard(false), 3200)
+        return () => window.clearTimeout(timeout)
+    }, [searchParams])
+
+    const triggerStarterPulse = () => {
+        setPulseStarterCard(true)
+        window.setTimeout(() => setPulseStarterCard(false), 2800)
+    }
 
     const ensureRazorpayScript = async () => {
         if (typeof window === "undefined") throw new Error("Checkout is only available in browser mode.")
@@ -237,47 +228,17 @@ function PricingContent({
         router.push("/setup-organization")
     }
 
-    const handleEnquirySubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setEnquirySubmitting(true)
-        try {
-            const response = await fetch("/api/enquiry", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...enquiry,
-                    plan: "business",
-                    cycle: billingCycle,
-                    source: "pricing"
-                })
-            })
-            const data = await response.json().catch(() => ({}))
-            if (!response.ok) throw new Error(data?.error || "Failed to send enquiry")
-            toast.success("Enquiry sent. We'll reach out shortly.")
-            setShowEnquiry(false)
-            setEnquiry({ name: "", email: "", phone: "", company: "", message: "" })
-        } catch (error: any) {
-            toast.error(error?.message || "Failed to send enquiry")
-        } finally {
-            setEnquirySubmitting(false)
-        }
-    }
-
     return (
         <section id="pricing" className="py-16 md:py-24 bg-white relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <div className="max-w-6xl mx-auto px-6 relative z-10">
                 <div className="flex flex-col items-center text-center space-y-6 mb-16">
                     <AdvancedScrollReveal variant="slideUp">
-                        <div className="space-y-4">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/50">
-                                <Sparkles size={12} className="text-zinc-600" />
-                                <span className="text-zinc-600 font-black text-[9px] tracking-widest uppercase text-zinc-400">Pricing Models</span>
-                            </div>
-                            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 leading-none italic uppercase">
-                                Simple. <span className="text-zinc-400">Scalable.</span>
+                        <div className="space-y-3">
+                            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-zinc-900">
+                                Simple pricing that scales with your shop.
                             </h2>
-                            <p className="text-zinc-500 text-base font-medium max-w-lg mx-auto">
-                                Transparent plans that grow with your business scale.
+                            <p className="text-zinc-500 text-base font-medium max-w-xl mx-auto">
+                                Start with Keep and upgrade only when you need advanced billing and growth tools.
                             </p>
                         </div>
                     </AdvancedScrollReveal>
@@ -286,7 +247,7 @@ function PricingContent({
                         <button
                             onClick={() => setBillingCycle("monthly")}
                             className={cn(
-                                "px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest",
+                                "px-6 py-2 rounded-lg transition-all duration-300 font-bold text-sm",
                                 billingCycle === "monthly" ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500"
                             )}
                         >
@@ -295,27 +256,28 @@ function PricingContent({
                         <button
                             onClick={() => setBillingCycle("yearly")}
                             className={cn(
-                                "px-6 py-2 rounded-lg transition-all duration-500 font-black text-[10px] uppercase tracking-widest relative",
+                                "px-6 py-2 rounded-lg transition-all duration-300 font-bold text-sm relative",
                                 billingCycle === "yearly" ? "bg-white text-zinc-950 shadow-lg" : "text-zinc-500"
                             )}
                         >
-                            Yearly
-                            <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-[7px] font-black rounded-full italic">Save 25%</span>
+                            Annual
+                            <span className="absolute -top-2 -right-3 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-semibold rounded-full">Save 17%</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {tiers.map((tier, i) => (
                         <AdvancedScrollReveal key={tier.planKey} variant="slideUp" delay={i * 50}>
                             <div className={cn(
-                                "group relative h-full flex flex-col p-6 rounded-[2rem] border transition-all duration-500",
+                                "group relative h-full flex flex-col p-7 rounded-3xl border transition-all duration-300",
+                                tier.planKey === "starter" && pulseStarterCard && "ring-2 ring-emerald-400 ring-offset-2 animate-pulse",
                                 tier.popular
-                                    ? "bg-zinc-950 border-zinc-900 shadow-2xl z-10"
-                                    : "bg-white border-zinc-100 hover:bg-zinc-50"
+                                    ? "bg-zinc-950 border-zinc-900 shadow-xl z-10"
+                                    : "bg-white border-zinc-200"
                             )}>
                                 {tier.popular && (
-                                    <div className="absolute top-0 right-10 -translate-y-1/2 bg-emerald-500 text-zinc-950 font-black text-[8px] px-3 py-0.5 rounded-full uppercase italic">
+                                    <div className="absolute top-4 right-4 bg-emerald-500 text-zinc-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wide">
                                         Popular
                                     </div>
                                 )}
@@ -323,52 +285,52 @@ function PricingContent({
                                 <div className="space-y-4 mb-8">
                                     <div className={cn(
                                         "w-12 h-12 rounded-xl flex items-center justify-center",
-                                        tier.popular ? "bg-white/10 text-emerald-400" : "bg-zinc-100 text-zinc-600"
+                                        tier.popular ? "bg-zinc-900 border border-zinc-700 text-emerald-400" : "bg-zinc-100 text-zinc-600"
                                     )}>
                                         <tier.icon size={22} />
                                     </div>
                                     <div>
-                                        <h3 className={cn("text-xl font-black italic tracking-tighter uppercase", tier.popular ? "text-white" : "text-zinc-900")}>{tier.name}</h3>
-                                        <p className={cn("text-[11px] font-medium leading-relaxed", tier.popular ? "text-zinc-500" : "text-zinc-400")}>{tier.desc}</p>
+                                        <h3 className={cn("text-2xl font-bold", tier.popular ? "text-white" : "text-zinc-900")}>{tier.name}</h3>
+                                        <p className={cn("text-sm font-medium leading-relaxed", tier.popular ? "text-zinc-400" : "text-zinc-500")}>{tier.desc}</p>
                                     </div>
                                 </div>
 
                                 <div className="mb-8">
-                                    {tier.planKey === "business" ? (
-                                        <div className="flex flex-col gap-1">
-                                            <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
-                                                Contact
-                                            </span>
-                                            <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest">
-                                                For Enterprise Volume
-                                            </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className={cn("text-4xl font-black tracking-tight", tier.popular ? "text-white" : "text-zinc-900")}>
+                                            {formatINR(tier.price[billingCycle])}
+                                        </span>
+                                        <span className={cn("text-sm font-semibold pb-1", tier.popular ? "text-zinc-400" : "text-zinc-500")}>
+                                            /{billingCycle === "yearly" ? "yr" : "mo"}
+                                        </span>
+                                    </div>
+                                    {billingCycle === "yearly" && (
+                                        <div className="text-emerald-500 font-semibold text-sm mt-1">
+                                            {formatINR(Math.floor(tier.price.yearly / 12))}/mo
                                         </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className={cn("text-3xl font-black italic tracking-tighter", tier.popular ? "text-white" : "text-zinc-900")}>
-                                                    {formatINR(tier.price[billingCycle])}
-                                                </span>
-                                                <span className="text-zinc-500 font-bold text-[8px] uppercase tracking-widest">
-                                                    /{billingCycle === "yearly" ? "yr" : "mo"}
-                                                </span>
-                                            </div>
-                                            {billingCycle === "yearly" && (
-                                                <div className="text-emerald-500 font-bold text-[8px] uppercase tracking-widest mt-1">
-                                                    {formatINR(Math.floor(tier.price.yearly / 12))}/mo
-                                                </div>
-                                            )}
-                                        </>
                                     )}
                                 </div>
 
-                                <div className="space-y-3 mb-8 flex-1 pt-6 border-t border-white/5">
-                                    {tier.features.map((feat, j) => (
-                                        <div key={j} className="flex items-center gap-2.5">
-                                            <Check size={12} className={tier.popular ? "text-emerald-400" : "text-zinc-400"} />
-                                            <span className={cn("text-xs font-medium transition-colors", tier.popular ? "text-zinc-400" : "text-zinc-500")}>{feat}</span>
+                                <div className={cn("space-y-3 mb-8 flex-1 pt-6 border-t", tier.popular ? "border-zinc-800" : "border-zinc-200")}>
+                                    {tier.features.map((feat) => (
+                                        <div key={feat} className="flex items-center gap-2.5">
+                                            <Check size={14} className={tier.popular ? "text-emerald-400" : "text-emerald-600"} />
+                                            <span className={cn("text-sm font-medium", tier.popular ? "text-zinc-300" : "text-zinc-700")}>{feat}</span>
                                         </div>
                                     ))}
+                                    {tier.lockedGst && (
+                                        <button
+                                            type="button"
+                                            onClick={triggerStarterPulse}
+                                            className="w-full flex items-center justify-between mt-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-left"
+                                        >
+                                            <span className="inline-flex items-center gap-2">
+                                                <Lock size={13} className="text-zinc-400" />
+                                                <span className="text-sm text-zinc-400 font-medium">GST Billing</span>
+                                            </span>
+                                            <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Starter &amp; Above -&gt;</span>
+                                        </button>
+                                    )}
                                 </div>
 
                                 <button
@@ -377,18 +339,14 @@ function PricingContent({
                                             handleStartTrial()
                                             return
                                         }
-                                        if (tier.planKey === "business") {
-                                            setShowEnquiry(true)
-                                            return
-                                        }
                                         handleCheckout(tier.planKey)
                                     }}
                                     disabled={loadingPlanKey !== null}
                                     className={cn(
-                                        "w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all",
+                                        "w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-colors",
                                         tier.popular
-                                            ? "bg-white text-zinc-950 hover:bg-emerald-400"
-                                            : "bg-zinc-950 text-white hover:bg-emerald-600 shadow-xl"
+                                            ? "bg-white text-zinc-950 hover:bg-zinc-100"
+                                            : "bg-zinc-950 text-white hover:bg-zinc-800"
                                     )}
                                 >
                                     {loadingPlanKey === tier.planKey ? "..." : tier.cta}
@@ -398,61 +356,6 @@ function PricingContent({
                     ))}
                 </div>
             </div>
-
-            <Dialog open={showEnquiry} onOpenChange={setShowEnquiry}>
-                <DialogContent className="max-w-lg rounded-[2rem]">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black tracking-tight">Business Plan Enquiry</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleEnquirySubmit} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <input
-                                required
-                                value={enquiry.name}
-                                onChange={(e) => setEnquiry({ ...enquiry, name: e.target.value })}
-                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
-                                placeholder="Full name"
-                            />
-                            <input
-                                required
-                                type="email"
-                                value={enquiry.email}
-                                onChange={(e) => setEnquiry({ ...enquiry, email: e.target.value })}
-                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
-                                placeholder="Work email"
-                            />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <input
-                                required
-                                value={enquiry.phone}
-                                onChange={(e) => setEnquiry({ ...enquiry, phone: e.target.value })}
-                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
-                                placeholder="Phone"
-                            />
-                            <input
-                                value={enquiry.company}
-                                onChange={(e) => setEnquiry({ ...enquiry, company: e.target.value })}
-                                className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
-                                placeholder="Company"
-                            />
-                        </div>
-                        <textarea
-                            value={enquiry.message}
-                            onChange={(e) => setEnquiry({ ...enquiry, message: e.target.value })}
-                            className="w-full min-h-[110px] rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium"
-                            placeholder="Tell us about your needs"
-                        />
-                        <button
-                            type="submit"
-                            disabled={enquirySubmitting}
-                            className="w-full rounded-xl bg-zinc-950 text-white py-3 text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors disabled:opacity-60"
-                        >
-                            {enquirySubmitting ? "Sending..." : "Send Enquiry"}
-                        </button>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </section>
     )
 }

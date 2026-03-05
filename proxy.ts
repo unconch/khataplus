@@ -4,8 +4,8 @@ import { authMiddleware } from '@descope/nextjs-sdk/server'
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite', 'join',
     'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing', 'roadmap',
-    'dashboard', 'demo', 'marketing', 'offline', 'docs', 'solutions', 'monitoring',
-    'pending-approval', 'tools', 'beta', 'for', 'shop',
+    'dashboard', 'demo', 'marketing', 'offline', 'docs', 'features', 'feathures', 'solutions', 'monitoring',
+    'pending-approval', 'tools', 'beta', 'for', 'shop', 'pos'
 ])
 
 const descopeAuth = authMiddleware({
@@ -18,6 +18,9 @@ const descopeAuth = authMiddleware({
         '/api/auth/**',
         '/demo/**',
         '/pricing',
+        '/features',
+        '/feathures',
+        '/solutions',
         '/privacy',
         '/terms',
         '/offline',
@@ -29,10 +32,13 @@ const descopeAuth = authMiddleware({
     ],
 })
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
     const baseResponse = await descopeAuth(req)
     const pathname = req.nextUrl.pathname
     const url = req.nextUrl
+    const host = (req.headers.get("host") || "").split(":")[0].toLowerCase()
+    const isPosHost = host === "pos.khataplus.online" || host.startsWith("pos.")
+
     const requestHeaders = new Headers(req.headers)
     const authRedirectLocation = baseResponse.headers.get('location')
 
@@ -47,7 +53,27 @@ export default async function middleware(req: NextRequest) {
     let orgSlug: string | null = null
     let rewrittenPathname = pathname
 
-    if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
+    // POS surface: only expose dedicated billing route at /:slug/sales
+    if (isPosHost) {
+        const posFirst = segments[0] || ''
+        const posSecond = segments[1] || ''
+
+        requestHeaders.set("x-app-surface", "pos")
+
+        if (posFirst && !SYSTEM_PREFIXES.has(posFirst) && !posFirst.includes('.')) {
+            orgSlug = posFirst
+            requestHeaders.set("x-tenant-slug", orgSlug)
+            requestHeaders.set("x-path-prefix", `/${orgSlug}`)
+
+            if (posSecond !== "sales" || segments.length !== 2) {
+                const redirectUrl = new URL(`/${orgSlug}/sales`, req.url)
+                redirectUrl.search = url.search
+                return NextResponse.redirect(redirectUrl)
+            }
+
+            rewrittenPathname = `/pos/${orgSlug}/sales`
+        }
+    } else if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
         orgSlug = firstSegment
         rewrittenPathname = '/' + segments.slice(1).join('/')
         if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'

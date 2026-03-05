@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, useSpring } from "framer-motion"
 import { useRef } from "react"
-import { Store, Truck, Briefcase, HandCoins, ArrowRight, ShieldCheck } from "lucide-react"
+import { Store, Truck, Briefcase, HandCoins, ArrowRight, ShieldCheck, Stethoscope, Utensils, Cpu, Shirt } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const SOLUTIONS = [
@@ -22,11 +22,55 @@ const SOLUTIONS = [
         icon: Truck,
         title: "B2B Distribution",
         tagline: "Enterprise Control",
-        description: "Manage multiple warehouses, track complex supplier payouts, and handle customized volume pricing flawlessly.",
+        description: "Track supplier payouts, manage B2B customer ledgers, and handle customized volume pricing with confidence.",
         iconColor: "text-blue-600",
         borderColor: "border-blue-100",
         bgLight: "bg-blue-50/50",
         accent: "bg-blue-500"
+    },
+    {
+        id: "pharmacy",
+        icon: Stethoscope,
+        title: "Pharmacy & Medical",
+        tagline: "Precision Tracking",
+        description: "Manage batch numbers, expiry dates, and automated low-stock clinical alerts with unparalleled accuracy.",
+        iconColor: "text-teal-600",
+        borderColor: "border-teal-100",
+        bgLight: "bg-teal-50/50",
+        accent: "bg-teal-500"
+    },
+    {
+        id: "apparel",
+        icon: Shirt,
+        title: "Apparel & Fashion",
+        tagline: "Matrix Inventory",
+        description: "Effortlessly handle variants like sizes, colors, and seasonal drops with intuitive visual inventory dashboards.",
+        iconColor: "text-rose-600",
+        borderColor: "border-rose-100",
+        bgLight: "bg-rose-50/50",
+        accent: "bg-rose-500"
+    },
+    {
+        id: "restaurants",
+        icon: Utensils,
+        title: "Restaurants & Cafes",
+        tagline: "Rapid Service",
+        description: "Manage tables, digital menus, and kitchen order tickets (KOT) seamlessly during peak dining hours.",
+        iconColor: "text-amber-600",
+        borderColor: "border-amber-100",
+        bgLight: "bg-amber-50/50",
+        accent: "bg-amber-500"
+    },
+    {
+        id: "electronics",
+        icon: Cpu,
+        title: "Electronics & Mobile",
+        tagline: "Serial Management",
+        description: "Track unique IMEI numbers, manage serial warranties, and handle high-value bundle promotions securely.",
+        iconColor: "text-indigo-600",
+        borderColor: "border-indigo-100",
+        bgLight: "bg-indigo-50/50",
+        accent: "bg-indigo-500"
     },
     {
         id: "services",
@@ -52,7 +96,31 @@ const SOLUTIONS = [
     }
 ]
 
-export function SolutionsSection() {
+export function SolutionsSection({ isFullPage = false }: { isFullPage?: boolean }) {
+    if (isFullPage) {
+        return (
+            <section className="py-20 px-6 bg-transparent relative z-10 w-full">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+                    {SOLUTIONS.map((solution, i) => (
+                        <motion.div
+                            key={solution.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: i * 0.1 }}
+                            viewport={{ once: true, margin: "-100px" }}
+                        >
+                            <IndustryCard solution={solution} />
+                        </motion.div>
+                    ))}
+                </div>
+            </section>
+        )
+    }
+
+    return <SolutionsAnimatedSection />
+}
+
+function SolutionsAnimatedSection() {
     const ref = useRef(null)
 
     const { scrollYProgress } = useScroll({
@@ -66,6 +134,8 @@ export function SolutionsSection() {
         damping: 30,
         restDelta: 0.001
     })
+
+    const displaySolutions = SOLUTIONS.slice(0, 4);
 
     return (
         <section ref={ref} id="solutions" className="relative h-[400vh] bg-transparent">
@@ -114,43 +184,51 @@ export function SolutionsSection() {
 
                     {/* Right: Cross-fading Animated Stack */}
                     <div className="relative h-[500px] flex items-center justify-center">
-                        {SOLUTIONS.map((solution, i) => {
-                            const start = i * 0.25
-                            const end = start + 0.25
-
-                            const opacity = useTransform(
-                                scrollYProgress,
-                                [start, start + 0.05, end - 0.05, end],
-                                [0, 1, 1, 0]
-                            )
-
-                            const scale = useTransform(
-                                scrollYProgress,
-                                [start, start + 0.15, end],
-                                [0.9, 1, 0.95]
-                            )
-
-                            const y = useTransform(
-                                scrollYProgress,
-                                [start, start + 0.25],
-                                [20, -20]
-                            )
-
-                            return (
-                                <motion.div
-                                    key={solution.id}
-                                    style={{ opacity, scale, y }}
-                                    className="absolute inset-0 flex items-center"
-                                >
-                                    <IndustryCard solution={solution} />
-                                </motion.div>
-                            )
-                        })}
+                        {displaySolutions.map((solution, i) => (
+                            <AnimatedSolutionCard
+                                key={solution.id}
+                                solution={solution}
+                                index={i}
+                                scrollYProgress={scrollYProgress}
+                            />
+                        ))}
                     </div>
 
                 </div>
             </div>
         </section>
+    )
+}
+
+function AnimatedSolutionCard({ solution, index, scrollYProgress }: { solution: any, index: number, scrollYProgress: any }) {
+    const start = index * 0.25
+    const end = start + 0.25
+
+    const opacity = useTransform(
+        scrollYProgress,
+        [start, start + 0.05, end - 0.05, end],
+        [0, 1, 1, 0]
+    )
+
+    const scale = useTransform(
+        scrollYProgress,
+        [start, start + 0.15, end],
+        [0.9, 1, 0.95]
+    )
+
+    const y = useTransform(
+        scrollYProgress,
+        [start, start + 0.25],
+        [20, -20]
+    )
+
+    return (
+        <motion.div
+            style={{ opacity, scale, y }}
+            className="absolute inset-0 flex items-center"
+        >
+            <IndustryCard solution={solution} />
+        </motion.div>
     )
 }
 

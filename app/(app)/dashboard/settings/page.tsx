@@ -12,6 +12,7 @@ import { SecuritySettings } from "@/components/security-settings"
 import { getUserSessions } from "@/lib/session-governance"
 import { cn } from "@/lib/utils"
 import { cookies } from "next/headers"
+import { BILLING_PLANS } from "@/lib/billing-plans"
 
 export default async function SettingsPage() {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
@@ -55,20 +56,6 @@ export default async function SettingsPage() {
                     </div>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-2 p-1 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm animate-in fade-in slide-in-from-right-8 duration-1000">
-                    <div className="px-4 py-2 rounded-lg bg-white dark:bg-zinc-950 flex items-center gap-3 shadow-md">
-                        <div className="flex -space-x-1">
-                            {[1, 2].map(i => <div key={i} className="h-4 w-4 rounded-full border border-white dark:border-zinc-950 bg-zinc-200 dark:bg-zinc-800" />)}
-                        </div>
-                        <div className="space-y-0.5">
-                            <span className="block text-[9px] font-black uppercase tracking-widest leading-none">System Load</span>
-                            <div className="flex items-center gap-1.5">
-                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Verified Cluster Ready</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <Suspense fallback={
@@ -132,6 +119,55 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
     if (!org) return <div>Organization not found</div>
     if (!profile) return <div>Identity not found</div>
 
+    const rawPlanType = String(org.plan_type || "free").toLowerCase()
+    const billingPlanKey = rawPlanType === "starter" ? "starter" : rawPlanType === "pro" ? "pro" : rawPlanType === "business" ? "business" : "keep"
+    const eligibleForAnnualNudge = billingPlanKey === "keep" || billingPlanKey === "starter" || billingPlanKey === "pro"
+    const planExpiresAt = (org as any)?.plan_expires_at ? new Date((org as any).plan_expires_at) : null
+    const isMonthlyCycle = !!planExpiresAt && Number.isFinite(planExpiresAt.getTime()) && ((planExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) <= 45
+
+    let invoiceCountThisYear = 0
+    let invoiceTotalThisYear = 0
+    let firstInvoiceAt: Date | null = null
+    try {
+        const { sql } = await import("@/lib/db")
+        const rows = await sql`
+            SELECT
+                COUNT(*)::int AS invoice_count,
+                COALESCE(SUM(amount), 0)::numeric AS invoice_total,
+                MIN(created_at) AS first_invoice_at
+            FROM platform_invoices
+            WHERE org_id = ${orgId}
+              AND status = 'paid'
+              AND created_at >= date_trunc('year', now())
+        `
+        invoiceCountThisYear = Number(rows?.[0]?.invoice_count || 0)
+        invoiceTotalThisYear = Number(rows?.[0]?.invoice_total || 0)
+        firstInvoiceAt = rows?.[0]?.first_invoice_at ? new Date(rows[0].first_invoice_at as string) : null
+    } catch {
+        invoiceCountThisYear = 0
+        invoiceTotalThisYear = 0
+        firstInvoiceAt = null
+    }
+
+    const monthlyStartDate = firstInvoiceAt || new Date(org.updated_at || org.created_at)
+    const monthlyDurationMonths = Math.max(0, Math.floor((Date.now() - monthlyStartDate.getTime()) / (1000 * 60 * 60 * 24 * 30)))
+    const monthlyAmount = BILLING_PLANS[billingPlanKey as "keep" | "starter" | "pro" | "business"].amountInr.monthly
+    const yearlyAmount = BILLING_PLANS[billingPlanKey as "keep" | "starter" | "pro" | "business"].amountInr.yearly
+    const estimatedSpentThisYear = invoiceTotalThisYear > 0 ? invoiceTotalThisYear : monthlyDurationMonths * monthlyAmount
+    const annualSavings = (monthlyAmount * 12) - yearlyAmount
+    const showAnnualNudge =
+        eligibleForAnnualNudge &&
+        isMonthlyCycle &&
+        (invoiceCountThisYear >= 2 || monthlyDurationMonths >= 2) &&
+        annualSavings > 0
+
+    const billingNudge = {
+        showAnnualNudge,
+        spentThisYear: estimatedSpentThisYear,
+        saveWithAnnual: annualSavings,
+        targetPlan: billingPlanKey as "keep" | "starter" | "pro",
+    }
+
     const membership = userOrgs.find((o: any) => o.org_id === orgId)
     const orgRole = membership?.role || "staff"
     const isAdmin = orgRole === "owner" || String(profile?.role) === "main admin"
@@ -139,7 +175,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
     const tabStyles = "flex items-center gap-2 px-6 h-full rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100"
 
     return (
-        <Tabs defaultValue="profile" className="w-full space-y-10">
+        <Tabs defaultValue={showAnnualNudge ? "organization" : "profile"} className="w-full space-y-10">
             <div className="flex items-center justify-center w-full">
                 <TabsList className="flex h-12 items-center justify-start gap-1 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900 p-1 backdrop-blur-3xl border border-white/20 dark:border-white/5 shadow-xl">
                     <TabsTrigger value="profile" className={tabStyles}>
@@ -179,6 +215,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             isAdmin={isAdmin}
                             orgRole={orgRole}
                             viewMode="profile"
+                            billingNudge={billingNudge}
                         />
                     </SettingsCard>
                 </TabsContent>
@@ -197,6 +234,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             isAdmin={isAdmin}
                             orgRole={orgRole}
                             viewMode="organization"
+                            billingNudge={billingNudge}
                         />
                     </SettingsCard>
                 </TabsContent>

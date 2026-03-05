@@ -56,7 +56,7 @@ async function SalesPageContent({ autoOpen }: { autoOpen: boolean }) {
       inventory={availableInventory}
       reports={reports}
       settings={settings}
-      org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin, upi_id: org?.upi_id }}
+      org={{ name: org?.name || "KhataPlus", gstin: (org as any)?.gstin, upi_id: org?.upi_id, plan_type: org?.plan_type }}
       orgId={orgId}
       userId={userId || ""}
       autoOpen={autoOpen}

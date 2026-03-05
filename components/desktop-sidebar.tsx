@@ -5,9 +5,8 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { hasPlanFeature, type PlanFeature, getRequiredPlanForFeature, formatPlanLabel } from "@/lib/plan-features"
 import {
-    Home, BarChart3, Users, Settings, Package,
-    FileText, BadgeIndianRupee, Database, ChevronRight,
-    LayoutDashboard, ArrowRight, Lock
+    LayoutDashboard, ArrowRight, Lock, Monitor,
+    Users, BadgeIndianRupee, Package, BarChart3, FileText, Database, Settings, ChevronRight
 } from "lucide-react"
 import { SystemSettings } from "@/lib/types"
 import { Logo } from "@/components/ui/logo"
@@ -38,6 +37,8 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         return pathname
     })()
 
+    const slug = pathPrefix.startsWith("/") ? pathPrefix.slice(1) : pathPrefix
+
     const navItems: Array<{
         href: string
         label: string
@@ -46,6 +47,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         feature?: PlanFeature
     }> = [
             { href: `${pathPrefix}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
+            { href: `/pos/${slug}/sales`, label: "POS Terminal", icon: Monitor, show: isAdmin || settings.allow_staff_sales },
             { href: `${pathPrefix}/dashboard/khata`, label: "Khata Rail", icon: Users, show: true },
             { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
             { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },

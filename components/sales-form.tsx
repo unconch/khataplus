@@ -38,7 +38,7 @@ interface SalesFormProps {
   gstEnabled: boolean
   showBuyPrice?: boolean
   orgId: string
-  org?: { name: string; gstin?: string; upi_id?: string }
+  org?: { name: string; gstin?: string; upi_id?: string; plan_type?: string }
 }
 
 interface CartItem {
@@ -65,11 +65,14 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [customerGst, setCustomerGst] = useState("")
+  const [showGstUpgradeWall, setShowGstUpgradeWall] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [lastSaleGroup, setLastSaleGroup] = useState<GroupedSale | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const normalizedPlanType = String(org?.plan_type || "free").toLowerCase()
+  const isKeepPlan = normalizedPlanType === "free" || normalizedPlanType === "keep"
 
   const { inventory: inventorySource, isOnline, applyLocalSale } = useInventoryCache(inventory, orgId)
 
@@ -232,7 +235,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
           profit: item.profit,
           payment_method: paymentMethod,
           payment_status: paymentStatus,
-          customer_gstin: customerGst || undefined,
+          customer_gstin: isKeepPlan ? undefined : customerGst || undefined,
           customer_name: customerName || undefined,
           customer_phone: customerPhone || undefined,
         }
@@ -520,6 +523,20 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
 
           {step === 2 && (
             <div className="space-y-5">
+              {showGstUpgradeWall && isKeepPlan && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold text-amber-900">GST billing is a Starter feature.</p>
+                  <p className="mt-1 text-xs font-medium text-amber-700">Upgrade to never worry about GST season again.</p>
+                  <Button
+                    type="button"
+                    onClick={() => router.push("/pricing?highlight=starter&from=gst-lock")}
+                    className="mt-3 h-9 rounded-lg bg-amber-600 px-3 text-[11px] font-black uppercase tracking-wide text-white hover:bg-amber-500"
+                  >
+                    Upgrade to Starter -&gt;
+                  </Button>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-3 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900/30 dark:to-zinc-950">
                 <Label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Customer Details (optional)</Label>
                 <input
@@ -537,9 +554,21 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
                   />
                   <input
                     className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 text-sm"
-                    placeholder="GSTIN"
+                    placeholder={isKeepPlan ? "Upgrade to unlock GST billing" : "GSTIN"}
                     value={customerGst}
-                    onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
+                    readOnly={isKeepPlan}
+                    onFocus={() => {
+                      if (!isKeepPlan) return
+                      setShowGstUpgradeWall(true)
+                    }}
+                    onChange={(e) => {
+                      const nextValue = e.target.value.toUpperCase()
+                      if (isKeepPlan && nextValue.length > 0) {
+                        setShowGstUpgradeWall(true)
+                        return
+                      }
+                      setCustomerGst(nextValue)
+                    }}
                     maxLength={15}
                   />
                 </div>

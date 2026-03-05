@@ -35,7 +35,7 @@ export default async function PricingPage() {
     }
 
     return (
-        <main className="min-relative min-h-screen bg-white overflow-hidden">
+        <main className="relative min-h-screen bg-white overflow-hidden">
             {/* Soft decorative background elements for Light Mode */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-emerald-50 rounded-full blur-[120px] opacity-60" />

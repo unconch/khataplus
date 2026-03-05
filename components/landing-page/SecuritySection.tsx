@@ -5,9 +5,9 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
 import { cn } from "@/lib/utils"
 
-export function SecuritySection() {
+export function SecuritySection({ whiteTheme = false }: { whiteTheme?: boolean }) {
     return (
-        <section id="security" className="py-24 md:py-40 px-6 bg-white overflow-hidden relative">
+        <section id="security" className={cn("py-24 md:py-40 px-6 overflow-hidden relative", whiteTheme ? "bg-white" : "bg-white")}>
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col lg:flex-row items-center gap-20">
                     <div className="w-full lg:w-1/2 space-y-12">
@@ -54,7 +54,7 @@ export function SecuritySection() {
                                 {/* Large Glow Accent */}
                                 <div className="absolute -inset-20 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-                                <div className="relative bg-zinc-950 rounded-[3.5rem] p-12 overflow-hidden shadow-2xl group border border-white/5">
+                                <div className={cn("relative rounded-[3.5rem] p-12 overflow-hidden shadow-2xl group border", whiteTheme ? "bg-white border-zinc-200" : "bg-zinc-950 border-white/5")}>
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -mr-32 -mt-32" />
 
                                     <div className="relative z-10 flex flex-col items-center text-center space-y-8">
@@ -64,25 +64,25 @@ export function SecuritySection() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <div className="text-white font-black text-3xl italic tracking-tighter">DPDPA 2023 Compliant</div>
+                                            <div className={cn("font-black text-3xl italic tracking-tighter", whiteTheme ? "text-zinc-900" : "text-white")}>DPDPA 2023 Compliant</div>
                                             <p className="text-zinc-500 text-sm max-w-xs mx-auto">Verified Enterprise-Grade Infrastructure for Modern Indian Commerce.</p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 w-full">
-                                            <div className="bg-white/5 p-4 rounded-3xl border border-white/5 space-y-1">
+                                            <div className={cn("p-4 rounded-3xl border space-y-1", whiteTheme ? "bg-zinc-50 border-zinc-200" : "bg-white/5 border-white/5")}>
                                                 <div className="text-blue-400 font-black text-sm">99.9%</div>
                                                 <div className="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">Safety Score</div>
                                             </div>
-                                            <div className="bg-white/5 p-4 rounded-3xl border border-white/5 space-y-1">
+                                            <div className={cn("p-4 rounded-3xl border space-y-1", whiteTheme ? "bg-zinc-50 border-zinc-200" : "bg-white/5 border-white/5")}>
                                                 <div className="text-emerald-400 font-black text-sm">Active</div>
                                                 <div className="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">Threat Monitor</div>
                                             </div>
                                         </div>
 
-                                        <div className="pt-6 border-t border-white/10 w-full flex justify-center gap-6">
-                                            <div className="h-6 w-16 bg-white/10 rounded-md animate-pulse" />
-                                            <div className="h-6 w-16 bg-white/10 rounded-md animate-pulse delay-150" />
-                                            <div className="h-6 w-16 bg-white/10 rounded-md animate-pulse delay-300" />
+                                        <div className={cn("pt-6 border-t w-full flex justify-center gap-6", whiteTheme ? "border-zinc-100" : "border-white/10")}>
+                                            <div className={cn("h-6 w-16 rounded-md animate-pulse", whiteTheme ? "bg-zinc-100" : "bg-white/10")} />
+                                            <div className={cn("h-6 w-16 rounded-md animate-pulse delay-150", whiteTheme ? "bg-zinc-100" : "bg-white/10")} />
+                                            <div className={cn("h-6 w-16 rounded-md animate-pulse delay-300", whiteTheme ? "bg-zinc-100" : "bg-white/10")} />
                                         </div>
                                     </div>
                                 </div>

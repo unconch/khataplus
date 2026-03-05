@@ -34,6 +34,7 @@ function mapSalesWithInventory(rows: any[]): Sale[] {
             sku: row.inventory_sku,
             name: row.inventory_name,
             buy_price: parseFloat(row.inventory_buy_price),
+            category: row.inventory_category || undefined
         } : undefined
     })) as any
 }
@@ -48,7 +49,7 @@ export async function getSales(orgId: string, options: { limit?: number; offset?
 
     const start = Date.now();
     const data = await db`
-        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price
+        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
         FROM sales s
         LEFT JOIN inventory i ON s.inventory_id = i.id
         WHERE s.org_id = ${orgId}
@@ -82,20 +83,20 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
             WHERE id = ${sale.inventory_id}
               AND org_id = ${orgId}
               AND stock >= ${sale.quantity}
-            RETURNING id, name, buy_price, hsn_code
+            RETURNING id, name, buy_price, hsn_code, category
         ),
         inserted_sale AS (
             INSERT INTO sales(
                 inventory_id, user_id, org_id, quantity, sale_price,
                 total_amount, gst_amount, profit, payment_method,
                 batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
-                hsn_code, customer_gstin, customer_name, customer_phone, payment_status
+                hsn_code, customer_gstin, customer_name, customer_phone, payment_status, category
             )
             SELECT
                 ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price},
                 ${sale.total_amount}, ${sale.gst_amount}, (${sale.sale_price} - updated_inventory.buy_price) * ${sale.quantity}, ${sale.payment_method},
                 ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
-                COALESCE(${sale.hsn_code || null}, updated_inventory.hsn_code), ${sale.customer_gstin || null}, ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}
+                COALESCE(${sale.hsn_code || null}, updated_inventory.hsn_code), ${sale.customer_gstin || null}, ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}, updated_inventory.category
             FROM updated_inventory
             RETURNING *
         )
@@ -241,7 +242,7 @@ BEGIN
                 total_amount, gst_amount, profit, payment_method,
                 batch_id, customer_gstin, hsn_code,
                 taxable_amount, cgst_amount, sgst_amount,
-                customer_name, customer_phone, payment_status
+                customer_name, customer_phone, payment_status, category
             )
             SELECT 
                 ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
@@ -253,7 +254,7 @@ BEGIN
                 ${sale.gst_amount / 2},
                 ${sale.gst_amount / 2},
                 ${sale.customer_name || null}, ${sale.customer_phone || null},
-                ${paymentStatus}
+                ${paymentStatus}, category
             FROM inventory
             WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
         `);
@@ -275,7 +276,7 @@ BEGIN
     triggerSync(orgId, 'sale');
 
     const insertedRows = await db`
-        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price
+        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
         FROM sales s
         LEFT JOIN inventory i ON s.inventory_id = i.id
         WHERE s.org_id = ${orgId} AND s.batch_id = ${batchId}

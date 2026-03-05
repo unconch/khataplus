@@ -24,6 +24,7 @@ export interface InventoryItem {
   stock: number
   hsn_code?: string
   min_stock?: number // Minimum stock threshold for alerts
+  category?: string // New: Product category
   org_id?: string
   created_at: string
   updated_at: string
@@ -58,6 +59,7 @@ export interface Sale {
   customer_phone?: string
   payment_link?: string
   payment_status?: "pending" | "paid" | "failed"
+  category?: string // New: Category at time of sale
 }
 
 export interface DailySummary {

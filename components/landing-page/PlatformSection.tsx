@@ -6,9 +6,9 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 const ENGINE_FEATURES = [
     {
         id: "offline",
-        title: "Local-First Architecture",
+        title: "Works Offline",
         icon: Database,
-        description: "Zero latency operations powered by advanced local caching. Billing continues seamlessly even in complete network isolation.",
+        description: "Keep billing even without internet. Your data is saved locally.",
         glowStr: "from-cyan-400/40 via-blue-200/20 to-transparent",
         bgHover: "hover:bg-cyan-50/50",
         borderHover: "group-hover:border-cyan-200",
@@ -16,9 +16,9 @@ const ENGINE_FEATURES = [
     },
     {
         id: "sync",
-        title: "Real-time Delta Sync",
+        title: "Auto Sync",
         icon: Zap,
-        description: "Only changed data packets are transmitted when connectivity restores, saving bandwidth and preventing database conflicts.",
+        description: "When internet returns, new data syncs automatically.",
         glowStr: "from-blue-400/40 via-indigo-200/20 to-transparent",
         bgHover: "hover:bg-blue-50/50",
         borderHover: "group-hover:border-blue-200",
@@ -26,9 +26,9 @@ const ENGINE_FEATURES = [
     },
     {
         id: "security",
-        title: "Enterprise Grade Vault",
+        title: "Secure Data",
         icon: ShieldCheck,
-        description: "AES-256 encryption at rest and TLS 1.3 in transit. Your financial data is securely isolated via multi-tenant architecture.",
+        description: "Your business data is encrypted and protected while stored and while moving online.",
         glowStr: "from-fuchsia-400/40 via-pink-200/20 to-transparent",
         bgHover: "hover:bg-fuchsia-50/50",
         borderHover: "group-hover:border-fuchsia-200",
@@ -36,9 +36,9 @@ const ENGINE_FEATURES = [
     },
     {
         id: "perf",
-        title: "High-Throughput Core",
+        title: "Fast Performance",
         icon: Activity,
-        description: "Engineered to handle thousands of SKUs and concurrent barcode scans with consistent <50ms response times.",
+        description: "Built to handle large inventories and busy billing hours without slowing down.",
         glowStr: "from-emerald-400/40 via-teal-200/20 to-transparent",
         bgHover: "hover:bg-emerald-50/50",
         borderHover: "group-hover:border-emerald-200",
@@ -60,16 +60,12 @@ export function PlatformSection() {
             <div className="max-w-6xl mx-auto relative z-10">
                 <div className="text-center mb-20 space-y-4 flex flex-col items-center">
                     <AdvancedScrollReveal variant="slideUp">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 mb-6 shadow-sm backdrop-blur-md">
-                            <Cpu size={14} className="animate-pulse" />
-                            <span className="font-bold text-[11px] tracking-[0.2em] uppercase">KhataPlus Core Engine</span>
-                        </div>
                         <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.05]">
-                            Under the <br className="hidden md:block" />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500">hood.</span>
+                            The Core <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500">Engine.</span>
                         </h2>
                         <p className="text-zinc-500 text-xl font-light tracking-wide max-w-2xl mx-auto mt-8">
-                            We built KhataPlus on a proprietary local-first architecture. It&apos;s incredibly fast, unconditionally reliable, and heavily secured.
+                            Fast. Reliable. Secure. Powered by our proprietary local-first architecture.
                         </p>
                     </AdvancedScrollReveal>
                 </div>

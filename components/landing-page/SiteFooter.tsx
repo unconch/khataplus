@@ -35,16 +35,14 @@ export function SiteFooter() {
                     </div>
 
                     <FooterCol title="Product" links={[
-                        { label: "Features", href: "#features" },
+                        { label: "Features", href: "/features" },
                         { label: "Growth Tools", href: "#growth-tools" },
-                        { label: "Solutions", href: "#solutions" },
+                        { label: "Solutions", href: "/solutions" },
                         { label: "Pricing", href: "/pricing" }
                     ]} />
 
                     <FooterCol title="Resources" links={[
                         { label: "Help Center", href: "/docs" },
-                        { label: "API Docs", href: "#", comingSoon: true },
-                        { label: "Community", href: "#", comingSoon: true },
                         { label: "Roadmap", href: "/roadmap" }
                     ]} />
 

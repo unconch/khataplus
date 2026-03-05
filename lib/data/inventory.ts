@@ -36,7 +36,8 @@ export async function getInventory(orgId: string, options: { limit?: number; off
                 buy_price: parseFloat(item.buy_price),
                 sell_price: item.sell_price === null || item.sell_price === undefined ? undefined : parseFloat(item.sell_price),
                 gst_percentage: parseFloat(item.gst_percentage),
-                min_stock: item.min_stock || 5
+                min_stock: item.min_stock || 5,
+                category: item.category || undefined
             })) as InventoryItem[];
         },
         [`inventory-list-${flavor}-${orgId}-${limit}-${offset}`],
@@ -64,7 +65,8 @@ export async function getInventoryItem(id: string, orgId: string): Promise<Inven
         buy_price: parseFloat(item.buy_price),
         sell_price: item.sell_price === null || item.sell_price === undefined ? undefined : parseFloat(item.sell_price),
         gst_percentage: parseFloat(item.gst_percentage),
-        min_stock: item.min_stock || 5
+        min_stock: item.min_stock || 5,
+        category: item.category || undefined
     } as InventoryItem;
 }
 
@@ -90,8 +92,8 @@ export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created
     }
 
     const result = await sql`
-        INSERT INTO inventory(sku, name, buy_price, sell_price, gst_percentage, stock, min_stock, org_id)
-        VALUES(${item.sku}, ${item.name}, ${item.buy_price}, ${item.sell_price ?? null}, ${item.gst_percentage}, ${item.stock}, ${item.min_stock || 5}, ${actualOrgId})
+        INSERT INTO inventory(sku, name, buy_price, sell_price, gst_percentage, stock, min_stock, category, org_id)
+        VALUES(${item.sku}, ${item.name}, ${item.buy_price}, ${item.sell_price ?? null}, ${item.gst_percentage}, ${item.stock}, ${item.min_stock || 5}, ${item.category ?? null}, ${actualOrgId})
         RETURNING *
     `;
     const newItem = result[0] as any;
@@ -100,6 +102,7 @@ export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created
         buy_price: parseFloat(newItem.buy_price),
         sell_price: newItem.sell_price === null || newItem.sell_price === undefined ? undefined : parseFloat(newItem.sell_price),
         gst_percentage: parseFloat(newItem.gst_percentage),
+        category: newItem.category || undefined
     } as InventoryItem;
 
     await audit("Added Inventory", "inventory", inventory.id, { name: inventory.name, sku: inventory.sku, stock: inventory.stock }, actualOrgId);

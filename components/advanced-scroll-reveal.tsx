@@ -28,11 +28,11 @@ export function AdvancedScrollReveal({
     const ref = useRef<HTMLDivElement>(null)
     const [isVisible, setIsVisible] = useState(false)
 
-    if (!enableMotion) {
-        return <div className={className}>{children}</div>
-    }
-
     useEffect(() => {
+        if (!enableMotion) {
+            return
+        }
+
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -56,7 +56,7 @@ export function AdvancedScrollReveal({
                 observer.unobserve(ref.current)
             }
         }
-    }, [once, threshold])
+    }, [enableMotion, once, threshold])
 
     const variantClasses = {
         fadeIn: "opacity-0 data-[visible=true]:opacity-100",
@@ -72,14 +72,14 @@ export function AdvancedScrollReveal({
             ref={ref}
             data-visible={isVisible}
             className={cn(
-                "reveal-container transition-all will-change-[transform,opacity]",
-                variantClasses[variant],
+                enableMotion && "reveal-container transition-all will-change-[transform,opacity]",
+                enableMotion && variantClasses[variant],
                 className
             )}
             style={{
-                transitionDuration: `${duration * 1.5}s`,
-                transitionDelay: `${delay}ms`,
-                transitionTimingFunction: "cubic-bezier(0.25, 0.1, 0.25, 1.0)"
+                transitionDuration: enableMotion ? `${duration * 1.5}s` : undefined,
+                transitionDelay: enableMotion ? `${delay}ms` : undefined,
+                transitionTimingFunction: enableMotion ? "cubic-bezier(0.25, 0.1, 0.25, 1.0)" : undefined
             }}
         >
             {children}

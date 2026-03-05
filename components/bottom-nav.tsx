@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings, Lock } from "lucide-react"
+import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings, Lock, Monitor } from "lucide-react"
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
@@ -19,12 +19,14 @@ interface BottomNavProps {
 export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free" }: BottomNavProps) {
   const pathname = usePathname()
 
+  const slug = pathPrefix.startsWith("/") ? pathPrefix.slice(1) : pathPrefix
+
   const navItems: Array<{ href: string; label: string; icon: any; feature?: PlanFeature }> = [
     { href: `${pathPrefix}/dashboard`, label: "CORE", icon: LayoutDashboard },
+    { href: `/pos/${slug}/sales`, label: "POS", icon: Monitor },
     { href: `${pathPrefix}/dashboard/sales`, label: "SALES", icon: BadgeIndianRupee },
-    { href: `${pathPrefix}/dashboard/inventory`, label: "INVENTORY", icon: Package },
+    { href: `${pathPrefix}/dashboard/inventory`, label: "ITEMS", icon: Package },
     { href: `${pathPrefix}/dashboard/customers`, label: "LEDGER", icon: Users },
-    { href: `${pathPrefix}/dashboard/settings`, label: "SETTINGS", icon: Settings },
   ]
 
   return (
@@ -66,10 +68,10 @@ export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free
             const Icon = item.icon
 
             return (
-                <Link
-                  key={item.href}
-                  href={href}
-                  className={cn(
+              <Link
+                key={item.href}
+                href={href}
+                className={cn(
                   "flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl transition-all duration-500 relative",
                   isActive ? "text-zinc-950 scale-105" : "text-zinc-400 hover:text-zinc-600"
                 )}

@@ -5,9 +5,9 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { GradientText } from "@/components/gradient-text"
 import { cn } from "@/lib/utils"
 
-export function AnalyticsSection() {
+export function AnalyticsSection({ whiteTheme = false }: { whiteTheme?: boolean }) {
     return (
-        <section id="analytics" className="py-20 md:py-32 px-6 bg-zinc-50 relative overflow-hidden">
+        <section id="analytics" className={cn("py-20 md:py-32 px-6 relative overflow-hidden", whiteTheme ? "bg-white" : "bg-zinc-50")}>
             <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:30px_30px]" />
 
             <div className="max-w-7xl mx-auto relative z-10">
@@ -42,15 +42,15 @@ export function AnalyticsSection() {
                     <div className="w-full lg:w-1/2">
                         <AdvancedScrollReveal variant="scaleUp">
                             <div className="relative p-1 bg-gradient-to-br from-zinc-200 to-zinc-50 rounded-[2.5rem] shadow-2xl">
-                                <div className="relative bg-zinc-950 rounded-[2.2rem] p-8 md:p-10 aspect-video flex flex-col justify-between overflow-hidden group">
+                                <div className={cn("relative rounded-[2.2rem] p-8 md:p-10 aspect-video flex flex-col justify-between overflow-hidden group", whiteTheme ? "bg-white border border-zinc-200" : "bg-zinc-950")}>
                                     <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none" />
 
                                     <div className="flex justify-between items-start relative z-10">
                                         <div className="space-y-1">
-                                            <div className="text-[9px] text-emerald-400 font-black uppercase tracking-widest">Today's Total Sale</div>
-                                            <div className="text-2xl font-black text-white italic tracking-tighter">₹ 4,28,450.00</div>
+                                            <div className="text-[9px] text-emerald-500 font-black uppercase tracking-widest">Today's Total Sale</div>
+                                            <div className={cn("text-2xl font-black italic tracking-tighter", whiteTheme ? "text-zinc-900" : "text-white")}>₹ 4,28,450.00</div>
                                         </div>
-                                        <div className="bg-white/5 p-2 rounded-xl border border-white/10 backdrop-blur-xl">
+                                        <div className={cn("p-2 rounded-xl border backdrop-blur-xl", whiteTheme ? "bg-zinc-50 border-zinc-200" : "bg-white/5 border-white/10")}>
                                             <TrendingUp className="text-emerald-400" size={18} />
                                         </div>
                                     </div>
@@ -65,7 +65,7 @@ export function AnalyticsSection() {
                                         ))}
                                     </div>
 
-                                    <div className="flex justify-between items-center text-zinc-500 text-[8px] font-black uppercase tracking-widest border-t border-white/5 pt-4">
+                                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest pt-4 border-t border-emerald-500/10 text-zinc-500">
                                         <span>Jan</span>
                                         <span>Feb</span>
                                         <span>Mar</span>
@@ -75,7 +75,7 @@ export function AnalyticsSection() {
                                     </div>
 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                                        <div className="bg-emerald-500/90 backdrop-blur-xl px-4 py-2 rounded-full text-[9px] text-zinc-950 font-black uppercase tracking-widest whitespace-nowrap">
+                                        <div className={cn("backdrop-blur-xl px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap", whiteTheme ? "bg-emerald-100 text-emerald-800" : "bg-emerald-500/90 text-zinc-950")}>
                                             Peak Sales Observed
                                         </div>
                                     </div>
