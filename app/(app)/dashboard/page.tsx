@@ -59,6 +59,15 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
 
   // Fetch stats for onboarding guide
   const db = isGuest ? getDemoSql() : getProductionSql()
+  const hasCustomerNameColumnResult = await db`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'sales'
+      AND column_name = 'customer_name'
+    LIMIT 1
+  `
+  const hasCustomerNameColumn = hasCustomerNameColumnResult.length > 0
 
   const [
     inventoryStats,
@@ -75,13 +84,21 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
     getDailyReports(orgId),
     db`SELECT COUNT(*)::int as count FROM customers WHERE org_id = ${orgId}`,
     db`SELECT COUNT(*)::int as count FROM sales WHERE org_id = ${orgId}`,
-    db`
-      SELECT id, customer_name, quantity, sale_date, total_amount
-      FROM sales
-      WHERE org_id = ${orgId}
-      ORDER BY created_at DESC
-      LIMIT 5
-    `,
+    hasCustomerNameColumn
+      ? db`
+          SELECT id, customer_name, quantity, sale_date, total_amount
+          FROM sales
+          WHERE org_id = ${orgId}
+          ORDER BY created_at DESC
+          LIMIT 5
+        `
+      : db`
+          SELECT id, NULL::text AS customer_name, quantity, sale_date, total_amount
+          FROM sales
+          WHERE org_id = ${orgId}
+          ORDER BY created_at DESC
+          LIMIT 5
+        `,
     db`
       SELECT COALESCE(SUM(balance), 0)::numeric as unpaid
       FROM (

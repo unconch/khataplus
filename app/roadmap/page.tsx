@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Zap, Shield, Crown, Rocket, CheckCircle2, Clock, Calendar, Star, ChevronRight } from "lucide-react"
+import { ArrowLeft, Zap, Shield, CheckCircle2, Clock, Calendar, Star, ChevronRight, MessageSquarePlus } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/logo"
@@ -15,11 +15,11 @@ const roadmapData = [
         description: "The essential building blocks for complete digital ledger and inventory management.",
         icon: Shield,
         items: [
-            { title: "Simplified GST Billing", date: "Jan 12", completed: true },
-            { title: "Offline-First Engine", date: "Jan 28", completed: true },
-            { title: "Digital Khata Ledger", date: "Feb 15", completed: true },
-            { title: "Inventory Management", date: "Feb 22", completed: true },
-            { title: "Real-time Sync", date: "Mar 05", completed: true }
+            { title: "Simplified GST Billing", completed: true },
+            { title: "Offline-First Engine", completed: true },
+            { title: "Digital Khata Ledger", completed: true },
+            { title: "Inventory Management", completed: true },
+            { title: "Real-time Sync", completed: true }
         ],
         theme: "zinc"
     },
@@ -30,44 +30,14 @@ const roadmapData = [
         description: "Advanced tools to understand your business performance and engage customers directly.",
         icon: Zap,
         items: [
-            { title: "WhatsApp Marketing", date: "Apr 10", completed: false },
-            { title: "Stock Forecasting", date: "May 05", completed: false },
-            { title: "Profit Analytics", date: "May 22", completed: false },
-            { title: "Payment Links", date: "June 12", completed: false },
-            { title: "Staff Permissions", date: "June 28", completed: false }
+            { title: "WhatsApp Marketing", completed: false },
+            { title: "Stock Forecasting", completed: false },
+            { title: "Profit Analytics", completed: false },
+            { title: "Payment Links", completed: false },
+            { title: "Staff Permissions", completed: false }
         ],
         current: true,
         theme: "emerald"
-    },
-    {
-        phase: "Phase 3: Ecosystem",
-        status: "Planned",
-        title: "Retail Network",
-        description: "Expanding beyond the single store to connect your entire retail ecosystem.",
-        icon: Crown,
-        items: [
-            { title: "Online Storefront", date: "Aug 15", completed: false },
-            { title: "Loyalty Program", date: "Sept 10", completed: false },
-            { title: "Multi-Store Sync", date: "Oct 05", completed: false },
-            { title: "Purchase Orders", date: "Oct 28", completed: false },
-            { title: "Vendor Portal", date: "Nov 15", completed: false }
-        ],
-        theme: "blue"
-    },
-    {
-        phase: "Phase 4: Future",
-        status: "Research",
-        title: "Intelligence",
-        description: "AI-driven algorithms to automate your operations and unlock new revenue streams.",
-        icon: Rocket,
-        items: [
-            { title: "AI Tax Assistant", date: "Dec 10", completed: false },
-            { title: "Supply Chain Finance", date: "Jan 20", completed: false },
-            { title: "B2B Marketplace", date: "Feb 08", completed: false },
-            { title: "Sales Algorithms", date: "Feb 28", completed: false },
-            { title: "Multi-Currency", date: "Mar 15", completed: false }
-        ],
-        theme: "indigo"
     }
 ]
 
@@ -110,8 +80,18 @@ export default function RoadmapPage() {
 
                     <AdvancedScrollReveal variant="slideUp" delay={200}>
                         <p className="text-zinc-400 text-lg md:text-xl font-normal max-w-2xl mx-auto leading-relaxed">
-                            A clear look at when each feature hits your dashboard. We're shipping fast to keep your business ahead.
+                            A clear look at what we're building. Our roadmap is shaped by what you need most.
                         </p>
+                    </AdvancedScrollReveal>
+
+                    <AdvancedScrollReveal variant="slideUp" delay={300}>
+                        <Link
+                            href="mailto:hello@khataplus.com"
+                            className="inline-flex items-center justify-center gap-2 bg-white text-zinc-950 px-6 py-3 rounded-lg font-medium text-sm hover:bg-zinc-100 transition-all shadow-xl"
+                        >
+                            <MessageSquarePlus size={16} />
+                            Request a Feature
+                        </Link>
                     </AdvancedScrollReveal>
                 </div>
             </section>
@@ -172,7 +152,7 @@ export default function RoadmapPage() {
                                 <div className="md:w-2/3 md:pl-8 md:border-l border-zinc-800/50 flex flex-col justify-center">
                                     <div className="space-y-4">
                                         {phase.items.map((item, j) => (
-                                            <div key={j} className="flex items-center justify-between group/item">
+                                            <div key={j} className="flex items-center group/item">
                                                 <div className="flex items-center gap-3">
                                                     {item.completed ? (
                                                         <CheckCircle2 size={16} className="text-zinc-500 group-hover/item:text-zinc-400 transition-colors" />
@@ -189,9 +169,6 @@ export default function RoadmapPage() {
                                                         {item.title}
                                                     </span>
                                                 </div>
-                                                <span className="text-zinc-500 font-mono text-sm group-hover/item:text-zinc-400 transition-colors">
-                                                    {item.date}
-                                                </span>
                                             </div>
                                         ))}
                                     </div>
@@ -202,29 +179,7 @@ export default function RoadmapPage() {
                 </div>
             </section>
 
-            {/* Feedback / CTA Section */}
-            <section className="py-24 px-6 border-t border-zinc-900 bg-zinc-950 text-center relative overflow-hidden">
-                <div className="max-w-2xl mx-auto space-y-8 relative z-10">
-                    <AdvancedScrollReveal variant="slideUp">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 mb-6">
-                            <Star size={20} className="text-emerald-400" fill="currentColor" />
-                        </div>
-                        <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
-                            Shape our future
-                        </h2>
-                        <p className="text-zinc-400 text-lg leading-relaxed mb-8">
-                            Missing a feature you need? We prioritize our roadmap based on what matters most to you.
-                        </p>
-                        <Link
-                            href="mailto:hello@khataplus.com"
-                            className="inline-flex items-center justify-center gap-2 bg-white text-zinc-950 px-6 py-3 rounded-lg font-medium text-sm hover:bg-zinc-100 transition-all border border-transparent hover:border-white shadow-xl"
-                        >
-                            Request a Feature
-                            <ChevronRight size={16} className="text-zinc-500" />
-                        </Link>
-                    </AdvancedScrollReveal>
-                </div>
-            </section>
+
 
             {/* Clean Footer */}
             <footer className="py-8 px-6 border-t border-zinc-900 bg-[#0a0a0a]">

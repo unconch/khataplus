@@ -11,16 +11,7 @@ import Link from "next/link"
 
 export default function InventoryPage() {
     return (
-        <div className="min-h-full space-y-6 md:space-y-10 pb-20">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 pt-2 md:pt-4">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-5xl">
-                        Inventory
-                    </h1>
-                    <p className="text-sm font-medium text-muted-foreground">Manage your products and inventory levels</p>
-                </div>
-            </div>
-
+        <div className="min-h-full space-y-6 md:space-y-10 pb-20 pt-2">
             <Suspense fallback={
                 <div className="h-[600px] w-full flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-3xl animate-pulse border border-zinc-100 dark:border-white/5">
                     <div className="flex flex-col items-center gap-4">
@@ -60,7 +51,10 @@ async function InventoryContent() {
         (profile?.role === "staff" && settings.allow_staff_add_inventory)
 
     const totalStockValue = inventory.reduce((acc, item) => acc + (item.stock * item.buy_price), 0)
-    const lowStockCount = inventory.filter((i: any) => i.stock < 10).length
+    const lowStockCount = inventory.filter((i: any) => {
+        const threshold = Number.isFinite(Number(i.min_stock)) ? Number(i.min_stock) : 5
+        return Number(i.stock || 0) <= Math.max(1, threshold)
+    }).length
     const daysSinceCreated = org?.created_at ? Math.floor((Date.now() - new Date(org.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0
     const isKeepPlan = String(org?.plan_type || "free").toLowerCase() === "free"
     const showInventoryNudge = isKeepPlan && daysSinceCreated >= 30
@@ -89,9 +83,9 @@ async function InventoryContent() {
                     <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                         <Package className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Total SKUs</p>
-                        <p className="text-xl md:text-2xl font-bold tracking-tight">{inventory.length}</p>
+                        <p className="text-xl md:text-2xl font-bold tracking-tight tabular-nums">{inventory.length}</p>
                     </div>
                 </div>
 
@@ -107,9 +101,9 @@ async function InventoryContent() {
                     )}>
                         <AlertCircle className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Low Stock</p>
-                        <p className={cn("text-xl md:text-2xl font-bold tracking-tight", lowStockCount > 0 && "text-orange-600 dark:text-orange-400")}>{lowStockCount}</p>
+                        <p className={cn("text-xl md:text-2xl font-bold tracking-tight tabular-nums", lowStockCount > 0 && "text-orange-600 dark:text-orange-400")}>{lowStockCount}</p>
                     </div>
                 </div>
 
@@ -117,9 +111,9 @@ async function InventoryContent() {
                     <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <ArrowUpRight className="h-5 w-5 md:h-6 md:w-6" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Stock Value</p>
-                        <p className="text-xl md:text-2xl font-bold tracking-tight">
+                        <p className="text-xl md:text-2xl font-bold tracking-tight tabular-nums">
                             {"\u20B9"}{totalStockValue >= 100000 ? `${(totalStockValue / 100000).toFixed(2)} L` : totalStockValue.toLocaleString()}
                         </p>
                     </div>

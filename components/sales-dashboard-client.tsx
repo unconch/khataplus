@@ -56,14 +56,7 @@ export function SalesDashboardClient({
 
   return (
     <div className="min-h-full space-y-6 pb-6 bg-background/50">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
-            Sales <span className="text-emerald-600">Console.</span>
-          </h1>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-70">Unified transaction stream</p>
-        </div>
-
+      <div className="flex flex-col md:flex-row md:items-center justify-start gap-8 pt-4">
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 border rounded-xl px-3 h-10 bg-card">
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />

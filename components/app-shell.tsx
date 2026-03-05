@@ -35,6 +35,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
   useEffect(() => {
     const slug = String(orgSlug || "").trim()
     if (!slug) return
+    if (slug.toLowerCase() === "demo") return
     if (!pathname?.startsWith("/dashboard")) return
     const targetBase = `/${slug}${pathname}`
     const query = searchParams?.toString() || ""

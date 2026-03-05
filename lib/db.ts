@@ -136,10 +136,14 @@ export const sql = async (
 
         const userId = cookieStore.get("userId")?.value || null
         const path = headersList.get("x-invoke-path") || ""
+        const host = (headersList.get("x-forwarded-host") || headersList.get("host") || "").toLowerCase()
+        const hostname = host.split(",")[0]?.trim().split(":")[0] || ""
+        const isDemoHost = hostname === "demo.khataplus.online" || hostname.startsWith("demo.")
         if (
           (!userId && cookieStore.has("guest_mode")) ||
           path.startsWith("/demo") ||
-          headersList.get("x-guest-mode") === "true"
+          headersList.get("x-guest-mode") === "true" ||
+          isDemoHost
         ) {
           isGuest = true
           connectionUrl = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL

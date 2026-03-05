@@ -153,7 +153,7 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
         </div>
       </div>
 
-      <InventoryList items={visibleItems} />
+      <InventoryList items={visibleItems} orgId={orgId} />
 
       {(hasMore || isLoadingMore) && (
         <div ref={loadMoreRef} className="mx-auto w-full max-w-[980px] flex flex-col items-center gap-3 py-2">

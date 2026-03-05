@@ -11,7 +11,7 @@ import { SignatureReceipt } from "@/components/ui/signature-receipt"
 import { useInventoryCache } from "@/hooks/use-inventory-cache"
 import { useSync } from "@/hooks/use-sync"
 import { useHaptic } from "@/hooks/use-haptic"
-import { Expand, FolderOpen, Minus, Moon, Plus, Save, ScanLine, Search, Sun, Trash2 } from "lucide-react"
+import { ArrowRight, Expand, FolderOpen, Minus, Moon, Plus, Save, ScanLine, Search, Shield, Sun, Trash2, Users } from "lucide-react"
 
 type PosTerminalProps = {
   inventory: InventoryItem[]
@@ -468,6 +468,15 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
         searchRef.current?.focus()
         searchRef.current?.select()
       }
+      if (event.key === "F3" && !typing) {
+        event.preventDefault()
+        customerNameRef.current?.focus()
+        customerNameRef.current?.select()
+      }
+      if (event.key === "Enter" && !typing && cart.length > 0 && !showNumpad) {
+        event.preventDefault()
+        completeSale()
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
         event.preventDefault()
         setShowNumpad(true)
@@ -539,219 +548,416 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   }
 
   return (
-    <div className={cn("h-[100dvh] w-full text-zinc-950", posTheme === "dark" ? "dark bg-zinc-950 text-zinc-100" : "bg-zinc-100")}>
-      <div className="grid h-full grid-rows-[auto_1fr_auto]">
-        <header className="border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1fr_auto]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-              <input
-                ref={searchRef}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setActiveSuggestionIndex(0)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault()
-                    setActiveSuggestionIndex((prev) => (prev + 1) % Math.max(1, suggestions.length))
-                  }
-                  if (event.key === "ArrowUp") {
-                    event.preventDefault()
-                    setActiveSuggestionIndex((prev) => (prev <= 0 ? Math.max(0, suggestions.length - 1) : prev - 1))
-                  }
-                  if (event.key === "Enter") {
-                    event.preventDefault()
-                    tryAddFromSearch()
-                  }
-                }}
-                placeholder="Search products or scan barcode..."
-                className="h-14 w-full rounded-xl border border-zinc-300 bg-zinc-50 pl-12 pr-4 text-base font-semibold outline-none focus:border-emerald-500 focus:bg-white dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:bg-zinc-900"
-              />
-              <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-lg bg-zinc-900 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-                <ScanLine className="h-3.5 w-3.5" />
-                Scan
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setPosTheme((t) => (t === "dark" ? "light" : "dark"))} className="h-14 rounded-xl border border-zinc-300 bg-white px-4 text-xs font-black uppercase tracking-[0.12em] hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:border-zinc-500">
-                <span className="inline-flex items-center gap-2">
-                  {posTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  {posTheme === "dark" ? "Light" : "Dark"}
-                </span>
-              </button>
-              <button type="button" onClick={goFullscreen} className="h-14 rounded-xl border border-zinc-300 bg-white px-4 text-xs font-black uppercase tracking-[0.12em] hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:border-zinc-500">
-                <span className="inline-flex items-center gap-2"><Expand className="h-4 w-4" />Fullscreen</span>
-              </button>
-              <div className="h-14 rounded-xl border border-zinc-300 bg-zinc-50 px-3 text-xs font-black uppercase tracking-widest text-zinc-600 flex items-center dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">Holds: {heldOrders.length}</div>
-            </div>
+    <div className={cn(
+      "h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-300",
+      posTheme === "dark" ? "bg-zinc-950 text-zinc-100 dark" : "bg-zinc-50 text-zinc-900"
+    )}>
+      {/* Global Navigation Header */}
+      <header className="h-16 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 px-4 flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-4 flex-1 max-w-2xl">
+          <div className="h-10 w-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
+            K+
           </div>
-
-          {suggestions.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {suggestions.map((item, idx) => (
-                <button key={item.id} type="button" onClick={() => addToCart(item)} className={cn("h-10 rounded-lg border px-3 text-xs font-bold", idx === activeSuggestionIndex ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-zinc-500")}>
-                  {item.name} ({item.sku})
-                </button>
-              ))}
-            </div>
-          )}
-        </header>
-
-        <main className="grid min-h-0 grid-cols-1 xl:grid-cols-[1.35fr_0.95fr]">
-          <section className="min-h-0 border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex gap-2 overflow-x-auto">
-                {categories.map((category) => (
-                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={cn("h-12 min-w-max rounded-xl px-4 text-xs font-black uppercase tracking-[0.14em]", activeCategory === category ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800")}>
-                    {category}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
+            <input
+              ref={searchRef}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setActiveSuggestionIndex(0)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault()
+                  setActiveSuggestionIndex((prev) => (prev + 1) % Math.max(1, suggestions.length))
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault()
+                  setActiveSuggestionIndex((prev) => (prev <= 0 ? Math.max(0, suggestions.length - 1) : prev - 1))
+                }
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  tryAddFromSearch()
+                }
+              }}
+              placeholder="Search or scan (F2)"
+              className="h-11 w-full rounded-2xl border border-zinc-200/60 bg-zinc-100/50 pl-10 pr-4 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white dark:border-zinc-700/50 dark:bg-zinc-800/50 dark:focus:bg-zinc-800 transition-all"
+            />
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden z-50 p-2 animate-in fade-in slide-in-from-top-1">
+                {suggestions.map((item, idx) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => { addToCart(item); setSearchQuery(""); }}
+                    className={cn(
+                      "w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-colors",
+                      idx === activeSuggestionIndex ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                    )}
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">{item.name}</span>
+                      <span className="text-[10px] uppercase tracking-wider opacity-60 font-black">{item.sku}</span>
+                    </div>
+                    <span className="text-sm font-black">₹{Number(item.sell_price).toFixed(2)}</span>
                   </button>
                 ))}
               </div>
-            </div>
+            )}
+          </div>
+        </div>
 
-            <div className="h-full overflow-auto p-3">
-              {filteredProducts.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-4">
-                  <p className="text-sm font-semibold text-zinc-700">No results.</p>
-                  <p className="text-xs text-zinc-500">Add manual item for this transaction.</p>
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px_auto]">
-                    <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Custom item name" className="h-11 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500" />
-                    <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="h-11 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500" />
-                    <button type="button" onClick={addManualItem} className="h-11 rounded-lg bg-emerald-600 px-4 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500">Add</button>
+        <div className="flex items-center gap-2 ml-4">
+          <div className="hidden md:flex flex-col text-right mr-2">
+            <span className="text-xs font-black uppercase tracking-widest text-zinc-400">Terminal</span>
+            <span className="text-xs font-bold truncate max-w-[120px]">{org?.name}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPosTheme((t) => (t === "dark" ? "light" : "dark"))}
+            className="h-10 w-10 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all shadow-sm"
+          >
+            {posTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button
+            type="button"
+            onClick={goFullscreen}
+            className="h-10 w-10 hidden sm:flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all shadow-sm"
+          >
+            <Expand size={18} />
+          </button>
+          <div className="h-10 px-3 flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 shadow-sm">
+            <Save size={14} /> {heldOrders.length} Held
+          </div>
+        </div>
+      </header>
+
+      {/* Main Terminal UI */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Section: Categories & Smart Grid */}
+        <section className="flex-1 flex flex-col bg-zinc-50 dark:bg-zinc-950/50 border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          {/* Category Chips */}
+          <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar shrink-0 bg-white dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+                className={cn(
+                  "h-11 min-w-max px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all",
+                  activeCategory === category
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg shadow-black/10"
+                    : "bg-white dark:bg-zinc-900 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
+                )}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          {/* Product Grid */}
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            {filteredProducts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-6 border border-dashed border-zinc-300 dark:border-zinc-800">
+                  <Search size={32} />
+                </div>
+                <h3 className="text-xl font-black text-zinc-900 dark:text-white">No products found</h3>
+                <p className="mt-2 text-zinc-500 max-w-xs mx-auto">Try a different search or add a manual item for this transaction below.</p>
+                <div className="mt-8 w-full max-w-md bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Manual Item Name</label>
+                      <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="e.g. Carry Bag" className="h-12 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-4 text-sm font-bold outline-none focus:border-emerald-500" />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Sale Price (₹)</label>
+                      <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} placeholder="0.00" inputMode="decimal" className="h-12 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-4 text-sm font-bold outline-none focus:border-emerald-500" />
+                    </div>
+                    <button type="button" onClick={addManualItem} className="h-14 w-full rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 active:scale-95 transition-all">Add to Cart</button>
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
-                  {filteredProducts.map((item) => {
-                    const price = Number(item.sell_price || item.buy_price || 0)
-                    return (
-                      <button key={item.id} type="button" onClick={() => addToCart(item)} className="min-h-[120px] rounded-xl border-2 border-zinc-200 bg-white p-3 text-left transition hover:border-emerald-400 hover:shadow-md">
-                        <p className="line-clamp-2 text-sm font-extrabold leading-tight text-zinc-900">{item.name}</p>
-                        <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">{item.sku}</p>
-                        <div className="mt-3 flex items-end justify-between">
-                          <p className="text-xl font-black text-zinc-900">Rs {price.toFixed(2)}</p>
-                          <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", item.stock > (item.min_stock || 5) ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>{item.stock}</span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <aside className="min-h-0 bg-white dark:bg-zinc-950">
-            <div className="border-b border-zinc-200 p-3 dark:border-zinc-800">
-              <h2 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-500">Current Order</h2>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Customer name" className="h-11 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
-                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone" className="h-11 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
               </div>
-            </div>
-
-            <div className="h-[calc(100%-268px)] overflow-auto p-3">
-              {cart.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm font-semibold text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">Select products to begin billing.</div>
-              ) : (
-                <div className="space-y-2">
-                  {cart.map((line) => {
-                    const t = lineTotals(line)
-                    return (
-                      <div key={line.id} className={cn("rounded-xl border border-zinc-200 p-3", lineFlashId === line.id && "border-emerald-500 bg-emerald-50")}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-zinc-900">{line.item.name}</p>
-                            <p className="text-[11px] font-semibold text-zinc-500">Tax {Number(line.item.gst_percentage || 0).toFixed(0)}% | Rs {line.price.toFixed(2)}</p>
-                          </div>
-                          <button type="button" onClick={() => removeLine(line.id)} className="h-9 w-9 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"><Trash2 className="mx-auto h-4 w-4" /></button>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredProducts.map((item) => {
+                  const price = Number(item.sell_price || item.buy_price || 0)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => addToCart(item)}
+                      className="aspect-square flex flex-col items-start justify-between p-4 rounded-[2.5rem] border-2 border-zinc-200/60 bg-white dark:bg-zinc-900 dark:border-zinc-800 shadow-sm hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all group relative overflow-hidden"
+                    >
+                      <div className="w-full">
+                        <h4 className="line-clamp-2 text-sm font-extrabold text-zinc-900 dark:text-zinc-100 leading-tight mb-2 uppercase tracking-tight">{item.name}</h4>
+                        <div className="flex items-center gap-1.5 opacity-40">
+                          <ScanLine size={10} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">{item.sku}</span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="inline-flex h-11 items-center rounded-lg border border-zinc-200">
-                            <button type="button" onClick={() => updateQty(line.id, line.qty - 1)} className="h-11 w-11 bg-zinc-100 hover:bg-zinc-200"><Minus className="mx-auto h-4 w-4" /></button>
-                            <input value={line.qty} onChange={(e) => { const next = Number.parseInt(e.target.value || "0", 10); if (!Number.isFinite(next)) return; updateQty(line.id, next) }} inputMode="numeric" className="h-11 w-14 border-x border-zinc-200 text-center text-sm font-black outline-none" />
-                            <button type="button" onClick={() => updateQty(line.id, line.qty + 1)} className="h-11 w-11 bg-zinc-100 hover:bg-zinc-200"><Plus className="mx-auto h-4 w-4" /></button>
-                          </div>
-                          <p className="text-sm font-black text-zinc-900">Rs {t.total.toFixed(2)}</p>
-                        </div>
-                        <input value={line.note} onChange={(e) => updateLineNote(line.id, e.target.value)} placeholder="Add note" className="mt-2 h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs outline-none focus:border-zinc-400" />
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                      <div className="w-full flex items-end justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 leading-none mb-0.5">Price</span>
+                          <span className="text-xl font-black text-zinc-900 dark:text-white leading-none">₹{price.toFixed(0)}</span>
+                        </div>
+                        <div className={cn(
+                          "h-8 px-2 min-w-8 flex items-center justify-center rounded-xl text-[10px] font-black uppercase tracking-widest border",
+                          item.stock > (item.min_stock || 10)
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/30"
+                            : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:border-rose-900/30"
+                        )}>
+                          {item.stock}
+                        </div>
+                      </div>
+                      {/* Decorative accent */}
+                      <div className="absolute top-0 right-0 h-10 w-10 bg-emerald-500/10 rounded-bl-[2rem] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Right Section: Persistent Checkout Sidebar */}
+        <aside className="w-96 min-w-[384px] bg-white dark:bg-zinc-900 flex flex-col shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10 overflow-hidden">
+          {/* Customer & Header */}
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">Current Order</h2>
+              <button
+                onClick={clearOrderState}
+                className="h-8 px-3 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/20 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100 transition-colors"
+                title="Clear (Esc)"
+              >
+                Clear
+              </button>
             </div>
-
-            <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
-              <div className="grid grid-cols-2 gap-2">
-                <input value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} inputMode="decimal" placeholder="Discount %" className="h-10 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
-                <input value={customerGst} onChange={(e) => setCustomerGst(e.target.value.toUpperCase())} maxLength={15} placeholder="Customer GSTIN" className="h-10 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
+            <div className="space-y-3">
+              <div className="relative group">
+                <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Customer name (F3)"
+                  className="h-11 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 pl-10 pr-4 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-950 transition-all"
+                />
               </div>
-              {heldOrders.length > 0 && (
-                <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Resume Hold</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {heldOrders.slice(0, 4).map((order) => (
-                      <button key={order.id} type="button" onClick={() => resumeOrder(order.id)} className="inline-flex h-9 items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 text-[11px] font-bold hover:border-zinc-500"><FolderOpen className="h-3.5 w-3.5" />{order.name}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </aside>
-        </main>
-
-        <footer className="border-t border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto] xl:items-end">
-            <div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5"><p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Subtotal</p><p className="text-lg font-black text-zinc-900">Rs {totals.subtotal.toFixed(2)}</p></div>
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5"><p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Tax {effectiveTaxRate.toFixed(1)}%</p><p className="text-lg font-black text-zinc-900">Rs {totals.tax.toFixed(2)}</p></div>
-                <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-2.5"><p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Total</p><p className="text-xl font-black text-emerald-800">Rs {totals.total.toFixed(2)}</p></div>
-              </div>
-
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {PAYMENT_METHODS.map((method) => (
-                  <button key={method} type="button" onClick={() => setPaymentMethod(method)} className={cn("h-14 rounded-xl border text-xs font-black uppercase tracking-[0.14em] transition", paymentMethod === method ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-zinc-500")}>{method}</button>
-                ))}
-                <button type="button" onClick={holdOrder} className="h-14 rounded-xl border border-amber-300 bg-amber-50 text-xs font-black uppercase tracking-[0.14em] text-amber-800 hover:bg-amber-100"><span className="inline-flex items-center gap-2"><Save className="h-4 w-4" />Hold</span></button>
-              </div>
-
-              {paymentMethod === "Split" && (
-                <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 sm:grid-cols-4">
-                  <input value={splitCash} onChange={(e) => setSplitCash(e.target.value)} placeholder="Cash" inputMode="decimal" className="h-10 rounded-md border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500" />
-                  <input value={splitCard} onChange={(e) => setSplitCard(e.target.value)} placeholder="Card" inputMode="decimal" className="h-10 rounded-md border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500" />
-                  <input value={splitUpi} onChange={(e) => setSplitUpi(e.target.value)} placeholder="UPI" inputMode="decimal" className="h-10 rounded-md border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500" />
-                  <div className="h-10 rounded-md border border-zinc-300 bg-white px-3 py-1.5"><p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Remaining</p><p className={cn("text-sm font-black", Math.abs(splitRemaining) < 0.01 ? "text-emerald-700" : "text-rose-600")}>Rs {splitRemaining.toFixed(2)}</p></div>
-                </div>
-              )}
-
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
-                <input value={holdName} onChange={(e) => setHoldName(e.target.value)} placeholder="Hold order label (optional)" className="h-10 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" />
-                <button type="button" onClick={() => setShowNumpad(true)} className="h-10 rounded-lg border border-zinc-300 bg-white px-4 text-xs font-black uppercase tracking-widest text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-zinc-500">Custom Amount</button>
-                <button type="button" onClick={completeSale} disabled={cart.length === 0 || isSubmitting} className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-black uppercase tracking-wide text-white hover:bg-emerald-500 disabled:opacity-50">{isSubmitting ? "Processing..." : "Pay"}</button>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 xl:w-[320px] dark:border-zinc-700 dark:bg-zinc-950">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Amount Paid</p>
-              <p className="mt-1 text-3xl font-black text-zinc-900">Rs {tendered.toFixed(2)}</p>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded-md border border-zinc-200 bg-white p-2"><p className="font-semibold text-zinc-500">Total</p><p className="font-black text-zinc-900">Rs {totals.total.toFixed(2)}</p></div>
-                <div className="rounded-md border border-zinc-200 bg-white p-2"><p className="font-semibold text-zinc-500">Paid</p><p className="font-black text-zinc-900">Rs {tendered.toFixed(2)}</p></div>
-                <div className="rounded-md border border-zinc-200 bg-white p-2"><p className="font-semibold text-zinc-500">Change</p><p className="font-black text-emerald-700">Rs {change.toFixed(2)}</p></div>
+              <div className="relative group">
+                <ScanLine className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="Contact number"
+                  className="h-11 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 pl-10 pr-4 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-950 transition-all"
+                />
               </div>
             </div>
           </div>
 
-          {error && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</p>}
-        </footer>
+          {/* Cart List */}
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            {cart.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center py-12 text-center opacity-30 grayscale saturate-0">
+                <div className="w-24 h-24 mb-6 border-4 border-dashed border-zinc-300 rounded-[2rem] flex items-center justify-center">
+                  <ScanLine size={40} className="text-zinc-500" />
+                </div>
+                <p className="text-sm font-black uppercase tracking-widest text-zinc-500 mb-2">Cart is empty</p>
+                <p className="text-xs font-bold text-zinc-400 max-w-[180px]">Scan a barcode or select products to begin.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {cart.map((line) => {
+                  const t = lineTotals(line)
+                  return (
+                    <div
+                      key={line.id}
+                      className={cn(
+                        "group relative rounded-[2rem] border-2 p-4 transition-all animate-in fade-in slide-in-from-right-2",
+                        lineFlashId === line.id
+                          ? "bg-emerald-50 border-emerald-500 dark:bg-emerald-900/20 dark:border-emerald-500 shadow-lg shadow-emerald-500/10"
+                          : "bg-white dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800 shadow-sm"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">{line.item.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500">₹{line.price.toFixed(2)}</span>
+                            {Number(line.item.gst_percentage) > 0 && (
+                              <span className="text-[9px] font-black text-zinc-400">VAT {Number(line.item.gst_percentage)}%</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.id)}
+                          className="h-8 w-8 shrink-0 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 hover:bg-rose-100 hover:shadow-lg hover:shadow-rose-600/10 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="mx-auto h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center bg-zinc-100/50 dark:bg-zinc-900/50 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(line.id, line.qty - 1)}
+                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 active:scale-90 transition-all shadow-sm"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <input
+                            value={line.qty}
+                            onChange={(e) => { const next = Number.parseInt(e.target.value || "0", 10); if (!Number.isFinite(next)) return; updateQty(line.id, next) }}
+                            inputMode="numeric"
+                            className="h-9 w-12 bg-transparent text-center text-sm font-black text-zinc-900 dark:text-white outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateQty(line.id, line.qty + 1)}
+                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 active:scale-90 transition-all shadow-sm"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-zinc-900 dark:text-white">₹{t.total.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Billing Details & Pay */}
+          <div className="p-6 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-200 dark:border-zinc-800 space-y-4 shrink-0 shadow-[0_-20px_40px_rgba(0,0,0,0.03)] z-20">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Discount %</label>
+                <input
+                  value={discountPct}
+                  onChange={(e) => setDiscountPct(e.target.value)}
+                  inputMode="decimal"
+                  className="h-10 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-xs font-black outline-none focus:border-emerald-500 shadow-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">TRN / GSTIN</label>
+                <input
+                  value={customerGst}
+                  onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
+                  maxLength={15}
+                  className="h-10 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-xs font-black outline-none focus:border-emerald-500 shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 py-2">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Subtotal</span>
+                <span className="text-sm font-black">₹{totals.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center px-1">
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">VAT/Tax ({effectiveTaxRate.toFixed(1)}%)</span>
+                <span className="text-sm font-black">₹{totals.tax.toFixed(2)}</span>
+              </div>
+              <div className="border-t-2 border-dashed border-zinc-200 dark:border-zinc-700 my-2 pt-2 flex justify-between items-center px-1">
+                <span className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Grand Total</span>
+                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₹{totals.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex p-1.5 bg-zinc-200/50 dark:bg-zinc-800/80 rounded-[1.5rem] border border-zinc-200/50 dark:border-zinc-700/50">
+                {PAYMENT_METHODS.map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className={cn(
+                      "flex-1 h-11 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.14em] transition-all",
+                      paymentMethod === method
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg"
+                        : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
+
+              {paymentMethod === "Split" && (
+                <div className="grid grid-cols-2 gap-2 p-3 bg-white dark:bg-zinc-950 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95">
+                  <input value={splitCash} onChange={(e) => setSplitCash(e.target.value)} placeholder="Cash" inputMode="decimal" className="h-10 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 text-xs font-black outline-none focus:border-emerald-500" />
+                  <input value={splitCard} onChange={(e) => setSplitCard(e.target.value)} placeholder="Card" inputMode="decimal" className="h-10 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 text-xs font-black outline-none focus:border-emerald-500" />
+                  <input value={splitUpi} onChange={(e) => setSplitUpi(e.target.value)} placeholder="UPI" inputMode="decimal" className="h-10 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 text-xs font-black outline-none focus:border-emerald-500" />
+                  <div className="h-10 flex flex-col justify-center px-3">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 leading-none">Remaining</span>
+                    <span className={cn("text-xs font-black", Math.abs(splitRemaining) < 0.01 ? "text-emerald-700" : "text-rose-600")}>₹{splitRemaining.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={completeSale}
+                disabled={cart.length === 0 || isSubmitting}
+                className="h-16 w-full rounded-[2rem] bg-emerald-600 dark:bg-emerald-500 text-white text-base font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 hover:bg-emerald-500 dark:hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale saturate-150"
+              >
+                {isSubmitting ? (
+                  <>Processing...</>
+                ) : (
+                  <>Pay ₹{totals.total.toFixed(2)} <ArrowRight size={20} /></>
+                )}
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
+
+      {/* Footer Shortcut Bar */}
+      <footer className="h-8 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 px-6 flex items-center justify-between z-30 shrink-0">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">F2</span>
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Search</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Ctrl + P</span>
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Numpad</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Esc</span>
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Clear</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Enter</span>
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Pay</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={cn("h-2 w-2 rounded-full animate-pulse", isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-zinc-400")} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{isOnline ? "Cloud Sync Active" : "Offline Mode"}</span>
+        </div>
+      </footer>
 
       {showNumpad && (
         <Numpad title="Amount Paid" total={totals.total} onCancel={() => setShowNumpad(false)} onConfirm={(amount) => { setTendered(amount); setShowNumpad(false) }} />
+      )}
+
+      {error && (
+        <div className="fixed bottom-12 left-6 right-[400px] z-[60] bg-rose-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-rose-500 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-3">
+            <Shield size={20} className="shrink-0" />
+            <p className="text-sm font-bold">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="h-8 px-4 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-black uppercase tracking-widest">Dismiss</button>
+        </div>
       )}
     </div>
   )

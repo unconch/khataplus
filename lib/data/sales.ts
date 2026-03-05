@@ -39,6 +39,18 @@ function mapSalesWithInventory(rows: any[]): Sale[] {
     })) as any
 }
 
+async function hasInventoryCategoryColumn(db: any): Promise<boolean> {
+    const result = await db`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'inventory'
+          AND column_name = 'category'
+        LIMIT 1
+    `;
+    return result.length > 0;
+}
+
 export async function getSales(orgId: string, options: { limit?: number; offset?: number } = { limit: 1000 }) {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
@@ -48,15 +60,26 @@ export async function getSales(orgId: string, options: { limit?: number; offset?
     const db = isGuest ? getDemoSql() : getProductionSql();
 
     const start = Date.now();
-    const data = await db`
-        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
-        FROM sales s
-        LEFT JOIN inventory i ON s.inventory_id = i.id
-        WHERE s.org_id = ${orgId}
-        ORDER BY s.created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-    `;
+    const includeInventoryCategory = await hasInventoryCategoryColumn(db);
+    const data = includeInventoryCategory
+        ? await db`
+            SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
+            FROM sales s
+            LEFT JOIN inventory i ON s.inventory_id = i.id
+            WHERE s.org_id = ${orgId}
+            ORDER BY s.created_at DESC
+            LIMIT ${limit}
+            OFFSET ${offset}
+        `
+        : await db`
+            SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, NULL::text as inventory_category
+            FROM sales s
+            LEFT JOIN inventory i ON s.inventory_id = i.id
+            WHERE s.org_id = ${orgId}
+            ORDER BY s.created_at DESC
+            LIMIT ${limit}
+            OFFSET ${offset}
+        `;
     await logHealthMetric(Date.now() - start, "getSales", db);
 
     return mapSalesWithInventory(data);
@@ -76,35 +99,66 @@ export async function recordSale(sale: Omit<Sale, "id" | "user_id" | "profit" | 
     const initialPaymentStatus = resolveInitialPaymentStatus(sale.payment_method, sale.payment_status);
 
     // Atomic write: stock decrement and sale insert happen in one statement.
-    const result = await sql`
-        WITH updated_inventory AS (
-            UPDATE inventory
-            SET stock = stock - ${sale.quantity}, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${sale.inventory_id}
-              AND org_id = ${orgId}
-              AND stock >= ${sale.quantity}
-            RETURNING id, name, buy_price, hsn_code, category
-        ),
-        inserted_sale AS (
-            INSERT INTO sales(
-                inventory_id, user_id, org_id, quantity, sale_price,
-                total_amount, gst_amount, profit, payment_method,
-                batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
-                hsn_code, customer_gstin, customer_name, customer_phone, payment_status, category
+    const includeInventoryCategory = await hasInventoryCategoryColumn(sql);
+    const result = includeInventoryCategory
+        ? await sql`
+            WITH updated_inventory AS (
+                UPDATE inventory
+                SET stock = stock - ${sale.quantity}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${sale.inventory_id}
+                  AND org_id = ${orgId}
+                  AND stock >= ${sale.quantity}
+                RETURNING id, name, buy_price, hsn_code, category
+            ),
+            inserted_sale AS (
+                INSERT INTO sales(
+                    inventory_id, user_id, org_id, quantity, sale_price,
+                    total_amount, gst_amount, profit, payment_method,
+                    batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
+                    hsn_code, customer_gstin, customer_name, customer_phone, payment_status, category
+                )
+                SELECT
+                    ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price},
+                    ${sale.total_amount}, ${sale.gst_amount}, (${sale.sale_price} - updated_inventory.buy_price) * ${sale.quantity}, ${sale.payment_method},
+                    ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
+                    COALESCE(${sale.hsn_code || null}, updated_inventory.hsn_code), ${sale.customer_gstin || null}, ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}, updated_inventory.category
+                FROM updated_inventory
+                RETURNING *
             )
             SELECT
-                ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price},
-                ${sale.total_amount}, ${sale.gst_amount}, (${sale.sale_price} - updated_inventory.buy_price) * ${sale.quantity}, ${sale.payment_method},
-                ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
-                COALESCE(${sale.hsn_code || null}, updated_inventory.hsn_code), ${sale.customer_gstin || null}, ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}, updated_inventory.category
-            FROM updated_inventory
-            RETURNING *
-        )
-        SELECT
-            row_to_json(inserted_sale.*) AS sale_row,
-            (SELECT name FROM updated_inventory LIMIT 1) AS inventory_name
-        FROM inserted_sale
-    `;
+                row_to_json(inserted_sale.*) AS sale_row,
+                (SELECT name FROM updated_inventory LIMIT 1) AS inventory_name
+            FROM inserted_sale
+        `
+        : await sql`
+            WITH updated_inventory AS (
+                UPDATE inventory
+                SET stock = stock - ${sale.quantity}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${sale.inventory_id}
+                  AND org_id = ${orgId}
+                  AND stock >= ${sale.quantity}
+                RETURNING id, name, buy_price, hsn_code
+            ),
+            inserted_sale AS (
+                INSERT INTO sales(
+                    inventory_id, user_id, org_id, quantity, sale_price,
+                    total_amount, gst_amount, profit, payment_method,
+                    batch_id, sale_date, taxable_amount, cgst_amount, sgst_amount,
+                    hsn_code, customer_gstin, customer_name, customer_phone, payment_status
+                )
+                SELECT
+                    ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price},
+                    ${sale.total_amount}, ${sale.gst_amount}, (${sale.sale_price} - updated_inventory.buy_price) * ${sale.quantity}, ${sale.payment_method},
+                    ${sale.batch_id || null}, ${sale.sale_date}, ${taxableAmount}, ${cgst}, ${sgst},
+                    COALESCE(${sale.hsn_code || null}, updated_inventory.hsn_code), ${sale.customer_gstin || null}, ${sale.customer_name || null}, ${sale.customer_phone || null}, ${initialPaymentStatus}
+                FROM updated_inventory
+                RETURNING *
+            )
+            SELECT
+                row_to_json(inserted_sale.*) AS sale_row,
+                (SELECT name FROM updated_inventory LIMIT 1) AS inventory_name
+            FROM inserted_sale
+        `;
 
     if (result.length === 0) {
         const exists = await sql`SELECT 1 FROM inventory WHERE id = ${sale.inventory_id} AND org_id = ${orgId} LIMIT 1`;
@@ -167,6 +221,7 @@ export async function recordBatchSales(
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
     const db = isGuest ? getDemoSql() : getProductionSql();
+    const includeInventoryCategory = await hasInventoryCategoryColumn(db);
 
     // Idempotency: if this batch already exists, return existing rows instead of inserting duplicates.
     if (forcedBatchId) {
@@ -236,28 +291,53 @@ BEGIN
 `);
 
         // Query 2: Insert Sale (calculating profit on the fly from inventory)
-        queries.push(db`
-            INSERT INTO sales(
-                inventory_id, user_id, org_id, quantity, sale_price,
-                total_amount, gst_amount, profit, payment_method,
-                batch_id, customer_gstin, hsn_code,
-                taxable_amount, cgst_amount, sgst_amount,
-                customer_name, customer_phone, payment_status, category
-            )
-            SELECT 
-                ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
-                ${sale.total_amount}, ${sale.gst_amount},
-                (${sale.sale_price} - buy_price) * ${sale.quantity}, 
-                ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null},
-                COALESCE(${sale.hsn_code || null}, hsn_code),
-                ${sale.total_amount - sale.gst_amount},
-                ${sale.gst_amount / 2},
-                ${sale.gst_amount / 2},
-                ${sale.customer_name || null}, ${sale.customer_phone || null},
-                ${paymentStatus}, category
-            FROM inventory
-            WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
-        `);
+        if (includeInventoryCategory) {
+            queries.push(db`
+                INSERT INTO sales(
+                    inventory_id, user_id, org_id, quantity, sale_price,
+                    total_amount, gst_amount, profit, payment_method,
+                    batch_id, customer_gstin, hsn_code,
+                    taxable_amount, cgst_amount, sgst_amount,
+                    customer_name, customer_phone, payment_status, category
+                )
+                SELECT 
+                    ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
+                    ${sale.total_amount}, ${sale.gst_amount},
+                    (${sale.sale_price} - buy_price) * ${sale.quantity}, 
+                    ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null},
+                    COALESCE(${sale.hsn_code || null}, hsn_code),
+                    ${sale.total_amount - sale.gst_amount},
+                    ${sale.gst_amount / 2},
+                    ${sale.gst_amount / 2},
+                    ${sale.customer_name || null}, ${sale.customer_phone || null},
+                    ${paymentStatus}, category
+                FROM inventory
+                WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
+            `);
+        } else {
+            queries.push(db`
+                INSERT INTO sales(
+                    inventory_id, user_id, org_id, quantity, sale_price,
+                    total_amount, gst_amount, profit, payment_method,
+                    batch_id, customer_gstin, hsn_code,
+                    taxable_amount, cgst_amount, sgst_amount,
+                    customer_name, customer_phone, payment_status
+                )
+                SELECT 
+                    ${sale.inventory_id}, ${user.id}, ${orgId}, ${sale.quantity}, ${sale.sale_price}, 
+                    ${sale.total_amount}, ${sale.gst_amount},
+                    (${sale.sale_price} - buy_price) * ${sale.quantity}, 
+                    ${sale.payment_method}, ${batchId}, ${sale.customer_gstin || null},
+                    COALESCE(${sale.hsn_code || null}, hsn_code),
+                    ${sale.total_amount - sale.gst_amount},
+                    ${sale.gst_amount / 2},
+                    ${sale.gst_amount / 2},
+                    ${sale.customer_name || null}, ${sale.customer_phone || null},
+                    ${paymentStatus}
+                FROM inventory
+                WHERE id = ${sale.inventory_id} AND org_id = ${orgId}
+            `);
+        }
     }
 
     // Execute Atomically
@@ -275,13 +355,21 @@ BEGIN
     (revalidateTag as any)(`inventory-${orgId}`);
     triggerSync(orgId, 'sale');
 
-    const insertedRows = await db`
-        SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
-        FROM sales s
-        LEFT JOIN inventory i ON s.inventory_id = i.id
-        WHERE s.org_id = ${orgId} AND s.batch_id = ${batchId}
-        ORDER BY s.created_at ASC
-    `;
+    const insertedRows = includeInventoryCategory
+        ? await db`
+            SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, i.category as inventory_category
+            FROM sales s
+            LEFT JOIN inventory i ON s.inventory_id = i.id
+            WHERE s.org_id = ${orgId} AND s.batch_id = ${batchId}
+            ORDER BY s.created_at ASC
+        `
+        : await db`
+            SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price, NULL::text as inventory_category
+            FROM sales s
+            LEFT JOIN inventory i ON s.inventory_id = i.id
+            WHERE s.org_id = ${orgId} AND s.batch_id = ${batchId}
+            ORDER BY s.created_at ASC
+        `;
     await Promise.all(insertedRows.map((row: any) => recordStockMovement({
         orgId,
         inventoryId: String(row.inventory_id),

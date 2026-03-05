@@ -8,6 +8,7 @@ import {
 import { Navbar } from "./Navbar"
 import { motion, Variants } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 interface HeroSectionProps {
     isAuthenticated: boolean
@@ -45,7 +46,7 @@ const fadeUpVariants: Variants = {
 
 export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionProps) {
     const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
-    const secondaryHref = "/demo/dashboard"
+    const demoDashboardUrl = useDemoDashboardUrl()
 
     return (
         <>
@@ -154,7 +155,7 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
                         </Link>
 
                         <Link
-                            href={secondaryHref}
+                            href={demoDashboardUrl}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl border border-zinc-200/50 bg-white/40 backdrop-blur-xl px-12 py-5 text-[13px] font-black uppercase tracking-[0.25em] text-zinc-800 transition-all hover:bg-white/80 hover:border-emerald-200/50 hover:shadow-2xl group hover:-translate-y-1 active:translate-y-0"
                         >
                             <div className="w-8 h-8 rounded-full bg-emerald-100/50 flex items-center justify-center transition-colors group-hover:bg-emerald-50">

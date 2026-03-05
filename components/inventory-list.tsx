@@ -1,16 +1,41 @@
 "use client"
 
 import type { InventoryItem } from "@/lib/types"
-import { Package, ArrowRight } from "lucide-react"
+import { Package, ArrowRight, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface InventoryListProps {
   items: InventoryItem[]
+  orgId: string
 }
 
-export function InventoryList({ items }: InventoryListProps) {
+export function InventoryList({ items, orgId }: InventoryListProps) {
+  const router = useRouter()
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+
+  const archiveItem = async (id: string, name: string) => {
+    const confirmed = window.confirm(`Archive "${name}"? It will be hidden from inventory list.`)
+    if (!confirmed) return
+
+    try {
+      setArchivingId(id)
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, orgId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to archive item")
+      router.refresh()
+    } catch (e: any) {
+      window.alert(e?.message || "Could not archive item")
+    } finally {
+      setArchivingId(null)
+    }
+  }
   const isOpaqueName = (value: unknown) => {
     const text = String(value || "").trim()
     if (!text) return false
@@ -138,12 +163,25 @@ export function InventoryList({ items }: InventoryListProps) {
                 </p>
               </div>
 
-              <Link
-                href={`/dashboard/inventory/${item.id}`}
-                className="h-10 w-10 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 flex items-center justify-center shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0"
-              >
-                <ArrowRight size={18} />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => archiveItem(item.id, displayName)}
+                  disabled={archivingId === item.id}
+                  className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-200 hover:border-zinc-400 dark:hover:border-zinc-500 disabled:opacity-50"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Archive size={14} />
+                    {archivingId === item.id ? "..." : "Archive"}
+                  </span>
+                </button>
+                <Link
+                  href={`/dashboard/inventory/${item.id}`}
+                  className="h-10 w-10 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 flex items-center justify-center shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0"
+                >
+                  <ArrowRight size={18} />
+                </Link>
+              </div>
             </div>
           </div>
         )

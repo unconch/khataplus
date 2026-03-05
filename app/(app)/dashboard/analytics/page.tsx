@@ -42,15 +42,6 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="min-h-full space-y-10 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-4">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
-            Financial <span className="text-amber-600">Analytics</span>
-          </h1>
-          <p className="text-sm font-medium text-muted-foreground">Monitor your business performance and trends</p>
-        </div>
-      </div>
-
       <Suspense fallback={
         <div className="h-[600px] w-full flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-3xl animate-pulse border">
           <div className="flex flex-col items-center gap-4">

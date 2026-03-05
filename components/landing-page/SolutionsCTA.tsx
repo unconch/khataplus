@@ -4,8 +4,11 @@ import { motion } from "framer-motion"
 import { ArrowRight, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { GradientText } from "@/components/gradient-text"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 export function SolutionsCTA() {
+    const demoDashboardUrl = useDemoDashboardUrl()
+
     return (
         <section className="relative py-40 overflow-hidden bg-white">
             {/* Bright Portal Background */}
@@ -50,7 +53,7 @@ export function SolutionsCTA() {
                         </Link>
 
                         <Link
-                            href="/demo"
+                            href={demoDashboardUrl}
                             className="px-10 py-5 bg-white text-black border-2 border-zinc-200 font-black uppercase tracking-widest text-xs rounded-2xl transition-all hover:border-black active:scale-95"
                         >
                             Explore Demo

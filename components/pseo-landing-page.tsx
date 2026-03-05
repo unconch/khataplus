@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Logo } from "@/components/ui/logo"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 interface PSEOLandingPageProps {
     category: string
@@ -22,6 +23,7 @@ interface PSEOLandingPageProps {
 }
 
 export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
+    const demoDashboardUrl = useDemoDashboardUrl()
     const formattedCategory = (category || "Retail").split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
     const formattedCity = (city || "India").split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
 
@@ -74,7 +76,7 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                                     Get Started for Free <ArrowRight size={18} />
                                 </Button>
                             </Link>
-                            <Link href="/demo" className="flex-1">
+                            <Link href={demoDashboardUrl} className="flex-1">
                                 <Button variant="outline" className="w-full h-16 rounded-[2rem] border-2 border-zinc-100 dark:border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3">
                                     View Live Demo
                                 </Button>

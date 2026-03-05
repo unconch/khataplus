@@ -8,6 +8,7 @@ import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { cn } from "@/lib/utils"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 type AuthContext = {
   isAuthenticated: boolean
@@ -171,6 +172,7 @@ export default function FeaturesPage() {
   }, [])
 
   const ctaHref = auth.isAuthenticated ? (auth.orgSlug ? `/${auth.orgSlug}/dashboard` : "/dashboard") : "/auth/sign-up"
+  const demoDashboardUrl = useDemoDashboardUrl()
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f6fbff_0%,#f8fbfa_48%,#ffffff_100%)] text-zinc-900 overflow-x-hidden">
@@ -330,7 +332,7 @@ export default function FeaturesPage() {
                   Start Free Now
                 </Link>
                 <Link
-                  href="/demo"
+                  href={demoDashboardUrl}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-zinc-200/60 bg-white/80 px-8 py-3.5 text-[15px] font-medium text-zinc-900 shadow-sm transition-colors hover:bg-white backdrop-blur-sm sm:w-auto"
                 >
                   See Demo <ArrowRight size={16} className="text-zinc-500" />

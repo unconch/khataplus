@@ -8,6 +8,20 @@ const SYSTEM_PREFIXES = new Set([
     'pending-approval', 'tools', 'beta', 'for', 'shop', 'pos'
 ])
 
+function getAppHostFromHost(hostname: string): string {
+    if (!hostname) return "app.khataplus.online"
+    if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
+    if (hostname.endsWith(".localhost")) return "app.localhost"
+
+    let base = hostname
+    if (base.startsWith("www.")) base = base.slice(4)
+    if (base.startsWith("demo.")) base = base.slice(5)
+    if (base.startsWith("pos.")) base = base.slice(4)
+    if (base.startsWith("app.")) base = base.slice(4)
+
+    return `app.${base}`
+}
+
 const descopeAuth = authMiddleware({
     redirectUrl: '/auth/login',
     publicRoutes: [
@@ -33,22 +47,64 @@ const descopeAuth = authMiddleware({
 })
 
 export default async function proxy(req: NextRequest) {
-    const baseResponse = await descopeAuth(req)
     const pathname = req.nextUrl.pathname
     const url = req.nextUrl
-    const host = (req.headers.get("host") || "").split(":")[0].toLowerCase()
+    const hostHeader = (req.headers.get("host") || "").toLowerCase()
+    const host = hostHeader.split(":")[0]
+    const hostPort = hostHeader.includes(":") ? hostHeader.split(":")[1] : ""
     const isPosHost = host === "pos.khataplus.online" || host.startsWith("pos.")
+    const isDemoHost = host === "demo.khataplus.online" || host.startsWith("demo.")
+    const isAppHost = host === "app.khataplus.online" || host.startsWith("app.")
+    const segments = pathname.split('/').filter(Boolean)
+    const firstSegment = segments[0] || ''
+    const isTenantRoute = !!firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')
+    const isDashboardPath = pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+    const isAuthPath = pathname === "/auth" || pathname.startsWith("/auth/")
+    const isLegacyDemoDashboardPath = pathname === "/demo/dashboard" || pathname.startsWith("/demo/dashboard/")
+
+    if (isLegacyDemoDashboardPath) {
+        if (isDemoHost) {
+            const normalizedPath = pathname.replace(/^\/demo/, "") || "/dashboard"
+            const normalizedUrl = new URL(normalizedPath, req.url)
+            normalizedUrl.search = url.search
+            return NextResponse.redirect(normalizedUrl)
+        }
+
+        const demoHost = host.startsWith("demo.") ? host : `demo.${host}`
+        const hostWithPort = hostPort ? `${demoHost}:${hostPort}` : demoHost
+        const suffix = pathname.replace(/^\/demo/, "") || "/dashboard"
+        const redirectUrl = new URL(req.url)
+        redirectUrl.host = hostWithPort
+        redirectUrl.pathname = suffix
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    if (!isAppHost && !isPosHost && !isDemoHost && !pathname.startsWith("/api/")) {
+        if (isAuthPath || isDashboardPath || isTenantRoute) {
+            const appHost = getAppHostFromHost(host)
+            const hostWithPort = hostPort ? `${appHost}:${hostPort}` : appHost
+            const redirectUrl = new URL(req.url)
+            redirectUrl.host = hostWithPort
+            return NextResponse.redirect(redirectUrl)
+        }
+    }
 
     const requestHeaders = new Headers(req.headers)
-    const authRedirectLocation = baseResponse.headers.get('location')
-
     requestHeaders.set('x-invoke-path', pathname)
-    if (req.cookies.has('guest_mode') || pathname.startsWith('/demo')) {
+    if (req.cookies.has('guest_mode') || pathname.startsWith('/demo') || isDemoHost) {
         requestHeaders.set('x-guest-mode', 'true')
     }
 
-    const segments = pathname.split('/').filter(Boolean)
-    const firstSegment = segments[0] || ''
+    if (isDemoHost && pathname === "/") {
+        const redirectUrl = new URL("/dashboard", req.url)
+        redirectUrl.search = url.search
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    const baseResponse = isDemoHost
+        ? NextResponse.next({ request: { headers: requestHeaders } })
+        : await descopeAuth(req)
+    const authRedirectLocation = baseResponse.headers.get('location')
 
     let orgSlug: string | null = null
     let rewrittenPathname = pathname
@@ -132,6 +188,15 @@ export default async function proxy(req: NextRequest) {
     Object.entries(securityHeaders).forEach(([key, value]) => {
         finalResponse.headers.set(key, value)
     })
+    if (isDemoHost) {
+        finalResponse.cookies.set("guest_mode", "true", {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 60 * 8,
+            sameSite: "lax",
+        })
+    }
 
     return finalResponse
 }

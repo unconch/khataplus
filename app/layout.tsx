@@ -21,11 +21,20 @@ export const metadata: Metadata = {
     siteName: "KhataPlus",
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: "https://khataplus.online/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "KhataPlus - Smart Billing for NorthEast India",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "KhataPlus - Smart Billing for NorthEast India",
     description: "GST billing, inventory & khata tracking for NorthEast India small businesses.",
+    images: ["https://khataplus.online/og-image.png"],
   },
   manifest: "/manifest.json",
   icons: {
@@ -81,11 +90,8 @@ export default function RootLayout({
       price: "0",
       priceCurrency: "INR",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      ratingCount: "120",
-    },
+    downloadUrl: "https://play.google.com/store/apps/details?id=YOUR_APP_ID",
+    screenshot: "https://khataplus.online/og-image.png",
   }
 
   return (

@@ -4,7 +4,10 @@ export async function isGuestMode() {
     const { cookies, headers } = await import("next/headers")
     const cookieStore = await cookies()
     const headerList = await headers()
-    return cookieStore.has("guest_mode") || headerList.get("x-guest-mode") === "true"
+    const host = (headerList.get("x-forwarded-host") || headerList.get("host") || "").toLowerCase()
+    const hostname = host.split(",")[0]?.trim().split(":")[0] || ""
+    const isDemoHost = hostname === "demo.khataplus.online" || hostname.startsWith("demo.")
+    return cookieStore.has("guest_mode") || headerList.get("x-guest-mode") === "true" || isDemoHost
 }
 
 export async function getCurrentUser(): Promise<{ userId: string, email: string, isGuest: boolean } | null> {

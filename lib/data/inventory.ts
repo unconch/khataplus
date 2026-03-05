@@ -9,6 +9,18 @@ import { triggerSync } from "../sync-notifier";
 import { recordStockMovement } from "./stock-movements";
 import { getInventoryItemLimit } from "../billing-plans";
 
+async function hasInventoryArchivedColumn(db: any): Promise<boolean> {
+    const result = await db`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'inventory'
+          AND column_name = 'is_archived'
+        LIMIT 1
+    `;
+    return result.length > 0;
+}
+
 export async function getInventory(orgId: string, options: { limit?: number; offset?: number } = { limit: 1000 }) {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
@@ -16,19 +28,28 @@ export async function getInventory(orgId: string, options: { limit?: number; off
     const limit = options.limit ?? 1000;
     const offset = options.offset ?? 0;
 
-    return nextCache(
-        async (): Promise<InventoryItem[]> => {
+    const fetchInventory = async (): Promise<InventoryItem[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
             const start = Date.now();
-            const data = await db`
-                SELECT * FROM inventory 
-                WHERE org_id = ${orgId} 
-                ORDER BY name ASC
-                LIMIT ${limit}
-                OFFSET ${offset}
-            `;
+            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const data = hasArchiveColumn
+                ? await db`
+                    SELECT * FROM inventory 
+                    WHERE org_id = ${orgId} 
+                      AND COALESCE(is_archived, false) = false
+                    ORDER BY name ASC
+                    LIMIT ${limit}
+                    OFFSET ${offset}
+                `
+                : await db`
+                    SELECT * FROM inventory 
+                    WHERE org_id = ${orgId} 
+                    ORDER BY name ASC
+                    LIMIT ${limit}
+                    OFFSET ${offset}
+                `;
             await logHealthMetric(Date.now() - start, "getInventory", db);
 
             return data.map((item: any) => ({
@@ -39,7 +60,14 @@ export async function getInventory(orgId: string, options: { limit?: number; off
                 min_stock: item.min_stock || 5,
                 category: item.category || undefined
             })) as InventoryItem[];
-        },
+        };
+
+    if (isGuest) {
+        return fetchInventory();
+    }
+
+    return nextCache(
+        fetchInventory,
         [`inventory-list-${flavor}-${orgId}-${limit}-${offset}`],
         { tags: ["inventory", `inventory-${orgId}`, `inventory-${flavor}`], revalidate: 3600 }
     )();
@@ -68,6 +96,36 @@ export async function getInventoryItem(id: string, orgId: string): Promise<Inven
         min_stock: item.min_stock || 5,
         category: item.category || undefined
     } as InventoryItem;
+}
+
+export async function archiveInventoryItem(id: string, orgId: string): Promise<void> {
+    await authorize("Archive Inventory", "admin", orgId);
+
+    const existing = await sql`
+        SELECT id, name
+        FROM inventory
+        WHERE id = ${id} AND org_id = ${orgId}
+        LIMIT 1
+    `;
+    if (existing.length === 0) {
+        throw new Error("Item not found");
+    }
+
+    const hasArchiveColumn = await hasInventoryArchivedColumn(sql);
+    if (!hasArchiveColumn) {
+        await sql`ALTER TABLE inventory ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE`;
+    }
+
+    await sql`
+        UPDATE inventory
+        SET is_archived = TRUE, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id} AND org_id = ${orgId}
+    `;
+
+    await audit("Archived Inventory", "inventory", id, { name: existing[0].name }, orgId);
+    (revalidateTag as any)(`inventory-${orgId}`);
+    revalidatePath("/dashboard/inventory", "page");
+    triggerSync(orgId, 'inventory');
 }
 
 export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created_at" | "updated_at">, orgId?: string): Promise<InventoryItem> {
@@ -168,18 +226,26 @@ export async function getLowStockItems(orgId: string): Promise<InventoryItem[]> 
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async (): Promise<InventoryItem[]> => {
+    const fetchLowStock = async (): Promise<InventoryItem[]> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
             // Fetch items where stock is less than or equal to min_stock
-            const data = await db`
-                SELECT * FROM inventory 
-                WHERE org_id = ${orgId} 
-                AND stock <= min_stock 
-                ORDER BY stock ASC
-            `;
+            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const data = hasArchiveColumn
+                ? await db`
+                    SELECT * FROM inventory 
+                    WHERE org_id = ${orgId} 
+                    AND COALESCE(is_archived, false) = false
+                    AND stock <= min_stock 
+                    ORDER BY stock ASC
+                `
+                : await db`
+                    SELECT * FROM inventory 
+                    WHERE org_id = ${orgId} 
+                    AND stock <= min_stock 
+                    ORDER BY stock ASC
+                `;
 
             return data.map((item: any) => ({
                 ...item,
@@ -188,7 +254,14 @@ export async function getLowStockItems(orgId: string): Promise<InventoryItem[]> 
                 gst_percentage: parseFloat(item.gst_percentage),
                 min_stock: item.min_stock || 5
             })) as InventoryItem[];
-        },
+        };
+
+    if (isGuest) {
+        return fetchLowStock();
+    }
+
+    return nextCache(
+        fetchLowStock,
         [`inventory-low-stock-${flavor}-${orgId}`],
         { tags: ["inventory", `inventory-${orgId}`, "low-stock", `inventory-${flavor}`], revalidate: 600 }
     )();
@@ -198,19 +271,29 @@ export async function getInventoryStats(orgId: string) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
 
-    return nextCache(
-        async (): Promise<{ totalCount: number, lowStockCount: number, health: number }> => {
+    const fetchStats = async (): Promise<{ totalCount: number, lowStockCount: number, health: number }> => {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
-            const result = await db`
-                SELECT 
-                    COUNT(*) as total,
-                    COUNT(*) FILTER (WHERE stock <= min_stock) as low_stock,
-                    COUNT(*) FILTER (WHERE stock > 5) as in_stock
-                FROM inventory 
-                WHERE org_id = ${orgId}
-            `;
+            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const result = hasArchiveColumn
+                ? await db`
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE stock <= min_stock) as low_stock,
+                        COUNT(*) FILTER (WHERE stock > 5) as in_stock
+                    FROM inventory 
+                    WHERE org_id = ${orgId}
+                      AND COALESCE(is_archived, false) = false
+                `
+                : await db`
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE stock <= min_stock) as low_stock,
+                        COUNT(*) FILTER (WHERE stock > 5) as in_stock
+                    FROM inventory 
+                    WHERE org_id = ${orgId}
+                `;
 
             const row = result[0];
             const total = parseInt(row.total);
@@ -223,7 +306,14 @@ export async function getInventoryStats(orgId: string) {
                 lowStockCount: lowStock,
                 health: health
             };
-        },
+        };
+
+    if (isGuest) {
+        return fetchStats();
+    }
+
+    return nextCache(
+        fetchStats,
         [`inventory-stats-${flavor}-${orgId}`],
         { tags: ["inventory", `inventory-${orgId}`, `inventory-${flavor}`], revalidate: 3600 }
     )();

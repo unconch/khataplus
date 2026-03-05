@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ArrowRight, Play } from "lucide-react"
 import { DeviceCluster } from "./DeviceCluster"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 type HeroSectionProps = {
   isAuthenticated: boolean
@@ -10,7 +11,7 @@ type HeroSectionProps = {
 
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
-  const secondaryHref = "/demo/dashboard"
+  const secondaryHref = useDemoDashboardUrl()
 
   return (
     <section className="relative min-h-[78svh] flex items-center bg-white text-zinc-900 overflow-hidden">

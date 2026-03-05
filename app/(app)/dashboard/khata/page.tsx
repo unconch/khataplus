@@ -11,10 +11,6 @@ export const metadata = {
 export default async function KhataDashboardPage() {
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 pb-24">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Khata Ledger</h2>
-            </div>
-
             <Suspense fallback={
                 <div className="flex h-[400px] w-full items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
