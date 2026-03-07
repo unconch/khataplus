@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
     Menu, X, ArrowRight
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
+import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 interface NavbarProps {
     isAuthenticated: boolean
@@ -19,13 +20,37 @@ interface NavbarProps {
 export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const scrolledRef = useRef(false)
+    const rafRef = useRef<number | null>(null)
+    const { signInUrl, signUpUrl } = useMainAuthUrls()
 
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 50)
+        const updateScrolled = () => {
+            const nextScrolled = window.scrollY > 50
+            if (nextScrolled !== scrolledRef.current) {
+                scrolledRef.current = nextScrolled
+                setScrolled(nextScrolled)
+            }
         }
+
+        const handleScroll = () => {
+            if (rafRef.current !== null) {
+                return
+            }
+            rafRef.current = window.requestAnimationFrame(() => {
+                updateScrolled()
+                rafRef.current = null
+            })
+        }
+
+        updateScrolled()
         window.addEventListener("scroll", handleScroll, { passive: true })
-        return () => window.removeEventListener("scroll", handleScroll)
+        return () => {
+            window.removeEventListener("scroll", handleScroll)
+            if (rafRef.current !== null) {
+                window.cancelAnimationFrame(rafRef.current)
+            }
+        }
     }, [])
 
     useEffect(() => {
@@ -40,16 +65,18 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
     }, [mobileMenuOpen])
 
     const isSolid = isLight || lightMode || scrolled || mobileMenuOpen
+    const keepBlended = !(isLight || lightMode)
+    const useSolidPalette = !keepBlended && isSolid
 
     const primaryHref = isAuthenticated
         ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
-        : "/auth/sign-up"
+        : signUpUrl
     const primaryLabel = isAuthenticated
         ? "Go to Dashboard"
         : "Start Free Trial"
     const secondaryHref = isAuthenticated
         ? (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
-        : "/auth/login"
+        : signInUrl
     const secondaryLabel = isAuthenticated
         ? "Settings"
         : "Sign In"
@@ -58,25 +85,27 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
         <header className="fixed top-0 left-0 right-0 z-50">
             <div
                 className={cn(
-                    "transition-all duration-500 border-b backdrop-blur-xl",
-                    isSolid
-                        ? "bg-white/70 border-white/30 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.35)]"
-                        : "bg-white/10 border-white/10"
+                    "transition-all duration-500 backdrop-blur-xl",
+                    keepBlended
+                        ? "bg-[linear-gradient(90deg,rgba(16,185,129,0.18)_0%,rgba(51,65,85,0.24)_58%,rgba(30,41,59,0.18)_100%)] border border-white/10"
+                        : "bg-white/70 border-b border-white/30",
+                    "mx-0 mt-0 rounded-none border-x-0"
                 )}
             >
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="h-12 md:h-16 flex items-center justify-between">
+                <div className="w-full px-4 md:px-6">
+                    <div className="relative h-12 md:h-16 flex items-center justify-between">
                         <Link href="/" className="flex items-center gap-3">
                             <Logo size={42} className="text-emerald-600" />
-                            <span className={cn("text-2xl font-black tracking-tighter italic", isSolid ? "text-slate-900" : "text-white")}>
+                            <span className={cn("text-2xl font-black tracking-tighter italic", useSolidPalette ? "text-slate-900" : "text-white")}>
                                 KhataPlus
                             </span>
                         </Link>
 
-                        <nav className="hidden md:flex items-center gap-10">
-                            <DesktopNavLink href="/features" label="Features" solid={isSolid} />
-                            <DesktopNavLink href="/pricing" label="Pricing" solid={isSolid} />
-                            <DesktopNavLink href="/docs" label="Merchant Academy" solid={isSolid} />
+                        <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+                            <DesktopNavLink href="/features" label="Features" solid={useSolidPalette} />
+                            <DesktopNavLink href="/roadmap" label="Roadmap" solid={useSolidPalette} />
+                            <DesktopNavLink href="/pricing" label="Pricing" solid={useSolidPalette} />
+                            <DesktopNavLink href="/docs" label="Merchant Academy" solid={useSolidPalette} />
                         </nav>
 
                         <div className="hidden md:flex items-center gap-4">
@@ -84,7 +113,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                                 href={secondaryHref}
                                 className={cn(
                                     "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    isSolid
+                                    useSolidPalette
                                         ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
                                         : "text-white/90 hover:text-white hover:bg-white/10"
                                 )}
@@ -94,10 +123,10 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                             <Link
                                 href={primaryHref}
                                 className={cn(
-                                    "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-xl",
-                                    isSolid
-                                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20"
-                                        : "bg-white text-slate-900 hover:bg-slate-100 shadow-white/10"
+                                    "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    useSolidPalette
+                                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                        : "bg-white text-slate-900 hover:bg-slate-100"
                                 )}
                             >
                                 {primaryLabel}
@@ -105,7 +134,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </div>
 
                         <button
-                            className={cn("md:hidden p-2 -mr-2 transition-colors", isSolid ? "text-slate-900" : "text-white")}
+                            className={cn("md:hidden p-2 -mr-2 transition-colors", useSolidPalette ? "text-slate-900" : "text-white")}
                             onClick={() => setMobileMenuOpen((prev) => !prev)}
                             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
                             aria-expanded={mobileMenuOpen}
@@ -125,6 +154,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
             >
                 <div className="max-w-7xl mx-auto px-6 py-10 space-y-4">
                     <MobileNavLink href="/features" label="Features" onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/roadmap" label="Roadmap" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/pricing" label="Pricing" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/docs" label="Academy" onClick={() => setMobileMenuOpen(false)} />
 
@@ -138,7 +168,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </Link>
                         <Link
                             href={primaryHref}
-                            className="block w-full text-center rounded-2xl bg-emerald-600 px-6 py-4 text-white font-black uppercase tracking-widest text-xs hover:bg-emerald-700 shadow-xl shadow-emerald-500/20"
+                            className="block w-full text-center rounded-2xl bg-emerald-600 px-6 py-4 text-white font-black uppercase tracking-widest text-xs hover:bg-emerald-700"
                             onClick={() => setMobileMenuOpen(false)}
                         >
                             {primaryLabel}

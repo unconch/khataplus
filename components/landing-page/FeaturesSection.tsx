@@ -1,9 +1,15 @@
 "use client"
 
-import { WifiOff, TrendingUp, ShieldCheck, FileText, Smartphone, Zap, Clock, Globe } from "lucide-react"
+import { WifiOff, TrendingUp, ShieldCheck, FileText, Zap, Globe } from "lucide-react"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useRef } from "react"
+
+const INDUSTRIES = [
+    "RETAIL", "WHOLESALE", "PHARMACY", "TEXTILES", "ELECTRONICS",
+    "FMCG", "HARDWARE", "DISTRIBUTION", "SERVICES", "MANUFACTURING"
+]
+const INDUSTRY_LOOP = [...INDUSTRIES, ...INDUSTRIES, ...INDUSTRIES]
 
 export function FeaturesSection() {
     const sectionRef = useRef<HTMLElement>(null)
@@ -18,7 +24,7 @@ export function FeaturesSection() {
     const y3 = useTransform(scrollYProgress, [0, 1], [0, -150])
 
     return (
-        <section ref={sectionRef} id="features" className="py-24 md:py-40 px-6 bg-transparent relative overflow-hidden text-zinc-900">
+        <section ref={sectionRef} id="features" className="py-20 md:py-28 px-6 bg-transparent relative overflow-hidden text-zinc-900">
             {/* Massive Parallax Ambient Background Glows - Faded Boundary */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
                 style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
@@ -30,11 +36,28 @@ export function FeaturesSection() {
 
             <div className="max-w-7xl mx-auto relative z-10">
                 <AdvancedScrollReveal variant="slideUp">
-                    <div className="mb-24 mt-12 flex flex-col md:flex-row md:items-end justify-between gap-12">
+                    <div className="mb-16 mt-8 flex flex-col md:flex-row md:items-end justify-between gap-12">
                         <div>
                             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 border border-zinc-200/50 backdrop-blur-md mb-8 shadow-sm">
                                 <Zap size={14} className="text-orange-500" />
                                 <span className="text-zinc-600 font-bold text-[11px] tracking-[0.2em] uppercase">Core Capabilities</span>
+                            </div>
+                            <div className="mb-8 overflow-hidden">
+                                <motion.div
+                                    initial={{ x: 0 }}
+                                    animate={{ x: "-50%" }}
+                                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                                    className="flex gap-6 items-center pr-6 w-max whitespace-nowrap"
+                                >
+                                    {INDUSTRY_LOOP.map((word, i) => (
+                                        <div key={`${word}-${i}`} className="flex items-center gap-6">
+                                            <span className="text-sm md:text-base font-black uppercase tracking-[0.15em] text-zinc-500">
+                                                {word}
+                                            </span>
+                                            <span className="text-zinc-300 text-sm">{"\u2726"}</span>
+                                        </div>
+                                    ))}
+                                </motion.div>
                             </div>
                             <h2 className="text-5xl md:text-[5.5rem] font-bold tracking-tighter text-zinc-900 leading-[0.95] max-w-2xl">
                                 Everything you need. <br className="hidden md:block" />
@@ -85,7 +108,7 @@ export function FeaturesSection() {
                     </motion.div>
 
                     {/* Right Column (Standard span, scrolls faster for parallax overlap) */}
-                    <motion.div style={{ y: y3 }} className="lg:col-span-5 space-y-6 md:space-y-8 lg:mt-32">
+                    <motion.div style={{ y: y3 }} className="lg:col-span-5 space-y-6 md:space-y-8 lg:mt-20">
                         <FeatureCard
                             icon={TrendingUp}
                             title="Deep Intelligence Analytics"

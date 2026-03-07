@@ -3,10 +3,13 @@
 import Link from "next/link"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { Sparkles, UserPlus, PackagePlus, Rocket, ArrowRight } from "lucide-react"
+import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 export function HowItWorksSection() {
+    const { signUpUrl } = useMainAuthUrls()
+
     return (
-        <section id="how" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden">
+        <section id="how" className="py-20 md:py-24 px-6 bg-transparent relative overflow-hidden">
             {/* Ambient Background Glows - Faded Boundary */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
                 style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
@@ -70,7 +73,7 @@ export function HowItWorksSection() {
                 </div>
 
                 {/* Fluid Glass CTA Banner */}
-                <AdvancedScrollReveal variant="slideUp" delay={300} className="mt-40">
+                <AdvancedScrollReveal variant="slideUp" delay={300} className="mt-28">
                     <div className="bg-white/30 backdrop-blur-2xl border border-white/70 rounded-[3rem] p-10 md:p-16 text-center max-w-3xl mx-auto shadow-[0_35px_90px_-22px_rgba(0,0,0,0.2)] relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-sky-100/45 via-rose-100/35 to-white/15 opacity-95 transition-opacity duration-1000 pointer-events-none" />
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.92),transparent_38%),radial-gradient(circle_at_88%_84%,rgba(255,255,255,0.38),transparent_45%)] pointer-events-none" />
@@ -82,7 +85,7 @@ export function HowItWorksSection() {
                         <h3 className="text-3xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-8 relative z-10">Ready to run your <br /> business smarter?</h3>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 relative z-10 mt-10">
-                            <Link href="/auth/sign-up" className="px-8 py-4 rounded-2xl bg-zinc-900/88 text-white font-semibold tracking-wide hover:bg-zinc-900 transition-colors shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 duration-300 w-full sm:w-auto border border-white/15 backdrop-blur-md">
+                            <Link href={signUpUrl} className="px-8 py-4 rounded-2xl bg-zinc-900/88 text-white font-semibold tracking-wide hover:bg-zinc-900 transition-colors shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 duration-300 w-full sm:w-auto border border-white/15 backdrop-blur-md">
                                 Start Free
                             </Link>
                             <Link href="#demo" className="px-8 py-4 rounded-2xl bg-white/55 backdrop-blur-xl border border-white/85 text-zinc-900 font-semibold tracking-wide hover:bg-white/75 transition-colors w-full sm:w-auto flex items-center justify-center gap-2 group/demo shadow-sm">

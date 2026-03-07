@@ -9,7 +9,7 @@ const WORDS = [
 
 export function MarqueeSection() {
     return (
-        <section className="py-12 md:py-16 bg-transparent overflow-hidden relative flex items-center">
+        <section className="py-10 md:py-12 bg-transparent overflow-hidden relative flex items-center">
             {/* Kinetic Typography Marquee */}
             <div className="flex whitespace-nowrap overflow-hidden items-center group">
                 <motion.div

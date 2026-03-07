@@ -8,7 +8,7 @@ const ENGINE_FEATURES = [
         id: "offline",
         title: "Works Offline",
         icon: Database,
-        description: "Keep billing even without internet. Your data is saved locally.",
+        description: "Keep billing even when the internet drops. Your data is instantly saved locally on your device, allowing you to continue adding items and creating bills without any interruptions.",
         glowStr: "from-cyan-400/40 via-blue-200/20 to-transparent",
         bgHover: "hover:bg-cyan-50/50",
         borderHover: "group-hover:border-cyan-200",
@@ -18,7 +18,7 @@ const ENGINE_FEATURES = [
         id: "sync",
         title: "Auto Sync",
         icon: Zap,
-        description: "When internet returns, new data syncs automatically.",
+        description: "As soon as your connection is restored, all offline bills and changes are automatically backed up to the cloud. No manual clicks required—everything stays perfectly up-to-date in the background.",
         glowStr: "from-blue-400/40 via-indigo-200/20 to-transparent",
         bgHover: "hover:bg-blue-50/50",
         borderHover: "group-hover:border-blue-200",
@@ -28,7 +28,7 @@ const ENGINE_FEATURES = [
         id: "security",
         title: "Secure Data",
         icon: ShieldCheck,
-        description: "Your business data is encrypted and protected while stored and while moving online.",
+        description: "Your business information is locked with enterprise-grade encryption. Whether data is stored on your device or syncing online, it remains completely private and protected from unauthorized access.",
         glowStr: "from-fuchsia-400/40 via-pink-200/20 to-transparent",
         bgHover: "hover:bg-fuchsia-50/50",
         borderHover: "group-hover:border-fuchsia-200",
@@ -38,7 +38,7 @@ const ENGINE_FEATURES = [
         id: "perf",
         title: "Fast Performance",
         icon: Activity,
-        description: "Built to handle large inventories and busy billing hours without slowing down.",
+        description: "Engineered for speed to keep your checkout lines moving. Whether you have 10 products or 10,000, our system instantly searches items and accurately generates bills during your busiest hours.",
         glowStr: "from-emerald-400/40 via-teal-200/20 to-transparent",
         bgHover: "hover:bg-emerald-50/50",
         borderHover: "group-hover:border-emerald-200",
@@ -48,7 +48,7 @@ const ENGINE_FEATURES = [
 
 export function PlatformSection() {
     return (
-        <section id="platform" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden text-zinc-900">
+        <section id="platform" className="py-20 md:py-24 px-6 bg-transparent relative overflow-hidden text-zinc-900">
             {/* Tech Background Atmosphere - Faded Boundary */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
                 style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}

@@ -6,7 +6,7 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 
 export function FreeToolsSection() {
     return (
-        <section id="growth-tools" className="py-24 md:py-32 px-6 bg-transparent relative overflow-hidden">
+        <section id="growth-tools" className="py-20 md:py-24 px-6 bg-transparent relative overflow-hidden">
             {/* Subtle Neon Backdrop - Light Mode */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-emerald-200/40 blur-[150px] rounded-full pointer-events-none mix-blend-multiply" />
 

@@ -99,7 +99,7 @@ const SOLUTIONS = [
 export function SolutionsSection({ isFullPage = false }: { isFullPage?: boolean }) {
     if (isFullPage) {
         return (
-            <section className="py-20 px-6 bg-transparent relative z-10 w-full">
+            <section className="py-16 px-6 bg-transparent relative z-10 w-full">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
                     {SOLUTIONS.map((solution, i) => (
                         <motion.div
