@@ -1,5 +1,6 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import withPWAInit from "@ducanh2912/next-pwa";
+import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -30,6 +31,10 @@ const withPWA = withPWAInit({
   fallbacks: {
     document: "/offline",
   },
+});
+
+const withAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
 });
 
 /** @type {import('next').NextConfig} */
@@ -66,7 +71,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(withPWA(nextConfig), {
+const sentryWrappedConfig = withSentryConfig(withPWA(nextConfig), {
   org: process.env.SENTRY_ORG ?? "chiga",
   project: process.env.SENTRY_PROJECT ?? "javascript-nextjs",
   authToken: process.env.SENTRY_AUTH_TOKEN,
@@ -81,3 +86,5 @@ export default withSentryConfig(withPWA(nextConfig), {
     },
   },
 });
+
+export default withAnalyzer(sentryWrappedConfig);

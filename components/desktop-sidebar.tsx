@@ -37,7 +37,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         return pathname
     })()
 
-    const slug = pathPrefix.startsWith("/") ? pathPrefix.slice(1) : pathPrefix
+    const posHref = pathPrefix ? `${pathPrefix}/pos/sales` : "/dashboard/sales"
 
     const navItems: Array<{
         href: string
@@ -47,7 +47,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         feature?: PlanFeature
     }> = [
             { href: `${pathPrefix}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
-            { href: `/pos/${slug}/sales`, label: "POS Terminal", icon: Monitor, show: isAdmin || settings.allow_staff_sales },
+            { href: posHref, label: "POS Terminal", icon: Monitor, show: isAdmin || settings.allow_staff_sales },
             { href: `${pathPrefix}/dashboard/khata`, label: "Khata Rail", icon: Users, show: true },
             { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
             { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
@@ -87,6 +87,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                 </div>
 
                 {navItems.filter(item => item.show).map((item, idx) => {
+                    const itemKey = `${item.label}-${item.href}`
                     const isHome = item.href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")
                     const normalizedItemHref = pathPrefix && item.href.startsWith(pathPrefix)
                         ? (item.href.slice(pathPrefix.length) || "/")
@@ -101,7 +102,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                     if (isLocked) {
                         return (
                             <div
-                                key={item.href}
+                                key={itemKey}
                                 className="flex items-center justify-between px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
                             >
                                 <div className="flex items-center gap-4">
@@ -118,7 +119,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
 
                     return (
                         <Link
-                            key={item.href}
+                            key={itemKey}
                             href={item.href}
                             className={cn(
                                 "flex items-center justify-between px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all group relative border border-transparent animate-in fade-in slide-up",

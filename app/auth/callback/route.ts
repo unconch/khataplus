@@ -1,12 +1,13 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
-import { resolveSlugDashboardPath } from "@/lib/auth-redirect"
+import { resolveSlugDashboardPath, toAppOriginFromRequestUrl } from "@/lib/auth-redirect"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+    const requestUrl = new URL(request.url)
+    const { searchParams, origin } = requestUrl
     const cookieStore = await cookies()
     const nextFromCookie = cookieStore.get("kp_auth_next")?.value
     const requestedNext = searchParams.get("next") ?? (nextFromCookie ? decodeURIComponent(nextFromCookie) : "/dashboard")
@@ -55,9 +56,10 @@ export async function GET(request: Request) {
             }
 
             const redirectPath = await resolveSlugDashboardPath(userId, next)
+            const appOrigin = toAppOriginFromRequestUrl(requestUrl)
             const res = redirectPath.startsWith("/")
-                ? NextResponse.redirect(`${origin}${redirectPath}`)
-                : NextResponse.redirect(`${origin}/setup-organization`)
+                ? NextResponse.redirect(`${appOrigin}${redirectPath}`)
+                : NextResponse.redirect(`${appOrigin}/setup-organization`)
             res.cookies.delete("kp_auth_next")
             return res
         }

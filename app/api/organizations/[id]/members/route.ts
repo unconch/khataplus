@@ -91,7 +91,7 @@ export async function POST(
 
         // Generate invite link
         const origin = resolvePublicOrigin(request)
-        const inviteLink = `${origin}/auth/sign-up?invite=${invite.token}`
+        const inviteLink = `${origin}/auth/invite-sign-up?invite=${invite.token}`
 
         return NextResponse.json({
             ...invite,

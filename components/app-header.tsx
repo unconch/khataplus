@@ -126,7 +126,7 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
   }
 
   const handleLogout = async () => {
-    window.location.href = "/api/auth/logout?returnTo=/auth/login"
+    window.location.href = "/api/auth/logout"
   }
 
   return (

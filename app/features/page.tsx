@@ -1,20 +1,11 @@
-"use client"
-
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
-import { ArrowRight, BarChart3, CloudOff, CreditCard, FileText, Shield, Store, Users, Truck, Wallet, ReceiptText, ScanLine, Upload, FileSpreadsheet, QrCode, UserCheck, Search, WifiOff } from "lucide-react"
+import { ArrowRight, BarChart3, CloudOff, CreditCard, FileText, Shield, Store, Users, Truck, Wallet, ReceiptText, ScanLine, Upload, FileSpreadsheet, QrCode, UserCheck, Search } from "lucide-react"
 import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { cn } from "@/lib/utils"
-import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
-
-type AuthContext = {
-  isAuthenticated: boolean
-  isGuest: boolean
-  orgSlug: string | null
-}
+import { getCurrentUser } from "@/lib/data/auth"
 
 const topFeatures = [
   {
@@ -142,45 +133,36 @@ const featureCards = [
   }
 ]
 
-export default function FeaturesPage() {
-  const [auth, setAuth] = useState<AuthContext>({
-    isAuthenticated: false,
-    isGuest: false,
-    orgSlug: null,
-  })
+export default async function FeaturesPage() {
+  let user: Awaited<ReturnType<typeof getCurrentUser>> = null
+  try {
+    user = await getCurrentUser()
+  } catch {
+    user = null
+  }
 
-  useEffect(() => {
-    let isMounted = true
-    const loadAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/context", { cache: "no-store" })
-        if (!response.ok) return
-        const data = (await response.json()) as AuthContext
-        if (isMounted) {
-          setAuth({
-            isAuthenticated: !!data.isAuthenticated,
-            isGuest: !!data.isGuest,
-            orgSlug: data.orgSlug || null,
-          })
-        }
-      } catch {
-        // keep defaults
-      }
+  let orgSlug: string | null = null
+  if (user && !user.isGuest) {
+    try {
+      const { getUserOrganizations } = await import("@/lib/data/organizations")
+      const orgs = await getUserOrganizations(user.userId)
+      orgSlug = orgs[0]?.organization?.slug || null
+    } catch {
+      orgSlug = null
     }
-    loadAuth()
-    return () => { isMounted = false }
-  }, [])
+  }
 
-  const ctaHref = auth.isAuthenticated ? (auth.orgSlug ? `/${auth.orgSlug}/dashboard` : "/dashboard") : "/auth/sign-up"
-  const demoDashboardUrl = useDemoDashboardUrl()
+  const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
+  const ctaHref = user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`
+  const demoDashboardUrl = "/demo/dashboard"
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f6fbff_0%,#f8fbfa_48%,#ffffff_100%)] text-zinc-900 overflow-x-hidden">
       <Navbar
-        isAuthenticated={auth.isAuthenticated}
+        isAuthenticated={!!user}
         isLight={true}
-        orgSlug={auth.orgSlug}
-        isGuest={auth.isGuest}
+        orgSlug={orgSlug}
+        isGuest={user?.isGuest}
       />
 
       <section className="relative px-6 pt-36 pb-16 md:pt-48 md:pb-20">
@@ -196,17 +178,12 @@ export default function FeaturesPage() {
               KHATAPLUS FEATURES
             </div>
             <h1 className="mt-8 text-5xl font-black tracking-[-0.04em] text-zinc-950 md:text-7xl leading-[0.95]">
-              Built for NorthEast India.
-              <br />
               <span className="bg-gradient-to-r from-cyan-700 to-emerald-700 bg-clip-text text-transparent">
                 Designed for your shop.
               </span>
             </h1>
             <p className="mx-auto mt-7 max-w-3xl text-lg font-medium leading-relaxed text-zinc-600 md:text-xl">
               KhataPlus brings billing, stock, khata, and reports into one simple workflow. Your team gets faster daily operations, clearer records, and fewer manual mistakes.
-            </p>
-            <p className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-sm font-bold text-emerald-800">
-              Trusted by 500+ shops across Assam, Meghalaya & Manipur
             </p>
           </AdvancedScrollReveal>
         </div>
@@ -217,11 +194,7 @@ export default function FeaturesPage() {
           <div className="mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-cyan-200 bg-gradient-to-br from-cyan-100/75 via-sky-50 to-white p-8 md:p-10 shadow-[0_20px_50px_-30px_rgba(8,145,178,0.5)]">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black tracking-[0.16em] text-cyan-700">
-                  <WifiOff size={13} />
-                  NORTH EAST READY
-                </div>
-                <h2 className="mt-4 text-3xl md:text-4xl font-black tracking-tight text-zinc-900">
+                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">
                   Billing does not stop when internet drops.
                 </h2>
                 <p className="mt-3 text-lg text-zinc-700">

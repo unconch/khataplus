@@ -161,4 +161,24 @@
   backface-visibility: hidden;
   perspective: 1000px;
 }
+
+/* Hide decorative orbital blobs on mobile to reduce visual clutter and improve performance */
+@media (max-width: 768px) {
+  .orbital-glow {
+    display: none !important;
+  }
+
+  .orbital-blob {
+    display: none !important;
+  }
+}
+
+/* CSS animation for chart bar growth — more efficient than Framer Motion for 19+ elements */
+@keyframes growUp {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--target-height, 100%);
+  }
 }

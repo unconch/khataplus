@@ -32,7 +32,7 @@ async function DedicatedPosSalesContent({ slug }: { slug: string }) {
 
   const user = await getCurrentUser()
   if (!user) {
-    redirect(`/auth/login?next=${encodeURIComponent(`/pos/${slug}/sales`)}`)
+    redirect(`/auth/login?next=${encodeURIComponent(`/${slug}/pos/sales`)}`)
     return null
   }
 

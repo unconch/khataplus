@@ -1,18 +1,14 @@
 import { LandingPage } from "@/components/landing-page"
-import { cookies } from "next/headers"
 
-export const dynamic = "force-dynamic"
+// Fully static — served from cache on every request
+export const dynamic = 'force-static'
 
-export default async function MarketingHome() {
-  const cookieStore = await cookies()
-  const isGuest = cookieStore.get("guest_mode")?.value === "true"
-
+export default function MarketingHome() {
   return (
     <LandingPage
       isAuthenticated={false}
       orgCount={0}
       orgSlug={null}
-      isGuest={isGuest}
     />
   )
 }

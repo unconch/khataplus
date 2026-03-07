@@ -1,13 +1,19 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { ArrowRight, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { GradientText } from "@/components/gradient-text"
 import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
+import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
+import { useMotion } from "@/components/motion-provider"
 
 export function SolutionsCTA() {
+    const reduceMotion = useReducedMotion()
+    const { enableMotion } = useMotion()
+    const shouldAnimate = enableMotion && !reduceMotion
     const demoDashboardUrl = useDemoDashboardUrl()
+    const { signUpUrl } = useMainAuthUrls()
 
     return (
         <section className="relative py-40 overflow-hidden bg-white">
@@ -19,9 +25,9 @@ export function SolutionsCTA() {
 
             <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={shouldAnimate ? { opacity: 0, scale: 0.9 } : { opacity: 1, scale: 1 }}
                     whileInView={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8 }}
+                    transition={shouldAnimate ? { duration: 0.8 } : { duration: 0 }}
                     viewport={{ once: true }}
                     className="space-y-12"
                 >
@@ -43,7 +49,7 @@ export function SolutionsCTA() {
 
                     <div className="pt-10 flex flex-col md:flex-row items-center justify-center gap-6">
                         <Link
-                            href="/auth/sign-up"
+                            href={signUpUrl}
                             className="group relative px-10 py-5 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-black/20"
                         >
                             <span className="relative z-10 flex items-center gap-3">

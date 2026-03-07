@@ -32,7 +32,7 @@ async function DedicatedPosContent({ slug }: { slug: string }) {
 
     const user = await getCurrentUser()
     if (!user) {
-        redirect(`/auth/login?next=${encodeURIComponent(`/pos/${slug}`)}`)
+        redirect(`/auth/login?next=${encodeURIComponent(`/${slug}/pos`)}`)
     }
 
     const org = await getOrganizationBySlug(slug)

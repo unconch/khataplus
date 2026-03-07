@@ -39,6 +39,19 @@ function compactSpaces(input: string): string {
     return input.trim().replace(/\s+/g, " ")
 }
 
+function getAppHostFromCurrentHost(hostname: string): string {
+    if (!hostname) return "app.khataplus.online"
+    if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
+    if (hostname.endsWith(".localhost")) return "app.localhost"
+
+    let base = hostname.toLowerCase()
+    if (base.startsWith("www.")) base = base.slice(4)
+    if (base.startsWith("demo.")) base = base.slice(5)
+    if (base.startsWith("pos.")) base = base.slice(4)
+    if (base.startsWith("app.")) base = base.slice(4)
+    return `app.${base}`
+}
+
 const STATE_PINCODE_RULES: Record<string, RegExp> = {
     "Andhra Pradesh": /^(51|52|53)\d{4}$/,
     "Arunachal Pradesh": /^79\d{4}$/,
@@ -195,7 +208,10 @@ async function waitForOrganizationReady(slug: string, attempts = 12, delayMs = 4
 
 function hardRedirectToDashboard(slug: string): void {
     const targetPath = `/${slug}/dashboard`
-    const url = `${targetPath}?fresh=${Date.now()}`
+    const { protocol, hostname, port } = window.location
+    const appHost = getAppHostFromCurrentHost(hostname)
+    const portPart = port ? `:${port}` : ""
+    const url = `${protocol}//${appHost}${portPart}${targetPath}?fresh=${Date.now()}`
     window.location.assign(url)
     // If browser/router ignores the first navigation for any reason, force again.
     window.setTimeout(() => {

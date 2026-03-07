@@ -7,16 +7,16 @@ import { ReferralTracker } from "@/components/referral-tracker"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "KhataPlus - Smart Billing & Inventory for NorthEast India",
-  description: "GST billing, inventory management, and khata tracking built for small businesses in Assam, Meghalaya, Manipur & NorthEast India. Free to try.",
-  keywords: ["billing app northeast india", "GST invoice app Assam", "khata app", "inventory management Guwahati"],
+  title: "KhataPlus - Smart Billing & Inventory for India",
+  description: "GST billing, inventory management, and khata tracking built for small businesses in India. Free to try.",
+  keywords: ["billing app india", "GST invoice app", "khata app", "inventory management"],
   metadataBase: new URL("https://khataplus.online"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "KhataPlus - Smart Billing for NorthEast India",
-    description: "GST billing, inventory & khata tracking for NorthEast India small businesses.",
+    title: "KhataPlus - Smart Billing for India",
+    description: "GST billing, inventory & khata tracking for Indian small businesses.",
     url: "https://khataplus.online",
     siteName: "KhataPlus",
     locale: "en_IN",
@@ -26,14 +26,14 @@ export const metadata: Metadata = {
         url: "https://khataplus.online/og-image.png",
         width: 1200,
         height: 630,
-        alt: "KhataPlus - Smart Billing for NorthEast India",
+        alt: "KhataPlus - Smart Billing for India",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "KhataPlus - Smart Billing for NorthEast India",
-    description: "GST billing, inventory & khata tracking for NorthEast India small businesses.",
+    title: "KhataPlus - Smart Billing for India",
+    description: "GST billing, inventory & khata tracking for Indian small businesses.",
     images: ["https://khataplus.online/og-image.png"],
   },
   manifest: "/manifest.json",
@@ -83,7 +83,7 @@ export default function RootLayout({
     name: "KhataPlus",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web, Android, iOS",
-    description: "GST billing, inventory management and khata tracking for small businesses in NorthEast India",
+    description: "GST billing, inventory management and khata tracking for small businesses in India",
     url: "https://khataplus.online",
     offers: {
       "@type": "Offer",
@@ -105,6 +105,11 @@ export default function RootLayout({
         } as React.CSSProperties
       }
     >
+      <head>
+        {/* Preload Google Fonts to improve CLS and TTFB */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className="font-sans antialiased relative overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <script
           type="application/ld+json"
@@ -112,10 +117,6 @@ export default function RootLayout({
             __html: JSON.stringify(softwareApplicationSchema),
           }}
         />
-        <div className="orbital-glow">
-          <div className="orbital-blob orbital-blob-1" />
-          <div className="orbital-blob orbital-blob-2" />
-        </div>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <MotionProvider>
             <PWAProvider>

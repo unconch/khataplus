@@ -1,6 +1,26 @@
 import "server-only"
 import { sql } from "@/lib/db"
 
+export function getAppHostFromHostname(hostname: string): string {
+  if (!hostname) return "app.khataplus.online"
+  if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
+  if (hostname.endsWith(".localhost")) return "app.localhost"
+
+  let base = hostname.toLowerCase()
+  if (base.startsWith("www.")) base = base.slice(4)
+  if (base.startsWith("demo.")) base = base.slice(5)
+  if (base.startsWith("pos.")) base = base.slice(4)
+  if (base.startsWith("app.")) base = base.slice(4)
+
+  return `app.${base}`
+}
+
+export function toAppOriginFromRequestUrl(requestUrl: URL): string {
+  const appHost = getAppHostFromHostname(requestUrl.hostname)
+  const port = requestUrl.port ? `:${requestUrl.port}` : ""
+  return `${requestUrl.protocol}//${appHost}${port}`
+}
+
 function isCanonicalSlugDashboardPath(pathname: string): boolean {
   return /^\/[^/]+\/dashboard(?:\/|$)/.test(pathname)
 }

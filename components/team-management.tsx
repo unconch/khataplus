@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 import { Users, UserPlus, Copy, Check, Trash2, Loader2, Sparkles, ShieldCheck, UserCog, AlertTriangle, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -130,14 +131,21 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
       {/* Invite Section */}
       <div className="space-y-5">
-        <div className="flex items-center gap-3 px-2">
-          <div className="h-8 w-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600">
-            <UserPlus size={16} strokeWidth={2.5} />
+        <div className="flex items-center justify-between gap-3 px-2">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600">
+              <UserPlus size={16} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Invite Member</h3>
+              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Expansion & Collaboration</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Invite Member</h3>
-            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Expansion & Collaboration</p>
-          </div>
+          <Link href="/dashboard/invite-members" className="hidden sm:block">
+            <Button variant="outline" size="sm" className="h-8 rounded-xl text-[9px] font-black uppercase tracking-widest">
+              Open Invite Page
+            </Button>
+          </Link>
         </div>
 
         <div className="relative group overflow-hidden p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 transition-all">

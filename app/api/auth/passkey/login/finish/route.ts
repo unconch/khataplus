@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createSdk } from "@descope/nextjs-sdk/server"
 import { ensureProfile } from "@/lib/data/profiles"
 import { resolveSlugDashboardPath } from "@/lib/auth-redirect"
+import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
 
 function toSafePath(next: unknown): string {
   if (typeof next !== "string") return "/dashboard"
@@ -76,8 +77,10 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true, next: resolvedNext })
+    const url = new URL(request.url)
     const secure = process.env.NODE_ENV === "production"
     const path = "/"
+    const domain = resolveSharedCookieDomain(url.hostname)
     const sessionMaxAge = resolveMaxAge(data.cookieMaxAge, SESSION_COOKIE_FALLBACK_SECONDS)
     const refreshMaxAge = resolveMaxAge(data.cookieMaxAge, REFRESH_COOKIE_FALLBACK_SECONDS)
 
@@ -86,6 +89,7 @@ export async function POST(request: Request) {
       secure,
       sameSite: "lax",
       path,
+      domain,
       maxAge: sessionMaxAge,
     })
 
@@ -95,6 +99,7 @@ export async function POST(request: Request) {
         secure,
         sameSite: "lax",
         path,
+        domain,
         maxAge: refreshMaxAge,
       })
     }

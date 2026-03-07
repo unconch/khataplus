@@ -1,527 +1,274 @@
-"use client"
+﻿"use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { Descope } from "@descope/nextjs-sdk"
-import { startAuthentication } from "@simplewebauthn/browser"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import { Logo } from "@/components/ui/logo"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowRight, Loader2, Mail, ShieldCheck, KeyRound } from "lucide-react"
+import { ArrowRight, ShieldCheck, Zap, Loader2, Eye, EyeOff } from "lucide-react"
+import Link from "next/link"
+import { toast } from "sonner"
+
+function getAppHostFromCurrentHost(hostname: string): string {
+  if (!hostname) return "app.khataplus.online"
+  if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
+  if (hostname.endsWith(".localhost")) return "app.localhost"
+
+  let base = hostname.toLowerCase()
+  if (base.startsWith("www.")) base = base.slice(4)
+  if (base.startsWith("demo.")) base = base.slice(5)
+  if (base.startsWith("pos.")) base = base.slice(4)
+  if (base.startsWith("app.")) base = base.slice(4)
+  return `app.${base}`
+}
+
+function isAppTargetPath(path: string): boolean {
+  return (
+    path === "/setup-organization" ||
+    path.startsWith("/setup-organization/") ||
+    path === "/dashboard" ||
+    path.startsWith("/dashboard/") ||
+    /^\/[^/]+\/dashboard(?:\/|$)/.test(path)
+  )
+}
+
+function redirectAfterAuth(targetRaw: string) {
+  const target = targetRaw || "/dashboard"
+  if (typeof window !== "undefined" && isAppTargetPath(target)) {
+    const { protocol, hostname, port } = window.location
+    const appHost = getAppHostFromCurrentHost(hostname)
+    const portPart = port ? `:${port}` : ""
+    window.location.assign(`${protocol}//${appHost}${portPart}${target}`)
+    return
+  }
+  window.location.assign(target)
+}
 
 export default function LoginPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-
-  const next = useMemo(() => {
-    const raw = searchParams.get("next")
-    if (!raw) return "/dashboard"
-    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/dashboard"
-    return raw
-  }, [searchParams])
-
-  const signUpHref = `/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`
-  const promotePasskeyFlowId = process.env.NEXT_PUBLIC_DESCOPE_PROMOTE_PASSKEYS_FLOW_ID || ""
-  const resendCooldownSeconds = 30
-  const pendingLoginStorageKey = "kp_login_pending"
-  const pendingLoginMaxAgeMs = 1000 * 60 * 15
+  const next = searchParams.get("next") || "/dashboard"
 
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
+  const [showCode, setShowCode] = useState(false)
   const [phase, setPhase] = useState<"email" | "verify">("email")
   const [maskedEmail, setMaskedEmail] = useState("")
-  const [verifyLoginId, setVerifyLoginId] = useState("")
-  const [error, setError] = useState("")
-  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
-  const [passkeyLoading, setPasskeyLoading] = useState(false)
-  const [showPostLoginPasskeyPrompt, setShowPostLoginPasskeyPrompt] = useState(false)
-  const [pendingRedirect, setPendingRedirect] = useState(next || "/dashboard")
-
-  const clearPendingLogin = () => {
-    if (typeof window === "undefined") return
-    window.sessionStorage.removeItem(pendingLoginStorageKey)
-  }
-
-  const savePendingLogin = (loginId: string, masked: string) => {
-    if (typeof window === "undefined" || !loginId) return
-    window.sessionStorage.setItem(
-      pendingLoginStorageKey,
-      JSON.stringify({
-        email: loginId,
-        maskedEmail: masked || loginId,
-        createdAt: Date.now(),
-      })
-    )
-  }
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      const raw = window.sessionStorage.getItem(pendingLoginStorageKey)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as { email?: string; maskedEmail?: string; createdAt?: number }
-      const loginId = String(parsed?.email || "").trim().toLowerCase()
-      const masked = String(parsed?.maskedEmail || loginId).trim()
-      const createdAt = Number(parsed?.createdAt || 0)
-      if (!loginId || !createdAt || Date.now() - createdAt > pendingLoginMaxAgeMs) {
-        clearPendingLogin()
-        return
-      }
-      setEmail(loginId)
-      setVerifyLoginId(loginId)
-      setMaskedEmail(masked || loginId)
-      setPhase("verify")
-    } catch {
-      clearPendingLogin()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   useEffect(() => {
     if (resendCooldown <= 0) return
-    const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
+    const timer = setTimeout(() => setResendCooldown((v) => v - 1), 1000)
     return () => clearTimeout(timer)
   }, [resendCooldown])
 
-  const openPasskeyFlow = async () => {
-    const loginId = email.trim().toLowerCase()
-    if (!loginId) {
-      setError("Enter your email first, then use passkey.")
-      return
-    }
-
-    setError("")
-    setInfo("")
-    setPasskeyLoading(true)
-    try {
-      const startRes = await fetch("/api/auth/passkey/login/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginId }),
-      })
-      const startData = await startRes.json().catch(() => ({} as any))
-      if (!startRes.ok) {
-        throw new Error(startData?.error || "Could not start passkey login")
-      }
-
-      const authOptionsRaw =
-        startData?.options ??
-        startData?.publicKey ??
-        startData?.data?.options ??
-        startData?.data?.publicKey ??
-        null
-      const transactionId =
-        String(
-          startData?.transactionId ??
-          startData?.transactionID ??
-          startData?.data?.transactionId ??
-          startData?.data?.transactionID ??
-          ""
-        ).trim()
-      if (!authOptionsRaw || !transactionId) {
-        throw new Error("Passkey login response is invalid")
-      }
-      const authOptions =
-        (typeof authOptionsRaw === "string"
-          ? JSON.parse(authOptionsRaw)
-          : authOptionsRaw?.publicKey || authOptionsRaw) as any
-
-      const passkeyResponse = await startAuthentication({ optionsJSON: authOptions })
-
-      const finishRes = await fetch("/api/auth/passkey/login/finish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginId,
-          transactionId,
-          response: passkeyResponse,
-          next,
-        }),
-      })
-      const finishData = await finishRes.json().catch(() => ({} as any))
-      if (!finishRes.ok) {
-        throw new Error(finishData?.error || "Passkey verification failed")
-      }
-      router.replace(finishData?.next || next || "/dashboard")
-      router.refresh()
-    } catch (err: any) {
-      const fallbackEmail = loginId
-      try {
-        const otpRes = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: fallbackEmail, code: "", next }),
-        })
-        const otpData = await otpRes.json().catch(() => ({} as any))
-        if (otpRes.ok && otpData?.phase === "verify") {
-          setPhase("verify")
-          setMaskedEmail(otpData?.maskedEmail || fallbackEmail)
-          setVerifyLoginId(fallbackEmail)
-          setResendCooldown(resendCooldownSeconds)
-          setInfo("No passkey found or passkey is unavailable. We sent you a login code instead.")
-          return
-        }
-      } catch {
-        // No-op: keep original passkey error below.
-      }
-
-      if (err?.name === "NotAllowedError") {
-        setError("Passkey login was cancelled.")
-      } else {
-        setError(err?.message || "Passkey login failed.")
-      }
-    } finally {
-      setPasskeyLoading(false)
-    }
-  }
-
-  const onSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setInfo("")
     setLoading(true)
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: phase === "verify" ? (verifyLoginId || email) : email,
+          email,
           code: phase === "verify" ? code : "",
           next,
         }),
       })
+
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok) throw new Error(data?.error || "Login failed")
+
       if (data?.phase === "verify") {
-        const loginId = email.trim().toLowerCase()
         setPhase("verify")
         setMaskedEmail(data?.maskedEmail || email)
-        setVerifyLoginId(loginId)
-        savePendingLogin(loginId, data?.maskedEmail || loginId)
-        if (phase === "email") {
-          setResendCooldown(resendCooldownSeconds)
-        }
+        setResendCooldown(30)
+        toast.success("Verification code sent.")
         return
       }
-      const target = data?.next || next || "/dashboard"
-      if (!promotePasskeyFlowId) {
-        clearPendingLogin()
-        router.replace(target)
-        router.refresh()
-        return
-      }
-      setPendingRedirect(target)
-      setShowPostLoginPasskeyPrompt(true)
+
+      toast.success("Welcome back!")
+      redirectAfterAuth(data?.next || next || "/dashboard")
     } catch (err: any) {
-      setError(err?.message || "Could not sign in.")
+      toast.error(err?.message || "Could not sign in.")
     } finally {
       setLoading(false)
     }
   }
 
   const onResendCode = async () => {
-    const loginId = (verifyLoginId || email).trim().toLowerCase()
-    if (!loginId || resendCooldown > 0 || resendLoading) return
-
-    setError("")
-    setInfo("")
+    if (!email || resendCooldown > 0 || resendLoading) return
     setResendLoading(true)
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginId, code: "", next }),
+        body: JSON.stringify({ email, code: "", next }),
       })
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok) throw new Error(data?.error || "Could not resend code")
 
-      setMaskedEmail(data?.maskedEmail || loginId)
-      savePendingLogin(loginId, data?.maskedEmail || loginId)
-      setInfo("A new code was sent.")
-      setResendCooldown(resendCooldownSeconds)
+      setMaskedEmail(data?.maskedEmail || email)
+      setResendCooldown(30)
+      toast.success("A new code was sent.")
     } catch (err: any) {
-      setError(err?.message || "Could not resend code.")
+      toast.error(err?.message || "Could not resend code.")
     } finally {
       setResendLoading(false)
     }
   }
 
   return (
-    <div className="min-h-svh w-full bg-[#0a1012] text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.28),transparent_42%),radial-gradient(circle_at_85%_80%,rgba(59,130,246,0.28),transparent_38%)]" />
-      <div className="absolute -top-24 -left-16 h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl" />
-      <div className="absolute -bottom-24 right-0 h-[24rem] w-[24rem] rounded-full bg-blue-400/20 blur-3xl" />
-      <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[1px]" />
-      <Link href="/" className="absolute left-4 top-4 sm:left-6 sm:top-6 z-20 inline-flex items-center gap-3">
-        <div className="p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-xl">
-          <Logo size={28} className="text-emerald-300" />
+    <div className="min-h-svh w-full flex">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
+        <div className="absolute inset-0 mesh-gradient opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px] animate-orbit" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px] animate-orbit-slow" />
         </div>
-        <div>
-          <h1 className="text-[1.85rem] font-black italic tracking-tight leading-none">KhataPlus</h1>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300">Sales + Ledger OS</p>
-        </div>
-      </Link>
 
-      <div className="relative z-10 min-h-svh flex items-center justify-center px-4 py-4 sm:px-6 sm:py-6">
-        <div className="w-full max-w-[90rem] max-h-[calc(100svh-1.5rem)] grid items-center gap-4 lg:grid-cols-1 xl:grid-cols-[minmax(260px,1fr)_minmax(420px,560px)_minmax(260px,1fr)]">
-          <aside className="hidden xl:flex flex-col gap-8 px-4 py-2 justify-center">
-            <div />
-
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] font-black text-emerald-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
-                Secure Access
+        <div className="relative z-10 flex flex-col w-full p-16 text-white">
+          <div className="mb-auto animate-in fade-in slide-left duration-500">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
+                <Logo size={32} className="text-white" />
               </div>
-              <h2 className="text-[clamp(2.2rem,3.3vw,3.5rem)] font-black leading-[0.94] tracking-[-0.035em]">
-                Sign in.
-                <span className="block text-emerald-300">Stay in control.</span>
-              </h2>
-              <p className="text-zinc-300 text-base font-semibold max-w-sm leading-relaxed">
-                Unified billing, inventory and ledgers with security-first access.
+              <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
+            </Link>
+          </div>
+
+          <div className="space-y-12">
+            <div className="animate-in fade-in slide-up duration-700 delay-200">
+              <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                Enterprise Grade Security
+              </div>
+              <h1 className="text-6xl xl:text-7xl font-black leading-[0.9] tracking-tighter mb-6">
+                Welcome
+                <br />
+                <span className="text-emerald-400">Back.</span>
+              </h1>
+              <p className="text-xl text-white/70 max-w-sm font-medium leading-relaxed">
+                Your business ecosystem is ready. Log in to continue your business growth.
               </p>
             </div>
 
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" /> Session Tokens
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Encrypted</span>
+            <div className="flex gap-4 animate-in fade-in slide-up duration-700 delay-[400ms]">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
+                <Zap className="h-4 w-4 text-emerald-300" />
+                Zero Latency
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" /> Device Controls
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Active</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" /> Step-up Actions
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">OTP Ready</span>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                Protected
               </div>
             </div>
-          </aside>
+          </div>
 
-          <section className="relative flex items-center justify-center py-1">
-            <div className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-[radial-gradient(circle,rgba(16,185,129,0.26)_0%,rgba(16,185,129,0.06)_45%,transparent_72%)] blur-2xl" />
-            <div className="relative w-full max-w-[min(560px,92vw)] rounded-[2rem] border border-white/30 bg-white/[0.14] backdrop-blur-3xl p-6 md:p-8 ring-1 ring-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/30">
-                <Logo size={28} className="text-emerald-300" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight">Sign In</h1>
-                <p className="text-xs text-zinc-300">Access your KhataPlus workspace</p>
-              </div>
-            </div>
-
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-widest text-zinc-300 font-bold">Email</label>
-                <div className="relative">
-                  <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-11 bg-black/30 border-white/20 text-white placeholder:text-zinc-400"
-                    placeholder="you@shop.com"
-                    disabled={phase === "verify"}
-                    required
-                  />
-                </div>
-              </div>
-
-              {phase === "verify" && (
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-widest text-zinc-300 font-bold">Verification Code</label>
-                  <Input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
-                    className="h-11 bg-black/30 border-white/20 text-white placeholder:text-zinc-400 tracking-[0.2em] font-black"
-                    placeholder="Enter 6-digit code"
-                    required
-                  />
-                  <p className="text-[11px] text-zinc-300">
-                    Code sent to <span className="font-black">{maskedEmail || email}</span>
-                  </p>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <button
-                      type="button"
-                      onClick={onResendCode}
-                      disabled={resendLoading || resendCooldown > 0}
-                      className="font-black uppercase tracking-widest text-emerald-300 hover:text-emerald-200 disabled:text-zinc-500 disabled:cursor-not-allowed"
-                    >
-                      {resendLoading ? "Sending..." : "Resend Code"}
-                    </button>
-                    <span className="text-zinc-400">
-                      {resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "You can request a new code now"}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-              {info && (
-                <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                  {info}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 text-xs uppercase tracking-widest font-black bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Sign In" : "Send Login Code"} <ArrowRight className="h-4 w-4 ml-2" /></>}
-              </Button>
-              {phase === "email" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11 text-xs uppercase tracking-widest font-black border-white/25 bg-white/5 hover:bg-white/10 text-zinc-100 disabled:opacity-60"
-                  onClick={openPasskeyFlow}
-                  disabled={passkeyLoading}
-                >
-                  {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                  {passkeyLoading ? "Verifying Passkey..." : "Use Passkey"}
-                </Button>
-              )}
-            </form>
-
-            <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-300">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
-              {phase === "verify" ? (
-                <button
-                  type="button"
-                  className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200"
-                  onClick={() => {
-                    setPhase("email")
-                    setCode("")
-                    setError("")
-                    setInfo("")
-                    setVerifyLoginId("")
-                    setMaskedEmail("")
-                    setResendCooldown(0)
-                    clearPendingLogin()
-                  }}
-                >
-                  Change Email
-                </button>
-              ) : (
-                <Link href={signUpHref} className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200">
-                  Create Account
-                </Link>
-              )}
-            </div>
-            </div>
-          </section>
-
-          <aside className="hidden xl:flex flex-col gap-6 px-4 py-2 justify-center">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] font-black text-emerald-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.8)]" />
-                Live Security Posture
-              </div>
-              <h3 className="text-[clamp(2rem,2.6vw,2.6rem)] font-black tracking-tight leading-[0.95]">Workspace Health</h3>
-              <p className="text-sm text-zinc-300 font-semibold max-w-sm">Session posture and sign-in readiness for this workspace.</p>
-            </div>
-
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-              <span className="px-2 py-1 rounded-full bg-emerald-400/15 text-emerald-200 border border-emerald-300/30">OTP ON</span>
-              <span className="px-2 py-1 rounded-full bg-sky-400/15 text-sky-200 border border-sky-300/30">EMAIL VERIFIED</span>
-              <span className="px-2 py-1 rounded-full bg-zinc-500/20 text-zinc-200 border border-white/15">DEVICE BOUND</span>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex gap-3">
-                <div className="h-6 w-6 rounded-full border border-emerald-300/45 text-emerald-200 text-[11px] font-black flex items-center justify-center mt-0.5">1</div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Auth Mode</p>
-                  <p className="text-xl font-black mt-1 leading-none">Passwordless OTP</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="h-6 w-6 rounded-full border border-emerald-300/45 text-emerald-200 text-[11px] font-black flex items-center justify-center mt-0.5">2</div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Trust Signals</p>
-                  <p className="text-lg font-black mt-1 leading-tight">Email verified + device-bound session</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="h-6 w-6 rounded-full border border-emerald-300/45 text-emerald-200 text-[11px] font-black flex items-center justify-center mt-0.5">3</div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Post Login</p>
-                  <p className="text-lg font-black mt-1 leading-tight">Dashboard in one redirect</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-xs text-zinc-300 font-semibold leading-relaxed pt-4 border-t border-white/10">
-              Tip: use your primary business email for smoother team invites and ownership actions.
-            </div>
-          </aside>
+          <div className="mt-auto pt-12 border-t border-white/10">
+            <p className="text-sm text-white/40 font-medium">Copyright 2026 KhataPlus Online. All rights reserved.</p>
+          </div>
         </div>
       </div>
 
-      {showPostLoginPasskeyPrompt && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-[#0f1418]/95 shadow-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/10">
-              <h2 className="text-base font-black tracking-tight">Enable Quick Login</h2>
-              <p className="text-[11px] text-zinc-300">Add a passkey on this device for OTP-less sign in.</p>
+      <div className="flex-1 flex items-center justify-center p-6 pt-20 lg:pt-6 bg-zinc-50 dark:bg-zinc-950 relative">
+        <div className="absolute top-6 left-6 lg:hidden z-50">
+          <Link href="/" className="flex items-center gap-2">
+            <Logo size={28} className="text-emerald-600" />
+            <span className="font-bold text-lg text-zinc-900 dark:text-white">KhataPlus</span>
+          </Link>
+        </div>
+
+        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-up duration-700">
+          <div className="text-center lg:text-left">
+            <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
+              Welcome <span className="text-emerald-600">Back.</span>
+            </h2>
+            <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 font-medium font-outfit">
+              Securely access your business ecosystem in the Digital India Era.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium dark:text-zinc-300">Email Address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm"
+                placeholder="you@example.com"
+              />
             </div>
-            <div className="p-3 bg-[#0f1418]">
-              {promotePasskeyFlowId ? (
-                <Descope
-                  key={promotePasskeyFlowId}
-                  flowId={promotePasskeyFlowId}
-                  onSuccess={() => {
-                    setShowPostLoginPasskeyPrompt(false)
-                    router.replace(pendingRedirect)
-                    router.refresh()
-                  }}
-                  onError={() => {
-                    setShowPostLoginPasskeyPrompt(false)
-                    router.replace(pendingRedirect)
-                    router.refresh()
-                  }}
-                  theme="light"
-                  debug={false}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium dark:text-zinc-300">Verification Code</label>
+              <div className="relative">
+                <input
+                  type={showCode ? "text" : "password"}
+                  required={phase === "verify"}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm pr-11"
+                  placeholder="000000"
                 />
-              ) : (
-                <div className="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-zinc-200">
-                  Passkey setup flow is not configured.
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCode(!showCode)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                >
+                  {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {phase === "verify" && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Code sent to <span className="font-semibold">{maskedEmail || email}</span>
+                </p>
               )}
             </div>
-            <div className="px-4 py-3 border-t border-white/10 bg-zinc-950">
-              <Button
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : phase === "verify" ? "Verify & Sign In" : "Send Login Code"}
+            </button>
+          </form>
+
+          {phase === "verify" && (
+            <div className="w-full relative py-2 flex justify-center">
+              <button
                 type="button"
-                variant="outline"
-                className="w-full border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10"
-                onClick={() => {
-                  setShowPostLoginPasskeyPrompt(false)
-                  router.replace(pendingRedirect)
-                  router.refresh()
-                }}
+                onClick={onResendCode}
+                disabled={resendLoading || resendCooldown > 0}
+                className="text-sm text-zinc-600 dark:text-zinc-300 font-semibold disabled:opacity-50"
               >
-                Skip For Now
-              </Button>
+                {resendLoading ? "Resending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+              </button>
             </div>
+          )}
+
+          <div className="text-center">
+            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
+              Don't have an account?{" "}
+              <Link href="/auth/sign-up" className="text-emerald-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1 group">
+                Create one
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </p>
+          </div>
+
+          <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
+            <Link href="/demo" className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">
+              Or try the demo without signing up -&gt;
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

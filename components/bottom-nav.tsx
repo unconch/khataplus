@@ -19,11 +19,11 @@ interface BottomNavProps {
 export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free" }: BottomNavProps) {
   const pathname = usePathname()
 
-  const slug = pathPrefix.startsWith("/") ? pathPrefix.slice(1) : pathPrefix
+  const posHref = pathPrefix ? `${pathPrefix}/pos/sales` : "/dashboard/sales"
 
   const navItems: Array<{ href: string; label: string; icon: any; feature?: PlanFeature }> = [
     { href: `${pathPrefix}/dashboard`, label: "CORE", icon: LayoutDashboard },
-    { href: `/pos/${slug}/sales`, label: "POS", icon: Monitor },
+    { href: posHref, label: "POS", icon: Monitor },
     { href: `${pathPrefix}/dashboard/sales`, label: "SALES", icon: BadgeIndianRupee },
     { href: `${pathPrefix}/dashboard/inventory`, label: "ITEMS", icon: Package },
     { href: `${pathPrefix}/dashboard/customers`, label: "LEDGER", icon: Users },
@@ -37,6 +37,7 @@ export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free
 
         <nav className="relative flex items-center justify-between bg-white border border-zinc-100 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-2">
           {navItems.map((item) => {
+            const itemKey = `${item.label}-${item.href}`
             const isAdmin = role === "admin" || role === "owner"
             const isStaff = role === "staff"
 
@@ -47,7 +48,7 @@ export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free
             if (item.feature && !hasPlanFeature(orgPlanType, item.feature)) {
               return (
                 <div
-                  key={item.href}
+                  key={itemKey}
                   className="flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl text-zinc-300 dark:text-zinc-700"
                 >
                   <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900">
@@ -69,7 +70,7 @@ export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free
 
             return (
               <Link
-                key={item.href}
+                key={itemKey}
                 href={href}
                 className={cn(
                   "flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl transition-all duration-500 relative",

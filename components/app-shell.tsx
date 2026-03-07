@@ -48,6 +48,10 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
       <PWABadgeManager isAdmin={isAdmin} />
 
       <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
+        <div className="orbital-glow">
+          <div className="orbital-blob orbital-blob-1" />
+          <div className="orbital-blob orbital-blob-2" />
+        </div>
 
         {/* Desktop Sidebar: Visible only on lg+ */}
         <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} orgName={orgName} orgPlanType={orgPlanType} />

@@ -5,7 +5,8 @@ const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite', 'join',
     'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing', 'roadmap',
     'dashboard', 'demo', 'marketing', 'offline', 'docs', 'features', 'feathures', 'solutions', 'monitoring',
-    'pending-approval', 'tools', 'beta', 'for', 'shop', 'pos'
+    'pending-approval', 'tools', 'beta', 'for', 'shop', 'pos',
+    'login', 'sign-up'
 ])
 
 function getAppHostFromHost(hostname: string): string {
@@ -22,10 +23,26 @@ function getAppHostFromHost(hostname: string): string {
     return `app.${base}`
 }
 
+function getMainHostFromHost(hostname: string): string {
+    if (!hostname) return "khataplus.online"
+    if (hostname === "localhost" || hostname === "127.0.0.1") return "localhost"
+    if (hostname.endsWith(".localhost")) return "localhost"
+
+    let base = hostname
+    if (base.startsWith("www.")) base = base.slice(4)
+    if (base.startsWith("demo.")) base = base.slice(5)
+    if (base.startsWith("pos.")) base = base.slice(4)
+    if (base.startsWith("app.")) base = base.slice(4)
+
+    return base
+}
+
 const descopeAuth = authMiddleware({
     redirectUrl: '/auth/login',
     publicRoutes: [
         '/',
+        '/login',
+        '/sign-up',
         '/auth/login',
         '/auth/sign-up',
         '/auth/callback',
@@ -55,12 +72,52 @@ export default async function proxy(req: NextRequest) {
     const isPosHost = host === "pos.khataplus.online" || host.startsWith("pos.")
     const isDemoHost = host === "demo.khataplus.online" || host.startsWith("demo.")
     const isAppHost = host === "app.khataplus.online" || host.startsWith("app.")
+    const isLocalDevHost = host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")
+    const isSubdomain = isAppHost || isPosHost || isDemoHost
     const segments = pathname.split('/').filter(Boolean)
     const firstSegment = segments[0] || ''
     const isTenantRoute = !!firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')
     const isDashboardPath = pathname === "/dashboard" || pathname.startsWith("/dashboard/")
     const isAuthPath = pathname === "/auth" || pathname.startsWith("/auth/")
+    const isCleanAuthPath = pathname === "/login" || pathname === "/sign-up"
     const isLegacyDemoDashboardPath = pathname === "/demo/dashboard" || pathname.startsWith("/demo/dashboard/")
+
+    // Keep marketing landing off app subdomain.
+    if (isAppHost && pathname === "/") {
+        const redirectUrl = new URL("/dashboard", req.url)
+        redirectUrl.search = url.search
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    // Keep auth pages on the main domain, never on any subdomain.
+    if (!isLocalDevHost && isSubdomain && (isAuthPath || isCleanAuthPath)) {
+        const mainHost = getMainHostFromHost(host)
+        const hostWithPort = hostPort ? `${mainHost}:${hostPort}` : mainHost
+        const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
+        const redirectUrl = new URL(pathname + url.search, `${protocol}://${hostWithPort}`)
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    // Normalize accidental "/login/*" or "/sign-up/*" prefixes on subdomains.
+    if (isSubdomain && (pathname.startsWith("/login/") || pathname.startsWith("/sign-up/"))) {
+        const normalizedPath = pathname.replace(/^\/(login|sign-up)/, "") || "/"
+        const redirectUrl = new URL(normalizedPath, req.url)
+        redirectUrl.search = url.search
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    // Expose clean auth URLs on main domain while serving existing auth pages.
+    if (!isAppHost && !isPosHost && !isDemoHost && pathname === "/login") {
+        const rewriteUrl = new URL("/auth/login", req.url)
+        rewriteUrl.search = url.search
+        return NextResponse.rewrite(rewriteUrl)
+    }
+
+    if (!isAppHost && !isPosHost && !isDemoHost && pathname === "/sign-up") {
+        const rewriteUrl = new URL("/auth/sign-up", req.url)
+        rewriteUrl.search = url.search
+        return NextResponse.rewrite(rewriteUrl)
+    }
 
     if (isLegacyDemoDashboardPath) {
         if (isDemoHost) {
@@ -80,7 +137,8 @@ export default async function proxy(req: NextRequest) {
     }
 
     if (!isAppHost && !isPosHost && !isDemoHost && !pathname.startsWith("/api/")) {
-        if (isAuthPath || isDashboardPath || isTenantRoute) {
+        // Keep auth pages on the main marketing domain.
+        if (isDashboardPath || isTenantRoute) {
             const appHost = getAppHostFromHost(host)
             const hostWithPort = hostPort ? `${appHost}:${hostPort}` : appHost
             const redirectUrl = new URL(req.url)
@@ -131,8 +189,14 @@ export default async function proxy(req: NextRequest) {
         }
     } else if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
         orgSlug = firstSegment
-        rewrittenPathname = '/' + segments.slice(1).join('/')
-        if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'
+        const remainder = segments.slice(1)
+        if (remainder[0] === "pos") {
+            const posTail = remainder.slice(1).join("/")
+            rewrittenPathname = `/pos/${orgSlug}${posTail ? `/${posTail}` : ""}`
+        } else {
+            rewrittenPathname = '/' + remainder.join('/')
+            if (rewrittenPathname === '/') rewrittenPathname = '/dashboard'
+        }
 
         requestHeaders.set('x-tenant-slug', orgSlug)
         requestHeaders.set('x-path-prefix', `/${orgSlug}`)
@@ -167,6 +231,15 @@ export default async function proxy(req: NextRequest) {
     let finalResponse: NextResponse = baseResponse
 
     if (authRedirectLocation) {
+        if (!isLocalDevHost && isSubdomain) {
+            const mainHost = getMainHostFromHost(host)
+            const hostWithPort = hostPort ? `${mainHost}:${hostPort}` : mainHost
+            const authRedirectUrl = new URL(authRedirectLocation, req.url)
+            if (authRedirectUrl.pathname === "/auth" || authRedirectUrl.pathname.startsWith("/auth/")) {
+                authRedirectUrl.host = hostWithPort
+                return NextResponse.redirect(authRedirectUrl)
+            }
+        }
         Object.entries(securityHeaders).forEach(([key, value]) => {
             finalResponse.headers.set(key, value)
         })

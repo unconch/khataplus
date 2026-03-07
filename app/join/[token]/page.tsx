@@ -148,7 +148,7 @@ export default async function JoinOrganizationPage({ params }: { params: Promise
                                                 asChild
                                                 className="w-full py-8 !rounded-[24px] bg-white text-zinc-950 hover:bg-zinc-100 font-black text-lg uppercase italic tracking-widest transition-all shadow-xl active:scale-[0.98] group border-none"
                                             >
-                                                <Link href={`/auth/sign-up?invite=${token}`}>
+                                                <Link href={`/auth/invite-sign-up?invite=${token}`}>
                                                     Create Account
                                                     <UserPlus className="ml-3 h-5 w-5 transition-transform group-hover:scale-110" />
                                                 </Link>

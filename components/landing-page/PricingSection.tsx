@@ -7,6 +7,7 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { toast } from "sonner"
 import type { BillingPlanKey } from "@/lib/billing-plans"
 import { cn } from "@/lib/utils"
+import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 const formatINR = (value: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
@@ -101,6 +102,7 @@ function PricingContent({
 }) {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { signUpUrl } = useMainAuthUrls()
     const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
@@ -223,7 +225,7 @@ function PricingContent({
     }
 
     const handleStartTrial = () => {
-        if (!isAuthenticated) { router.push("/auth/sign-up"); return; }
+        if (!isAuthenticated) { router.push(signUpUrl); return; }
         if (orgSlug) { router.push(`/${orgSlug}/dashboard`); return; }
         router.push("/setup-organization")
     }

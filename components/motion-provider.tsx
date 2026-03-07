@@ -29,7 +29,9 @@ const savePreference = (pref: MotionPreference) => {
 
 const computeAutoMotion = () => {
   if (typeof window === "undefined") return { enableMotion: true, reason: "ssr" }
-
+  // Disable animations on mobile devices (viewport width < 768px)
+  const isMobile = window.innerWidth < 768
+  if (isMobile) return { enableMotion: false, reason: "mobile-device" }
   const prefersReduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
   if (prefersReduce) return { enableMotion: false, reason: "prefers-reduced-motion" }
 

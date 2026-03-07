@@ -10,6 +10,7 @@ import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const SETUP_REAUTH_LOGIN = `/auth/login?next=${encodeURIComponent("/setup-organization?reauth=1")}`
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -183,8 +184,8 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
           }] as any
         }
       } else if (!pathPrefix || pathPrefix === "/setup-organization") {
-        console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Setup ---")
-        redirect("/setup-organization")
+        console.log("--- [DEBUG] AppLayout: No Orgs -> forcing re-auth before setup ---")
+        redirect(SETUP_REAUTH_LOGIN)
       } else {
         console.log("--- [DEBUG] AppLayout: Stale cache detected (No Orgs but path prefix exists). Waiting for revalidation... ---")
       }
@@ -203,8 +204,8 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     if (!currentOrgMembership) {
-      console.log("--- [DEBUG] AppLayout: No organization membership found. Redirecting to setup. ---")
-      redirect("/setup-organization")
+      console.log("--- [DEBUG] AppLayout: No organization membership found. Forcing re-auth before setup. ---")
+      redirect(SETUP_REAUTH_LOGIN)
       return null // Ensure execution stops
     }
 
@@ -213,6 +214,20 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const tenant = currentOrgMembership.organization
     const settings = await getSystemSettings(orgId)
     const resolvedPathPrefix = pathPrefix || (tenant?.slug ? `/${tenant.slug}` : "")
+    const invokeSegments = xInvokePath.split("/").filter(Boolean)
+    const invokeFirst = invokeSegments[0] || ""
+    const reservedPrefixPaths = new Set(["login", "sign-up", "auth"])
+
+    // Canonicalize app URLs to tenant-prefixed paths (app.domain/<slug>/*).
+    if (tenant?.slug && !pathPrefix) {
+      if (xInvokePath === "/dashboard" || xInvokePath.startsWith("/dashboard/")) {
+        redirect(`/${tenant.slug}${xInvokePath}`)
+      }
+      if (reservedPrefixPaths.has(invokeFirst) && invokeSegments.length > 1) {
+        const suffix = `/${invokeSegments.slice(1).join("/")}`
+        redirect(`/${tenant.slug}${suffix}`)
+      }
+    }
 
     // Role-based route protection
     if (orgRole === "staff") {

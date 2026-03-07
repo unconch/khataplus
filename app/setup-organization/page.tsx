@@ -1,37 +1,63 @@
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { getSession } from "@/lib/session"
 import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { getProfile } from "@/lib/data"
 import { getOrganization } from "@/lib/data/organizations"
 import { getUserOrganizationsResolved } from "@/lib/data/auth"
+import { getAppHostFromHostname } from "@/lib/auth-redirect"
 
 export const dynamic = "force-dynamic"
+const SETUP_REAUTH_LOGIN = `/auth/login?next=${encodeURIComponent("/setup-organization?reauth=1")}`
 
-export default async function SetupOrganizationPage() {
+async function getAppOrigin(): Promise<string> {
+    const headerList = await headers()
+    const forwardedHost = headerList.get("x-forwarded-host")
+    const hostHeader = forwardedHost || headerList.get("host") || "app.khataplus.online"
+    const firstHost = hostHeader.split(",")[0]?.trim() || "app.khataplus.online"
+    const [hostname, port] = firstHost.split(":")
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname?.endsWith(".localhost")
+    const protocol = headerList.get("x-forwarded-proto") || (isLocal ? "http" : "https")
+    const appHost = getAppHostFromHostname(hostname || "app.khataplus.online")
+    return `${protocol}://${appHost}${port ? `:${port}` : ""}`
+}
+
+export default async function SetupOrganizationPage(
+    props: { searchParams: Promise<{ reauth?: string | string[] }> }
+) {
+    const searchParams = await props.searchParams
+    const reauth = Array.isArray(searchParams?.reauth) ? searchParams.reauth[0] : searchParams?.reauth
+
+    if (reauth !== "1") {
+        redirect(SETUP_REAUTH_LOGIN)
+    }
+
     const sessionRes = await getSession()
     const userId = sessionRes?.userId
 
     if (!userId) {
-        redirect("/auth/login")
+        redirect(SETUP_REAUTH_LOGIN)
     }
 
     const [userOrgs, profile] = await Promise.all([getUserOrganizationsResolved(userId), getProfile(userId)])
 
+    const appOrigin = await getAppOrigin()
+
     if (userOrgs.length > 0) {
         const slug = userOrgs[0]?.organization?.slug
         if (slug) {
-            redirect(`/${slug}/dashboard`)
+            redirect(`${appOrigin}/${slug}/dashboard`)
         }
-        redirect("/dashboard")
+        redirect(`${appOrigin}/dashboard`)
     }
 
     if (profile?.organization_id) {
         const org = await getOrganization(profile.organization_id)
         if (org?.slug) {
-            redirect(`/${org.slug}/dashboard`)
+            redirect(`${appOrigin}/${org.slug}/dashboard`)
         }
         if (org) {
-            redirect("/dashboard")
+            redirect(`${appOrigin}/dashboard`)
         }
     }
 

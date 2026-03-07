@@ -1,4 +1,4 @@
-﻿import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 // Routes that should NOT be treated as org slugs
@@ -6,7 +6,7 @@ const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite',
     'geoblocked', 'privacy', 'terms', 'terms-and-condition', 'terms-and-conditions', 'legal', '_next', 'pricing', 'roadmap',
     'dashboard', 'demo', 'marketing', 'offline', 'docs', 'solutions', 'pos',
-    'pending-approval', 'tools', 'beta', 'for', 'shop',
+    'pending-approval', 'tools', 'beta', 'for', 'shop', 'features',
 ])
 
 export default async function middleware(req: NextRequest) {
@@ -93,8 +93,8 @@ export default async function middleware(req: NextRequest) {
     const mainDomains = ['khataplus.online', 'localhost', '127.0.0.1']
     const isMainDomain = mainDomains.some(domain => host === domain || host.endsWith(`:${domain}`))
     const isSubdomain = !isMainDomain && !isPosHost && host !== 'localhost' && !host.startsWith('127.') && host !== '0.0.0.0'
-    
-    if (isSubdomain && pathname.startsWith('/auth/')) {
+
+    if (isSubdomain && pathname.startsWith('/auth')) {
         // Redirect auth requests from subdomains to main domain
         const mainDomainUrl = new URL(pathname + url.search, `https://khataplus.online`)
         return NextResponse.redirect(mainDomainUrl)

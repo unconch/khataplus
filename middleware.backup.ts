@@ -86,6 +86,20 @@ export default async function middleware(req: NextRequest) {
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set("x-invoke-path", pathname)
 
+    // ========================================================================
+    // AUTH PAGES RESTRICTION: Only allow auth on main domain
+    // Redirect auth requests from subdomains to main domain
+    // ========================================================================
+    const mainDomains = ['khataplus.online', 'localhost', '127.0.0.1']
+    const isMainDomain = mainDomains.some(domain => host === domain || host.endsWith(`:${domain}`))
+    const isSubdomain = !isMainDomain && !isPosHost && host !== 'localhost' && !host.startsWith('127.') && host !== '0.0.0.0'
+    
+    if (isSubdomain && pathname.startsWith('/auth/')) {
+        // Redirect auth requests from subdomains to main domain
+        const mainDomainUrl = new URL(pathname + url.search, `https://khataplus.online`)
+        return NextResponse.redirect(mainDomainUrl)
+    }
+
     if (req.cookies.has("guest_mode") || pathname.startsWith("/demo")) {
         requestHeaders.set("x-guest-mode", "true")
     }

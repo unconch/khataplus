@@ -795,3 +795,12 @@
     transition: none !important;
   }
 }
+
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  .orbital-glow,
+  .orbital-blob {
+    display: none !important;
+    animation: none !important;
+    filter: none !important;
+  }
+}
