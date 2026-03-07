@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/landing-page"
+import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
 import { SolutionsSection } from "@/components/landing-page/SolutionsSection"
 import { getCurrentUser } from "@/lib/data/auth"
@@ -16,6 +16,7 @@ export default async function SolutionsPage() {
   }
 
   let orgSlug: string | null = null
+  const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
   if (user && !user.isGuest) {
     try {
       const { getUserOrganizations } = await import("@/lib/data/organizations")
@@ -65,7 +66,7 @@ export default async function SolutionsPage() {
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href={user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : "/auth/sign-up"}
+                    href={user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl bg-zinc-950 px-10 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:bg-zinc-900 hover:-translate-y-1 active:translate-y-0 group"
                   >
                     Get Started Free
