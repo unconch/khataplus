@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import type { InventoryItem } from "@/lib/types"
-import { PosTerminal } from "@/components/pos/pos-terminal"
+import { PosTerminal } from "@/components/pos-terminal"
 
 export const dynamic = "force-dynamic"
 
