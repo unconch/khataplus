@@ -42,8 +42,7 @@ export default async function SolutionsPage() {
         <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:32px_32px]" />
 
         {/* Ambient Vibrant Gradients (Sarvam style) */}
-        <div className="absolute top-[-20%] left-[20%] w-[60vw] h-[60vw] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.06)_0%,transparent_60%)] blur-[100px] rounded-full point-events-none" />
-        <div className="absolute top-[20%] right-[-20%] w-[50vw] h-[50vw] bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05)_0%,transparent_60%)] blur-[100px] rounded-full point-events-none" />
+        <div className="absolute inset-0 pointer-events-none hero-glow-light hero-gradient-motion" />
 
 
         <div className="container mx-auto px-6 relative z-10">

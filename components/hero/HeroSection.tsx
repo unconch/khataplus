@@ -17,6 +17,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
 
   return (
     <section className="relative min-h-[78svh] flex items-center bg-white text-zinc-900 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none hero-glow hero-gradient-motion" />
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none bg-[radial-gradient(circle_at_center,_black_1px,_transparent_1px)] bg-[size:28px_28px]" />
 
       <div className="relative z-10 max-w-7xl mx-auto w-full px-6 py-16">

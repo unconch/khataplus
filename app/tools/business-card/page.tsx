@@ -12,8 +12,7 @@ export default function BusinessCardPage() {
         <div className="h-screen w-full bg-[#050505] overflow-hidden relative selection:bg-emerald-500/30">
             {/* Studio Atmospheric Background */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-500/10 blur-[120px] rounded-full mix-blend-screen" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-blue-500/10 blur-[120px] rounded-full mix-blend-screen" />
+                <div className="absolute inset-0 hero-glow hero-gradient-motion mix-blend-screen" />
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }} />
             </div>
 

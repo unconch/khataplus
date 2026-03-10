@@ -1,5 +1,3 @@
-"use client"
-
 function stripAppLikeSubdomain(hostname: string): string {
   let base = hostname.toLowerCase()
   if (base.startsWith("www.")) base = base.slice(4)

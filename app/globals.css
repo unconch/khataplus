@@ -485,6 +485,44 @@
     }
   }
 
+  /* Two-Layer Glow Hero Pattern */
+  .hero-glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.25), transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(99, 102, 241, 0.25), transparent 55%),
+      radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.18), transparent 60%);
+  }
+
+  .hero-glow-light {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 28% 35%, rgba(16, 185, 129, 0.12), transparent 55%),
+      radial-gradient(circle at 72% 55%, rgba(59, 130, 246, 0.12), transparent 60%),
+      radial-gradient(circle at 50% 78%, rgba(245, 158, 11, 0.08), transparent 65%);
+  }
+
+  @keyframes hero-gradient-shift {
+    0% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-40px);
+    }
+
+    100% {
+      transform: translateY(0px);
+    }
+  }
+
+  .hero-gradient-motion {
+    animation: hero-gradient-shift 12s ease-in-out infinite;
+    will-change: transform;
+  }
+
   @keyframes spin-y {
     from {
       transform: rotateY(0deg);
@@ -761,6 +799,7 @@
   }
 
   html.static-motion .orbital-glow,
+  html.static-motion .hero-gradient-motion,
   html.static-motion .animate-gradient-x,
   html.static-motion .animate-spin,
   html.static-motion .animate-spin-y,
@@ -802,7 +841,8 @@
 (update: slow) {
 
   .orbital-glow,
-  .orbital-blob {
+  .orbital-blob,
+  .hero-gradient-motion {
     display: none !important;
     animation: none !important;
     filter: none !important;

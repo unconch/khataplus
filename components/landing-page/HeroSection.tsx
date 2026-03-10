@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Navbar } from "./Navbar"
@@ -25,19 +27,15 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
 
             <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-zinc-950">
                 {/* Optimized CSS Animation Background */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/30 rounded-full blur-[40px] ${enableMotion && !isMobile ? "animate-float-slow will-change-transform" : ""}`} />
-                    <div className={`absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/30 rounded-full blur-[50px] ${enableMotion && !isMobile ? "animate-float-slower will-change-transform" : ""}`} />
-                    <div className={`absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-amber-500/20 rounded-full blur-[30px] ${enableMotion && !isMobile ? "animate-float-medium will-change-transform" : ""}`} />
-
-                    <div className="absolute inset-0 bg-zinc-950/40" />
-                    {enableMotion ? (
-                        <div
-                            className="absolute inset-0 opacity-[0.15] mix-blend-overlay"
-                            style={{ backgroundImage: `url("/noise.svg")` }}
-                        />
-                    ) : null}
-                </div>
+                <div
+                    className={`absolute inset-0 pointer-events-none hero-glow ${enableMotion && !isMobile ? "hero-gradient-motion" : ""}`}
+                />
+                {enableMotion ? (
+                    <div
+                        className="absolute inset-0 opacity-[0.15] mix-blend-overlay pointer-events-none"
+                        style={{ backgroundImage: `url("/noise.svg")` }}
+                    />
+                ) : null}
 
                 <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 text-center">
 

@@ -38,9 +38,7 @@ export default async function PricingPage() {
         <main className="relative min-h-screen bg-white overflow-hidden">
             {/* Soft decorative background elements for Light Mode */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-emerald-50 rounded-full blur-[120px] opacity-60" />
-                <div className="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-blue-50 rounded-full blur-[100px] opacity-40" />
-                <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-emerald-50/30 rounded-full blur-[150px] opacity-50" />
+                <div className="absolute inset-0 hero-glow-light hero-gradient-motion" />
 
                 {/* Subtle pattern or noise if desired, but keep it clean */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />

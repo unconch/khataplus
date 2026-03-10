@@ -32,6 +32,7 @@ export default function AuthCallbackPage() {
   const supabase = createClient()
   const redirectingRef = useRef(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     async function handleRedirect() {
       if (redirectingRef.current) return
@@ -55,18 +56,16 @@ export default function AuthCallbackPage() {
       const slug = userRes.user.user_metadata?.active_org_slug
 
       if (typeof slug === "string" && slug.trim()) {
-        router.refresh()
-        redirectToAppPath(`/${slug.trim()}`)
+        redirectToAppPath(`/${slug.trim()}/dashboard`)
         return
       }
 
       // Safety fallback: never leave user stuck if metadata is missing/stale.
-      router.refresh()
       redirectToAppPath("/setup-org")
     }
 
     handleRedirect()
-  }, [router, searchParams, supabase])
+  }, [])
 
   return (
     <div className="min-h-svh w-full flex items-center justify-center p-8">
