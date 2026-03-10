@@ -14,6 +14,8 @@ type DashboardHomePayload = {
   lowStockCount: number
   sales: any[]
   inventoryCount: number
+  customersCount?: number
+  salesCount?: number
 }
 
 function DashboardSkeleton() {
@@ -38,6 +40,52 @@ export function HomeDashboardClient() {
   const [data, setData] = useState<DashboardHomePayload | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const nowIso = () => new Date().toISOString()
+  const normalizePayload = (payload: Partial<DashboardHomePayload>): DashboardHomePayload => ({
+    profile: payload.profile ?? {
+      id: "unknown",
+      name: "User",
+      email: "",
+      role: "owner",
+      status: "approved",
+      created_at: nowIso(),
+      updated_at: nowIso(),
+      biometric_required: false,
+    },
+    org: payload.org ?? {
+      id: "unknown",
+      name: "Organization",
+      slug: "org",
+      created_by: "system",
+      created_at: nowIso(),
+      updated_at: nowIso(),
+      plan_type: "free",
+      subscription_status: "active",
+    },
+    settings: payload.settings ?? {
+      id: "default",
+      allow_staff_inventory: true,
+      allow_staff_sales: true,
+      allow_staff_reports: true,
+      allow_staff_reports_entry_only: false,
+      allow_staff_analytics: false,
+      allow_staff_add_inventory: false,
+      gst_enabled: true,
+      gst_inclusive: false,
+      show_buy_price_in_sales: false,
+      updated_at: nowIso(),
+    },
+    reports: Array.isArray(payload.reports) ? payload.reports : [],
+    unpaidAmount: Number(payload.unpaidAmount ?? 0),
+    toPayAmount: Number(payload.toPayAmount ?? 0),
+    inventoryHealth: Number(payload.inventoryHealth ?? 0),
+    lowStockCount: Number(payload.lowStockCount ?? 0),
+    sales: Array.isArray(payload.sales) ? payload.sales : [],
+    inventoryCount: Number(payload.inventoryCount ?? 0),
+    customersCount: typeof payload.customersCount === "number" ? payload.customersCount : undefined,
+    salesCount: typeof payload.salesCount === "number" ? payload.salesCount : undefined,
+  })
+
   useEffect(() => {
     let active = true
     const controller = new AbortController()
@@ -46,9 +94,13 @@ export function HomeDashboardClient() {
       try {
         const res = await fetch("/api/dashboard/home", { signal: controller.signal })
         const payload = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(payload?.error || "Failed to load dashboard data")
+        if (!res.ok) {
+          const detail = payload?.error ? `: ${payload.error}` : ""
+          throw new Error(`Failed to load dashboard data (${res.status})${detail}`)
+        }
         if (!active) return
-        setData(payload as DashboardHomePayload)
+        const normalized = normalizePayload(payload as Partial<DashboardHomePayload>)
+        setData(normalized)
       } catch (err: any) {
         if (!active || err?.name === "AbortError") return
         setError(err?.message || "Failed to load dashboard data")
@@ -86,7 +138,7 @@ export function HomeDashboardClient() {
       settings={data.settings}
       onboardingStats={{
         hasInventory: data.inventoryCount > 0,
-        hasCustomers: (data as any).customersCount ? (data as any).customersCount > 0 : true,
+        hasCustomers: typeof data.customersCount === "number" ? data.customersCount > 0 : true,
         hasSales: data.sales.length > 0,
         isProfileComplete: !!(data.org?.gstin && data.org?.address),
       }}

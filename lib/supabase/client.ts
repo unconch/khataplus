@@ -3,10 +3,8 @@ import { createBrowserClient } from "@supabase/ssr"
 function buildProxyFetch(proxyUrl: string) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const originalUrl =
-      typeof input === "string"
-        ? new URL(input)
-        : input instanceof URL
-          ? input
+      typeof input === "string" ? new URL(input)
+        : input instanceof URL ? input
           : new URL(input.url)
 
     const proxy = new URL(proxyUrl)
@@ -24,19 +22,11 @@ function buildProxyFetch(proxyUrl: string) {
 }
 
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-  const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_PROXY_URL
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_PROXY_URL?.replace(/\/$/, "")
 
-  if (!url || !anonKey) {
-    throw new Error("Supabase client env vars are missing.")
-  }
-
-  return createBrowserClient(url, anonKey, {
+  return createBrowserClient(url, key, {
     global: proxyUrl ? { fetch: buildProxyFetch(proxyUrl) } : undefined,
   })
 }
-
-export const supabaseClient = createClient()

@@ -1,80 +1,38 @@
 import { NextResponse } from "next/server"
-import { ensureProfile } from "@/lib/data/profiles"
-import { resolvePostAuthPath } from "@/lib/auth-redirect"
-import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
-import { createSupabaseServerClientWithCookieCollector } from "@/lib/supabase/server"
-
-function toSafePath(next: unknown): string {
-  if (typeof next !== "string") return "/setup-organization"
-  if (!next.startsWith("/") || next.startsWith("/auth/")) return "/setup-organization"
-  return next
-}
-
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@")
-  if (!local || !domain) return email
-  if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
-  return `${local.slice(0, 2)}***@${domain}`
-}
-
-function mapOtpErrorMessage(message?: string): string {
-  const raw = String(message || "")
-  const normalized = raw.toLowerCase()
-  if (normalized.includes("signups not allowed for otp")) {
-    return "Supabase Email OTP is disabled. Enable Email provider and Email signups in Supabase Auth settings."
-  }
-  return raw || "Failed to send verification code."
-}
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({} as any))
+    const body = await request.json().catch(() => ({}))
     const name = String(body?.name || "").trim()
     const email = String(body?.email || "").trim().toLowerCase()
-    const code = String(body?.code || "").trim().replace(/\s+/g, "")
-    const next = toSafePath(body?.next)
-    const requestUrl = new URL(request.url)
+    const code = String(body?.code || "").trim()
 
     if (!name || !email) {
-      return NextResponse.json({ error: "Name and email are required." }, { status: 400 })
+      return NextResponse.json(
+        { error: "Name and email are required." },
+        { status: 400 }
+      )
     }
 
-    const initialCookies =
-      request.headers
-        .get("cookie")
-        ?.split(";")
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .reduce<Array<{ name: string; value: string }>>((acc, entry) => {
-          const idx = entry.indexOf("=")
-          if (idx <= 0) return acc
-          acc.push({ name: entry.slice(0, idx), value: entry.slice(idx + 1) })
-          return acc
-        }, []) || []
+    const supabase = await createClient()
 
-    const { client: supabase, pendingCookies } = createSupabaseServerClientWithCookieCollector(initialCookies)
-
+    // STEP 1 — Send OTP
     if (!code) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
-          data: { name },
+          data: { full_name: name }, // stored in raw_user_meta_data → profiles via trigger
         },
       })
-
       if (error) {
-        return NextResponse.json({ error: mapOtpErrorMessage(error.message) }, { status: 400 })
+        return NextResponse.json({ error: error.message }, { status: 400 })
       }
-
-      return NextResponse.json({
-        ok: true,
-        phase: "verify",
-        maskedEmail: maskEmail(email),
-        next,
-      })
+      return NextResponse.json({ ok: true, phase: "verify" })
     }
 
+    // STEP 2 — Verify OTP
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: code,
@@ -82,41 +40,32 @@ export async function POST(request: Request) {
     })
 
     if (error || !data.user?.id) {
-      return NextResponse.json({ error: error?.message || "Invalid verification code." }, { status: 400 })
+      return NextResponse.json(
+        { error: error?.message || "Invalid verification code." },
+        { status: 400 }
+      )
     }
 
-    try {
-      await ensureProfile(data.user.id, data.user.email || email, (data.user.user_metadata?.name as string) || name)
-    } catch (err) {
-      console.warn("[Auth Register] ensureProfile failed:", err)
-    }
-
-    try {
-      const { registerSession } = await import("@/lib/session-governance")
-      const sessionId = (data.session?.access_token || data.user.id).slice(-24)
-      await registerSession(data.user.id, sessionId)
-    } catch (err) {
-      console.warn("[Auth Register] registerSession failed:", err)
-    }
-
-    const resolvedNext = await resolvePostAuthPath(data.user.id, next)
-    const response = NextResponse.json({ ok: true, phase: "done", next: resolvedNext })
-    const domain = resolveSharedCookieDomain(requestUrl.hostname)
-    const secure = process.env.NODE_ENV === "production"
-
-    for (const cookie of pendingCookies) {
-      response.cookies.set(cookie.name, cookie.value, {
-        ...cookie.options,
-        path: "/",
-        sameSite: "lax",
-        secure,
-        domain: domain || undefined,
+    // Update profile name in case trigger missed it
+    await supabase
+      .from("profiles")
+      .upsert({
+        id: data.user.id,
+        full_name: name,
+        email: data.user.email || email,
       })
-    }
 
-    return response
-  } catch (error: any) {
-    console.error("[Auth Register] Failed:", error)
-    return NextResponse.json({ error: error?.message || "Registration failed." }, { status: 500 })
+    return NextResponse.json({
+      ok: true,
+      phase: "done",
+      next: "/setup-organization",
+    })
+
+  } catch (err: any) {
+    console.error("[Auth Register]", err)
+    return NextResponse.json(
+      { error: err?.message || "Registration failed." },
+      { status: 500 }
+    )
   }
 }

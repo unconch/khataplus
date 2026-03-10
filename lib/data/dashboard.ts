@@ -36,8 +36,7 @@ const getHasSalesCustomerNameColumnCached = nextCache(
     { revalidate: 86400 }
 )
 
-async function fetchDashboardOverview(orgId: string): Promise<DashboardOverview> {
-    const isGuest = await isGuestMode()
+async function fetchDashboardOverview(orgId: string, isGuest: boolean): Promise<DashboardOverview> {
     const db = isGuest ? getDemoSql() : getProductionSql()
 
     const hasCustomerNameColumn = isGuest
@@ -115,5 +114,5 @@ const getDashboardOverviewCached = nextCache(
 
 export async function getDashboardOverview(orgId: string): Promise<DashboardOverview> {
     const isGuest = await isGuestMode()
-    return isGuest ? fetchDashboardOverview(orgId) : getDashboardOverviewCached(orgId)
+    return isGuest ? fetchDashboardOverview(orgId, true) : getDashboardOverviewCached(orgId, false)
 }

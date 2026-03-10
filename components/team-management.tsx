@@ -36,14 +36,30 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     void fetchMembers()
   }, [orgId])
 
+  const safeJson = async (res: Response) => {
+    const text = await res.text()
+    if (!text) return {}
+    try {
+      return JSON.parse(text)
+    } catch {
+      throw new Error("Unexpected server response. Please try again.")
+    }
+  }
+
   const fetchMembers = async () => {
     try {
       const res = await fetch(`/api/organizations/${orgId}/members`)
-      const data = await res.json()
+      if (!res.ok) {
+        const data = await safeJson(res)
+        throw new Error(data?.error || "Failed to load team members")
+      }
+      const data = await safeJson(res)
       setMembers(Array.isArray(data) ? data : [])
     } catch (e) {
       console.error(e)
       setMembers([])
+      const message = e instanceof Error ? e.message : "Failed to load team members"
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -81,7 +97,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: inviteRole }),
       })
-      const data = await res.json()
+      const data = await safeJson(res)
       if (!res.ok) throw new Error(data?.error || "Failed to create invite")
       setInviteLink(data.link || "")
       if (data.link) {
@@ -112,7 +128,10 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memberId: userId }),
       })
-      if (!res.ok) throw new Error("Failed to remove member")
+      if (!res.ok) {
+        const data = await safeJson(res)
+        throw new Error(data?.error || "Failed to remove member")
+      }
       toast.success("Member removed")
       await fetchMembers()
     } catch (e) {
