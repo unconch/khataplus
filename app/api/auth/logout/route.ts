@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { createSdk } from "@descope/nextjs-sdk/server"
 import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
+import { createSupabaseServerClientWithCookieCollector } from "@/lib/supabase/server"
 
 function isSafeAbsoluteReturnTo(candidate: URL, current: URL): boolean {
   if (!["http:", "https:"].includes(candidate.protocol)) return false
@@ -50,19 +49,24 @@ function resolveReturnTo(request: Request): string {
 async function handleLogout(request: Request) {
   const returnTo = resolveReturnTo(request)
   const url = new URL(request.url)
+  const cookieHeader = request.headers.get("cookie")
+  const initialCookies =
+    cookieHeader
+      ?.split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .reduce<Array<{ name: string; value: string }>>((acc, entry) => {
+        const idx = entry.indexOf("=")
+        if (idx <= 0) return acc
+        acc.push({ name: entry.slice(0, idx), value: entry.slice(idx + 1) })
+        return acc
+      }, []) || []
 
-  const cookieStore = await cookies()
-  const sessionToken =
-    cookieStore.get("DS")?.value ||
-    cookieStore.get("__Secure-DS")?.value
-
-  if (sessionToken) {
-    try {
-      const sdk = createSdk()
-      await sdk.logout(sessionToken)
-    } catch (error) {
-      console.warn("[AuthLogout] Descope logout API failed, continuing with local cookie cleanup:", error)
-    }
+  try {
+    const { client: supabase } = createSupabaseServerClientWithCookieCollector(initialCookies)
+    await supabase.auth.signOut()
+  } catch (error) {
+    console.warn("[AuthLogout] Supabase signOut failed, continuing with local cookie cleanup:", error)
   }
 
   const response = NextResponse.redirect(
@@ -73,6 +77,10 @@ async function handleLogout(request: Request) {
   const stale = new Date(0)
   const secure = process.env.NODE_ENV === "production"
   const domain = resolveSharedCookieDomain(url.hostname)
+  const supabaseCookieNames = initialCookies
+    .map((cookie) => cookie.name)
+    .filter((name) => name.startsWith("sb-"))
+
   const cookieNames = [
     "DS",
     "DSR",
@@ -80,6 +88,7 @@ async function handleLogout(request: Request) {
     "__Secure-DSR",
     "biometric_verified",
     "kp_auth_next",
+    ...supabaseCookieNames,
   ]
 
   for (const name of cookieNames) {

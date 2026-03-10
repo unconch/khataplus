@@ -1,90 +1,27 @@
 {
-  "name": "KhataPlus Business",
+  "name": "KhataPlus",
   "short_name": "KhataPlus",
-  "description": "Premium Billing, Inventory & Credit Ledger for Indian Businesses. Experience the faster way to manage your Khata.",
+  "description": "Smart Billing & Inventory for India",
   "start_url": "/dashboard",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone",
-    "minimal-ui"
-  ],
-  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
+  "orientation": "portrait",
+  "categories": [
+    "business",
+    "finance"
+  ],
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "New Sale",
-      "url": "/dashboard/sales",
-      "description": "Create a new GST or non-GST bill",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Inventory",
-      "url": "/dashboard/inventory",
-      "description": "Check stock levels and add items",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Credit Ledger",
-      "url": "/dashboard/customers",
-      "description": "View outstanding customer balances",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Daily Reports",
-      "url": "/dashboard/reports",
-      "description": "View financial statements",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ],
-  "categories": [
-    "business",
-    "finance",
-    "productivity"
   ]
 }

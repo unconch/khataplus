@@ -9,8 +9,8 @@ import { toast } from "sonner"
 
 function getAppHostFromCurrentHost(hostname: string): string {
   if (!hostname) return "app.khataplus.online"
-  if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
-  if (hostname.endsWith(".localhost")) return "app.localhost"
+  if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
+  if (hostname.endsWith(".localhost")) return hostname
 
   let base = hostname.toLowerCase()
   if (base.startsWith("www.")) base = base.slice(4)

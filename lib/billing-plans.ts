@@ -17,7 +17,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Keep",
     orgPlanType: "free",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 49, yearly: 499 },
+    amountInr: { monthly: 49, yearly: 490 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_KEEP_MONTHLY",
       yearly: "PADDLE_PRICE_KEEP_YEARLY",
@@ -28,7 +28,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Starter",
     orgPlanType: "starter",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 199, yearly: 1999 },
+    amountInr: { monthly: 99, yearly: 990 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_STARTER_MONTHLY",
       yearly: "PADDLE_PRICE_STARTER_YEARLY",
@@ -39,7 +39,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
     displayName: "Pro",
     orgPlanType: "pro",
     durationMonths: { monthly: 1, yearly: 12 },
-    amountInr: { monthly: 599, yearly: 5999 },
+    amountInr: { monthly: 299, yearly: 2990 },
     envPriceKey: {
       monthly: "PADDLE_PRICE_PRO_MONTHLY",
       yearly: "PADDLE_PRICE_PRO_YEARLY",

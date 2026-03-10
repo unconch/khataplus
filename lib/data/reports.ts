@@ -7,6 +7,38 @@ import { authorize, audit } from "../security";
 import { triggerSync } from "../sync-notifier";
 import { isGuestMode, getCurrentOrgId } from "./auth";
 
+async function getSalesColumnNamesProd(): Promise<string[]> {
+    const db = getProductionSql();
+    const rows = await db`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'sales'
+    `;
+    return (rows as any[]).map((r: any) => String(r.column_name));
+}
+
+const getSalesColumnNamesProdCached = nextCache(
+    getSalesColumnNamesProd,
+    ["schema:sales:columns"],
+    { revalidate: 86400 }
+);
+
+async function getDailyReportColumnNamesProd(): Promise<string[]> {
+    const db = getProductionSql();
+    const rows = await db`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'daily_reports'
+    `;
+    return (rows as any[]).map((r: any) => String(r.column_name));
+}
+
+const getDailyReportColumnNamesProdCached = nextCache(
+    getDailyReportColumnNamesProd,
+    ["schema:daily_reports:columns"],
+    { revalidate: 86400 }
+);
+
 export async function getDailyReports(
     orgId: string,
     range: string = "month",
@@ -29,18 +61,18 @@ export async function getDailyReports(
     const fetchReports = async (): Promise<DailyReport[]> => {
             const db = isGuest ? getDemoSql() : getProductionSql();
             const startDateText = range === "all" ? "1900-01-01" : startDate.toISOString().split('T')[0]
-            const salesCols = await db`
+            const salesCols = isGuest ? await db`
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'sales'
-            `
+            ` : await getSalesColumnNamesProdCached()
             const salesColSet = new Set((salesCols as any[]).map((r: any) => String(r.column_name)))
             const hasPaymentMethod = salesColSet.has("payment_method")
-            const dailyReportCols = await db`
+            const dailyReportCols = isGuest ? await db`
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'daily_reports'
-            `
+            ` : await getDailyReportColumnNamesProdCached()
             const dailyReportColSet = new Set((dailyReportCols as any[]).map((r: any) => String(r.column_name)))
             const hasDailyReportOrgId = dailyReportColSet.has("org_id")
 

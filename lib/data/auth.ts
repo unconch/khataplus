@@ -22,7 +22,7 @@ export async function getCurrentUser(): Promise<{ userId: string, email: string,
     const { getSession } = await import("../session")
     const session = await getSession()
     const userId = session?.userId
-    const email = session?.email || (userId ? `descope_${userId}@local.invalid` : undefined)
+    const email = session?.email || (userId ? `supabase_${userId}@local.invalid` : undefined)
 
     if (userId && email) {
         return { userId, email: String(email), isGuest: false }

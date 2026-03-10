@@ -55,10 +55,10 @@ export function TrialExpiredGuard({ children, trialEndsAt, subscriptionStatus, o
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-white text-sm">Base Plan</h4>
-                                    <p className="text-zinc-500 text-xs">Unlock all core billing features for ₹149/mo.</p>
+                                    <p className="text-zinc-500 text-xs">Unlock all core billing features for ₹99/mo.</p>
                                 </div>
                                 <div className="ml-auto text-emerald-400 font-black">
-                                    ₹149
+                                    ₹99
                                 </div>
                             </div>
 

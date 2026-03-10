@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     try {
         const sessionRes = await getSession()
         const userId = sessionRes?.userId
-        const sessionEmail = sessionRes?.email || (userId ? `descope_${userId}@local.invalid` : undefined)
+        const sessionEmail = sessionRes?.email || (userId ? `supabase_${userId}@local.invalid` : undefined)
 
         if (!userId || !sessionEmail) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

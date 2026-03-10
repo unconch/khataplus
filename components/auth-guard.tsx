@@ -23,7 +23,7 @@ export async function AuthGuard({ children, requireAdmin = false }: AuthGuardPro
   }
 
   if (requireAdmin) {
-    // For Descope, we check roles from the database profile
+    // Authz is enforced via database profile roles.
     const { getProfile } = await import("@/lib/data")
     const profile = await getProfile(userId)
 

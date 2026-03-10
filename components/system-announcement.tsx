@@ -1,5 +1,7 @@
 import { AlertCircle, CheckCircle, Info, Megaphone, X } from "lucide-react";
 
+export const revalidate = 300 // Cache for 5 minutes
+
 export async function SystemAnnouncement() {
     try {
         const { getProductionSql } = await import("@/lib/db");

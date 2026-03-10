@@ -25,11 +25,9 @@ export interface AssertRecentOtpStepUpOptions {
 
 export function getOrgDeletionStepUpFlowId(): string {
     return (
-        process.env.NEXT_PUBLIC_DESCOPE_DELETE_ORG_STEP_UP_FLOW_ID ||
-        process.env.NEXT_PUBLIC_DESCOPE_OTP_FLOW_ID ||
-        process.env.NEXT_PUBLIC_DESCOPE_SIGN_IN_FLOW_ID ||
-        process.env.NEXT_PUBLIC_DESCOPE_FLOW_ID ||
-        "sign-up-or-in"
+        process.env.NEXT_PUBLIC_SUPABASE_DELETE_ORG_STEP_UP_FLOW_ID ||
+        process.env.ORG_DELETE_STEP_UP_METHOD ||
+        "supabase-email-otp"
     )
 }
 
@@ -60,4 +58,3 @@ export async function assertRecentOtpStepUp(options?: AssertRecentOtpStepUpOptio
         throw new StepUpRequiredError("Step-up expired: complete OTP verification again and retry.")
     }
 }
-

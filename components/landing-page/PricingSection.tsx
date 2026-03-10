@@ -41,7 +41,7 @@ const tiers: PricingTier[] = [
         planKey: "keep",
         name: "Keep",
         icon: Shield,
-        price: { monthly: 49, yearly: 499 },
+        price: { monthly: 49, yearly: 490 },
         desc: "For shops getting started.",
         features: [
             "25 Invoices / Month",
@@ -58,7 +58,7 @@ const tiers: PricingTier[] = [
         planKey: "starter",
         name: "Starter",
         icon: Zap,
-        price: { monthly: 199, yearly: 1999 },
+        price: { monthly: 99, yearly: 990 },
         desc: "For growing local shops.",
         features: [
             "Unlimited Billing",
@@ -75,7 +75,7 @@ const tiers: PricingTier[] = [
         planKey: "pro",
         name: "Pro",
         icon: Crown,
-        price: { monthly: 599, yearly: 5999 },
+        price: { monthly: 299, yearly: 2990 },
         desc: "For serious multi-store growth.",
         features: [
             "Full POS Terminal",

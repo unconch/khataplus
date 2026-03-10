@@ -62,7 +62,8 @@ const applyHtmlClass = (enable: boolean) => {
 
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreference] = useState<MotionPreference>("auto")
-  const [autoState, setAutoState] = useState(() => computeAutoMotion())
+  // Keep first render deterministic between SSR and hydration.
+  const [autoState, setAutoState] = useState(() => ({ enableMotion: true, reason: "ssr" }))
 
   useEffect(() => {
     setPreference(getStoredPreference())

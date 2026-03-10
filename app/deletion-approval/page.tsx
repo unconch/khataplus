@@ -1,7 +1,6 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useState } from "react"
-import { Descope } from "@descope/nextjs-sdk"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react"
 
@@ -21,7 +20,6 @@ function DeletionApprovalContent() {
 
     const [stepUpChecked, setStepUpChecked] = useState(false)
     const [stepUpVerified, setStepUpVerified] = useState(false)
-    const [stepUpFlowId, setStepUpFlowId] = useState<string>("sign-up-or-in")
 
     const returnTo = useMemo(() => {
         if (!requestId) return "/deletion-approval"
@@ -47,10 +45,6 @@ function DeletionApprovalContent() {
 
                 if (!res.ok && res.status !== 403) {
                     throw new Error(data.error || "Failed to check verification state")
-                }
-
-                if (typeof data.flowId === "string" && data.flowId) {
-                    setStepUpFlowId(data.flowId)
                 }
 
                 if (res.status === 403) {
@@ -148,24 +142,14 @@ function DeletionApprovalContent() {
                         </p>
                         {message && <p className="text-xs text-amber-700 mt-3">{message}</p>}
                     </div>
-
-                    <div className="rounded-xl border border-zinc-200 overflow-hidden">
-                        <Descope
-                            flowId={stepUpFlowId}
-                            onSuccess={() => {
-                                router.replace(`/auth/callback?next=${encodeURIComponent(returnTo)}`)
-                            }}
-                            onError={() => {
-                                setMessage("Step-up verification failed. Please try again.")
-                            }}
-                            theme="light"
-                            debug={false}
-                        />
+                    <div className="space-y-3">
+                        <Button className="w-full" onClick={() => router.push(`/auth/login?next=${encodeURIComponent(returnTo)}`)}>
+                            Verify with OTP
+                        </Button>
+                        <Button variant="outline" className="w-full" onClick={() => router.push("/dashboard")}>
+                            Cancel
+                        </Button>
                     </div>
-
-                    <Button variant="outline" className="w-full mt-5" onClick={() => router.push("/dashboard")}>
-                        Cancel
-                    </Button>
                 </div>
             </div>
         )
@@ -285,4 +269,3 @@ export default function DeletionApprovalPage() {
         </Suspense>
     )
 }
-

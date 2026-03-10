@@ -9,7 +9,7 @@ function resolveEnvelopeUrl(dsn: string): string | null {
     const projectId = url.pathname.replace(/^\/+/, "").split("/").filter(Boolean).pop()
     const publicKey = url.username
 
-    if (!projectId || !publicKey) return null
+    if (!projectId || !/^\d+$/.test(projectId) || !publicKey) return null
 
     return `${url.protocol}//${url.host}/api/${projectId}/envelope/?sentry_key=${encodeURIComponent(publicKey)}&sentry_version=7`
   } catch {
@@ -18,8 +18,11 @@ function resolveEnvelopeUrl(dsn: string): string | null {
 }
 
 export async function POST(request: Request) {
-  const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN ?? ""
-  const envelopeUrl = resolveEnvelopeUrl(dsn)
+  const rawDsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+  const dsn = typeof rawDsn === "string" ? rawDsn.trim() : "";
+  const isDsnValid = dsn !== "" && dsn.toLowerCase() !== "null" && dsn.toLowerCase() !== "undefined";
+
+  const envelopeUrl = isDsnValid ? resolveEnvelopeUrl(dsn) : null
 
   if (!envelopeUrl) {
     return NextResponse.json({ error: "Sentry tunnel is not configured." }, { status: 500 })

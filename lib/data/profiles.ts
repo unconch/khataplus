@@ -8,7 +8,7 @@ import { createAuditLog } from "./audit";
 import { authorize, audit } from "../security";
 
 async function syncToAuth(_userId: string, _data: { name?: string | null, phone?: string | null, role?: string }): Promise<boolean> {
-    // Descope is the source of truth for authentication; profile metadata stays in Postgres.
+    // Supabase Auth is the source of truth for authentication; profile metadata stays in Postgres.
     return true;
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { InventoryItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -53,6 +53,9 @@ interface CartItem {
 
 export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuyPrice = false, orgId, org }: SalesFormProps) {
   type SaleStep = 1 | 2 | 3 | 4
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  const barcodeBufferRef = useRef("")
+  const lastBarcodeKeyTimeRef = useRef(0)
   const [cart, setCart] = useState<CartItem[]>([])
   const [step, setStep] = useState<SaleStep>(1)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
@@ -130,27 +133,21 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
   const { addToQueue } = useSync()
   const { trigger: haptic } = useHaptic()
 
-  const addToCart = () => {
-    if (!selectedItem || !quantity || !salePrice) return
-
-    const qty = Number.parseInt(quantity)
-    const price = Number.parseFloat(salePrice)
-
-    if (qty > selectedItem.stock) {
-      setError(`Only ${selectedItem.stock} units available in stock`)
-      return
+  const appendCartItem = (item: InventoryItem, qty: number, price: number) => {
+    if (qty > item.stock) {
+      setError(`Only ${item.stock} units available in stock`)
+      return false
     }
     if (!Number.isFinite(price) || price <= 0) {
       setError("Enter a valid selling price greater than 0")
-      return
+      return false
     }
 
-    const { baseAmount, gstAmount, totalAmount, profit } = calculateItemTotals(selectedItem, qty, price)
-
+    const { baseAmount, gstAmount, totalAmount, profit } = calculateItemTotals(item, qty, price)
     setCart((prev) => [
       ...prev,
       {
-        inventoryItem: selectedItem,
+        inventoryItem: item,
         quantity: qty,
         salePrice: price,
         baseAmount,
@@ -159,6 +156,45 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
         profit,
       },
     ])
+    setError(null)
+    return true
+  }
+
+  const tryBarcodeMatch = (rawCode: string) => {
+    const code = rawCode.trim().toLowerCase()
+    if (!code) return false
+    const match = inventorySource.find(
+      (item) =>
+        item.sku.toLowerCase() === code ||
+        item.name.toLowerCase() === code
+    )
+    if (!match) return false
+
+    const defaultPrice = Number(match.sell_price || 0)
+    if (defaultPrice > 0) {
+      const ok = appendCartItem(match, 1, defaultPrice)
+      if (ok) {
+        setSelectedItem(null)
+        setSearchQuery("")
+        setQuantity("")
+        setSalePrice("")
+        setShowSuggestions(false)
+        haptic("light")
+      }
+      return ok
+    }
+
+    handleSelectItem(match)
+    return true
+  }
+
+  const addToCart = () => {
+    if (!selectedItem || !quantity || !salePrice) return
+
+    const qty = Number.parseInt(quantity)
+    const price = Number.parseFloat(salePrice)
+    const ok = appendCartItem(selectedItem, qty, price)
+    if (!ok) return
 
     setSearchQuery("")
     setQuantity("")
@@ -167,6 +203,37 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
     setError(null)
     haptic("light")
   }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName || ""
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA"
+      const now = Date.now()
+      const delta = now - lastBarcodeKeyTimeRef.current
+
+      if (!isTyping && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (delta < 45) {
+          barcodeBufferRef.current += event.key
+        } else {
+          barcodeBufferRef.current = event.key
+        }
+        lastBarcodeKeyTimeRef.current = now
+        return
+      }
+
+      if (!isTyping && event.key === "Enter" && barcodeBufferRef.current.length >= 3) {
+        event.preventDefault()
+        const code = barcodeBufferRef.current
+        barcodeBufferRef.current = ""
+        lastBarcodeKeyTimeRef.current = 0
+        tryBarcodeMatch(code)
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [inventorySource])
 
   const removeFromCart = (index: number) => {
     setCart((prev) => {
@@ -387,11 +454,19 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
                   <SearchIcon className="h-4 w-4 text-zinc-500" />
                   <input
                     id="item"
+                    ref={searchRef}
                     autoComplete="off"
                     className="w-full bg-transparent outline-none text-sm font-medium"
                     placeholder="Search by product name or SKU"
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return
+                      if (tryBarcodeMatch(searchQuery)) {
+                        e.preventDefault()
+                        return
+                      }
+                    }}
                     onFocus={() => setShowSuggestions(true)}
                   />
                 </div>

@@ -1,71 +1,83 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
-import { resolveSlugDashboardPath, toAppOriginFromRequestUrl } from "@/lib/auth-redirect"
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+import { resolvePostAuthPath, toAppOriginFromRequestUrl } from "@/lib/auth-redirect"
+import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
+import { createSupabaseServerClientWithCookieCollector } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
-    const requestUrl = new URL(request.url)
-    const { searchParams, origin } = requestUrl
-    const cookieStore = await cookies()
-    const nextFromCookie = cookieStore.get("kp_auth_next")?.value
-    const requestedNext = searchParams.get("next") ?? (nextFromCookie ? decodeURIComponent(nextFromCookie) : "/dashboard")
-    const next =
-        requestedNext &&
-            requestedNext.startsWith("/") &&
-            !requestedNext.startsWith("/auth/")
-            ? requestedNext
-            : "/dashboard"
+  const requestUrl = new URL(request.url)
+  const { searchParams, origin } = requestUrl
+  const requestedNext = searchParams.get("next") || "/dashboard"
+  const next =
+    requestedNext.startsWith("/") && !requestedNext.startsWith("/auth/")
+      ? requestedNext
+      : "/dashboard"
 
-    try {
-        // Descope cookies can arrive a moment after widget success callback.
-        // Retry briefly to avoid false callback_failed redirects.
-        let authSession = await getSession()
-        if (!authSession?.userId) {
-            await sleep(180)
-            authSession = await getSession()
-        }
-        if (!authSession?.userId) {
-            await sleep(250)
-            authSession = await getSession()
-        }
+  const cookieHeader = request.headers.get("cookie")
+  const initialCookies =
+    cookieHeader
+      ?.split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .reduce<Array<{ name: string; value: string }>>((acc, entry) => {
+        const idx = entry.indexOf("=")
+        if (idx <= 0) return acc
+        acc.push({ name: entry.slice(0, idx), value: entry.slice(idx + 1) })
+        return acc
+      }, []) || []
 
-        const userId = authSession?.userId
-        const email = authSession?.email || (userId ? `descope_${userId}@local.invalid` : "")
-        const name = authSession?.user?.name as string | undefined
-
-        if (userId) {
-            const referrerCode = cookieStore.get("kp_referral")?.value
-
-            const { ensureProfile } = await import("@/lib/data/profiles")
-            await ensureProfile(
-                userId,
-                email,
-                name,
-                undefined,
-                referrerCode
-            )
-
-            try {
-                const { registerSession } = await import("@/lib/session-governance")
-                const tokenTail = userId.slice(-16)
-                await registerSession(userId, tokenTail)
-            } catch (err) {
-                console.warn("[AuthCallback] Session governance registration skipped:", err)
-            }
-
-            const redirectPath = await resolveSlugDashboardPath(userId, next)
-            const appOrigin = toAppOriginFromRequestUrl(requestUrl)
-            const res = redirectPath.startsWith("/")
-                ? NextResponse.redirect(`${appOrigin}${redirectPath}`)
-                : NextResponse.redirect(`${appOrigin}/setup-organization`)
-            res.cookies.delete("kp_auth_next")
-            return res
-        }
-    } catch (err) {
-        console.error("[AuthCallback] Session logic failed:", err)
+  try {
+    const { client: supabase, pendingCookies } = createSupabaseServerClientWithCookieCollector(initialCookies)
+    const code = searchParams.get("code")
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        throw error
+      }
     }
 
-    return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
+    const { data } = await supabase.auth.getUser()
+    const user = data.user
+
+    if (user?.id) {
+      const { ensureProfile } = await import("@/lib/data/profiles")
+      await ensureProfile(
+        user.id,
+        user.email || `supabase_${user.id}@local.invalid`,
+        (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || undefined
+      )
+
+      try {
+        const { registerSession } = await import("@/lib/session-governance")
+        const tokenTail = user.id.slice(-16)
+        await registerSession(user.id, tokenTail)
+      } catch (err) {
+        console.warn("[AuthCallback] Session governance registration skipped:", err)
+      }
+
+      const redirectPath = await resolvePostAuthPath(user.id, next)
+      const appOrigin = toAppOriginFromRequestUrl(requestUrl)
+      const res = redirectPath.startsWith("/")
+        ? NextResponse.redirect(`${appOrigin}${redirectPath}`)
+        : NextResponse.redirect(`${appOrigin}/setup-organization`)
+
+      const domain = resolveSharedCookieDomain(requestUrl.hostname)
+      const secure = process.env.NODE_ENV === "production"
+      for (const cookie of pendingCookies) {
+        res.cookies.set(cookie.name, cookie.value, {
+          ...cookie.options,
+          path: "/",
+          sameSite: "lax",
+          secure,
+          domain: domain || undefined,
+        })
+      }
+
+      res.cookies.delete("kp_auth_next")
+      return res
+    }
+  } catch (err) {
+    console.error("[AuthCallback] Session logic failed:", err)
+  }
+
+  return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
 }

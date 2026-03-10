@@ -118,7 +118,7 @@ export default function PrivacyPolicy() {
                                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {[
                                             { name: "Neon", purpose: "Database Infrastructure" },
-                                            { name: "Descope", purpose: "Authentication & Security" },
+                                            { name: "Supabase Auth", purpose: "Authentication & Security" },
                                             { name: "Vercel", purpose: "Hosting & Analytics" },
                                             { name: "Internal Monitoring", purpose: "Reliability & Performance" },
                                             { name: "Resend", purpose: "Transactional Communications" }

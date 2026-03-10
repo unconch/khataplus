@@ -1,6 +1,6 @@
 "use server"
 
-import { sql } from "../db";
+import { sql, getProductionSql } from "../db";
 import type { InventoryItem } from "../types";
 import { logHealthMetric } from "../monitoring";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
@@ -21,6 +21,17 @@ async function hasInventoryArchivedColumn(db: any): Promise<boolean> {
     return result.length > 0;
 }
 
+async function hasInventoryArchivedColumnProd(): Promise<boolean> {
+    const db = getProductionSql();
+    return hasInventoryArchivedColumn(db);
+}
+
+const hasInventoryArchivedColumnProdCached = nextCache(
+    hasInventoryArchivedColumnProd,
+    ["schema:inventory:is_archived"],
+    { revalidate: 86400 }
+);
+
 export async function getInventory(orgId: string, options: { limit?: number; offset?: number } = { limit: 1000 }) {
     const { isGuestMode } = await import("./auth");
     const isGuest = await isGuestMode();
@@ -33,7 +44,7 @@ export async function getInventory(orgId: string, options: { limit?: number; off
             const db = isGuest ? getDemoSql() : getProductionSql();
 
             const start = Date.now();
-            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const hasArchiveColumn = isGuest ? await hasInventoryArchivedColumn(db) : await hasInventoryArchivedColumnProdCached();
             const data = hasArchiveColumn
                 ? await db`
                     SELECT * FROM inventory 
@@ -231,7 +242,7 @@ export async function getLowStockItems(orgId: string): Promise<InventoryItem[]> 
             const db = isGuest ? getDemoSql() : getProductionSql();
 
             // Fetch items where stock is less than or equal to min_stock
-            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const hasArchiveColumn = isGuest ? await hasInventoryArchivedColumn(db) : await hasInventoryArchivedColumnProdCached();
             const data = hasArchiveColumn
                 ? await db`
                     SELECT * FROM inventory 
@@ -275,7 +286,7 @@ export async function getInventoryStats(orgId: string) {
             const { getDemoSql, getProductionSql } = await import("../db");
             const db = isGuest ? getDemoSql() : getProductionSql();
 
-            const hasArchiveColumn = await hasInventoryArchivedColumn(db);
+            const hasArchiveColumn = isGuest ? await hasInventoryArchivedColumn(db) : await hasInventoryArchivedColumnProdCached();
             const result = hasArchiveColumn
                 ? await db`
                     SELECT 

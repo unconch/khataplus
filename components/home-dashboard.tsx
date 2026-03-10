@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
@@ -22,18 +23,21 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Profile, SystemSettings, DailyReport, Organization, Sale } from "@/lib/types"
-import { SearchDialog } from "@/components/search-dialog"
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
+const SearchDialogLazy = dynamic(
+    () => import("@/components/search-dialog").then((mod) => mod.SearchDialog),
+    { ssr: false }
+)
 import { resolveGreeting, resetGreetingEngine, type AppStateKey, type MotionProfile, type UserContextKey } from "@/lib/greeting-engine"
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-} from "recharts"
+
+const HomeDashboardChart = dynamic(
+    () => import("./home-dashboard-chart").then((mod) => mod.HomeDashboardChart),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="h-[240px] md:h-[340px] w-full mt-6 md:mt-10 rounded-2xl bg-muted/30 animate-pulse" />
+        ),
+    }
+)
 
 interface HomeDashboardProps {
     profile: Profile
@@ -63,13 +67,7 @@ export function HomeDashboard({
     lowStockCount,
     inventoryCount,
 }: HomeDashboardProps) {
-    const [isMounted, setIsMounted] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsMounted(true), 100)
-        return () => clearTimeout(timer)
-    }, [])
 
     const firstName = profile.name?.split(" ")[0] || "User"
     const [greeting, setGreeting] = useState("Hello")
@@ -136,7 +134,7 @@ export function HomeDashboard({
         setGreetingAnimationClass(resolvedGreeting.animationClassName)
         window.localStorage.setItem(seenDateKey, todayToken)
         window.localStorage.setItem(lastSeenKey, String(now.getTime()))
-    }, [firstName, lowStockCount, profile.id, unpaidAmount])
+    }, [])
 
     const [timeRange, setTimeRange] = useState<"today" | "week" | "month">("month")
     const greetingClassName = useMemo(() => {
@@ -178,8 +176,6 @@ export function HomeDashboard({
 
     const stockAlertsCount = inventoryCount === 0 ? 0 : lowStockCount
 
-    if (!isMounted) return null
-
     const formatCurrency = (val: number) => {
         const rs = "\u20B9"
         return `${rs}${Math.round(val).toLocaleString()}`
@@ -187,8 +183,7 @@ export function HomeDashboard({
 
     return (
         <div className="min-h-full space-y-6 md:space-y-10 pb-20 bg-background/50">
-            <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-            <PwaInstallPrompt />
+            {searchOpen ? <SearchDialogLazy open={searchOpen} onOpenChange={setSearchOpen} /> : null}
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 pt-2 md:pt-4">
                 <div className="space-y-1 md:space-y-2">
@@ -263,32 +258,7 @@ export function HomeDashboard({
                     </div>
 
                     <div className="h-[240px] md:h-[340px] w-full mt-6 md:mt-10">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="5 5" vertical={false} stroke="rgba(0,0,0,0.03)" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#888" }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#888" }} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.15)" }}
-                                    cursor={{ stroke: "var(--primary)", strokeWidth: 1, strokeDasharray: "4 4" }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="revenue"
-                                    stroke="var(--primary)"
-                                    strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#primaryGradient)"
-                                    animationDuration={2000}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        <HomeDashboardChart chartData={reports as any} />
                     </div>
                 </div>
 

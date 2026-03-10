@@ -11,7 +11,7 @@ import { SignatureReceipt } from "@/components/ui/signature-receipt"
 import { useInventoryCache } from "@/hooks/use-inventory-cache"
 import { useSync } from "@/hooks/use-sync"
 import { useHaptic } from "@/hooks/use-haptic"
-import { ArrowRight, Expand, FolderOpen, Minus, Moon, Plus, Save, ScanLine, Search, Shield, Sun, Trash2, Users } from "lucide-react"
+import { ArrowRight, CreditCard, Expand, FolderOpen, LayoutGrid, ListOrdered, Minus, Moon, Plus, Save, ScanLine, Search, Shield, Sun, Trash2, Users } from "lucide-react"
 
 type PosTerminalProps = {
   inventory: InventoryItem[]
@@ -59,6 +59,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
 
   const searchRef = useRef<HTMLInputElement | null>(null)
   const customerNameRef = useRef<HTMLInputElement | null>(null)
+  const discountRef = useRef<HTMLInputElement | null>(null)
   const barcodeBufferRef = useRef("")
   const lastBarcodeKeyTimeRef = useRef(0)
 
@@ -80,6 +81,8 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   const [splitUpi, setSplitUpi] = useState("")
   const [showNumpad, setShowNumpad] = useState(false)
   const [tendered, setTendered] = useState(0)
+  const [isMobilePos, setIsMobilePos] = useState(false)
+  const [mobileStep, setMobileStep] = useState<"catalog" | "cart" | "checkout">("catalog")
 
   const [holdName, setHoldName] = useState("")
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([])
@@ -87,6 +90,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [receipt, setReceipt] = useState<{ amount: number; method: PaymentMethod; status: "pending" | "paid"; itemCount: number } | null>(null)
   const [posTheme, setPosTheme] = useState<"light" | "dark">("light")
+  const [clock, setClock] = useState(() => new Date())
 
   const heldKey = `khataplus_held_carts_${orgId}`
   const posThemeKey = `khataplus_pos_theme_${orgId}`
@@ -203,6 +207,8 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   const splitPaid = splitCashNum + splitCardNum + splitUpiNum
   const splitRemaining = totals.total - splitPaid
   const change = Math.max(0, tendered - totals.total)
+  const staffLabel = userId ? `STF-${userId.slice(0, 6).toUpperCase()}` : "STAFF"
+  const timeLabel = clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
   const clearOrderState = () => {
     setCart([])
@@ -454,6 +460,22 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
   }, [])
 
   useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const widthMobile = window.innerWidth < 1024
+      const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches ?? false
+      setIsMobilePos(widthMobile || (standalone && window.innerWidth < 1200))
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile, { passive: true })
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (cart.length === 0) return
       event.preventDefault()
@@ -464,12 +486,33 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
       const tag = (event.target as HTMLElement | null)?.tagName || ""
       const typing = tag === "INPUT" || tag === "TEXTAREA"
 
-      if (event.key === "F2" || (event.key === "/" && !typing)) {
+      if ((event.key === "/" && !typing)) {
         event.preventDefault()
         searchRef.current?.focus()
         searchRef.current?.select()
       }
+      if (event.key === "F1" && !typing) {
+        event.preventDefault()
+        setPaymentMethod("Cash")
+      }
+      if (event.key === "F2" && !typing) {
+        event.preventDefault()
+        setPaymentMethod("UPI")
+      }
       if (event.key === "F3" && !typing) {
+        event.preventDefault()
+        setPaymentMethod("Card")
+      }
+      if (event.key === "Delete" && !typing && cart.length > 0) {
+        event.preventDefault()
+        removeLine(cart[cart.length - 1].id)
+      }
+      if ((event.key === "+" || event.key === "=") && !typing && cart.length > 0) {
+        event.preventDefault()
+        const last = cart[cart.length - 1]
+        updateQty(last.id, last.qty + 1)
+      }
+      if (event.key === "F4" && !typing) {
         event.preventDefault()
         customerNameRef.current?.focus()
         customerNameRef.current?.select()
@@ -526,7 +569,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
       window.removeEventListener("beforeunload", onBeforeUnload)
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [cart.length, inventorySource, searchQuery, showNumpad])
+  }, [cart, inventorySource, searchQuery, showNumpad])
 
   if (receipt) {
     return (
@@ -548,15 +591,203 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
     )
   }
 
+  if (isMobilePos) {
+    return (
+      <div className={cn(
+        "h-[100dvh] w-full flex flex-col overflow-hidden",
+        posTheme === "dark" ? "bg-zinc-950 text-zinc-100 dark" : "bg-zinc-50 text-zinc-900"
+      )}>
+        <header className="shrink-0 border-b border-zinc-200/70 dark:border-zinc-800/70 bg-white/85 dark:bg-zinc-900/85 backdrop-blur px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center text-white text-xs font-black">K+</div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">POS Mobile</p>
+                <p className="text-xs font-bold truncate max-w-[180px]">{org?.name}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPosTheme((t) => (t === "dark" ? "light" : "dark"))}
+              className="h-9 w-9 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+            >
+              {posTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          </div>
+          <div className="mt-3 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <input
+              ref={searchRef}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setActiveSuggestionIndex(0)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  tryAddFromSearch()
+                }
+              }}
+              placeholder="Search or scan item"
+              className="h-11 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100/70 dark:bg-zinc-800/60 pl-10 pr-4 text-sm font-semibold outline-none focus:border-emerald-500"
+            />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto px-3 py-3 pb-28">
+          {mobileStep === "catalog" && (
+            <div className="space-y-3">
+              {filteredProducts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-5 text-center">
+                  <p className="text-sm font-bold">No products in this filter.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {filteredProducts.map((item) => {
+                    const price = Number(item.sell_price || item.buy_price || 0)
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => addToCart(item)}
+                        className="rounded-2xl p-3 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-left active:scale-[0.98] transition"
+                      >
+                        <p className="line-clamp-2 text-xs font-black mb-1">{item.name}</p>
+                        <p className="text-[10px] font-bold text-zinc-500">{item.sku}</p>
+                        <div className="mt-3 flex items-end justify-between">
+                          <p className="text-base font-black">₹{price.toFixed(0)}</p>
+                          <span className="text-[10px] font-black text-zinc-500">{item.stock}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {mobileStep === "cart" && (
+            <div className="space-y-3">
+              {cart.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-5 text-center">
+                  <p className="text-sm font-bold">Cart is empty.</p>
+                </div>
+              ) : (
+                cart.map((line) => {
+                  const t = lineTotals(line)
+                  return (
+                    <div key={line.id} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
+                      <div className="flex justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black">{line.item.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-bold">₹{line.price.toFixed(2)}</p>
+                        </div>
+                        <button type="button" onClick={() => removeLine(line.id)} className="h-7 w-7 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 flex items-center justify-center">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="mt-3 flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => updateQty(line.id, line.qty - 1)} className="h-8 w-8 rounded-lg border border-zinc-200 dark:border-zinc-700">-</button>
+                          <span className="w-8 text-center text-sm font-black">{line.qty}</span>
+                          <button type="button" onClick={() => updateQty(line.id, line.qty + 1)} className="h-8 w-8 rounded-lg border border-zinc-200 dark:border-zinc-700">+</button>
+                        </div>
+                        <p className="text-sm font-black">₹{t.total.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {mobileStep === "checkout" && (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 space-y-2">
+                <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Customer name" className="h-10 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone number" className="h-10 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} placeholder="Discount %" inputMode="decimal" className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                  <input value={customerGst} onChange={(e) => setCustomerGst(e.target.value.toUpperCase())} placeholder="TRN / GSTIN" maxLength={15} className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 space-y-2">
+                <div className="flex justify-between text-xs font-bold"><span>Subtotal</span><span>₹{totals.subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-xs font-bold"><span>Tax</span><span>₹{totals.tax.toFixed(2)}</span></div>
+                <div className="pt-2 border-t border-dashed border-zinc-300 dark:border-zinc-700 flex justify-between"><span className="text-sm font-black">Total</span><span className="text-lg font-black text-emerald-600">₹{totals.total.toFixed(2)}</span></div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {PAYMENT_METHODS.map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className={cn(
+                      "h-10 rounded-xl text-[10px] font-black uppercase tracking-wider",
+                      paymentMethod === method ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-500"
+                    )}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
+
+              {paymentMethod === "Split" && (
+                <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
+                  <input value={splitCash} onChange={(e) => setSplitCash(e.target.value)} placeholder="Cash" inputMode="decimal" className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                  <input value={splitCard} onChange={(e) => setSplitCard(e.target.value)} placeholder="Card" inputMode="decimal" className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                  <input value={splitUpi} onChange={(e) => setSplitUpi(e.target.value)} placeholder="UPI" inputMode="decimal" className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-xs font-bold" />
+                  <div className="h-10 flex items-center justify-end text-xs font-black pr-1">₹{splitRemaining.toFixed(2)}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        <nav className="shrink-0 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur p-2">
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => setMobileStep("catalog")} className={cn("h-11 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5", mobileStep === "catalog" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300")}><LayoutGrid size={14} />Catalog</button>
+            <button onClick={() => setMobileStep("cart")} className={cn("h-11 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 relative", mobileStep === "cart" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300")}><ListOrdered size={14} />Cart {cart.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-white text-[9px]">{cart.length}</span>}</button>
+            <button onClick={() => setMobileStep("checkout")} className={cn("h-11 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5", mobileStep === "checkout" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300")}><CreditCard size={14} />Checkout</button>
+          </div>
+          <button
+            type="button"
+            onClick={completeSale}
+            disabled={cart.length === 0 || isSubmitting}
+            className="mt-2 h-12 w-full rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50"
+          >
+            {isSubmitting ? "Processing..." : `Pay ₹${totals.total.toFixed(2)}`}
+          </button>
+        </nav>
+
+        {showNumpad && (
+          <Numpad title="Amount Paid" total={totals.total} onCancel={() => setShowNumpad(false)} onConfirm={(amount) => { setTendered(amount); setShowNumpad(false) }} />
+        )}
+
+        {error && (
+          <div className="fixed bottom-28 left-3 right-3 z-[60] bg-rose-600 text-white p-3 rounded-xl shadow-xl flex items-center justify-between border border-rose-500">
+            <p className="text-xs font-bold pr-3">{error}</p>
+            <button onClick={() => setError(null)} className="h-7 px-3 rounded-lg bg-white/20 text-[10px] font-black uppercase tracking-widest">Dismiss</button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className={cn(
-      "h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-300",
-      posTheme === "dark" ? "bg-zinc-950 text-zinc-100 dark" : "bg-zinc-50 text-zinc-900"
+      "relative h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-300",
+      posTheme === "dark"
+        ? "bg-zinc-950 text-zinc-100 dark before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_15%_20%,rgba(34,197,94,0.15),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.2),transparent_40%),linear-gradient(180deg,#09090b,#020617)] before:pointer-events-none"
+        : "bg-zinc-50 text-zinc-900 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(16,185,129,0.14),transparent_32%),radial-gradient(circle_at_90%_0%,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,#fafafa,#f4f4f5)] before:pointer-events-none"
     )}>
       {/* Global Navigation Header */}
-      <header className="h-16 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80 px-4 flex items-center justify-between z-20 shrink-0">
+      <header className="h-16 border-b border-zinc-200/70 bg-white/75 backdrop-blur-xl dark:border-zinc-800/70 dark:bg-zinc-900/65 px-4 flex items-center justify-between z-20 shrink-0 relative">
         <div className="flex items-center gap-4 flex-1 max-w-2xl">
-          <div className="h-10 w-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
+          <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/30">
             K+
           </div>
           <div className="relative flex-1 group">
@@ -582,7 +813,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                   tryAddFromSearch()
                 }
               }}
-              placeholder="Search or scan (F2)"
+              placeholder="Search or scan (/)"
               className="h-11 w-full rounded-2xl border border-zinc-200/60 bg-zinc-100/50 pl-10 pr-4 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white dark:border-zinc-700/50 dark:bg-zinc-800/50 dark:focus:bg-zinc-800 transition-all"
             />
             {suggestions.length > 0 && (
@@ -614,6 +845,21 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
             <span className="text-xs font-black uppercase tracking-widest text-zinc-400">Terminal</span>
             <span className="text-xs font-bold truncate max-w-[120px]">{org?.name}</span>
           </div>
+          <div className="hidden md:flex items-center h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-300">
+            {staffLabel}
+          </div>
+          <div className="hidden md:flex items-center h-10 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-300">
+            {timeLabel}
+          </div>
+          <div className={cn(
+            "hidden md:flex items-center gap-2 h-10 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest",
+            isOnline
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300"
+              : "border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+          )}>
+            <span className={cn("h-2 w-2 rounded-full", isOnline ? "bg-emerald-500 animate-pulse" : "bg-zinc-500")} />
+            {isOnline ? "Live Sync" : "Offline"}
+          </div>
           <button
             type="button"
             onClick={() => setPosTheme((t) => (t === "dark" ? "light" : "dark"))}
@@ -635,21 +881,21 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
       </header>
 
       {/* Main Terminal UI */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 overflow-hidden relative z-10">
         {/* Left Section: Categories & Smart Grid */}
-        <section className="flex-1 flex flex-col bg-zinc-50 dark:bg-zinc-950/50 border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
+        <section className="h-full min-w-0 bg-white/55 dark:bg-zinc-950/45 overflow-hidden backdrop-blur-sm pb-[290px]">
           {/* Category Chips */}
-          <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar shrink-0 bg-white dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="hidden p-3 flex-col gap-2 overflow-y-auto no-scrollbar bg-white/80 dark:bg-zinc-900/50 border-r border-zinc-200/80 dark:border-zinc-800/70 backdrop-blur">
             {categories.map((category) => (
               <button
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
                 className={cn(
-                  "h-11 min-w-max px-6 rounded-2xl text-xs font-black uppercase tracking-widest transition-all",
+                  "h-11 w-full px-4 rounded-xl text-[11px] text-left font-black uppercase tracking-widest transition-all",
                   activeCategory === category
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg shadow-black/10"
-                    : "bg-white dark:bg-zinc-900 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
+                    : "bg-white/80 dark:bg-zinc-900/85 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800"
                 )}
               >
                 {category}
@@ -658,7 +904,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
           </div>
 
           {/* Product Grid */}
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="h-full overflow-y-auto p-4 custom-scrollbar">
             {filteredProducts.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-12 text-center">
                 <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-6 border border-dashed border-zinc-300 dark:border-zinc-800">
@@ -666,7 +912,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                 </div>
                 <h3 className="text-xl font-black text-zinc-900 dark:text-white">No products found</h3>
                 <p className="mt-2 text-zinc-500 max-w-xs mx-auto">Try a different search or add a manual item for this transaction below.</p>
-                <div className="mt-8 w-full max-w-md bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <div className="mt-8 w-full max-w-md bg-white/90 dark:bg-zinc-900/85 p-6 rounded-[2.25rem] border border-zinc-200 dark:border-zinc-800 shadow-sm backdrop-blur">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1 text-left">
                       <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Manual Item Name</label>
@@ -681,7 +927,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {filteredProducts.map((item) => {
                   const price = Number(item.sell_price || item.buy_price || 0)
                   return (
@@ -689,7 +935,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                       key={item.id}
                       type="button"
                       onClick={() => addToCart(item)}
-                      className="aspect-square flex flex-col items-start justify-between p-4 rounded-[2.5rem] border-2 border-zinc-200/60 bg-white dark:bg-zinc-900 dark:border-zinc-800 shadow-sm hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all group relative overflow-hidden"
+                      className="aspect-square flex flex-col items-start justify-between p-4 rounded-[2rem] border border-zinc-200/70 bg-white/95 dark:bg-zinc-900/95 dark:border-zinc-800/90 shadow-sm hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-500/15 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all group relative overflow-hidden backdrop-blur"
                     >
                       <div className="w-full">
                         <h4 className="line-clamp-2 text-sm font-extrabold text-zinc-900 dark:text-zinc-100 leading-tight mb-2 uppercase tracking-tight">{item.name}</h4>
@@ -723,10 +969,10 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
         </section>
 
         {/* Right Section: Persistent Checkout Sidebar */}
-        <aside className="w-96 min-w-[384px] bg-white dark:bg-zinc-900 flex flex-col shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10 overflow-hidden">
+        <aside className="absolute left-4 right-4 bottom-4 h-[270px] bg-white/92 dark:bg-zinc-900/92 flex flex-col shadow-2xl z-10 overflow-hidden backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl">
           {/* Customer & Header */}
-          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center justify-between mb-6">
+          <div className="p-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">Current Order</h2>
               <button
                 onClick={clearOrderState}
@@ -736,7 +982,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                 Clear
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
               <div className="relative group">
                 <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
                 <input
@@ -756,11 +1002,46 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                   className="h-11 w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 pl-10 pr-4 text-xs font-bold outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-950 transition-all"
                 />
               </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 col-span-2">
+                <input
+                  value={holdName}
+                  onChange={(e) => setHoldName(e.target.value)}
+                  placeholder="Hold label (e.g. Table 3)"
+                  className="h-10 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 text-[11px] font-bold outline-none focus:border-amber-500 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={holdOrder}
+                  disabled={cart.length === 0}
+                  className="h-10 px-4 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Hold
+                </button>
+              </div>
+              {heldOrders.length > 0 && (
+                <div className="hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/50 p-2 max-h-28 overflow-auto">
+                  <div className="space-y-1.5">
+                    {heldOrders.slice(0, 4).map((held) => (
+                      <button
+                        key={held.id}
+                        type="button"
+                        onClick={() => resumeOrder(held.id)}
+                        className="w-full rounded-xl px-3 py-2 bg-zinc-100/80 dark:bg-zinc-900/70 hover:bg-zinc-200/90 dark:hover:bg-zinc-800 text-left transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[11px] font-black truncate">{held.name}</span>
+                          <span className="text-[10px] font-bold text-zinc-500">{held.cart.length} items</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Cart List */}
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center py-12 text-center opacity-30 grayscale saturate-0">
                 <div className="w-24 h-24 mb-6 border-4 border-dashed border-zinc-300 rounded-[2rem] flex items-center justify-center">
@@ -770,14 +1051,14 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                 <p className="text-xs font-bold text-zinc-400 max-w-[180px]">Scan a barcode or select products to begin.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {cart.map((line) => {
                   const t = lineTotals(line)
                   return (
                     <div
                       key={line.id}
                       className={cn(
-                        "group relative rounded-[2rem] border-2 p-4 transition-all animate-in fade-in slide-in-from-right-2",
+                        "group relative rounded-xl border p-3 transition-all animate-in fade-in slide-in-from-right-2",
                         lineFlashId === line.id
                           ? "bg-emerald-50 border-emerald-500 dark:bg-emerald-900/20 dark:border-emerald-500 shadow-lg shadow-emerald-500/10"
                           : "bg-white dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800 shadow-sm"
@@ -837,8 +1118,8 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
           </div>
 
           {/* Bottom Billing Details & Pay */}
-          <div className="p-6 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-200 dark:border-zinc-800 space-y-4 shrink-0 shadow-[0_-20px_40px_rgba(0,0,0,0.03)] z-20">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 bg-zinc-50/95 dark:bg-zinc-900/80 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-2 shrink-0 z-20 backdrop-blur">
+            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Discount %</label>
                 <input
@@ -859,7 +1140,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
               </div>
             </div>
 
-            <div className="space-y-2 py-2">
+            <div className="space-y-1 py-1">
               <div className="flex justify-between items-center px-1">
                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Subtotal</span>
                 <span className="text-sm font-black">₹{totals.subtotal.toFixed(2)}</span>
@@ -874,7 +1155,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex p-1.5 bg-zinc-200/50 dark:bg-zinc-800/80 rounded-[1.5rem] border border-zinc-200/50 dark:border-zinc-700/50">
                 {PAYMENT_METHODS.map((method) => (
                   <button
@@ -909,12 +1190,12 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
                 type="button"
                 onClick={completeSale}
                 disabled={cart.length === 0 || isSubmitting}
-                className="h-16 w-full rounded-[2rem] bg-emerald-600 dark:bg-emerald-500 text-white text-base font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 hover:bg-emerald-500 dark:hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale saturate-150"
+                className="h-10 w-full rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale"
               >
                 {isSubmitting ? (
                   <>Processing...</>
                 ) : (
-                  <>Pay ₹{totals.total.toFixed(2)} <ArrowRight size={20} /></>
+                  <>Pay ₹{totals.total.toFixed(2)} <ArrowRight size={16} /></>
                 )}
               </button>
             </div>
@@ -922,29 +1203,22 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
         </aside>
       </div>
 
-      {/* Footer Shortcut Bar */}
-      <footer className="h-8 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 px-6 flex items-center justify-between z-30 shrink-0">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">F2</span>
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Search</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Ctrl + P</span>
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Numpad</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Esc</span>
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Clear</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[9px] font-black text-zinc-600 dark:text-zinc-400">Enter</span>
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Pay</span>
-          </div>
-        </div>
+      {/* Footer Quick Actions */}
+      <footer className="h-11 bg-zinc-100/90 dark:bg-zinc-950/90 border-t border-zinc-200/80 dark:border-zinc-900 px-3 flex items-center justify-between z-30 shrink-0 backdrop-blur">
         <div className="flex items-center gap-2">
-          <div className={cn("h-2 w-2 rounded-full animate-pulse", isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-zinc-400")} />
-          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{isOnline ? "Cloud Sync Active" : "Offline Mode"}</span>
+          <button type="button" onClick={holdOrder} className="h-8 px-3 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest">Hold</button>
+          <button type="button" onClick={() => discountRef.current?.focus()} className="h-8 px-3 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest">Discount</button>
+          <button type="button" onClick={() => customerNameRef.current?.focus()} className="h-8 px-3 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest">Customer</button>
+          <button type="button" onClick={clearOrderState} className="h-8 px-3 rounded-lg bg-rose-100 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 text-[10px] font-black uppercase tracking-widest">Clear</button>
+          <button type="button" onClick={() => setPosTheme((t) => (t === "dark" ? "light" : "dark"))} className="h-8 px-3 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest">Settings</button>
+        </div>
+        <div className="hidden xl:flex items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">F1 Cash</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">F2 UPI</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">F3 Card</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Del Remove</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">+ Qty</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">/ Search</span>
         </div>
       </footer>
 
@@ -953,7 +1227,7 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
       )}
 
       {error && (
-        <div className="fixed bottom-12 left-6 right-[400px] z-[60] bg-rose-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-rose-500 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="fixed bottom-16 left-6 right-6 z-[60] bg-rose-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-rose-500 animate-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-3">
             <Shield size={20} className="shrink-0" />
             <p className="text-sm font-bold">{error}</p>
@@ -964,4 +1238,3 @@ export function PosTerminal({ inventory, userId, orgId, org, gstEnabled, gstIncl
     </div>
   )
 }
-

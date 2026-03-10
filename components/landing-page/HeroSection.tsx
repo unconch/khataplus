@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Navbar } from "./Navbar"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
+import { useMotion } from "@/components/motion-provider"
 
 interface HeroSectionProps {
     isAuthenticated: boolean
@@ -18,6 +18,7 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
     const { signUpUrl } = useMainAuthUrls()
     const demoDashboardUrl = useDemoDashboardUrl()
     const primaryHref = isAuthenticated ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : signUpUrl
+    const { enableMotion } = useMotion()
 
     return (
         <>
@@ -26,12 +27,17 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
             <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-zinc-950">
                 {/* Optimized CSS Animation Background */}
                 <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/30 rounded-full blur-[100px] animate-float-slow will-change-transform" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/30 rounded-full blur-[120px] animate-float-slower will-change-transform" />
-                    <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-amber-500/20 rounded-full blur-[90px] animate-float-medium will-change-transform" />
+                    <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/30 rounded-full blur-[100px] ${enableMotion ? "animate-float-slow will-change-transform" : ""}`} />
+                    <div className={`absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/30 rounded-full blur-[120px] ${enableMotion ? "animate-float-slower will-change-transform" : ""}`} />
+                    <div className={`absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-amber-500/20 rounded-full blur-[90px] ${enableMotion ? "animate-float-medium will-change-transform" : ""}`} />
 
                     <div className="absolute inset-0 bg-zinc-950/40" />
-                    <div className="absolute inset-0 opacity-[0.15] mix-blend-overlay" style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }} />
+                    {enableMotion ? (
+                        <div
+                            className="absolute inset-0 opacity-[0.15] mix-blend-overlay"
+                            style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}
+                        />
+                    ) : null}
                 </div>
 
                 <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 text-center">

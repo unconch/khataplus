@@ -1,0 +1,13 @@
+name = "supabase-proxy-worker"
+main = "src/index.ts"
+compatibility_date = "2026-03-07"
+
+[observability]
+enabled = true
+
+[vars]
+# Example: "https://your-project-ref.supabase.co"
+SUPABASE_ORIGIN = ""
+# Comma-separated origins for browser access.
+# Example: "https://app.khataplus.online,https://khataplus.online,http://localhost:3000"
+ALLOWED_ORIGINS = ""

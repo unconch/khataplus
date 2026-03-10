@@ -1,10 +1,9 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { AuthProvider } from "@/components/auth-provider"
+import { ClientProviders } from "@/components/client-providers"
 import { Suspense } from "react"
-import { ReferralTracker } from "@/components/referral-tracker"
-import "./globals.css"
+import { SystemAnnouncement } from "@/components/system-announcement"
 
 export const metadata: Metadata = {
   title: "KhataPlus - Smart Billing & Inventory for India",
@@ -60,16 +59,10 @@ export const viewport: Viewport = {
   ],
 }
 
-import { OfflineBanner } from "@/components/offline-banner"
-import { SyncProvider } from "@/components/sync-provider"
-import { SystemAnnouncement } from "@/components/system-announcement"
-import { MotionProvider } from "@/components/motion-provider"
-import { ThemeProvider } from "@/components/theme-provider"
 
+
+import { ThemeProvider } from "@/components/theme-provider"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
-import { PWAProvider } from "@/components/pwa-provider"
-import { ScrollToTop } from "@/components/scroll-to-top"
 import { Toaster } from "sonner"
 
 export default function RootLayout({
@@ -118,25 +111,14 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <MotionProvider>
-            <PWAProvider>
-              <AuthProvider>
-                <SyncProvider>
-                  <Suspense fallback={null}>
-                    <ReferralTracker />
-                  </Suspense>
-                  <ScrollToTop />
-                  <SystemAnnouncement />
-                  <OfflineBanner />
-                  {children}
-                </SyncProvider>
-              </AuthProvider>
-            </PWAProvider>
-          </MotionProvider>
+          {children}
+          <ClientProviders />
+          <Suspense fallback={null}>
+            <SystemAnnouncement />
+          </Suspense>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
-        <PwaInstallPrompt />
         <Toaster position="top-center" richColors />
       </body>
     </html>

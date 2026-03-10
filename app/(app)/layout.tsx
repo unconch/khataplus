@@ -150,7 +150,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
     // Handle Profile Creation/Update/Consolidation
     const user = sessionRes?.user
-    const email = sessionRes?.email || user?.email || `descope_${userId}@local.invalid`
+    const email = sessionRes?.email || user?.email || `supabase_${userId}@local.invalid`
     const name = (user?.name as string) || ""
 
     if (userId) {
@@ -214,6 +214,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const tenant = currentOrgMembership.organization
     const settings = await getSystemSettings(orgId)
     const resolvedPathPrefix = pathPrefix || (tenant?.slug ? `/${tenant.slug}` : "")
+    const dashboardHome = resolvedPathPrefix ? `${resolvedPathPrefix}/dashboard` : "/dashboard"
     const invokeSegments = xInvokePath.split("/").filter(Boolean)
     const invokeFirst = invokeSegments[0] || ""
     const reservedPrefixPaths = new Set(["login", "sign-up", "auth"])
@@ -231,13 +232,13 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
     // Role-based route protection
     if (orgRole === "staff") {
-      if (xInvokePath.includes("/dashboard/analytics") && !settings.allow_staff_analytics) redirect("/dashboard")
-      if (xInvokePath.includes("/dashboard/reports") && !settings.allow_staff_reports) redirect("/dashboard")
-      if (xInvokePath.includes("/dashboard/sales") && !settings.allow_staff_sales) redirect("/dashboard")
+      if (xInvokePath.includes("/dashboard/analytics") && !settings.allow_staff_analytics) redirect(dashboardHome)
+      if (xInvokePath.includes("/dashboard/reports") && !settings.allow_staff_reports) redirect(dashboardHome)
+      if (xInvokePath.includes("/dashboard/sales") && !settings.allow_staff_sales) redirect(dashboardHome)
     }
 
     if (orgRole !== "owner" && xInvokePath.includes("/dashboard/admin")) {
-      redirect("/dashboard")
+      redirect(dashboardHome)
     }
 
     const planType = String(tenant?.plan_type || "free")

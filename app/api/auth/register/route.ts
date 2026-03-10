@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { createSdk } from "@descope/nextjs-sdk/server"
 import { ensureProfile } from "@/lib/data/profiles"
+import { resolvePostAuthPath } from "@/lib/auth-redirect"
 import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
+import { createSupabaseServerClientWithCookieCollector } from "@/lib/supabase/server"
 
 function toSafePath(next: unknown): string {
   if (typeof next !== "string") return "/setup-organization"
@@ -9,115 +10,108 @@ function toSafePath(next: unknown): string {
   return next
 }
 
-function resolveUser(data: any, fallbackEmail?: string) {
-  const userId =
-    data?.claims?.sub ||
-    data?.claims?.userId ||
-    data?.user?.userId ||
-    data?.user?.sub ||
-    null
-
-  const email = data?.user?.email || fallbackEmail || null
-  const name = data?.user?.name || data?.user?.givenName || null
-  return { userId, email, name }
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@")
+  if (!local || !domain) return email
+  if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
+  return `${local.slice(0, 2)}***@${domain}`
 }
 
-function resolveMaxAge(raw: unknown, fallbackSeconds: number): number {
-  const value = typeof raw === "number" ? raw : Number(raw)
-  if (!Number.isFinite(value) || value <= 0) return fallbackSeconds
-  return Math.max(Math.floor(value), fallbackSeconds)
+function mapOtpErrorMessage(message?: string): string {
+  const raw = String(message || "")
+  const normalized = raw.toLowerCase()
+  if (normalized.includes("signups not allowed for otp")) {
+    return "Supabase Email OTP is disabled. Enable Email provider and Email signups in Supabase Auth settings."
+  }
+  return raw || "Failed to send verification code."
 }
-
-function deriveSessionId(sessionJwt?: string, fallbackUserId?: string | null): string {
-  const token = String(sessionJwt || "")
-  if (token.length >= 24) return token.slice(-24)
-  return String(fallbackUserId || "session").slice(-24)
-}
-
-const SESSION_COOKIE_FALLBACK_SECONDS = 60 * 60 * 24 * 30 // 30d
-const REFRESH_COOKIE_FALLBACK_SECONDS = 60 * 60 * 24 * 90 // 90d
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({} as any))
     const name = String(body?.name || "").trim()
     const email = String(body?.email || "").trim().toLowerCase()
-    const code = String(body?.code || "").trim().replace(/\s+/g, "").replace(/^#/, "")
+    const code = String(body?.code || "").trim().replace(/\s+/g, "")
     const next = toSafePath(body?.next)
+    const requestUrl = new URL(request.url)
 
     if (!name || !email) {
       return NextResponse.json({ error: "Name and email are required." }, { status: 400 })
     }
 
-    const sdk = createSdk()
+    const initialCookies =
+      request.headers
+        .get("cookie")
+        ?.split(";")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .reduce<Array<{ name: string; value: string }>>((acc, entry) => {
+          const idx = entry.indexOf("=")
+          if (idx <= 0) return acc
+          acc.push({ name: entry.slice(0, idx), value: entry.slice(idx + 1) })
+          return acc
+        }, []) || []
+
+    const { client: supabase, pendingCookies } = createSupabaseServerClientWithCookieCollector(initialCookies)
 
     if (!code) {
-      let start = await sdk.otp.signUp.email(email, { email, name })
-      if (!start?.ok) {
-        start = await sdk.otp.signUpOrIn.email(email)
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          data: { name },
+        },
+      })
+
+      if (error) {
+        return NextResponse.json({ error: mapOtpErrorMessage(error.message) }, { status: 400 })
       }
-      if (!start?.ok) {
-        const message = start?.error?.errorMessage || "Failed to send verification code email."
-        return NextResponse.json({ error: message }, { status: 400 })
-      }
+
       return NextResponse.json({
         ok: true,
         phase: "verify",
-        maskedEmail: start?.data?.maskedEmail || email,
+        maskedEmail: maskEmail(email),
         next,
       })
     }
 
-    const result = await sdk.otp.verify.email(email, code)
-    if (!result?.ok || !result?.data?.sessionJwt) {
-      const message = result?.error?.errorMessage || "Invalid verification code."
-      return NextResponse.json({ error: message }, { status: 400 })
-    }
-
-    const data = result.data
-    const response = NextResponse.json({ ok: true, phase: "done", next })
-    const url = new URL(request.url)
-
-    const secure = process.env.NODE_ENV === "production"
-    // Use app-wide cookie path and safe TTL floor to avoid short-lived sessions across routes.
-    const path = "/"
-    const domain = resolveSharedCookieDomain(url.hostname)
-    const sessionMaxAge = resolveMaxAge(data.cookieMaxAge, SESSION_COOKIE_FALLBACK_SECONDS)
-    const refreshMaxAge = resolveMaxAge(data.cookieMaxAge, REFRESH_COOKIE_FALLBACK_SECONDS)
-
-    response.cookies.set("DS", data.sessionJwt, {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path,
-      domain,
-      maxAge: sessionMaxAge,
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
     })
 
-    if (data.refreshJwt) {
-      response.cookies.set("DSR", data.refreshJwt, {
-        httpOnly: true,
-        secure,
-        sameSite: "lax",
-        path,
-        domain,
-        maxAge: refreshMaxAge,
-      })
+    if (error || !data.user?.id) {
+      return NextResponse.json({ error: error?.message || "Invalid verification code." }, { status: 400 })
     }
 
-    const user = resolveUser(data, email)
-    if (user.userId && user.email) {
-      try {
-        await ensureProfile(user.userId, user.email, user.name || name)
-      } catch (err) {
-        console.warn("[Auth Register] ensureProfile failed:", err)
-      }
-      try {
-        const { registerSession } = await import("@/lib/session-governance")
-        await registerSession(user.userId, deriveSessionId(data.sessionJwt, user.userId))
-      } catch (err) {
-        console.warn("[Auth Register] registerSession failed:", err)
-      }
+    try {
+      await ensureProfile(data.user.id, data.user.email || email, (data.user.user_metadata?.name as string) || name)
+    } catch (err) {
+      console.warn("[Auth Register] ensureProfile failed:", err)
+    }
+
+    try {
+      const { registerSession } = await import("@/lib/session-governance")
+      const sessionId = (data.session?.access_token || data.user.id).slice(-24)
+      await registerSession(data.user.id, sessionId)
+    } catch (err) {
+      console.warn("[Auth Register] registerSession failed:", err)
+    }
+
+    const resolvedNext = await resolvePostAuthPath(data.user.id, next)
+    const response = NextResponse.json({ ok: true, phase: "done", next: resolvedNext })
+    const domain = resolveSharedCookieDomain(requestUrl.hostname)
+    const secure = process.env.NODE_ENV === "production"
+
+    for (const cookie of pendingCookies) {
+      response.cookies.set(cookie.name, cookie.value, {
+        ...cookie.options,
+        path: "/",
+        sameSite: "lax",
+        secure,
+        domain: domain || undefined,
+      })
     }
 
     return response

@@ -3,8 +3,8 @@ import { sql } from "@/lib/db"
 
 export function getAppHostFromHostname(hostname: string): string {
   if (!hostname) return "app.khataplus.online"
-  if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
-  if (hostname.endsWith(".localhost")) return "app.localhost"
+  if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
+  if (hostname.endsWith(".localhost")) return hostname
 
   let base = hostname.toLowerCase()
   if (base.startsWith("www.")) base = base.slice(4)
@@ -29,6 +29,27 @@ function isDashboardPath(pathname: string): boolean {
   return pathname === "/dashboard" || pathname.startsWith("/dashboard/")
 }
 
+function isSetupOrganizationPath(pathname: string): boolean {
+  return pathname === "/setup-organization" || pathname.startsWith("/setup-organization/")
+}
+
+async function getPrimaryOrganizationSlug(userId: string): Promise<string> {
+  if (!userId) return ""
+  try {
+    const rows = await sql`
+      SELECT o.slug
+      FROM organization_members om
+      JOIN organizations o ON o.id = om.org_id
+      WHERE om.user_id = ${userId}
+      ORDER BY om.created_at ASC
+      LIMIT 1
+    `
+    return String(rows?.[0]?.slug || "").trim()
+  } catch {
+    return ""
+  }
+}
+
 export async function resolveSlugDashboardPath(userId: string, nextPath: string): Promise<string> {
   if (!userId || !nextPath.startsWith("/")) return nextPath
 
@@ -44,20 +65,31 @@ export async function resolveSlugDashboardPath(userId: string, nextPath: string)
     return `${pathname}${parsed.search}${parsed.hash}`
   }
 
+  const slug = await getPrimaryOrganizationSlug(userId)
+  if (!slug) return `${pathname}${parsed.search}${parsed.hash}`
+  return `/${slug}${pathname}${parsed.search}${parsed.hash}`
+}
+
+export async function resolvePostAuthPath(userId: string, nextPath: string): Promise<string> {
+  if (!userId || !nextPath.startsWith("/")) return nextPath
+
+  let parsed: URL
   try {
-    const rows = await sql`
-      SELECT o.slug
-      FROM organization_members om
-      JOIN organizations o ON o.id = om.org_id
-      WHERE om.user_id = ${userId}
-      ORDER BY om.created_at ASC
-      LIMIT 1
-    `
-    const slug = String(rows?.[0]?.slug || "").trim()
-    if (!slug) return `${pathname}${parsed.search}${parsed.hash}`
-    return `/${slug}${pathname}${parsed.search}${parsed.hash}`
+    parsed = new URL(nextPath, "http://local")
   } catch {
-    return `${pathname}${parsed.search}${parsed.hash}`
+    return nextPath
   }
+
+  const pathname = parsed.pathname || "/dashboard"
+  if (isDashboardPath(pathname)) {
+    return resolveSlugDashboardPath(userId, nextPath)
+  }
+
+  if (isSetupOrganizationPath(pathname)) {
+    const slug = await getPrimaryOrganizationSlug(userId)
+    if (slug) return `/${slug}/dashboard`
+  }
+
+  return `${pathname}${parsed.search}${parsed.hash}`
 }
 

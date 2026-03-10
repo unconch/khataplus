@@ -1,183 +1,109 @@
 import "server-only"
 import { cookies } from "next/headers"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export interface SessionStepUpClaims {
-    authTime: number | null
-    methods: string[]
-    acr: string | null
+  authTime: number | null
+  methods: string[]
+  acr: string | null
 }
 
 function normalizeUnixSeconds(value: unknown): number | null {
-    if (typeof value === "number" && Number.isFinite(value)) {
-        if (value > 1_000_000_000_000) return Math.floor(value / 1000);
-        if (value > 0) return Math.floor(value);
-        return null;
-    }
-    if (typeof value === "string" && value.trim()) {
-        const num = Number(value);
-        if (Number.isFinite(num)) {
-            return normalizeUnixSeconds(num);
-        }
-    }
-    return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value > 1_000_000_000_000) return Math.floor(value / 1000)
+    if (value > 0) return Math.floor(value)
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return normalizeUnixSeconds(parsed)
+  }
+  return null
 }
 
-function pickFirstString(values: unknown[]): string | null {
-    for (const value of values) {
-        if (typeof value === "string" && value.trim()) {
-            return value.trim();
-        }
-    }
-    return null;
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  if (!token) return null
+  const parts = token.split(".")
+  if (parts.length < 2) return null
+
+  try {
+    const payload = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=")
+
+    return JSON.parse(Buffer.from(payload, "base64").toString("utf8"))
+  } catch {
+    return null
+  }
 }
 
-function normalizeMethods(values: unknown[]): string[] {
-    const out = new Set<string>();
-    for (const value of values) {
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                if (typeof item === "string" && item.trim()) {
-                    out.add(item.trim().toLowerCase());
-                }
-            }
-            continue;
+function normalizeMethods(value: unknown): string[] {
+  const out = new Set<string>()
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (typeof entry === "string" && entry.trim()) {
+        out.add(entry.trim().toLowerCase())
+        return
+      }
+
+      if (entry && typeof entry === "object") {
+        const method = (entry as any).method
+        if (typeof method === "string" && method.trim()) {
+          out.add(method.trim().toLowerCase())
         }
-        if (typeof value === "string" && value.trim()) {
-            out.add(value.trim().toLowerCase());
-        }
-    }
-    return Array.from(out);
+      }
+    })
+  } else if (typeof value === "string" && value.trim()) {
+    out.add(value.trim().toLowerCase())
+  }
+  return Array.from(out)
 }
 
-function extractStepUpClaims(raw: any): SessionStepUpClaims {
-    const authTime = [
-        raw?.token?.auth_time,
-        raw?.session?.token?.auth_time,
-        raw?.token?.claims?.auth_time,
-        raw?.session?.claims?.auth_time,
-        raw?.token?.iat,
-        raw?.session?.token?.iat,
-    ].map(normalizeUnixSeconds).find((v) => typeof v === "number") ?? null;
-
-    const methods = normalizeMethods([
-        raw?.token?.amr,
-        raw?.session?.token?.amr,
-        raw?.token?.claims?.amr,
-        raw?.session?.claims?.amr,
-        raw?.user?.amr,
-    ]);
-
-    const acr = pickFirstString([
-        raw?.token?.acr,
-        raw?.session?.token?.acr,
-        raw?.token?.claims?.acr,
-        raw?.session?.claims?.acr,
-    ]);
-
-    return { authTime, methods, acr };
+function extractStepUpClaimsFromToken(token: string | null): SessionStepUpClaims {
+  const claims = decodeJwtPayload(token || "")
+  const authTime = normalizeUnixSeconds(
+    claims?.auth_time ?? claims?.iat ?? claims?.exp ?? null
+  )
+  const methods = normalizeMethods(claims?.amr)
+  const acr = typeof claims?.aal === "string" ? claims.aal : typeof claims?.acr === "string" ? claims.acr : null
+  return { authTime, methods, acr }
 }
 
-function normalizeSession(raw: any) {
-    const user = raw?.user || raw?.token?.user || raw?.session?.user || null
-    const token = raw?.token || raw?.session?.token || {}
+export async function getSession() {
+  try {
+    const supabase = await createSupabaseServerClient()
 
-    const userId =
-        user?.userId ||
-        user?.sub ||
-        token?.sub ||
-        token?.userId ||
-        null
+    const [{ data: sessionData }, { data: userData }] = await Promise.all([
+      supabase.auth.getSession(),
+      supabase.auth.getUser(),
+    ])
 
-    const email =
-        user?.email ||
-        token?.email ||
-        null
+    const user = userData?.user || sessionData?.session?.user
+    if (!user?.id) return null
+
+    const cookieStore = await cookies()
+    const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
+    const accessToken = sessionData?.session?.access_token || null
+    const stepUp = extractStepUpClaimsFromToken(accessToken)
 
     const name =
-        user?.name ||
-        user?.givenName ||
-        token?.name ||
-        token?.given_name ||
-        null
+      (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
+      (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
+      null
 
-    if (!userId) return null
-
-    return { userId, email, name }
-}
-
-async function getFallbackRefreshedSession() {
-    const cookieStore = await cookies()
-    const sessionToken =
-        cookieStore.get("DS")?.value ||
-        cookieStore.get("__Secure-DS")?.value ||
-        ""
-    const refreshToken =
-        cookieStore.get("DSR")?.value ||
-        cookieStore.get("__Secure-DSR")?.value ||
-        ""
-
-    if (!refreshToken) return null
-
-    try {
-        const { createSdk } = await import("@descope/nextjs-sdk/server")
-        const sdk = createSdk()
-        const refreshed = await sdk.validateAndRefreshSession(sessionToken || undefined, refreshToken)
-
-        if (!refreshed?.token?.sub && !refreshed?.token?.userId) return null
-
-        const parsed = normalizeSession({
-            token: refreshed.token,
-            user: {
-                userId: refreshed?.token?.sub || refreshed?.token?.userId,
-                email: refreshed?.token?.email || refreshed?.token?.loginId,
-                name: refreshed?.token?.name || refreshed?.token?.given_name,
-            },
-        })
-
-        if (!parsed) return null
-        return { raw: { token: refreshed.token }, parsed }
-    } catch {
-        return null
+    return {
+      user: {
+        id: user.id,
+        email: user.email || undefined,
+        name,
+      },
+      userId: user.id,
+      email: user.email || undefined,
+      isBiometricVerified,
+      stepUp,
     }
-}
-
-/**
- * Validates and retrieves the current Descope session.
- */
-export async function getSession() {
-    try {
-        const { session: descopeSession } = await import("@descope/nextjs-sdk/server")
-        const raw = await descopeSession()
-        let parsed = normalizeSession(raw)
-        let effectiveRaw = raw
-
-        if (!parsed) {
-            const fallback = await getFallbackRefreshedSession()
-            if (fallback?.parsed) {
-                parsed = fallback.parsed
-                effectiveRaw = fallback.raw as typeof raw
-            }
-        }
-
-        if (!parsed) return null
-
-        const cookieStore = await cookies()
-        const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
-        const stepUp = extractStepUpClaims(effectiveRaw)
-
-        return {
-            user: {
-                id: parsed.userId,
-                email: parsed.email || undefined,
-                name: parsed.name,
-            },
-            userId: parsed.userId,
-            email: parsed.email || undefined,
-            isBiometricVerified,
-            stepUp,
-        }
-    } catch (e) {
-        console.error("Descope session error:", e)
-        return null
-    }
+  } catch (e) {
+    console.error("Supabase session error:", e)
+    return null
+  }
 }
