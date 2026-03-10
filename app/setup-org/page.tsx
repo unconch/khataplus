@@ -33,7 +33,7 @@ export default function SetupOrgGate() {
 
   useEffect(() => {
     async function waitForSession() {
-      for (let i = 0; i < 6; i += 1) {
+      for (let i = 0; i < 10; i += 1) {
         const { data } = await supabase.auth.getSession()
         if (data.session?.user) return data.session
         await new Promise((r) => setTimeout(r, 200))
