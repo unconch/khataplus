@@ -133,7 +133,7 @@ export default function LoginPage() {
           .limit(1)
           .maybeSingle()
 
-        slug = data?.organizations?.slug
+        slug = data?.organizations?.[0]?.slug
       }
 
       if (!slug) {
