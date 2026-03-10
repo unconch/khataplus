@@ -48,7 +48,7 @@ function getMainOrigin(): string {
 export function useMainAuthUrls() {
   const origin = getMainOrigin()
   return {
-    signInUrl: `${origin}/login`,
-    signUpUrl: `${origin}/sign-up`,
+    signInUrl: `${origin}/auth/login`,
+    signUpUrl: `${origin}/auth/sign-up`,
   }
 }
