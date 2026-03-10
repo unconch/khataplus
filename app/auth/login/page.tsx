@@ -6,6 +6,7 @@ import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 type Step = "email" | "verify"
 
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const supabase = createClient()
 
   const withTimeout = async <T,>(promise: Promise<T>, ms = 8000): Promise<T> => {
     return Promise.race([
@@ -30,23 +32,6 @@ export default function LoginPage() {
     if (!local || !domain) return value
     if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
     return `${local.slice(0, 2)}***@${domain}`
-  }
-
-  const postLogin = async (payload: { email: string; code?: string; next?: string }) => {
-    return withTimeout(
-      fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).then(async (res) => {
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          const message = data?.error || "Login failed."
-          throw new Error(message)
-        }
-        return data
-      })
-    )
   }
 
   useEffect(() => {
@@ -63,8 +48,19 @@ export default function LoginPage() {
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const data = await postLogin({ email: email.trim().toLowerCase() })
-      setMaskedEmail(data?.maskedEmail || maskEmail(email))
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { shouldCreateUser: false },
+        })
+      )
+      if (error) {
+        const msg = error.message.toLowerCase().includes("signups not allowed")
+          ? "No account found for this email. Please sign up first."
+          : error.message
+        throw new Error(msg)
+      }
+      setMaskedEmail(maskEmail(email))
       setCooldown(30)
       setStep("verify")
       toast.success("Verification code sent!")
@@ -80,7 +76,16 @@ export default function LoginPage() {
     if (code.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      await postLogin({ email: email.trim().toLowerCase(), code })
+      const { data, error } = await withTimeout(
+        supabase.auth.verifyOtp({
+          email: email.trim().toLowerCase(),
+          token: code,
+          type: "email",
+        })
+      )
+      if (error || !data.user?.id) {
+        throw new Error(error?.message || "Invalid verification code.")
+      }
       toast.success("Welcome back!")
       window.location.assign("/setup-org")
     } catch (err: any) {
@@ -94,7 +99,13 @@ export default function LoginPage() {
     if (resendLoading || cooldown > 0) return
     setResendLoading(true)
     try {
-      await postLogin({ email: email.trim().toLowerCase() })
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { shouldCreateUser: false },
+        })
+      )
+      if (error) throw new Error(error.message)
       setMaskedEmail(maskEmail(email))
       setCooldown(30)
       toast.success("New code sent!")
