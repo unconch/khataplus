@@ -123,7 +123,19 @@ export default function LoginPage() {
         return
       }
 
-      const slug = session.user.user_metadata?.active_org_slug
+      let slug = session.user.user_metadata?.active_org_slug
+
+      if (!slug) {
+        const { data } = await supabase
+          .from("organization_members")
+          .select("organization:organizations(slug)")
+          .eq("user_id", session.user.id)
+          .limit(1)
+          .single()
+
+        slug = data?.organization?.slug
+      }
+
       if (!slug) {
         await supabase.auth.signOut()
         toast.error("Your account is not linked to any workspace. Contact your administrator.")
