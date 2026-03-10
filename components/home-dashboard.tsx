@@ -258,7 +258,7 @@ export function HomeDashboard({
                     </div>
 
                     <div className="h-[240px] md:h-[340px] w-full mt-6 md:mt-10">
-                        <HomeDashboardChart chartData={reports as any} />
+                        <HomeDashboardChart chartData={chartData} />
                     </div>
                 </div>
 

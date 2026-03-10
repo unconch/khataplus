@@ -2,9 +2,11 @@ import { withSentryConfig } from "@sentry/nextjs";
 import withPWAInit from "@ducanh2912/next-pwa";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
+const enablePwa = process.env.NEXT_ENABLE_PWA === "true" || process.env.VERCEL === "1";
+
 const withPWA = withPWAInit({
   dest: "public",
-  disable: false, // enable it
+  disable: !enablePwa, // enable in CI/Vercel or when explicitly set
   register: true,
   skipWaiting: true,
   cacheOnFrontEndNav: true,
@@ -88,6 +90,19 @@ const enableAutomaticVercelMonitors = Boolean(
   vercelProjectId,
 );
 
+const isCiBuild = process.env.CI === "true" || process.env.VERCEL === "1";
+const enableTypecheck = process.env.NEXT_ENABLE_TYPECHECK === "true";
+const disableTypecheck = process.env.NEXT_DISABLE_TYPECHECK === "true";
+const ignoreBuildErrors = disableTypecheck || (!isCiBuild && !enableTypecheck);
+
+const enableSentryBuild = Boolean(
+  isCiBuild &&
+    process.env.SENTRY_ENABLE_BUILD === "true" &&
+    sentryOrg &&
+    sentryProject &&
+    sentryAuthToken
+);
+
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -98,6 +113,10 @@ const nextConfig = {
   },
   turbopack: {},
   cacheComponents: false,
+  typescript: {
+    // Enable typecheck in CI by default; allow local opt-in or explicit disable.
+    ignoreBuildErrors,
+  },
 
   async headers() {
     return [
@@ -122,7 +141,9 @@ const nextConfig = {
   },
 };
 
-const sentryWrappedConfig = withSentryConfig(withPWA(nextConfig), {
+const baseConfig = withAnalyzer(withPWA(nextConfig));
+
+const sentryConfigOptions = {
   ...(sentryOrg ? { org: sentryOrg } : {}),
   ...(sentryProject ? { project: sentryProject } : {}),
   ...(sentryAuthToken ? { authToken: sentryAuthToken } : {}),
@@ -135,6 +156,10 @@ const sentryWrappedConfig = withSentryConfig(withPWA(nextConfig), {
       removeDebugLogging: true,
     },
   },
-});
+};
 
-export default withAnalyzer(sentryWrappedConfig);
+const finalConfig = enableSentryBuild
+  ? withSentryConfig(baseConfig, sentryConfigOptions)
+  : baseConfig;
+
+export default finalConfig;

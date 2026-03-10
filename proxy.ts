@@ -195,7 +195,7 @@ export default async function proxy(req: NextRequest) {
         user = data.user || null
     }
 
-    if (!isDemoHost && !user && !isPublicRoute(pathname)) {
+    if (!isDemoHost && !user && !isPublicRoute(pathname) && !pathname.startsWith('/api/')) {
         const loginPath = `/auth/login?next=${encodeURIComponent(pathname + (url.search || ''))}`
         if (!isLocalDevHost && isSubdomain) {
             const mainHost = getMainHostFromHost(host)

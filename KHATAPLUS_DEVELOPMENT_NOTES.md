@@ -53,7 +53,7 @@ KhataPlus is a **multi-tenant SaaS business management platform** for Indian SMB
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│                  MIDDLEWARE (middleware.ts)                │
+│                    PROXY (proxy.ts)                  │
 │  • Supabase Auth session validation                      │
 │  • Org slug routing (/{slug}/dashboard → /dashboard)     │
 │  • Guest/Demo mode detection                             │
@@ -88,7 +88,7 @@ KhataPlus uses **URL-based multi-tenancy**. Each organization gets a unique slug
 
 **URL pattern:** `/{org-slug}/dashboard/...`
 
-The middleware (`middleware.ts`) handles this:
+The proxy (`proxy.ts`) handles this:
 
 1. Extracts the first URL segment
 2. Checks against `SYSTEM_PREFIXES` (auth, api, setup-organization, etc.)
@@ -226,7 +226,7 @@ The `ensureProfile()` function handles complex scenarios:
 
 - Redis-backed session validation (`lib/session-governance.ts`)
 - Session revocation support
-- Checked in middleware on every request
+- Checked in proxy on every request
 
 ---
 
@@ -443,7 +443,7 @@ KhataPlus/
 │   ├── invoice-utils.ts       # Invoice generation
 │   ├── data/                  # Server-side data access (15 modules)
 │   └── supabase/              # Supabase client configs
-├── middleware.ts               # Auth, routing, security headers
+├── proxy.ts               # Auth, routing, security headers
 ├── hooks/                     # React hooks
 └── styles/                    # Global CSS
 ```
