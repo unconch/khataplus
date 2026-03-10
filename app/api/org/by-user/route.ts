@@ -1,48 +1,31 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { getUserOrgSlug } from "@/lib/data/organizations"
+import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 import { ensureUserProfile } from "@/lib/data/profiles"
-import { cookies } from "next/headers"
+import { getUserOrgSlug } from "@/lib/data/organizations"
 
-export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-export async function GET(req: NextRequest) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+export async function GET() {
+  const supabase = createClient()
 
   const { data, error } = await supabase.auth.getUser()
+
   if (error || !data?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  try {
-    await ensureUserProfile(data.user)
-    const slug = await getUserOrgSlug(data.user.id)
-    if (!slug) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 }
-      )
-    }
-    return NextResponse.json({ slug })
-  } catch (err: any) {
-    console.error("org lookup failed", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+  const user = data.user
+
+  await ensureUserProfile(user)
+
+  const slug = await getUserOrgSlug(user.id)
+
+  if (!slug) {
+    return NextResponse.json(
+      { error: "Organization not found" },
+      { status: 404 }
+    )
   }
+
+  return NextResponse.json({ slug })
 }
