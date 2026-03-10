@@ -1,3 +1,5 @@
+"use client"
+
 import dynamic from "next/dynamic"
 import { HeroSection } from "@/components/landing-page/HeroSection"
 import { LandingPageClient } from "@/components/landing-page-client"
