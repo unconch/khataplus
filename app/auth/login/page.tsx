@@ -126,7 +126,7 @@ export default function LoginPage() {
       let slug = session.user.user_metadata?.active_org_slug
 
       if (!slug) {
-        const res = await fetch("/api/auth/resolve-org", { method: "GET" })
+        const res = await fetch("/api/org/by-user", { method: "GET" })
         if (res.ok) {
           const payload = await res.json()
           slug = typeof payload?.slug === "string" ? payload.slug : ""

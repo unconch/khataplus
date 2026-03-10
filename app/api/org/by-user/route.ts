@@ -20,20 +20,16 @@ export async function GET(req: NextRequest) {
     }
   )
 
-  const { data } = await supabase.auth.getUser()
-  const user = data?.user
-
-  if (!user) {
-    return NextResponse.json({ slug: null }, { status: 401 })
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   try {
-    const slug = await getUserOrgSlug(user.id)
+    const slug = await getUserOrgSlug(data.user.id)
     return NextResponse.json({ slug })
   } catch (err: any) {
-    return NextResponse.json(
-      { slug: null, error: err?.message || "Failed to resolve org" },
-      { status: 500 }
-    )
+    console.error("org lookup failed", err)
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }

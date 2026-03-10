@@ -3,6 +3,7 @@
 import { randomHex, generateUUID } from '../universal-crypto';
 
 import { sql } from "../db";
+import { neon } from "@neondatabase/serverless";
 import type { Organization, OrganizationMember, OrganizationInvite, SystemSettings } from "../types";
 import { authorize, audit } from "../security";
 import { cache } from "react";
@@ -35,6 +36,19 @@ async function generateShortOrganizationId(): Promise<string> {
     }
     // Safe fallback if repeated collisions happen.
     return `org_${randomHex(12).toLowerCase()}`;
+}
+
+const orgLookupSql = neon(process.env.DATABASE_URL!);
+
+export async function getUserOrgSlug(userId: string): Promise<string | null> {
+    const result = await orgLookupSql`
+        SELECT o.slug
+        FROM organization_members om
+        JOIN organizations o ON o.id = om.org_id
+        WHERE om.user_id = ${userId}
+        LIMIT 1
+    `;
+    return result?.[0]?.slug ?? null;
 }
 
 
