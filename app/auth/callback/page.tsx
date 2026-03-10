@@ -38,8 +38,25 @@ export default function AuthCallbackPage() {
       if (redirectingRef.current) return
       redirectingRef.current = true
 
-      const { data: userRes } = await supabase.auth.getUser()
-      if (!userRes?.user) {
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+      type AuthUser = Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"]
+      let user: AuthUser = null
+      for (let i = 0; i < 6; i += 1) {
+        const { data: sessionRes } = await supabase.auth.getSession()
+        if (sessionRes?.session?.user) {
+          user = sessionRes.session.user
+          break
+        }
+        await sleep(200)
+      }
+
+      if (!user) {
+        const { data: userRes } = await supabase.auth.getUser()
+        user = userRes?.user ?? null
+      }
+
+      if (!user) {
         router.replace("/auth/login")
         return
       }
@@ -53,7 +70,7 @@ export default function AuthCallbackPage() {
         return
       }
 
-      const slug = userRes.user.user_metadata?.active_org_slug
+      const slug = user.user_metadata?.active_org_slug
 
       if (typeof slug === "string" && slug.trim()) {
         redirectToAppPath(`/${slug.trim()}/dashboard`)
