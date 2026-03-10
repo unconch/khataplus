@@ -109,7 +109,7 @@ async function fetchDashboardOverview(orgId: string): Promise<DashboardOverview>
 
 const getDashboardOverviewCached = nextCache(
     fetchDashboardOverview,
-    (orgId: string) => [`dashboard-overview-${orgId}`],
+    ["dashboard-overview"],
     { revalidate: 300 }
 )
 

@@ -114,6 +114,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
 export const useMotion = () => {
   const ctx = useContext(MotionContext)
-  if (!ctx) throw new Error("useMotion must be used within MotionProvider")
+  if (!ctx) {
+    return {
+      enableMotion: true,
+      preference: "auto" as MotionPreference,
+      reason: "ssr-fallback",
+      setPreference: () => { },
+    }
+  }
   return ctx
 }
