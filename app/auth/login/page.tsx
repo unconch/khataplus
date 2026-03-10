@@ -88,23 +88,8 @@ export default function LoginPage() {
     return () => clearTimeout(t)
   }, [cooldown])
 
-  useEffect(() => {
-    let cancelled = false
-    async function redirectIfLoggedIn() {
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
-      const user = data.session?.user
-      if (!user) return
-      const slug = user.user_metadata?.active_org_slug
-      if (typeof slug === "string" && slug.trim()) {
-        redirectToAppPath(`/${slug.trim()}/dashboard`)
-        return
-      }
-      router.replace("/setup-org")
-    }
-    redirectIfLoggedIn()
-    return () => { cancelled = true }
-  }, [router, supabase])
+  // Intentionally no auto-redirect here.
+  // Login should only verify OTP and then route to /auth/callback.
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()

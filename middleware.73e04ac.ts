@@ -35,7 +35,7 @@ export default async function middleware(req: NextRequest) {
         return NextResponse.redirect(mainDomainUrl)
     }
 
-    if (pathname.startsWith("/auth")) {
+    if (pathname.startsWith("/auth") || pathname.startsWith("/setup-org")) {
         return response
     }
 
