@@ -128,12 +128,12 @@ export default function LoginPage() {
       if (!slug) {
         const { data } = await supabase
           .from("organization_members")
-          .select("organization:organizations(slug)")
+          .select("organizations(slug)")
           .eq("user_id", session.user.id)
           .limit(1)
-          .single()
+          .maybeSingle()
 
-        slug = data?.organization?.slug
+        slug = data?.organizations?.slug
       }
 
       if (!slug) {
