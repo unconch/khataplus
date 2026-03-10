@@ -5,6 +5,7 @@ import { ensureUserProfile } from "@/lib/data/profiles"
 import { cookies } from "next/headers"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies()
