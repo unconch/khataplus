@@ -18,11 +18,11 @@ export default function LoginPage() {
   const [resendLoading, setResendLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
 
-  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000): Promise<T> => {
     return Promise.race([
       promise,
       new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-    ])
+    ]) as Promise<T>
   }
 
   const maskEmail = (value: string) => {
