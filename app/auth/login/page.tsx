@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/client"
 
 type Step = "email" | "verify"
 
+export const dynamic = "force-dynamic"
+
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")

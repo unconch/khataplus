@@ -80,9 +80,7 @@ export default async function middleware(req: NextRequest) {
     if (user) {
         try {
             const { isSessionValid } = await import('@/lib/session-governance')
-            // We use a snippet of the access token as a surrogate for session ID
-            const { data: { session } } = await supabase.auth.getSession()
-            const sessionId = session?.access_token.slice(-16)
+            const sessionId = user?.id?.slice(-16)
 
             if (sessionId) {
                 const isValid = await isSessionValid(user.id, sessionId)
