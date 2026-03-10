@@ -1,58 +1,73 @@
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import { getSession } from "@/lib/session"
-import { getProfile } from "@/lib/data"
-import { getOrganization } from "@/lib/data/organizations"
-import { getUserOrganizationsResolved } from "@/lib/data/auth"
-import { getAppHostFromHostname } from "@/lib/auth-redirect"
+"use client"
 
-export const dynamic = "force-dynamic"
-const SETUP_REAUTH_LOGIN = `/auth/login?next=${encodeURIComponent("/setup-organization?reauth=1")}`
+import { useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
-async function getAppOrigin(): Promise<string> {
-  const headerList = await headers()
-  const forwardedHost = headerList.get("x-forwarded-host")
-  const hostHeader = forwardedHost || headerList.get("host") || "app.khataplus.online"
-  const firstHost = hostHeader.split(",")[0]?.trim() || "app.khataplus.online"
-  const [hostname, port] = firstHost.split(":")
-  const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname?.endsWith(".localhost")
-  const protocol = headerList.get("x-forwarded-proto") || (isLocal ? "http" : "https")
-  const appHost = getAppHostFromHostname(hostname || "app.khataplus.online")
-  return `${protocol}://${appHost}${port ? `:${port}` : ""}`
+function getAppHostFromCurrentHost(hostname: string): string {
+  if (!hostname) return "app.khataplus.online"
+  if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
+  if (hostname.endsWith(".localhost")) return hostname
+  let base = hostname.toLowerCase()
+  if (base.startsWith("www.")) base = base.slice(4)
+  if (base.startsWith("demo.")) base = base.slice(5)
+  if (base.startsWith("pos.")) base = base.slice(4)
+  if (base.startsWith("app.")) base = base.slice(4)
+  return `app.${base}`
 }
 
-export default async function SetupOrgAliasPage() {
-  const sessionRes = await getSession()
-  const userId = sessionRes?.userId
+function redirectToAppPath(target: string) {
+  if (typeof window === "undefined") return
+  const { protocol, hostname, port } = window.location
+  const appHost = getAppHostFromCurrentHost(hostname)
+  const portPart = port ? `:${port}` : ""
+  const needsAppHost = hostname !== appHost
+  const url = needsAppHost ? `${protocol}//${appHost}${portPart}${target}` : target
+  window.location.assign(url)
+}
 
-  if (!userId) {
-    redirect(SETUP_REAUTH_LOGIN)
-  }
+export default function SetupOrgGate() {
+  const router = useRouter()
+  const supabase = createClient()
+  const redirectingRef = useRef(false)
 
-  const [userOrgs, profile] = await Promise.all([
-    getUserOrganizationsResolved(userId),
-    getProfile(userId)
-  ])
-
-  const appOrigin = await getAppOrigin()
-
-  if (userOrgs.length > 0) {
-    const slug = userOrgs[0]?.organization?.slug
-    if (slug) {
-      redirect(`${appOrigin}/${slug}/dashboard`)
+  useEffect(() => {
+    async function waitForSession() {
+      for (let i = 0; i < 6; i += 1) {
+        const { data } = await supabase.auth.getSession()
+        if (data.session?.user) return data.session
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      return null
     }
-    redirect(`${appOrigin}/dashboard`)
-  }
 
-  if (profile?.organization_id) {
-    const org = await getOrganization(profile.organization_id)
-    if (org?.slug) {
-      redirect(`${appOrigin}/${org.slug}/dashboard`)
-    }
-    if (org) {
-      redirect(`${appOrigin}/dashboard`)
-    }
-  }
+    async function run() {
+      if (redirectingRef.current) return
+      redirectingRef.current = true
 
-  redirect("/setup-organization?reauth=1")
+      const session = await waitForSession()
+      const user = session?.user
+
+      if (!user) {
+        router.replace("/auth/login")
+        return
+      }
+
+      const slug = user.user_metadata?.active_org_slug
+      if (typeof slug === "string" && slug.trim()) {
+        redirectToAppPath(`/${slug.trim()}/dashboard`)
+        return
+      }
+
+      router.replace("/setup-organization")
+    }
+
+    run()
+  }, [router, supabase])
+
+  return (
+    <div className="min-h-svh w-full flex items-center justify-center p-8">
+      <div className="text-sm text-zinc-500">Preparing your workspace...</div>
+    </div>
+  )
 }
