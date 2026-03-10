@@ -89,6 +89,18 @@ export async function getProfile(id: string) {
     return getProfileRaw(id);
 }
 
+export async function ensureUserProfile(user: { id: string; email?: string | null }) {
+    try {
+        await sql`
+            INSERT INTO profiles (id, email)
+            VALUES (${user.id}, ${user.email ?? null})
+            ON CONFLICT (id) DO NOTHING
+        `;
+    } catch (err) {
+        console.error("profile sync failed", err);
+    }
+}
+
 export async function updateProfileBiometricStatus(id: string, required: boolean, adminId: string): Promise<void> {
     const target = await getProfile(id);
     await sql`

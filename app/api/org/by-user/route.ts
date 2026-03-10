@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { getUserOrgSlug } from "@/lib/data/organizations"
+import { ensureUserProfile } from "@/lib/data/profiles"
 
 export const dynamic = "force-dynamic"
 
@@ -26,7 +27,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    await ensureUserProfile(data.user)
     const slug = await getUserOrgSlug(data.user.id)
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 }
+      )
+    }
     return NextResponse.json({ slug })
   } catch (err: any) {
     console.error("org lookup failed", err)
