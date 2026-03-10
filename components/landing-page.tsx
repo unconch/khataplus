@@ -3,13 +3,18 @@ import { HeroSection } from "@/components/landing-page/HeroSection"
 
 const LandingPageClient = dynamic(
   () => import("@/components/landing-page-client").then(m => m.LandingPageClient),
-  { ssr: false }
+  {
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 )
 
 const HeroShowcaseSection = dynamic(
   () => import("@/components/landing-page/HeroShowcaseSection").then(m => m.HeroShowcaseSection),
   {
-    ssr: false,
     loading: () => (
       <section className="relative py-8 md:py-10 bg-transparent">
         <div className="max-w-7xl mx-auto px-6">
