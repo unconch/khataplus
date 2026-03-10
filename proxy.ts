@@ -68,6 +68,12 @@ function resolveSupabaseCspSources(): string {
 
 export default async function proxy(req: NextRequest) {
     const pathname = req.nextUrl.pathname
+
+    // Let API routes pass through untouched
+    if (pathname.startsWith('/api/')) {
+        return NextResponse.next()
+    }
+
     const url = req.nextUrl
     const hostHeader = (req.headers.get("host") || "").toLowerCase()
     const host = hostHeader.split(":")[0]
