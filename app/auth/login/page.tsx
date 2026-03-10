@@ -32,6 +32,15 @@ export default function LoginPage() {
     ])
   }
 
+  const waitForSession = async (attempts = 6, delayMs = 200) => {
+    for (let i = 0; i < attempts; i += 1) {
+      const { data } = await supabase.auth.getSession()
+      if (data.session?.user) return data.session
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+    return null
+  }
+
   const maskEmail = (value: string) => {
     const [local, domain] = value.split("@")
     if (!local || !domain) return value
@@ -96,8 +105,15 @@ export default function LoginPage() {
         })
       )
       if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
+      if (data.session?.access_token && data.session?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
+      }
       toast.success("Welcome back!")
       const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""
+      await waitForSession()
       router.replace(`/auth/callback?source=login${nextParam}`)
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")

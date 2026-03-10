@@ -53,6 +53,15 @@ export default function SignUpPage() {
     ])
   }
 
+  const waitForSession = async (attempts = 6, delayMs = 200) => {
+    for (let i = 0; i < attempts; i += 1) {
+      const { data } = await supabase.auth.getSession()
+      if (data.session?.user) return data.session
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+    return null
+  }
+
   const benefits = [
     "GST-compliant invoicing",
     "Real-time inventory tracking",
@@ -108,12 +117,20 @@ export default function SignUpPage() {
       )
       if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
 
+      if (data.session?.access_token && data.session?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
+      }
+
       try {
         await supabase
           .from("profiles")
           .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
       } catch { }
       toast.success("Account created!")
+      await waitForSession()
       redirectToAppPath("/auth/callback?source=signup")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
