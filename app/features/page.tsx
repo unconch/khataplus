@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowRight, BarChart3, CloudOff, CreditCard, FileText, Shield, Store, Users, Truck, Wallet, ReceiptText, ScanLine, Upload, FileSpreadsheet, QrCode, UserCheck, Search } from "lucide-react"
 import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
@@ -167,8 +166,7 @@ export default async function FeaturesPage() {
 
       <section className="relative px-6 pt-36 pb-16 md:pt-48 md:pb-20">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-200/30 blur-[100px]" />
-          <div className="absolute top-24 right-[-120px] h-[320px] w-[320px] rounded-full bg-emerald-200/20 blur-[90px]" />
+          <div className="absolute inset-0 hero-glow-light hero-gradient-motion" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-5xl text-center">
@@ -258,35 +256,10 @@ export default async function FeaturesPage() {
         </div>
       </section>
 
-      <section className="px-6 pb-16 md:pb-20">
-        <AdvancedScrollReveal variant="slideUp">
-          <div className="mx-auto max-w-6xl rounded-[2.25rem] border border-white/80 bg-white/60 p-6 md:p-8 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Live Product View</p>
-                <h3 className="mt-1 text-2xl font-black tracking-tight text-zinc-900 md:text-3xl">See KhataPlus in action</h3>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
-              <Image
-                src="/images/dashboard-preview.png"
-                alt="KhataPlus dashboard screenshot"
-                width={1400}
-                height={840}
-                className="h-auto w-full object-cover"
-                priority={false}
-              />
-            </div>
-          </div>
-        </AdvancedScrollReveal>
-      </section>
-
       <section className="relative px-6 py-24 md:py-32 flex justify-center overflow-hidden">
         {/* Floating ambient colors behind */}
         <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center">
-          <div className="absolute w-[400px] h-[400px] bg-fuchsia-100/80 rounded-full filter blur-[100px] -translate-x-1/2 -translate-y-1/4 animate-pulse" />
-          <div className="absolute w-[400px] h-[400px] bg-cyan-100/80 rounded-full filter blur-[100px] translate-x-1/3 translate-y-1/4 animate-pulse opacity-75" style={{ animationDelay: "1s" }} />
-          <div className="absolute w-[300px] h-[300px] bg-emerald-100/80 rounded-full filter blur-[100px] -translate-x-1/4 translate-y-1/3 animate-pulse opacity-60" style={{ animationDelay: "2s" }} />
+          <div className="absolute inset-0 hero-glow-light hero-gradient-motion" />
         </div>
 
         <AdvancedScrollReveal variant="slideUp" className="w-full max-w-[800px] relative z-10">
