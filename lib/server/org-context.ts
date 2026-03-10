@@ -31,7 +31,7 @@ export async function getOrgContext() {
 export async function requireOrgContext() {
   const ctx = await getOrgContext()
   if (!ctx.orgId) {
-    throw new Response("Missing org context", { status: 400 })
+    throw new Response("Tenant context required", { status: 400 })
   }
   return ctx
 }

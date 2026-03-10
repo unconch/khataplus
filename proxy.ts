@@ -194,6 +194,12 @@ export default async function proxy(req: NextRequest) {
     const isDashboardPath = pathname === "/dashboard" || pathname.startsWith("/dashboard/")
     const isAuthPath = pathname === "/auth" || pathname.startsWith("/auth/")
     const isCleanAuthPath = pathname === "/login" || pathname === "/sign-up"
+    const isSetupPath =
+        pathname === "/setup-org" ||
+        pathname.startsWith("/setup-org/") ||
+        pathname === "/setup-organization" ||
+        pathname.startsWith("/setup-organization/")
+    const isTenantAgnosticPath = isAuthPath || isCleanAuthPath || isSetupPath
     const isLegacyDemoDashboardPath = pathname === "/demo/dashboard" || pathname.startsWith("/demo/dashboard/")
 
     // Keep marketing landing off app subdomain.
@@ -343,7 +349,7 @@ export default async function proxy(req: NextRequest) {
     let orgSlug: string | null = null
     let rewrittenPathname = pathname
 
-    if (isPosHost) {
+    if (!isTenantAgnosticPath && isPosHost) {
         const posFirst = segments[0] || ''
         const posSecond = segments[1] || ''
 
@@ -421,7 +427,7 @@ export default async function proxy(req: NextRequest) {
 
             rewrittenPathname = `/pos/${orgSlug}/sales`
         }
-    } else if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
+    } else if (!isTenantAgnosticPath && firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
         orgSlug = firstSegment
 
         if (sessionUserId && supabase && (!activeOrgSlug || activeOrgSlug !== orgSlug)) {
