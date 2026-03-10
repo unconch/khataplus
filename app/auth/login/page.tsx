@@ -94,16 +94,7 @@ export default function LoginPage() {
     if (resendLoading || cooldown > 0) return
     setResendLoading(true)
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: getEmailRedirectTo(),
-          },
-        })
-      )
-      if (error) throw new Error(error.message)
+      await postLogin({ email: email.trim().toLowerCase() })
       setMaskedEmail(maskEmail(email))
       setCooldown(30)
       toast.success("New code sent!")
