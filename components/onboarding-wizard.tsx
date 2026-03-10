@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 const INDIAN_STATES = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
@@ -228,6 +229,7 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
     const [loading, setLoading] = useState(false)
     const [nameAvailability, setNameAvailability] = useState<NameAvailabilityState>("idle")
     const draftStorageKey = useMemo(() => `onboarding-draft:${userId}`, [userId])
+    const supabase = createClient()
 
     const {
         register,
@@ -387,6 +389,12 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
 
             toast.success("Organization created successfully! Initializing your dashboard...")
             window.sessionStorage.removeItem(draftStorageKey)
+
+            try {
+                await supabase.auth.updateUser({ data: { active_org_slug: org.slug } })
+            } catch {
+                // Non-blocking: metadata is a cache for faster redirects.
+            }
 
             // Redirect to org-specific dashboard path
             const ready = await waitForOrganizationReady(org.slug)

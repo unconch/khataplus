@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -12,13 +11,40 @@ import { createClient } from "@/lib/supabase/client"
 type Step = "name" | "email" | "otp"
 
 export default function SignUpPage() {
-  const router = useRouter()
   const [step, setStep] = useState<Step>("name")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  function getAppHostFromCurrentHost(hostname: string): string {
+    if (!hostname) return "app.khataplus.online"
+    if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
+    if (hostname.endsWith(".localhost")) return hostname
+    let base = hostname.toLowerCase()
+    if (base.startsWith("www.")) base = base.slice(4)
+    if (base.startsWith("demo.")) base = base.slice(5)
+    if (base.startsWith("pos.")) base = base.slice(4)
+    if (base.startsWith("app.")) base = base.slice(4)
+    return `app.${base}`
+  }
+
+  function redirectToAppPath(target: string) {
+    if (typeof window === "undefined") return
+    const { protocol, hostname, port } = window.location
+    const appHost = getAppHostFromCurrentHost(hostname)
+    const portPart = port ? `:${port}` : ""
+    const needsAppHost = hostname !== appHost
+    const url = needsAppHost ? `${protocol}//${appHost}${portPart}${target}` : target
+    window.location.assign(url)
+  }
+
+  const getEmailRedirectTo = () => {
+    if (typeof window === "undefined") return undefined
+    const base = window.location.origin
+    return `${base}/auth/callback?source=signup`
+  }
 
   const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
     return Promise.race([
@@ -53,6 +79,7 @@ export default function SignUpPage() {
           options: {
             shouldCreateUser: true,
             data: { full_name: name },
+            emailRedirectTo: getEmailRedirectTo(),
           },
         })
       )
@@ -87,7 +114,7 @@ export default function SignUpPage() {
           .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
       } catch { }
       toast.success("Account created!")
-      router.push("/setup-organization")
+      redirectToAppPath("/auth/callback?source=signup")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {

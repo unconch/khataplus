@@ -1,7 +1,7 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -9,40 +9,12 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
-function getAppHostFromCurrentHost(hostname: string): string {
-  if (!hostname) return "app.khataplus.online"
-  if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
-  if (hostname.endsWith(".localhost")) return hostname
-  let base = hostname.toLowerCase()
-  if (base.startsWith("www.")) base = base.slice(4)
-  if (base.startsWith("demo.")) base = base.slice(5)
-  if (base.startsWith("pos.")) base = base.slice(4)
-  if (base.startsWith("app.")) base = base.slice(4)
-  return `app.${base}`
-}
-
-function redirectAfterAuth(target: string) {
-  if (typeof window === "undefined") return
-  const needsAppHost =
-    target === "/dashboard" ||
-    target.startsWith("/dashboard/") ||
-    /^\/[^/]+\/dashboard(?:\/|$)/.test(target)
-
-  if (needsAppHost) {
-    const { protocol, hostname, port } = window.location
-    const appHost = getAppHostFromCurrentHost(hostname)
-    const portPart = port ? `:${port}` : ""
-    window.location.assign(`${protocol}//${appHost}${portPart}${target}`)
-    return
-  }
-  window.location.assign(target)
-}
-
 type Step = "email" | "verify"
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
-  const next = searchParams.get("next") || "/dashboard"
+  const next = searchParams.get("next") || ""
+  const router = useRouter()
   const supabase = createClient()
 
   const [step, setStep] = useState<Step>("email")
@@ -67,6 +39,18 @@ export default function LoginPage() {
     return `${local.slice(0, 2)}***@${domain}`
   }
 
+  const safeNext = useMemo(() => {
+    if (!next || !next.startsWith("/") || next.startsWith("/auth/")) return ""
+    return next
+  }, [next])
+
+  const getEmailRedirectTo = () => {
+    if (typeof window === "undefined") return undefined
+    const base = window.location.origin
+    const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""
+    return `${base}/auth/callback?source=login${nextParam}`
+  }
+
   useEffect(() => {
     if (cooldown <= 0) return
     const t = setTimeout(() => setCooldown((v) => v - 1), 1000)
@@ -83,6 +67,7 @@ export default function LoginPage() {
           email,
           options: {
             shouldCreateUser: false,
+            emailRedirectTo: getEmailRedirectTo(),
           },
         })
       )
@@ -112,7 +97,8 @@ export default function LoginPage() {
       )
       if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
       toast.success("Welcome back!")
-      redirectAfterAuth(next)
+      const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""
+      router.replace(`/auth/callback?source=login${nextParam}`)
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
@@ -129,6 +115,7 @@ export default function LoginPage() {
           email,
           options: {
             shouldCreateUser: false,
+            emailRedirectTo: getEmailRedirectTo(),
           },
         })
       )

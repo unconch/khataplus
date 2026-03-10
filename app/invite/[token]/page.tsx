@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo, LogoText } from "@/components/ui/logo"
 import { Loader2, CheckCircle, XCircle, ShieldCheck, Zap } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function AcceptInvitePage() {
     const router = useRouter()
     const params = useParams()
     const token = params.token as string
+    const supabase = createClient()
 
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
     const [message, setMessage] = useState("")
@@ -36,6 +38,14 @@ export default function AcceptInvitePage() {
                 setOrgName(data.orgName)
                 setOrgSlug(data.orgSlug || "")
                 setMessage("Institutional Identity Secured.")
+
+                if (data.orgSlug) {
+                    try {
+                        await supabase.auth.updateUser({ data: { active_org_slug: data.orgSlug } })
+                    } catch {
+                        // Non-blocking: metadata is a cache for faster redirects.
+                    }
+                }
 
                 setTimeout(() => {
                     if (data.orgSlug) {

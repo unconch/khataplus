@@ -62,29 +62,30 @@ const applyHtmlClass = (enable: boolean) => {
 
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreference] = useState<MotionPreference>("auto")
-  // Keep first render deterministic between SSR and hydration.
-  const [autoState, setAutoState] = useState(() => ({ enableMotion: true, reason: "ssr" }))
+  // Initialize with actual capability detection instead of generic SSR state
+  const [autoState, setAutoState] = useState(() => computeAutoMotion())
 
   useEffect(() => {
     setPreference(getStoredPreference())
-    setAutoState(computeAutoMotion())
   }, [])
 
   useEffect(() => {
-    const recheck = () => setAutoState(computeAutoMotion())
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        setAutoState(computeAutoMotion())
+      }
+    }
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && (e.newValue === "on" || e.newValue === "off" || e.newValue === "auto")) {
-        setPreference(e.newValue)
+        setPreference(e.newValue as MotionPreference)
       }
     }
 
-    window.addEventListener("resize", recheck, { passive: true })
-    document.addEventListener("visibilitychange", recheck, { passive: true })
+    document.addEventListener("visibilitychange", handleVisibility, { passive: true })
     window.addEventListener("storage", handleStorage)
 
     return () => {
-      window.removeEventListener("resize", recheck)
-      document.removeEventListener("visibilitychange", recheck)
+      document.removeEventListener("visibilitychange", handleVisibility)
       window.removeEventListener("storage", handleStorage)
     }
   }, [])
@@ -99,7 +100,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     applyHtmlClass(enableMotion)
   }, [enableMotion])
 
-  const value: MotionContextValue = {
+  const value: MotionContextValue = useMemo(() => ({
     enableMotion,
     preference,
     reason,
@@ -107,7 +108,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setPreference(pref)
       savePreference(pref)
     },
-  }
+  }), [enableMotion, preference, reason])
 
   return <MotionContext.Provider value={value}>{children}</MotionContext.Provider>
 }

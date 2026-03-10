@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect } from "react"
 import { useMotion } from "@/components/motion-provider"
 
 type AnimationVariant = "fadeIn" | "slideUp" | "slideLeft" | "slideRight" | "scaleUp" | "rotate"
@@ -15,48 +15,69 @@ interface AdvancedScrollRevealProps {
     threshold?: number
 }
 
+/**
+ * Problem 1 Fix: Shared global observer to reduce memory usage and layout thrashing.
+ * Handles multiple reveal components with a single observer instance.
+ */
+let globalObserver: IntersectionObserver | null = null
+
+function getGlobalObserver() {
+    if (typeof window === "undefined") return null
+
+    if (!globalObserver) {
+        globalObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    const target = entry.target as HTMLElement
+                    const isOnce = target.getAttribute("data-once") === "true"
+
+                    if (entry.isIntersecting) {
+                        /**
+                         * Problem 4 Fix: Avoid React state updates during scroll.
+                         * Directly toggling DOM attributes prevents re-renders on every scroll transition.
+                         */
+                        target.setAttribute("data-visible", "true")
+                        if (isOnce) {
+                            globalObserver?.unobserve(target)
+                        }
+                    } else if (!isOnce) {
+                        target.setAttribute("data-visible", "false")
+                    }
+                })
+            },
+            { threshold: 0.15 } // Standard threshold for consistent scroll reveal behavior
+        )
+    }
+    return globalObserver
+}
+
 export function AdvancedScrollReveal({
     children,
     variant = "slideUp",
     delay = 0,
-    duration = 0.8,
+    duration = 0.5, // Fix 3: Snappier 0.5s default for better perceived performance
     className = "",
     once = true,
-    threshold = 0.15
 }: AdvancedScrollRevealProps) {
     const { enableMotion } = useMotion()
     const ref = useRef<HTMLDivElement>(null)
-    const [isVisible, setIsVisible] = useState(false)
 
     useEffect(() => {
-        if (!enableMotion) {
-            return
-        }
+        const node = ref.current
+        if (!enableMotion || !node) return
 
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsVisible(true)
-                    if (once && ref.current) {
-                        observer.unobserve(ref.current)
-                    }
-                } else if (!once) {
-                    setIsVisible(false)
-                }
-            },
-            { threshold }
-        )
-
-        if (ref.current) {
-            observer.observe(ref.current)
+        const obs = getGlobalObserver()
+        if (obs) {
+            node.setAttribute("data-once", once.toString())
+            obs.observe(node)
         }
 
         return () => {
-            if (ref.current) {
-                observer.unobserve(ref.current)
+            if (node && obs) {
+                obs.unobserve(node)
             }
         }
-    }, [enableMotion, once, threshold])
+    }, [enableMotion, once])
 
     const variantClasses = {
         fadeIn: "opacity-0 data-[visible=true]:opacity-100",
@@ -70,14 +91,20 @@ export function AdvancedScrollReveal({
     return (
         <div
             ref={ref}
-            data-visible={isVisible}
+            data-visible="false"
             className={cn(
-                enableMotion && "reveal-container transition-all will-change-[transform,opacity]",
+                // Base container classes
+                enableMotion && "reveal-container transition-all",
+
+                // Problem 2 Fix: Apply will-change ONLY when the element is visible/animating
+                enableMotion && "data-[visible=true]:will-change-[transform,opacity]",
+
                 enableMotion && variantClasses[variant],
                 className
             )}
             style={{
-                transitionDuration: enableMotion ? `${duration * 1.5}s` : undefined,
+                // Fix 3: Use duration directly to avoid long-running animations
+                transitionDuration: enableMotion ? `${duration}s` : undefined,
                 transitionDelay: enableMotion ? `${delay}ms` : undefined,
                 transitionTimingFunction: enableMotion ? "cubic-bezier(0.25, 0.1, 0.25, 1.0)" : undefined
             }}

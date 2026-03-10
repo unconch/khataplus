@@ -1,6 +1,5 @@
-﻿"use client"
-
 import dynamic from "next/dynamic"
+import { LazySection } from "@/components/lazy-section"
 
 // Features Section loads immediately with loading fallback
 const FeaturesSection = dynamic(
@@ -11,7 +10,7 @@ const FeaturesSection = dynamic(
         <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
     ),
-    ssr: true
+    ssr: false
   }
 )
 
@@ -44,23 +43,32 @@ const SiteFooter = dynamic(
 export function LandingPageClient() {
   return (
     <>
-      {/* Evidence: Core Features â€” load first with visible loading state */}
+      {/* Evidence: Core Features -- load first with visible loading state */}
       <FeaturesSection />
 
       {/* Target: Industry Specifics */}
-      <SolutionsSection />
+      <LazySection>
+        <SolutionsSection />
+      </LazySection>
 
       {/* Power: Unified Platform Deep-dive */}
-      <PlatformSection />
+      <LazySection>
+        <PlatformSection />
+      </LazySection>
 
       {/* Ease: Step-by-step Onboarding */}
-      <HowItWorksSection />
+      <LazySection>
+        <HowItWorksSection />
+      </LazySection>
 
       {/* Hook: Free Growth Tools */}
-      <FreeToolsSection />
+      <LazySection>
+        <FreeToolsSection />
+      </LazySection>
 
-      <SiteFooter />
+      <LazySection>
+        <SiteFooter />
+      </LazySection>
     </>
   )
 }
-

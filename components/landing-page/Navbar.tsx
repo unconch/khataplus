@@ -19,31 +19,19 @@ interface NavbarProps {
     orgName?: string | null
 }
 
-type AuthContext = {
-    isAuthenticated: boolean
-    isGuest?: boolean
-    orgSlug?: string | null
-    userName?: string | null
-    orgName?: string | null
-}
-
 export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug, isGuest, userName, orgName }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
-    const [authContext, setAuthContext] = useState<AuthContext>({
-        isAuthenticated,
-        isGuest,
-        orgSlug,
-        userName,
-        orgName,
-    })
     const scrolledRef = useRef(false)
     const rafRef = useRef<number | null>(null)
     const userMenuRef = useRef<HTMLDivElement | null>(null)
     const { signInUrl, signUpUrl } = useMainAuthUrls()
 
     useEffect(() => {
+        // Issue 3 Fix: Only run scroll logic on desktop to save mobile CPU/battery
+        if (typeof window !== "undefined" && window.innerWidth < 768) return
+
         const updateScrolled = () => {
             const nextScrolled = window.scrollY > 50
             if (nextScrolled !== scrolledRef.current) {
@@ -102,32 +90,15 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
         }
     }, [userMenuOpen])
 
-    useEffect(() => {
-        const controller = new AbortController()
-        const loadContext = async () => {
-            try {
-                const res = await fetch("/api/auth/context", { signal: controller.signal, cache: "no-store" })
-                if (!res.ok) return
-                const data = await res.json()
-                setAuthContext((prev) => ({
-                    ...prev,
-                    ...data,
-                }))
-            } catch { }
-        }
-
-        void loadContext()
-        return () => controller.abort()
-    }, [])
-
     const isSolid = isLight || lightMode || scrolled || mobileMenuOpen
     const keepBlended = !(isLight || lightMode)
     const useSolidPalette = !keepBlended && isSolid
 
-    const effectiveAuth = authContext.isAuthenticated
-    const effectiveOrgSlug = authContext.orgSlug || orgSlug
-    const displayName = authContext.userName || userName || "User"
-    const displayOrg = authContext.orgName || orgName || "Workspace"
+    // Issue 1 & 2 Fix: Use props directly to avoid redundant state and network requests
+    const effectiveAuth = isAuthenticated
+    const effectiveOrgSlug = orgSlug
+    const displayName = userName || "User"
+    const displayOrg = orgName || "Workspace"
 
     const primaryHref = effectiveAuth
         ? (effectiveOrgSlug ? `/${effectiveOrgSlug}/dashboard` : "/dashboard")
@@ -153,7 +124,9 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
         <header className="fixed top-0 left-0 right-0 z-50">
             <div
                 className={cn(
-                    "transition-all duration-500 backdrop-blur-xl",
+                    "transition-all duration-500",
+                    // Issue 4 Fix: Lighter blur on mobile for GPU efficiency
+                    "backdrop-blur-md md:backdrop-blur-xl",
                     keepBlended
                         ? "bg-[linear-gradient(90deg,rgba(16,185,129,0.18)_0%,rgba(51,65,85,0.24)_58%,rgba(30,41,59,0.18)_100%)] border border-white/10"
                         : "bg-white/70 border-b border-white/30",
@@ -321,7 +294,10 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
             <div
                 className={cn(
                     "md:hidden transition-all duration-500 overflow-hidden border-b",
-                    mobileMenuOpen ? "max-h-screen opacity-100 bg-white border-slate-200" : "max-h-0 opacity-0 border-transparent"
+                    // Issue 5 Fix: Use transform/opacity instead of max-height for GPU-accelerated animation
+                    mobileMenuOpen
+                        ? "translate-y-0 opacity-100 bg-white border-slate-200 pointer-events-auto h-auto visible"
+                        : "-translate-y-4 opacity-0 border-transparent pointer-events-none h-0 invisible"
                 )}
             >
                 <div className="max-w-7xl mx-auto px-6 py-10 space-y-4">

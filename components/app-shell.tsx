@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { SystemSettings, Profile } from "@/lib/types"
 import { BottomNav } from "@/components/bottom-nav"
 import { AppHeader } from "@/components/app-header"
+import { createClient } from "@/lib/supabase/client"
 
 type OrgRole = "admin" | "manager" | "staff"
 
@@ -29,6 +30,8 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const supabase = createClient()
+  const lastSyncedSlugRef = useRef<string>("")
 
   useEffect(() => {
     const slug = String(orgSlug || "").trim()
@@ -40,6 +43,35 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     const target = query ? `${targetBase}?${query}` : targetBase
     router.replace(target)
   }, [orgSlug, pathname, router, searchParams])
+
+  useEffect(() => {
+    const slug = String(orgSlug || "").trim()
+    if (!slug) return
+    if (slug.toLowerCase() === "demo") return
+    if (lastSyncedSlugRef.current === slug) return
+
+    let active = true
+    const syncActiveOrgSlug = async () => {
+      try {
+        const { data } = await supabase.auth.getUser()
+        const user = data?.user
+        if (!active || !user) return
+        if (user.user_metadata?.active_org_slug === slug) {
+          lastSyncedSlugRef.current = slug
+          return
+        }
+        await supabase.auth.updateUser({ data: { active_org_slug: slug } })
+        lastSyncedSlugRef.current = slug
+      } catch {
+        // Best-effort only.
+      }
+    }
+
+    void syncActiveOrgSlug()
+    return () => {
+      active = false
+    }
+  }, [orgSlug, supabase])
 
   return (
 

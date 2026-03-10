@@ -28,7 +28,6 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/login?error=no_user`)
     }
 
-    // Redirect — if they have no org go to setup, otherwise dashboard
     const redirectTo = next.startsWith("/") ? next : "/setup-organization"
 
     const response = NextResponse.redirect(`${origin}${redirectTo}`)
@@ -36,7 +35,7 @@ export async function GET(request: Request) {
     return response
 
   } catch (err) {
-    console.error("[AuthCallback] Failed:", err)
+    console.error("[AuthOAuthCallback] Failed:", err)
     return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
   }
 }

@@ -1,8 +1,10 @@
-"use client"
-
 import dynamic from "next/dynamic"
 import { HeroSection } from "@/components/landing-page/HeroSection"
-import { LandingPageClient } from "@/components/landing-page-client"
+
+const LandingPageClient = dynamic(
+  () => import("@/components/landing-page-client").then(m => m.LandingPageClient),
+  { ssr: false }
+)
 
 const HeroShowcaseSection = dynamic(
   () => import("@/components/landing-page/HeroShowcaseSection").then(m => m.HeroShowcaseSection),
