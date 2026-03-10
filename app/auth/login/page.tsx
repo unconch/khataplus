@@ -63,6 +63,15 @@ export default function LoginPage() {
     window.location.replace(url)
   }
 
+  const waitForSession = async (attempts = 6, delay = 200) => {
+    for (let i = 0; i < attempts; i++) {
+      const { data } = await supabase.auth.getSession()
+      if (data?.session?.user) return data.session
+      await new Promise((r) => setTimeout(r, delay))
+    }
+    return null
+  }
+
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return toast.error("Please enter your email")
@@ -96,21 +105,25 @@ export default function LoginPage() {
     if (code.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      const { data, error } = await withTimeout(
+      const { error } = await withTimeout(
         supabase.auth.verifyOtp({
           email: email.trim().toLowerCase(),
           token: code,
           type: "email",
         })
       )
-      if (error || !data.user) {
-        throw new Error(error?.message || "Invalid verification code.")
+      if (error) {
+        toast.error("Invalid verification code")
+        return
       }
 
-      const user = data.user
-      const slug = typeof user.user_metadata?.active_org_slug === "string"
-        ? user.user_metadata.active_org_slug.trim()
-        : ""
+      const session = await waitForSession()
+      if (!session?.user) {
+        toast.error("Login session failed. Please try again.")
+        return
+      }
+
+      const slug = session.user.user_metadata?.active_org_slug
       if (!slug) {
         await supabase.auth.signOut()
         toast.error("Your account is not linked to any workspace. Contact your administrator.")
