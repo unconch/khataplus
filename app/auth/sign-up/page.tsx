@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 type Step = "name" | "email" | "otp"
 
@@ -17,6 +18,14 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
+  const supabase = createClient()
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+    ])
+  }
 
   const benefits = [
     "GST-compliant invoicing",
@@ -38,13 +47,16 @@ export default function SignUpPage() {
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, code: "" }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Failed to send code")
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: true,
+            data: { full_name: name },
+          },
+        })
+      )
+      if (error) throw new Error(error.message || "Failed to send code")
       toast.success("Verification code sent!")
       setStep("otp")
     } catch (err: any) {
@@ -60,13 +72,20 @@ export default function SignUpPage() {
     if (otp.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, code: otp }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Invalid code")
+      const { data, error } = await withTimeout(
+        supabase.auth.verifyOtp({
+          email,
+          token: otp,
+          type: "email",
+        })
+      )
+      if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
+
+      try {
+        await supabase
+          .from("profiles")
+          .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
+      } catch { }
       toast.success("Account created!")
       router.push("/setup-organization")
     } catch (err: any) {

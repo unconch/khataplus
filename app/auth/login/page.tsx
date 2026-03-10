@@ -7,6 +7,7 @@ import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 function getAppHostFromCurrentHost(hostname: string): string {
   if (!hostname) return "app.khataplus.online"
@@ -42,6 +43,7 @@ type Step = "email" | "verify"
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const next = searchParams.get("next") || "/dashboard"
+  const supabase = createClient()
 
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
@@ -50,6 +52,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+    ])
+  }
+
+  const maskEmail = (value: string) => {
+    const [local, domain] = value.split("@")
+    if (!local || !domain) return value
+    if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
+    return `${local.slice(0, 2)}***@${domain}`
+  }
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -62,14 +78,16 @@ export default function LoginPage() {
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: "", next }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Failed to send code")
-      setMaskedEmail(data?.maskedEmail || email)
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+          },
+        })
+      )
+      if (error) throw new Error(error.message || "Failed to send code")
+      setMaskedEmail(maskEmail(email))
       setCooldown(30)
       setStep("verify")
       toast.success("Verification code sent!")
@@ -85,15 +103,16 @@ export default function LoginPage() {
     if (code.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, next }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Invalid code")
+      const { data, error } = await withTimeout(
+        supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: "email",
+        })
+      )
+      if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
       toast.success("Welcome back!")
-      redirectAfterAuth(data?.next || next)
+      redirectAfterAuth(next)
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
@@ -105,14 +124,16 @@ export default function LoginPage() {
     if (resendLoading || cooldown > 0) return
     setResendLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: "", next }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error)
-      setMaskedEmail(data?.maskedEmail || email)
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+          },
+        })
+      )
+      if (error) throw new Error(error.message)
+      setMaskedEmail(maskEmail(email))
       setCooldown(30)
       toast.success("New code sent!")
     } catch (err: any) {
