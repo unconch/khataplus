@@ -1,5 +1,4 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite', 'join',
@@ -64,6 +63,18 @@ function resolveSupabaseCspSources(): string {
         }
     }
     return base.join(" ")
+}
+
+function hasSupabaseSessionCookie(cookies: Array<{ name: string }>): boolean {
+    return cookies.some(({ name }) => {
+        if (!name) return false
+        const normalized = name.toLowerCase()
+        if (normalized.startsWith("__secure-sb-") || normalized.startsWith("__host-sb-")) {
+            return normalized.includes("auth-token") || normalized.includes("access-token") || normalized.includes("refresh-token")
+        }
+        if (!normalized.startsWith("sb-")) return false
+        return normalized.includes("auth-token") || normalized.includes("access-token") || normalized.includes("refresh-token")
+    })
 }
 
 export default async function proxy(req: NextRequest) {
@@ -169,48 +180,9 @@ export default async function proxy(req: NextRequest) {
     }
 
     let baseResponse = NextResponse.next({ request: { headers: requestHeaders } })
-    let user: any = null
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const hasSession = hasSupabaseSessionCookie(req.cookies.getAll())
 
-    if (!isDemoHost && supabaseUrl && supabaseAnonKey && !pathname.startsWith('/api/')) {
-        const supabase = createServerClient(
-            supabaseUrl,
-            supabaseAnonKey,
-            {
-                cookies: {
-                    getAll() {
-                        return req.cookies.getAll()
-                    },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
-                        baseResponse = NextResponse.next({
-                            request: {
-                                headers: req.headers,
-                            },
-                        })
-                        cookiesToSet.forEach(({ name, value, options }: { name: string, value: string, options: CookieOptions }) =>
-                            baseResponse.cookies.set(name, value, options)
-                        )
-                    },
-                },
-            }
-        )
-
-        try {
-            const { data } = await Promise.race([
-                supabase.auth.getUser(),
-                new Promise<{ data: { user: null } }>((resolve) =>
-                    setTimeout(() => resolve({ data: { user: null } }), 3000)
-                )
-            ])
-            user = data.user || null
-        } catch {
-            user = null
-        }
-    }
-
-    if (!isDemoHost && !user && !isPublicRoute(pathname) && !pathname.startsWith('/api/')) {
+    if (!isDemoHost && !hasSession && !isPublicRoute(pathname) && !pathname.startsWith('/api/')) {
         const loginPath = `/auth/login?next=${encodeURIComponent(pathname + (url.search || ''))}`
         if (!isLocalDevHost && isSubdomain) {
             const mainHost = getMainHostFromHost(host)
