@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server"
-import { resolveSharedCookieDomain } from "@/lib/auth-cookie-domain"
-import { createSupabaseServerClientWithCookieCollector } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 
 function isSafeAbsoluteReturnTo(candidate: URL, current: URL): boolean {
   if (!["http:", "https:"].includes(candidate.protocol)) return false
   if (candidate.host === current.host) return true
-
   const currentHost = current.hostname.toLowerCase()
   const candidateHost = candidate.hostname.toLowerCase()
-
-  if (currentHost.startsWith("demo.") && candidateHost === currentHost.slice(5)) {
-    return true
-  }
-
+  if (currentHost.startsWith("demo.") && candidateHost === currentHost.slice(5)) return true
   return false
 }
 
@@ -30,43 +24,26 @@ function resolveReturnTo(request: Request): string {
     return "/auth/login"
   }
 
-  if (returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-    return returnTo
-  }
+  if (returnTo.startsWith("/") && !returnTo.startsWith("//")) return returnTo
 
   try {
     const parsed = new URL(returnTo)
-    if (isSafeAbsoluteReturnTo(parsed, url)) {
-      return parsed.toString()
-    }
-  } catch {
-    // Fall through to safe default.
-  }
+    if (isSafeAbsoluteReturnTo(parsed, url)) return parsed.toString()
+  } catch { }
 
   return "/auth/login"
 }
 
 async function handleLogout(request: Request) {
-  const returnTo = resolveReturnTo(request)
   const url = new URL(request.url)
-  const cookieHeader = request.headers.get("cookie")
-  const initialCookies =
-    cookieHeader
-      ?.split(";")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .reduce<Array<{ name: string; value: string }>>((acc, entry) => {
-        const idx = entry.indexOf("=")
-        if (idx <= 0) return acc
-        acc.push({ name: entry.slice(0, idx), value: entry.slice(idx + 1) })
-        return acc
-      }, []) || []
+  const returnTo = resolveReturnTo(request)
 
+  // Sign out from Supabase
   try {
-    const { client: supabase } = createSupabaseServerClientWithCookieCollector(initialCookies)
+    const supabase = await createClient()
     await supabase.auth.signOut()
-  } catch (error) {
-    console.warn("[AuthLogout] Supabase signOut failed, continuing with local cookie cleanup:", error)
+  } catch (err) {
+    console.warn("[AuthLogout] signOut failed, continuing with cookie cleanup:", err)
   }
 
   const response = NextResponse.redirect(
@@ -74,41 +51,27 @@ async function handleLogout(request: Request) {
       ? returnTo
       : new URL(returnTo, url.origin)
   )
-  const stale = new Date(0)
-  const secure = process.env.NODE_ENV === "production"
-  const domain = resolveSharedCookieDomain(url.hostname)
-  const supabaseCookieNames = initialCookies
-    .map((cookie) => cookie.name)
+
+  // Clear all auth cookies
+  const cookieHeader = request.headers.get("cookie") || ""
+  const supabaseCookieNames = cookieHeader
+    .split(";")
+    .map((p) => p.trim().split("=")[0])
     .filter((name) => name.startsWith("sb-"))
 
   const cookieNames = [
-    "DS",
-    "DSR",
-    "__Secure-DS",
-    "__Secure-DSR",
-    "biometric_verified",
-    "kp_auth_next",
+    "DS", "DSR", "__Secure-DS", "__Secure-DSR",
+    "biometric_verified", "kp_auth_next",
     ...supabaseCookieNames,
   ]
 
+  const stale = new Date(0)
+  const secure = process.env.NODE_ENV === "production"
+
   for (const name of cookieNames) {
     response.cookies.set(name, "", {
-      expires: stale,
-      maxAge: 0,
-      path: "/",
-      secure,
-      sameSite: "lax",
+      expires: stale, maxAge: 0, path: "/", secure, sameSite: "lax",
     })
-    if (domain) {
-      response.cookies.set(name, "", {
-        expires: stale,
-        maxAge: 0,
-        path: "/",
-        secure,
-        sameSite: "lax",
-        domain,
-      })
-    }
   }
 
   return response
