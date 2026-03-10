@@ -18,32 +18,10 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
-  function getAppHostFromCurrentHost(hostname: string): string {
-    if (!hostname) return "app.khataplus.online"
-    if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
-    if (hostname.endsWith(".localhost")) return hostname
-    let base = hostname.toLowerCase()
-    if (base.startsWith("www.")) base = base.slice(4)
-    if (base.startsWith("demo.")) base = base.slice(5)
-    if (base.startsWith("pos.")) base = base.slice(4)
-    if (base.startsWith("app.")) base = base.slice(4)
-    return `app.${base}`
-  }
-
-  function redirectToAppPath(target: string) {
-    if (typeof window === "undefined") return
-    const { protocol, hostname, port } = window.location
-    const appHost = getAppHostFromCurrentHost(hostname)
-    const portPart = port ? `:${port}` : ""
-    const needsAppHost = hostname !== appHost
-    const url = needsAppHost ? `${protocol}//${appHost}${portPart}${target}` : target
-    window.location.assign(url)
-  }
-
   const getEmailRedirectTo = () => {
     if (typeof window === "undefined") return undefined
     const base = window.location.origin
-    return `${base}/auth/callback?source=signup`
+    return `${base}/setup-org`
   }
 
   const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
@@ -131,7 +109,7 @@ export default function SignUpPage() {
       } catch { }
       toast.success("Account created!")
       await waitForSession()
-      window.location.assign("/auth/callback?source=signup")
+      window.location.assign("/setup-org")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {

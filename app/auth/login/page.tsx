@@ -1,22 +1,15 @@
 ﻿"use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Logo } from "@/components/ui/logo"
 import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
 
 type Step = "email" | "verify"
 
 export default function LoginPage() {
-  const searchParams = useSearchParams()
-  const next = searchParams.get("next") || ""
-  const router = useRouter()
-  const supabase = createClient()
-
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
   const [maskedEmail, setMaskedEmail] = useState("")
@@ -32,15 +25,6 @@ export default function LoginPage() {
     ])
   }
 
-  const waitForSession = async (attempts = 6, delayMs = 200) => {
-    for (let i = 0; i < attempts; i += 1) {
-      const { data } = await supabase.auth.getSession()
-      if (data.session?.user) return data.session
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-    }
-    return null
-  }
-
   const maskEmail = (value: string) => {
     const [local, domain] = value.split("@")
     if (!local || !domain) return value
@@ -48,38 +32,21 @@ export default function LoginPage() {
     return `${local.slice(0, 2)}***@${domain}`
   }
 
-  const safeNext = useMemo(() => {
-    if (!next || !next.startsWith("/") || next.startsWith("/auth/")) return ""
-    return next
-  }, [next])
-
-  function getAppHostFromCurrentHost(hostname: string): string {
-    if (!hostname) return "app.khataplus.online"
-    if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
-    if (hostname.endsWith(".localhost")) return hostname
-    let base = hostname.toLowerCase()
-    if (base.startsWith("www.")) base = base.slice(4)
-    if (base.startsWith("demo.")) base = base.slice(5)
-    if (base.startsWith("pos.")) base = base.slice(4)
-    if (base.startsWith("app.")) base = base.slice(4)
-    return `app.${base}`
-  }
-
-  function redirectToAppPath(target: string) {
-    if (typeof window === "undefined") return
-    const { protocol, hostname, port } = window.location
-    const appHost = getAppHostFromCurrentHost(hostname)
-    const portPart = port ? `:${port}` : ""
-    const needsAppHost = hostname !== appHost
-    const url = needsAppHost ? `${protocol}//${appHost}${portPart}${target}` : target
-    window.location.assign(url)
-  }
-
-  const getEmailRedirectTo = () => {
-    if (typeof window === "undefined") return undefined
-    const base = window.location.origin
-    const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""
-    return `${base}/auth/callback?source=login${nextParam}`
+  const postLogin = async (payload: { email: string; code?: string; next?: string }) => {
+    return withTimeout(
+      fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then(async (res) => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          const message = data?.error || "Login failed."
+          throw new Error(message)
+        }
+        return data
+      })
+    )
   }
 
   useEffect(() => {
@@ -89,24 +56,15 @@ export default function LoginPage() {
   }, [cooldown])
 
   // Intentionally no auto-redirect here.
-  // Login should only verify OTP and then route to /auth/callback.
+  // Login should only verify OTP and then route to /setup-org.
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: getEmailRedirectTo(),
-          },
-        })
-      )
-      if (error) throw new Error(error.message || "Failed to send code")
-      setMaskedEmail(maskEmail(email))
+      const data = await postLogin({ email: email.trim().toLowerCase() })
+      setMaskedEmail(data?.maskedEmail || maskEmail(email))
       setCooldown(30)
       setStep("verify")
       toast.success("Verification code sent!")
@@ -122,24 +80,9 @@ export default function LoginPage() {
     if (code.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      const { data, error } = await withTimeout(
-        supabase.auth.verifyOtp({
-          email,
-          token: code,
-          type: "email",
-        })
-      )
-      if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
-      if (data.session?.access_token && data.session?.refresh_token) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-      }
+      await postLogin({ email: email.trim().toLowerCase(), code })
       toast.success("Welcome back!")
-      await waitForSession()
-      const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""
-      router.replace(`/auth/callback?source=login${nextParam}`)
+      window.location.assign("/setup-org")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
