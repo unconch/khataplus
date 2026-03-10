@@ -126,14 +126,11 @@ export default function LoginPage() {
       let slug = session.user.user_metadata?.active_org_slug
 
       if (!slug) {
-        const { data } = await supabase
-          .from("organization_members")
-          .select("organizations(slug)")
-          .eq("user_id", session.user.id)
-          .limit(1)
-          .maybeSingle()
-
-        slug = data?.organizations?.[0]?.slug
+        const res = await fetch("/api/auth/resolve-org", { method: "GET" })
+        if (res.ok) {
+          const payload = await res.json()
+          slug = typeof payload?.slug === "string" ? payload.slug : ""
+        }
       }
 
       if (!slug) {
