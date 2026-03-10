@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 function toSafePath(next: unknown): string {
   if (typeof next !== "string") return "/setup-organization"
   if (!next.startsWith("/") || next.startsWith("/auth/")) return "/setup-organization"

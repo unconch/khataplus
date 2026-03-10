@@ -5,8 +5,8 @@ function buildProxyFetch(proxyUrl: string) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const originalUrl =
       typeof input === "string" ? new URL(input)
-        : input instanceof URL ? input
-          : new URL(input.url)
+      : input instanceof URL ? input
+      : new URL(input.url)
 
     const proxy = new URL(proxyUrl)
     const target = new URL(originalUrl.toString())
@@ -41,13 +41,13 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch { }
+          } catch {}
         },
       },
     }
   )
 }
 
-// Aliases for backward compatibility
+// Backward compat aliases
 export const createSupabaseServerClient = createClient
 export const createSupabaseServerClientWithCookieCollector = createClient
