@@ -16,7 +16,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         try {
-            const { role } = getOrgContext()
+            const { role } = await getOrgContext()
             requireRole(role, ["owner"])
         } catch (err) {
             if (err instanceof Response) return err

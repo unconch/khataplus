@@ -64,7 +64,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         try {
-            const { role } = getOrgContext()
+            const { role } = await getOrgContext()
             requireRole(role, ["owner", "admin"])
         } catch (err) {
             if (err instanceof Response) return err
@@ -92,7 +92,7 @@ export async function POST(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         try {
-            const { role } = getOrgContext()
+            const { role } = await getOrgContext()
             requireRole(role, ["owner", "admin"])
         } catch (err) {
             if (err instanceof Response) return err
@@ -133,7 +133,7 @@ export async function PATCH(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         try {
-            const { role } = getOrgContext()
+            const { role } = await getOrgContext()
             requireRole(role, ["owner", "admin"])
         } catch (err) {
             if (err instanceof Response) return err

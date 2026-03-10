@@ -1,20 +1,20 @@
 import { headers } from "next/headers"
 
-const validRoles = ["owner", "admin", "manager", "staff"] as const
-export type OrgRole = typeof validRoles[number]
-const ROLE_LEVEL: Record<OrgRole, number> = {
+const ROLE_LEVEL = {
   owner: 4,
   admin: 3,
   manager: 2,
   staff: 1,
-}
+} as const
+
+export type OrgRole = keyof typeof ROLE_LEVEL
 
 function isOrgRole(value: string): value is OrgRole {
-  return validRoles.includes(value as OrgRole)
+  return Object.prototype.hasOwnProperty.call(ROLE_LEVEL, value)
 }
 
-export function getOrgContext() {
-  const h = headers()
+export async function getOrgContext() {
+  const h = await headers()
   const rawRole = h.get("x-org-role")
   const role: OrgRole | null =
     rawRole && isOrgRole(rawRole)
@@ -28,8 +28,8 @@ export function getOrgContext() {
   }
 }
 
-export function requireOrgContext() {
-  const ctx = getOrgContext()
+export async function requireOrgContext() {
+  const ctx = await getOrgContext()
   if (!ctx.orgId) {
     throw new Response("Missing org context", { status: 400 })
   }

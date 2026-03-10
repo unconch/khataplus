@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
     try {
-      const { role } = getOrgContext()
+      const { role } = await getOrgContext()
       requireRole(role, ["owner", "admin"])
     } catch (err) {
       if (err instanceof Response) return err
