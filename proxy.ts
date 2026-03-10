@@ -99,78 +99,6 @@ function createSupabaseClientWithCookies(req: NextRequest, pendingCookies: Array
     )
 }
 
-async function resolveOrgForUserSlug(
-    supabase: ReturnType<typeof createServerClient>,
-    userId: string,
-    slug: string
-): Promise<{ id: string; slug: string; role: string } | null> {
-    if (!slug) return null
-    try {
-        const { data, error } = await supabase
-            .from("organization_members")
-            .select("org_id, role, organizations!inner(id, slug)")
-            .eq("user_id", userId)
-            .eq("organizations.slug", slug)
-            .limit(1)
-            .maybeSingle()
-
-        if (error || !data?.organizations) return null
-        const org = data.organizations as { id: string; slug: string }
-        return { id: data.org_id || org.id, slug: org.slug, role: data.role || "staff" }
-    } catch {
-        return null
-    }
-}
-
-async function resolveFirstOrgForUser(
-    supabase: ReturnType<typeof createServerClient>,
-    userId: string
-): Promise<{ id: string; slug: string; role: string } | null> {
-    try {
-        const { data, error } = await supabase
-            .from("organization_members")
-            .select("org_id, role, organizations!inner(id, slug)")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: true })
-            .limit(1)
-            .maybeSingle()
-
-        if (error || !data?.organizations) return null
-        const org = data.organizations as { id: string; slug: string }
-        return { id: data.org_id || org.id, slug: org.slug, role: data.role || "staff" }
-    } catch {
-        return null
-    }
-}
-
-async function repairActiveOrgMetadata(
-    supabase: ReturnType<typeof createServerClient>,
-    currentMetadata: Record<string, any>,
-    org: { id: string; slug: string; role: string }
-): Promise<boolean> {
-    const currentSlug = typeof currentMetadata.active_org_slug === "string" ? currentMetadata.active_org_slug : ""
-    const currentId = typeof currentMetadata.active_org_id === "string" ? currentMetadata.active_org_id : ""
-    const currentRole = typeof currentMetadata.active_org_role === "string" ? currentMetadata.active_org_role : ""
-    if (currentSlug === org.slug && currentId === org.id && currentRole === org.role) return false
-
-    try {
-        const { error } = await supabase.auth.updateUser({
-            data: {
-                active_org_slug: org.slug,
-                active_org_id: org.id,
-                active_org_role: org.role,
-            },
-        })
-        if (!error) {
-            await supabase.auth.refreshSession()
-            return true
-        }
-    } catch {
-        // Best-effort: don't block the request if metadata repair fails.
-    }
-    return false
-}
-
 export default async function proxy(req: NextRequest) {
     const pathname = req.nextUrl.pathname
 
@@ -180,6 +108,13 @@ export default async function proxy(req: NextRequest) {
     }
 
     const url = req.nextUrl
+
+    if (pathname === "/setup-org" || pathname.startsWith("/setup-org/")) {
+        const normalizedPath = pathname.replace(/^\/setup-org/, "/setup-organization") || "/setup-organization"
+        const redirectUrl = new URL(normalizedPath, req.url)
+        redirectUrl.search = url.search
+        return NextResponse.redirect(redirectUrl)
+    }
     const hostHeader = (req.headers.get("host") || "").toLowerCase()
     const host = hostHeader.split(":")[0]
     const hostPort = hostHeader.includes(":") ? hostHeader.split(":")[1] : ""
@@ -195,8 +130,6 @@ export default async function proxy(req: NextRequest) {
     const isAuthPath = pathname === "/auth" || pathname.startsWith("/auth/")
     const isCleanAuthPath = pathname === "/login" || pathname === "/sign-up"
     const isSetupPath =
-        pathname === "/setup-org" ||
-        pathname.startsWith("/setup-org/") ||
         pathname === "/setup-organization" ||
         pathname.startsWith("/setup-organization/")
     const isTenantAgnosticPath = isAuthPath || isCleanAuthPath || isSetupPath
@@ -285,17 +218,6 @@ export default async function proxy(req: NextRequest) {
             response.cookies.set(cookie.name, cookie.value, cookie.options)
         })
     }
-    const shouldRepairMetadata = () => !req.cookies.get("metadata_repair")
-    const markMetadataRepair = (response: NextResponse) => {
-        response.cookies.set("metadata_repair", "1", {
-            path: "/",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 10,
-            sameSite: "lax",
-        })
-    }
-
     let baseResponse = NextResponse.next({ request: { headers: requestHeaders } })
     const hasSession = hasSupabaseSessionCookie(req.cookies.getAll())
 
@@ -333,13 +255,18 @@ export default async function proxy(req: NextRequest) {
         const metadataSlug = typeof metadata.active_org_slug === "string" ? metadata.active_org_slug.trim() : ""
         const metadataId = typeof metadata.active_org_id === "string" ? metadata.active_org_id.trim() : ""
         const metadataRole = typeof metadata.active_org_role === "string" ? metadata.active_org_role.trim() : ""
-        const hasCompleteMetadata = Boolean(metadataSlug && metadataId && metadataRole)
 
-        if (hasCompleteMetadata) {
-            activeOrgSlug = metadataSlug
-            activeOrgId = metadataId
-            activeOrgRole = metadataRole
-        }
+        if (metadataSlug) activeOrgSlug = metadataSlug
+        if (metadataId) activeOrgId = metadataId
+        if (metadataRole) activeOrgRole = metadataRole
+    }
+
+    if (isAppHost && hasSession && !activeOrgSlug && !isDemoHost) {
+        const loginPath = "/auth/login"
+        const mainHost = getMainHostFromHost(host)
+        const hostWithPort = hostPort ? `${mainHost}:${hostPort}` : mainHost
+        const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
+        return NextResponse.redirect(new URL(loginPath, `${protocol}://${hostWithPort}`))
     }
 
     if (activeOrgRole) {
@@ -357,42 +284,6 @@ export default async function proxy(req: NextRequest) {
 
         if (posFirst && !SYSTEM_PREFIXES.has(posFirst) && !posFirst.includes('.')) {
             orgSlug = posFirst
-
-            if (sessionUserId && supabase && (!activeOrgSlug || activeOrgSlug !== orgSlug)) {
-                const resolvedOrg = await resolveOrgForUserSlug(supabase, sessionUserId, orgSlug)
-                if (resolvedOrg) {
-                    activeOrgSlug = resolvedOrg.slug
-                    activeOrgId = resolvedOrg.id
-                    activeOrgRole = resolvedOrg.role || activeOrgRole
-                    if (activeOrgRole) {
-                        requestHeaders.set("x-org-role", activeOrgRole)
-                    }
-                    if (shouldRepairMetadata()) {
-                        const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, resolvedOrg)
-                        if (repaired) {
-                            requestHeaders.set("x-metadata-repaired", "true")
-                        }
-                    }
-                }
-            }
-
-            if (!activeOrgSlug && sessionUserId && supabase && !isDemoHost) {
-                const fallbackOrg = await resolveFirstOrgForUser(supabase, sessionUserId)
-                if (fallbackOrg) {
-                    activeOrgSlug = fallbackOrg.slug
-                    activeOrgId = fallbackOrg.id
-                    activeOrgRole = fallbackOrg.role || activeOrgRole
-                    if (activeOrgRole) {
-                        requestHeaders.set("x-org-role", activeOrgRole)
-                    }
-                    if (shouldRepairMetadata()) {
-                        const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, fallbackOrg)
-                        if (repaired) {
-                            requestHeaders.set("x-metadata-repaired", "true")
-                        }
-                    }
-                }
-            }
 
             if (activeOrgSlug && activeOrgSlug.toLowerCase() !== "demo" && activeOrgSlug !== orgSlug) {
                 const redirectUrl = new URL(`/${activeOrgSlug}/sales`, req.url)
@@ -429,42 +320,6 @@ export default async function proxy(req: NextRequest) {
         }
     } else if (!isTenantAgnosticPath && firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
         orgSlug = firstSegment
-
-        if (sessionUserId && supabase && (!activeOrgSlug || activeOrgSlug !== orgSlug)) {
-            const resolvedOrg = await resolveOrgForUserSlug(supabase, sessionUserId, orgSlug)
-            if (resolvedOrg) {
-                activeOrgSlug = resolvedOrg.slug
-                activeOrgId = resolvedOrg.id
-                activeOrgRole = resolvedOrg.role || activeOrgRole
-                if (activeOrgRole) {
-                    requestHeaders.set("x-org-role", activeOrgRole)
-                }
-                if (shouldRepairMetadata()) {
-                    const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, resolvedOrg)
-                    if (repaired) {
-                        requestHeaders.set("x-metadata-repaired", "true")
-                    }
-                }
-            }
-        }
-
-        if (!activeOrgSlug && sessionUserId && supabase && !isDemoHost) {
-            const fallbackOrg = await resolveFirstOrgForUser(supabase, sessionUserId)
-            if (fallbackOrg) {
-                activeOrgSlug = fallbackOrg.slug
-                activeOrgId = fallbackOrg.id
-                activeOrgRole = fallbackOrg.role || activeOrgRole
-                if (activeOrgRole) {
-                    requestHeaders.set("x-org-role", activeOrgRole)
-                }
-                if (shouldRepairMetadata()) {
-                    const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, fallbackOrg)
-                    if (repaired) {
-                        requestHeaders.set("x-metadata-repaired", "true")
-                    }
-                }
-            }
-        }
 
         if (activeOrgSlug && activeOrgSlug.toLowerCase() !== "demo" && activeOrgSlug !== orgSlug) {
             const tail = segments.slice(1).join("/")
@@ -593,10 +448,6 @@ export default async function proxy(req: NextRequest) {
             maxAge: 60 * 60 * 8,
             sameSite: "lax",
         })
-    }
-
-    if (requestHeaders.get("x-metadata-repaired") === "true") {
-        markMetadataRepair(finalResponse)
     }
 
     applyPendingCookies(finalResponse)

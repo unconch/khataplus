@@ -40,8 +40,28 @@ export default function LoginPage() {
     return () => clearTimeout(t)
   }, [cooldown])
 
-  // Intentionally no auto-redirect here.
-  // Login should only verify OTP and then route to /setup-org.
+  const getAppHostFromCurrentHost = (hostname: string): string => {
+    if (!hostname) return "app.khataplus.online"
+    if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
+    if (hostname.endsWith(".localhost")) return hostname
+    let base = hostname.toLowerCase()
+    if (base.startsWith("www.")) base = base.slice(4)
+    if (base.startsWith("demo.")) base = base.slice(5)
+    if (base.startsWith("pos.")) base = base.slice(4)
+    if (base.startsWith("app.")) base = base.slice(4)
+    return `app.${base}`
+  }
+
+  const redirectToAppDashboard = (slug: string) => {
+    if (typeof window === "undefined") return
+    const { protocol, hostname, port } = window.location
+    const appHost = getAppHostFromCurrentHost(hostname)
+    const portPart = port ? `:${port}` : ""
+    const path = `/${slug}/dashboard`
+    const needsAppHost = hostname !== appHost
+    const url = needsAppHost ? `${protocol}//${appHost}${portPart}${path}` : path
+    window.location.replace(url)
+  }
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
@@ -83,11 +103,21 @@ export default function LoginPage() {
           type: "email",
         })
       )
-      if (error || !data.user?.id) {
+      if (error || !data.user) {
         throw new Error(error?.message || "Invalid verification code.")
       }
-      toast.success("Welcome back!")
-      window.location.assign("/setup-org")
+
+      const user = data.user
+      const slug = typeof user.user_metadata?.active_org_slug === "string"
+        ? user.user_metadata.active_org_slug.trim()
+        : ""
+      if (!slug) {
+        await supabase.auth.signOut()
+        toast.error("Your account is not linked to any workspace. Contact your administrator.")
+        return
+      }
+
+      redirectToAppDashboard(slug)
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {

@@ -1,41 +1,32 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 
 interface LazySectionProps {
-  children: React.ReactNode
-  height?: string
+  children: ReactNode
 }
 
-export function LazySection({ children, height = "400px" }: LazySectionProps) {
+export function LazySection({ children }: LazySectionProps) {
   const ref = useRef<HTMLDivElement | null>(null)
-  const [isVisible, setIsVisible] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setIsVisible(true)
+          setVisible(true)
           observer.disconnect()
         }
       },
       {
-        rootMargin: "300px", // Load 300px before user reaches the section
+        rootMargin: "200px",
       }
     )
 
-    if (ref.current) {
-      observer.observe(ref.current)
-    }
+    if (ref.current) observer.observe(ref.current)
 
     return () => observer.disconnect()
   }, [])
 
-  return (
-    <div ref={ref}>
-      {isVisible ? children : <div style={{ height }} />}
-    </div>
-  )
+  return <div ref={ref}>{visible ? children : null}</div>
 }

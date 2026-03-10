@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     return redirect
   }
 
-  if (safeNext && (safeNext.startsWith("/setup-org") || safeNext.startsWith("/setup-organization"))) {
+  if (safeNext && safeNext.startsWith("/setup-organization")) {
     const redirect = NextResponse.redirect(new URL(safeNext, mainBase))
     cookiesToSet.forEach(({ name, value, options }) => redirect.cookies.set(name, value, options))
     return redirect
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!slug) {
-    const redirect = NextResponse.redirect(new URL("/setup-org", mainBase))
+    const redirect = NextResponse.redirect(new URL("/setup-organization", mainBase))
     cookiesToSet.forEach(({ name, value, options }) => redirect.cookies.set(name, value, options))
     return redirect
   }

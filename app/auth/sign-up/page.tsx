@@ -21,7 +21,7 @@ export default function SignUpPage() {
   const getEmailRedirectTo = () => {
     if (typeof window === "undefined") return undefined
     const base = window.location.origin
-    return `${base}/setup-org`
+    return `${base}/setup-organization`
   }
 
   const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
@@ -109,7 +109,7 @@ export default function SignUpPage() {
       } catch { }
       toast.success("Account created!")
       await waitForSession()
-      window.location.assign("/setup-org")
+      window.location.assign("/setup-organization")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
