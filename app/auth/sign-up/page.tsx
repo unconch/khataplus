@@ -131,7 +131,12 @@ export default function SignUpPage() {
       } catch { }
       toast.success("Account created!")
       await waitForSession()
-      redirectToAppPath("/auth/callback?source=signup")
+      const slug = data.user.user_metadata?.active_org_slug
+      if (typeof slug === "string" && slug.trim()) {
+        redirectToAppPath(`/${slug.trim()}/dashboard`)
+        return
+      }
+      redirectToAppPath("/setup-org")
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
