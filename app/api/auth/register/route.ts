@@ -21,7 +21,6 @@ export async function POST(request: Request) {
     const next = toSafePath(body?.next)
     const supabase = await createClient()
 
-    // STEP 1 — Send OTP
     if (!code) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -36,7 +35,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, phase: "verify" })
     }
 
-    // STEP 2 — Verify OTP
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: code,
@@ -50,7 +48,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Save name to profile
     await supabase
       .from("profiles")
       .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
