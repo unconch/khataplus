@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
@@ -45,6 +46,10 @@ export default function SetupOrgGate() {
       if (redirectingRef.current) return
       redirectingRef.current = true
 
+      if (typeof window !== "undefined" && window.location.hostname.startsWith("app.")) {
+        return
+      }
+
       const session = await waitForSession()
       const user = session?.user
 
@@ -53,7 +58,14 @@ export default function SetupOrgGate() {
         return
       }
 
-      const slug = user.user_metadata?.active_org_slug
+      let slug = user.user_metadata?.active_org_slug
+      if (typeof slug === "string" && slug.trim()) {
+        redirectToAppPath(`/${slug.trim()}/dashboard`)
+        return
+      }
+
+      const { data: userRes } = await supabase.auth.getUser()
+      slug = userRes?.user?.user_metadata?.active_org_slug
       if (typeof slug === "string" && slug.trim()) {
         redirectToAppPath(`/${slug.trim()}/dashboard`)
         return
@@ -67,7 +79,10 @@ export default function SetupOrgGate() {
 
   return (
     <div className="min-h-svh w-full flex items-center justify-center p-8">
-      <div className="text-sm text-zinc-500">Preparing your workspace...</div>
+      <div className="flex items-center gap-2 text-sm text-zinc-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Preparing your workspace...
+      </div>
     </div>
   )
 }
