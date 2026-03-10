@@ -61,11 +61,14 @@ export default function AuthCallbackPage() {
         return
       }
 
-      const source = searchParams.get("source") || "login"
       const next = searchParams.get("next") || ""
       const safeNext =
         next && next.startsWith("/") && !next.startsWith("/auth/") ? next : ""
       if (safeNext) {
+        if (safeNext.startsWith("/setup-org") || safeNext.startsWith("/setup-organization")) {
+          window.location.assign(safeNext)
+          return
+        }
         redirectToAppPath(safeNext)
         return
       }
@@ -78,7 +81,7 @@ export default function AuthCallbackPage() {
       }
 
       // Safety fallback: never leave user stuck if metadata is missing/stale.
-      redirectToAppPath("/setup-org")
+      window.location.assign("/setup-org")
     }
 
     handleRedirect()
