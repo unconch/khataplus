@@ -191,8 +191,17 @@ export default async function proxy(req: NextRequest) {
             }
         )
 
-        const { data } = await supabase.auth.getUser()
-        user = data.user || null
+        try {
+            const { data } = await Promise.race([
+                supabase.auth.getUser(),
+                new Promise<{ data: { user: null } }>((resolve) =>
+                    setTimeout(() => resolve({ data: { user: null } }), 3000)
+                )
+            ])
+            user = data.user || null
+        } catch {
+            user = null
+        }
     }
 
     if (!isDemoHost && !user && !isPublicRoute(pathname) && !pathname.startsWith('/api/')) {
