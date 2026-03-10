@@ -172,6 +172,11 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
     const orgRole = membership?.role || "staff"
     const isAdmin = orgRole === "owner" || String(profile?.role) === "main admin"
 
+    if (orgRole === "staff") {
+        redirect("/dashboard")
+        return null
+    }
+
     const tabStyles = "flex items-center gap-2 px-6 h-full rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100"
 
     return (

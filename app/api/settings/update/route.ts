@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { upsertProfile } from "@/lib/data/profiles"
 import { updateOrganization, updateSystemSettings } from "@/lib/data/organizations"
+import { getOrgContext } from "@/lib/server/org-context"
+import { requireRole } from "@/lib/server/permissions"
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +17,6 @@ export async function POST(request: Request) {
     const profile = body?.profile
     const org = body?.org
     const settings = body?.settings
-
     if (!profile?.id || profile.id !== session.userId) {
       return NextResponse.json({ error: "Forbidden profile update" }, { status: 403 })
     }
@@ -23,6 +24,13 @@ export async function POST(request: Request) {
     if (isProfileView) {
       await upsertProfile(profile)
       return NextResponse.json({ ok: true })
+    }
+    try {
+      const { role } = getOrgContext()
+      requireRole(role, ["owner", "admin"])
+    } catch (err) {
+      if (err instanceof Response) return err
+      throw err
     }
 
     if (!org?.id) {

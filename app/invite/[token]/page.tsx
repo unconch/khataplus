@@ -41,7 +41,10 @@ export default function AcceptInvitePage() {
 
                 if (data.orgSlug) {
                     try {
-                        await supabase.auth.updateUser({ data: { active_org_slug: data.orgSlug } })
+                        const payload: Record<string, string> = { active_org_slug: data.orgSlug }
+                        if (data.orgId) payload.active_org_id = String(data.orgId)
+                        if (data.role) payload.active_org_role = String(data.role)
+                        await supabase.auth.updateUser({ data: payload })
                     } catch {
                         // Non-blocking: metadata is a cache for faster redirects.
                     }

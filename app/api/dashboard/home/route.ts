@@ -64,6 +64,7 @@ export async function GET() {
     const { headers } = await import("next/headers")
     const headersList = await headers()
     const tenantSlug = headersList.get("x-tenant-slug")
+    const roleFromHeader = headersList.get("x-org-role")
     if (tenantSlug) {
       const orgBySlug = await getOrganizationBySlug(tenantSlug)
       if (orgBySlug) {
@@ -100,9 +101,12 @@ export async function GET() {
       created_at: new Date().toISOString(),
     } as any))
 
+    const orgRole = roleFromHeader || profile?.role || "staff"
+
     return NextResponse.json(
       {
         profile,
+        orgRole,
         org,
         settings,
         reports: Array.isArray(reports) ? reports : [],

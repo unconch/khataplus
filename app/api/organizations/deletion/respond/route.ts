@@ -5,9 +5,24 @@
 import { NextResponse } from "next/server"
 import { respondToOrganizationDeletion } from "@/lib/data/organizations"
 import { StepUpRequiredError } from "@/lib/step-up"
+import { getSession } from "@/lib/session"
+import { getOrgContext } from "@/lib/server/org-context"
+import { requireRole } from "@/lib/server/permissions"
 
 export async function POST(request: Request) {
     try {
+        const session = await getSession()
+        if (!session?.userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+        try {
+            const { role } = getOrgContext()
+            requireRole(role, ["owner"])
+        } catch (err) {
+            if (err instanceof Response) return err
+            throw err
+        }
+
         const body = await request.json().catch(() => null)
         if (!body?.requestId || typeof body?.approve !== "boolean") {
             return NextResponse.json({ error: "Missing requestId or approve" }, { status: 400 })

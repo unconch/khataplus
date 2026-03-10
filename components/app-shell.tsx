@@ -31,7 +31,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const supabase = createClient()
-  const lastSyncedSlugRef = useRef<string>("")
+  const lastSyncedTenantRef = useRef<string>("")
 
   useEffect(() => {
     const slug = String(orgSlug || "").trim()
@@ -44,11 +44,20 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     router.replace(target)
   }, [orgSlug, pathname, router, searchParams])
 
+  const normalizeRole = (value: OrgRole | Profile["role"] | undefined) => {
+    if (!value) return ""
+    if (value === "main admin") return "owner"
+    return String(value)
+  }
+
   useEffect(() => {
     const slug = String(orgSlug || "").trim()
+    const orgIdValue = String(orgId || "").trim()
     if (!slug) return
     if (slug.toLowerCase() === "demo") return
-    if (lastSyncedSlugRef.current === slug) return
+    const roleValue = normalizeRole(role)
+    const syncKey = `${slug}:${orgIdValue || ""}:${roleValue}`
+    if (lastSyncedTenantRef.current === syncKey) return
 
     let active = true
     const syncActiveOrgSlug = async () => {
@@ -56,12 +65,22 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
         const { data } = await supabase.auth.getUser()
         const user = data?.user
         if (!active || !user) return
-        if (user.user_metadata?.active_org_slug === slug) {
-          lastSyncedSlugRef.current = slug
+        const needsSlugUpdate = user.user_metadata?.active_org_slug !== slug
+        const needsOrgIdUpdate = orgIdValue && user.user_metadata?.active_org_id !== orgIdValue
+        const needsRoleUpdate = roleValue && user.user_metadata?.active_org_role !== roleValue
+        if (!needsSlugUpdate && !needsOrgIdUpdate && !needsRoleUpdate) {
+          lastSyncedTenantRef.current = syncKey
           return
         }
-        await supabase.auth.updateUser({ data: { active_org_slug: slug } })
-        lastSyncedSlugRef.current = slug
+        const payload: Record<string, string> = { active_org_slug: slug }
+        if (orgIdValue) {
+          payload.active_org_id = orgIdValue
+        }
+        if (roleValue) {
+          payload.active_org_role = roleValue
+        }
+        await supabase.auth.updateUser({ data: payload })
+        lastSyncedTenantRef.current = syncKey
       } catch {
         // Best-effort only.
       }
@@ -71,7 +90,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     return () => {
       active = false
     }
-  }, [orgSlug, supabase])
+  }, [orgSlug, orgId, role, supabase])
 
   return (
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
+import { getOrgContext } from "@/lib/server/org-context"
+import { requireRole } from "@/lib/server/permissions"
 
 const normalizeOrigin = (value?: string | null): string | null => {
     if (!value) return null
@@ -61,6 +63,13 @@ export async function GET(
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
+        try {
+            const { role } = getOrgContext()
+            requireRole(role, ["owner", "admin"])
+        } catch (err) {
+            if (err instanceof Response) return err
+            throw err
+        }
 
         const { id: orgId } = await params
         const members = await getOrganizationMembers(orgId)
@@ -81,6 +90,13 @@ export async function POST(
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+        try {
+            const { role } = getOrgContext()
+            requireRole(role, ["owner", "admin"])
+        } catch (err) {
+            if (err instanceof Response) return err
+            throw err
         }
 
         const { id: orgId } = await params
@@ -115,6 +131,13 @@ export async function PATCH(
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+        try {
+            const { role } = getOrgContext()
+            requireRole(role, ["owner", "admin"])
+        } catch (err) {
+            if (err instanceof Response) return err
+            throw err
         }
 
         const { id: orgId } = await params

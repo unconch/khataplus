@@ -41,6 +41,7 @@ const HomeDashboardChart = dynamic(
 
 interface HomeDashboardProps {
     profile: Profile
+    orgRole?: string
     org: Organization
     settings: SystemSettings
     onboardingStats: {
@@ -60,6 +61,7 @@ interface HomeDashboardProps {
 
 export function HomeDashboard({
     profile,
+    orgRole,
     org,
     reports,
     unpaidAmount,
@@ -181,6 +183,12 @@ export function HomeDashboard({
         return `${rs}${Math.round(val).toLocaleString()}`
     }
 
+    const normalizedRole = String(orgRole || profile?.role || "").toLowerCase()
+    const canSeeSystemConfig =
+        normalizedRole === "owner" ||
+        normalizedRole === "admin" ||
+        normalizedRole === "main admin"
+
     return (
         <div className="min-h-full space-y-6 md:space-y-10 pb-20 bg-background/50">
             {searchOpen ? <SearchDialogLazy open={searchOpen} onOpenChange={setSearchOpen} /> : null}
@@ -286,7 +294,9 @@ export function HomeDashboard({
                 <PortalGridItem title="Khata Rail" sub="Manage Ledger" href={`/dashboard/customers`} icon={Users} color="emerald" />
                 <PortalGridItem title="Inventory" sub="Product Hub" href={`/dashboard/inventory`} icon={Box} color="blue" />
                 <PortalGridItem title="Core Analytics" sub="Financial Pulse" href={`/dashboard/analytics`} icon={TrendingUp} color="purple" />
-                <PortalGridItem title="System Config" sub="Meta Profiles" href={`/dashboard/settings`} icon={Zap} color="amber" />
+                {canSeeSystemConfig ? (
+                    <PortalGridItem title="System Config" sub="Meta Profiles" href={`/dashboard/settings`} icon={Zap} color="amber" />
+                ) : null}
             </div>
         </div>
     )

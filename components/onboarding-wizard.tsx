@@ -391,7 +391,12 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
             window.sessionStorage.removeItem(draftStorageKey)
 
             try {
-                await supabase.auth.updateUser({ data: { active_org_slug: org.slug } })
+                const payload: Record<string, string> = {
+                    active_org_slug: org.slug,
+                    active_org_role: "owner",
+                }
+                if (org?.id) payload.active_org_id = org.id
+                await supabase.auth.updateUser({ data: payload })
             } catch {
                 // Non-blocking: metadata is a cache for faster redirects.
             }

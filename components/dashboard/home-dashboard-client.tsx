@@ -5,6 +5,7 @@ import { HomeDashboard } from "@/components/home-dashboard"
 
 type DashboardHomePayload = {
   profile: any
+  orgRole?: string
   org: any
   settings: any
   reports: any[]
@@ -52,6 +53,7 @@ export function HomeDashboardClient() {
       updated_at: nowIso(),
       biometric_required: false,
     },
+    orgRole: payload.orgRole ?? payload.profile?.role ?? "owner",
     org: payload.org ?? {
       id: "unknown",
       name: "Organization",
@@ -134,6 +136,7 @@ export function HomeDashboardClient() {
   return (
     <HomeDashboard
       profile={data.profile}
+      orgRole={data.orgRole}
       org={data.org}
       settings={data.settings}
       onboardingStats={{

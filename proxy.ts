@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 const SYSTEM_PREFIXES = new Set([
     'auth', 'api', 'setup-organization', 'invite', 'join',
@@ -75,6 +76,99 @@ function hasSupabaseSessionCookie(cookies: Array<{ name: string }>): boolean {
         if (!normalized.startsWith("sb-")) return false
         return normalized.includes("auth-token") || normalized.includes("access-token") || normalized.includes("refresh-token")
     })
+}
+
+function createSupabaseClientWithCookies(req: NextRequest, pendingCookies: Array<{ name: string; value: string; options?: any }>) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) return null
+
+    return createServerClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+            cookies: {
+                getAll() {
+                    return req.cookies.getAll()
+                },
+                setAll(cookies) {
+                    cookies.forEach((cookie) => pendingCookies.push(cookie))
+                },
+            },
+        }
+    )
+}
+
+async function resolveOrgForUserSlug(
+    supabase: ReturnType<typeof createServerClient>,
+    userId: string,
+    slug: string
+): Promise<{ id: string; slug: string; role: string } | null> {
+    if (!slug) return null
+    try {
+        const { data, error } = await supabase
+            .from("organization_members")
+            .select("org_id, role, organizations!inner(id, slug)")
+            .eq("user_id", userId)
+            .eq("organizations.slug", slug)
+            .limit(1)
+            .maybeSingle()
+
+        if (error || !data?.organizations) return null
+        const org = data.organizations as { id: string; slug: string }
+        return { id: data.org_id || org.id, slug: org.slug, role: data.role || "staff" }
+    } catch {
+        return null
+    }
+}
+
+async function resolveFirstOrgForUser(
+    supabase: ReturnType<typeof createServerClient>,
+    userId: string
+): Promise<{ id: string; slug: string; role: string } | null> {
+    try {
+        const { data, error } = await supabase
+            .from("organization_members")
+            .select("org_id, role, organizations!inner(id, slug)")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle()
+
+        if (error || !data?.organizations) return null
+        const org = data.organizations as { id: string; slug: string }
+        return { id: data.org_id || org.id, slug: org.slug, role: data.role || "staff" }
+    } catch {
+        return null
+    }
+}
+
+async function repairActiveOrgMetadata(
+    supabase: ReturnType<typeof createServerClient>,
+    currentMetadata: Record<string, any>,
+    org: { id: string; slug: string; role: string }
+): Promise<boolean> {
+    const currentSlug = typeof currentMetadata.active_org_slug === "string" ? currentMetadata.active_org_slug : ""
+    const currentId = typeof currentMetadata.active_org_id === "string" ? currentMetadata.active_org_id : ""
+    const currentRole = typeof currentMetadata.active_org_role === "string" ? currentMetadata.active_org_role : ""
+    if (currentSlug === org.slug && currentId === org.id && currentRole === org.role) return false
+
+    try {
+        const { error } = await supabase.auth.updateUser({
+            data: {
+                active_org_slug: org.slug,
+                active_org_id: org.id,
+                active_org_role: org.role,
+            },
+        })
+        if (!error) {
+            await supabase.auth.refreshSession()
+            return true
+        }
+    } catch {
+        // Best-effort: don't block the request if metadata repair fails.
+    }
+    return false
 }
 
 export default async function proxy(req: NextRequest) {
@@ -179,6 +273,23 @@ export default async function proxy(req: NextRequest) {
         return NextResponse.redirect(redirectUrl)
     }
 
+    const pendingCookies: Array<{ name: string; value: string; options?: any }> = []
+    const applyPendingCookies = (response: NextResponse) => {
+        pendingCookies.forEach((cookie) => {
+            response.cookies.set(cookie.name, cookie.value, cookie.options)
+        })
+    }
+    const shouldRepairMetadata = () => !req.cookies.get("metadata_repair")
+    const markMetadataRepair = (response: NextResponse) => {
+        response.cookies.set("metadata_repair", "1", {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 10,
+            sameSite: "lax",
+        })
+    }
+
     let baseResponse = NextResponse.next({ request: { headers: requestHeaders } })
     const hasSession = hasSupabaseSessionCookie(req.cookies.getAll())
 
@@ -193,10 +304,45 @@ export default async function proxy(req: NextRequest) {
         return NextResponse.redirect(new URL(loginPath, req.url))
     }
 
+    let activeOrgSlug: string | null = null
+    let activeOrgId: string | null = null
+    let activeOrgRole: string | null = null
+    let sessionUserId: string | null = null
+    let sessionUserMetadata: Record<string, any> = {}
+    let supabase: ReturnType<typeof createServerClient> | null = null
+    if (!isDemoHost && hasSession) {
+        try {
+            supabase = createSupabaseClientWithCookies(req, pendingCookies)
+            if (supabase) {
+                const { data } = await supabase.auth.getSession()
+                const sessionUser = data?.session?.user ?? null
+                sessionUserId = sessionUser?.id || null
+                sessionUserMetadata = sessionUser?.user_metadata || {}
+            }
+        } catch {
+            supabase = null
+        }
+
+        const metadata = sessionUserMetadata || {}
+        const metadataSlug = typeof metadata.active_org_slug === "string" ? metadata.active_org_slug.trim() : ""
+        const metadataId = typeof metadata.active_org_id === "string" ? metadata.active_org_id.trim() : ""
+        const metadataRole = typeof metadata.active_org_role === "string" ? metadata.active_org_role.trim() : ""
+        const hasCompleteMetadata = Boolean(metadataSlug && metadataId && metadataRole)
+
+        if (hasCompleteMetadata) {
+            activeOrgSlug = metadataSlug
+            activeOrgId = metadataId
+            activeOrgRole = metadataRole
+        }
+    }
+
+    if (activeOrgRole) {
+        requestHeaders.set("x-org-role", activeOrgRole)
+    }
+
     let orgSlug: string | null = null
     let rewrittenPathname = pathname
 
-    // POS surface: only expose dedicated billing route at /:slug/sales
     if (isPosHost) {
         const posFirst = segments[0] || ''
         const posSecond = segments[1] || ''
@@ -205,8 +351,67 @@ export default async function proxy(req: NextRequest) {
 
         if (posFirst && !SYSTEM_PREFIXES.has(posFirst) && !posFirst.includes('.')) {
             orgSlug = posFirst
+
+            if (sessionUserId && supabase && (!activeOrgSlug || activeOrgSlug !== orgSlug)) {
+                const resolvedOrg = await resolveOrgForUserSlug(supabase, sessionUserId, orgSlug)
+                if (resolvedOrg) {
+                    activeOrgSlug = resolvedOrg.slug
+                    activeOrgId = resolvedOrg.id
+                    activeOrgRole = resolvedOrg.role || activeOrgRole
+                    if (activeOrgRole) {
+                        requestHeaders.set("x-org-role", activeOrgRole)
+                    }
+                    if (shouldRepairMetadata()) {
+                        const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, resolvedOrg)
+                        if (repaired) {
+                            requestHeaders.set("x-metadata-repaired", "true")
+                        }
+                    }
+                }
+            }
+
+            if (!activeOrgSlug && sessionUserId && supabase && !isDemoHost) {
+                const fallbackOrg = await resolveFirstOrgForUser(supabase, sessionUserId)
+                if (fallbackOrg) {
+                    activeOrgSlug = fallbackOrg.slug
+                    activeOrgId = fallbackOrg.id
+                    activeOrgRole = fallbackOrg.role || activeOrgRole
+                    if (activeOrgRole) {
+                        requestHeaders.set("x-org-role", activeOrgRole)
+                    }
+                    if (shouldRepairMetadata()) {
+                        const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, fallbackOrg)
+                        if (repaired) {
+                            requestHeaders.set("x-metadata-repaired", "true")
+                        }
+                    }
+                }
+            }
+
+            if (activeOrgSlug && activeOrgSlug.toLowerCase() !== "demo" && activeOrgSlug !== orgSlug) {
+                const redirectUrl = new URL(`/${activeOrgSlug}/sales`, req.url)
+                redirectUrl.search = url.search
+                const redirectResponse = NextResponse.redirect(redirectUrl)
+                applyPendingCookies(redirectResponse)
+                return redirectResponse
+            }
+
+            if (!activeOrgSlug && sessionUserId && !isDemoHost) {
+                const redirectUrl = new URL("/setup-organization", req.url)
+                redirectUrl.search = url.search
+                const redirectResponse = NextResponse.redirect(redirectUrl)
+                applyPendingCookies(redirectResponse)
+                return redirectResponse
+            }
+
             requestHeaders.set("x-tenant-slug", orgSlug)
             requestHeaders.set("x-path-prefix", `/${orgSlug}`)
+            if (activeOrgId) {
+                requestHeaders.set("x-org-id", activeOrgId)
+            }
+            if (activeOrgRole) {
+                requestHeaders.set("x-org-role", activeOrgRole)
+            }
 
             if (posSecond !== "sales" || segments.length !== 2) {
                 const redirectUrl = new URL(`/${orgSlug}/sales`, req.url)
@@ -218,6 +423,61 @@ export default async function proxy(req: NextRequest) {
         }
     } else if (firstSegment && !SYSTEM_PREFIXES.has(firstSegment) && !firstSegment.includes('.')) {
         orgSlug = firstSegment
+
+        if (sessionUserId && supabase && (!activeOrgSlug || activeOrgSlug !== orgSlug)) {
+            const resolvedOrg = await resolveOrgForUserSlug(supabase, sessionUserId, orgSlug)
+            if (resolvedOrg) {
+                activeOrgSlug = resolvedOrg.slug
+                activeOrgId = resolvedOrg.id
+                activeOrgRole = resolvedOrg.role || activeOrgRole
+                if (activeOrgRole) {
+                    requestHeaders.set("x-org-role", activeOrgRole)
+                }
+                if (shouldRepairMetadata()) {
+                    const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, resolvedOrg)
+                    if (repaired) {
+                        requestHeaders.set("x-metadata-repaired", "true")
+                    }
+                }
+            }
+        }
+
+        if (!activeOrgSlug && sessionUserId && supabase && !isDemoHost) {
+            const fallbackOrg = await resolveFirstOrgForUser(supabase, sessionUserId)
+            if (fallbackOrg) {
+                activeOrgSlug = fallbackOrg.slug
+                activeOrgId = fallbackOrg.id
+                activeOrgRole = fallbackOrg.role || activeOrgRole
+                if (activeOrgRole) {
+                    requestHeaders.set("x-org-role", activeOrgRole)
+                }
+                if (shouldRepairMetadata()) {
+                    const repaired = await repairActiveOrgMetadata(supabase, sessionUserMetadata, fallbackOrg)
+                    if (repaired) {
+                        requestHeaders.set("x-metadata-repaired", "true")
+                    }
+                }
+            }
+        }
+
+        if (activeOrgSlug && activeOrgSlug.toLowerCase() !== "demo" && activeOrgSlug !== orgSlug) {
+            const tail = segments.slice(1).join("/")
+            const redirectPath = tail ? `/${activeOrgSlug}/${tail}` : `/${activeOrgSlug}/dashboard`
+            const redirectUrl = new URL(redirectPath, req.url)
+            redirectUrl.search = url.search
+            const redirectResponse = NextResponse.redirect(redirectUrl)
+            applyPendingCookies(redirectResponse)
+            return redirectResponse
+        }
+
+        if (!activeOrgSlug && sessionUserId && !isDemoHost) {
+            const redirectUrl = new URL("/setup-organization", req.url)
+            redirectUrl.search = url.search
+            const redirectResponse = NextResponse.redirect(redirectUrl)
+            applyPendingCookies(redirectResponse)
+            return redirectResponse
+        }
+
         const remainder = segments.slice(1)
         if (remainder[0] === "pos") {
             const posTail = remainder.slice(1).join("/")
@@ -229,6 +489,50 @@ export default async function proxy(req: NextRequest) {
 
         requestHeaders.set('x-tenant-slug', orgSlug)
         requestHeaders.set('x-path-prefix', `/${orgSlug}`)
+        if (activeOrgId) {
+            requestHeaders.set("x-org-id", activeOrgId)
+        }
+        if (activeOrgRole) {
+            requestHeaders.set("x-org-role", activeOrgRole)
+        }
+    }
+
+    const tenantPath =
+        orgSlug && pathname.startsWith(`/${orgSlug}`)
+            ? pathname.slice(orgSlug.length + 1) || "/"
+            : pathname
+
+    const isBillingRoute =
+        pathname.startsWith("/api/billing/") ||
+        tenantPath === "/dashboard/settings" ||
+        tenantPath.startsWith("/dashboard/settings/")
+    const isDeletionRoute = pathname.startsWith("/api/organizations/deletion/")
+    const isSettingsUpdateRoute = pathname.startsWith("/api/settings/update")
+    const isInviteMembersRoute = pathname.includes("/api/organizations/") && pathname.includes("/members")
+    const isInventoryDeleteRoute = pathname.startsWith("/api/inventory") && req.method === "POST"
+    const isInvitePage = tenantPath === "/dashboard/invite-members" || tenantPath.startsWith("/dashboard/invite-members/")
+
+    if (activeOrgRole) {
+        const normalizedRole = activeOrgRole.toLowerCase()
+        if (normalizedRole === "staff") {
+            if (isBillingRoute || isInvitePage) {
+                const redirectUrl = new URL("/dashboard", req.url)
+                redirectUrl.search = url.search
+                const redirectResponse = NextResponse.redirect(redirectUrl)
+                applyPendingCookies(redirectResponse)
+                return redirectResponse
+            }
+            if (isSettingsUpdateRoute || isInviteMembersRoute || isInventoryDeleteRoute) {
+                const forbiddenResponse = NextResponse.json({ error: "Forbidden" }, { status: 403 })
+                applyPendingCookies(forbiddenResponse)
+                return forbiddenResponse
+            }
+        }
+        if (normalizedRole !== "owner" && isDeletionRoute) {
+            const forbiddenResponse = NextResponse.json({ error: "Forbidden" }, { status: 403 })
+            applyPendingCookies(forbiddenResponse)
+            return forbiddenResponse
+        }
     }
 
     const supabaseSources = resolveSupabaseCspSources()
@@ -285,6 +589,11 @@ export default async function proxy(req: NextRequest) {
         })
     }
 
+    if (requestHeaders.get("x-metadata-repaired") === "true") {
+        markMetadataRepair(finalResponse)
+    }
+
+    applyPendingCookies(finalResponse)
     return finalResponse
 }
 

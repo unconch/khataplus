@@ -90,6 +90,10 @@ export async function getSession() {
       (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
       (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
       null
+    const role =
+      typeof user.user_metadata?.active_org_role === "string"
+        ? user.user_metadata.active_org_role
+        : null
 
     return {
       user: {
@@ -99,6 +103,7 @@ export async function getSession() {
       },
       userId: user.id,
       email: user.email || undefined,
+      role,
       isBiometricVerified,
       stepUp,
     }
