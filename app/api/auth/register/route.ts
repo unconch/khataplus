@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+function toSafePath(next: unknown): string {
+  if (typeof next !== "string") return "/setup-organization"
+  if (!next.startsWith("/") || next.startsWith("/auth/")) return "/setup-organization"
+  return next
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -9,21 +15,19 @@ export async function POST(request: Request) {
     const code = String(body?.code || "").trim()
 
     if (!name || !email) {
-      return NextResponse.json(
-        { error: "Name and email are required." },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Name and email are required." }, { status: 400 })
     }
 
+    const next = toSafePath(body?.next)
     const supabase = await createClient()
 
-    // STEP 1 â€” Send OTP
+    // STEP 1 — Send OTP
     if (!code) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
-          data: { full_name: name }, // stored in raw_user_meta_data â†’ profiles via trigger
+          data: { full_name: name },
         },
       })
       if (error) {
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, phase: "verify" })
     }
 
-    // STEP 2 â€” Verify OTP
+    // STEP 2 — Verify OTP
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: code,
@@ -46,26 +50,15 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update profile name in case trigger missed it
+    // Save name to profile
     await supabase
       .from("profiles")
-      .upsert({
-        id: data.user.id,
-        full_name: name,
-        email: data.user.email || email,
-      })
+      .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
 
-    return NextResponse.json({
-      ok: true,
-      phase: "done",
-      next: "/setup-organization",
-    })
+    return NextResponse.json({ ok: true, phase: "done", next: "/setup-organization" })
 
   } catch (err: any) {
     console.error("[Auth Register]", err)
-    return NextResponse.json(
-      { error: err?.message || "Registration failed." },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err?.message || "Registration failed." }, { status: 500 })
   }
 }
