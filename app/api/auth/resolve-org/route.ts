@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
     }
   )
 
-  const { data } = await supabase.auth.getSession()
-  const user = data?.session?.user
+  const { data } = await supabase.auth.getUser()
+  const user = data?.user
 
   if (!user) {
     return NextResponse.json({ slug: null }, { status: 401 })
