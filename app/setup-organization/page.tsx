@@ -22,10 +22,11 @@ async function getAppOrigin(): Promise<string> {
     return `${protocol}://${appHost}${port ? `:${port}` : ""}`
 }
 
-export default async function SetupOrganizationPage(
-    props: { searchParams: Promise<{ reauth?: string | string[] }> }
-) {
-    const searchParams = await props.searchParams
+export default async function SetupOrganizationPage({
+    searchParams,
+}: {
+    searchParams: { reauth?: string | string[] }
+}) {
     const reauth = Array.isArray(searchParams?.reauth) ? searchParams.reauth[0] : searchParams?.reauth
 
     if (reauth !== "1") {
