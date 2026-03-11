@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react"
 import { HomeDashboard } from "@/components/home-dashboard"
 
+type Props = {
+  orgSlug: string
+}
+
 type DashboardHomePayload = {
   profile: any
   orgRole?: string
@@ -37,7 +41,7 @@ function DashboardSkeleton() {
   )
 }
 
-export function HomeDashboardClient() {
+export function HomeDashboardClient({ orgSlug }: Props) {
   const [data, setData] = useState<DashboardHomePayload | null>(null)
   const [error, setError] = useState<string | null>(null)
 
