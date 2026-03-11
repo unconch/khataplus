@@ -27,13 +27,13 @@ export default async function AuthCallback({
     .maybeSingle()
 
   if (!membership) {
-    redirect("/setup-organization")
+    redirect("/setup-organization?reauth=1")
   }
 
   const slug = membership.organizations?.[0]?.slug
 
   if (!slug) {
-    redirect("/setup-organization")
+    redirect("/setup-organization?reauth=1")
   }
 
   redirect(`/${slug}/dashboard`)
