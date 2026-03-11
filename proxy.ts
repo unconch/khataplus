@@ -16,6 +16,16 @@ export default function proxy(req: NextRequest) {
   }
 
   const { pathname } = req.nextUrl
+
+  if (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/setup-organization") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/"
+  ) {
+    return NextResponse.next()
+  }
   const host = (req.headers.get("host") || "").split(":")[0]
   const isLocalhost = host === "localhost" || host === "127.0.0.1"
   const isAppHost = host.startsWith("app.")
