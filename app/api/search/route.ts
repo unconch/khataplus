@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
-import { getSession } from "@/lib/session-server"
+import { getSession } from "@/lib/session"
 import { getCurrentOrgId } from "@/lib/data"
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session-server';
+import { getSession } from '@/lib/session';
 import { verifyWebAuthnRegistration } from '@/lib/webauthn';
 import { cookies } from 'next/headers';
 

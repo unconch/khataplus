@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session-server';
+import { getSession } from '@/lib/session';
 import { exportData } from '@/lib/data/migration';
 import { authorize } from '@/lib/security';
 import { requirePlanFeature, PlanFeatureError } from '@/lib/plan-feature-guard';

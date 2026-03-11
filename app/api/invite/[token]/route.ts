@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session-server"
+import { getSession } from "@/lib/session"
 import { getInviteByToken, acceptInvite, getOrganization } from "@/lib/data/organizations"
 
 export async function GET(

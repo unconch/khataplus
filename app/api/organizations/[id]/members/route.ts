@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session-server"
+import { getSession } from "@/lib/session"
 import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
 import { getOrgContext } from "@/lib/server/org-context"
 import { requireRole } from "@/lib/server/permissions"

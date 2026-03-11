@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session-server"
+import { getSession } from "@/lib/session"
 import { createOrganization } from "@/lib/data/organizations"
 import { getUserOrganizationsResolved } from "@/lib/data/auth"
 import { getProfile, upsertProfile } from "@/lib/data/profiles"

@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { cancelOrganizationDeletion } from "@/lib/data/organizations"
-import { getSession } from "@/lib/session-server"
+import { getSession } from "@/lib/session"
 import { getOrgContext } from "@/lib/server/org-context"
 import { requireRole } from "@/lib/server/permissions"
 
