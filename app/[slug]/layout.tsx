@@ -4,11 +4,12 @@ import { getOrganizationBySlug } from "@/lib/data/organizations"
 
 type Props = {
   children: ReactNode
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function OrgLayout({ children, params }: Props) {
-  const org = await getOrganizationBySlug(params.slug)
+  const { slug } = await params
+  const org = await getOrganizationBySlug(slug)
 
   if (!org && process.env.NODE_ENV !== "development") {
     notFound()
