@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation"
+import { HomeDashboardClient } from "@/components/dashboard/home-dashboard-client"
 
-export default async function SlugDashboardPage() {
-  redirect("/dashboard")
+export default function SlugDashboardPage() {
+  return <HomeDashboardClient />
 }

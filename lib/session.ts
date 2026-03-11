@@ -73,10 +73,9 @@ export async function getSession() {
   try {
     const supabase = await createClient()
 
-    const [{ data: sessionData }, { data: userData }] = await Promise.all([
-      supabase.auth.getSession(),
-      supabase.auth.getUser(),
-    ])
+    // Serialize these calls to avoid race conditions in Turbopack/Next.js 16
+    const { data: sessionData } = await supabase.auth.getSession()
+    const { data: userData } = await supabase.auth.getUser()
 
     const user = userData?.user || sessionData?.session?.user
     if (!user?.id) return null

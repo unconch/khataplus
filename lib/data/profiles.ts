@@ -89,15 +89,18 @@ export async function getProfile(id: string) {
     return getProfileRaw(id);
 }
 
-export async function ensureUserProfile(user: { id: string; email?: string | null }) {
+export async function ensureUserProfile(user: { id: string; email?: string | null }): Promise<Profile | null> {
     try {
         await sql`
             INSERT INTO profiles (id, email)
             VALUES (${user.id}, ${user.email ?? null})
             ON CONFLICT (id) DO NOTHING
         `;
+        const result = await sql`SELECT * FROM profiles WHERE id = ${user.id}`;
+        return (result[0] as Profile) || null;
     } catch (err) {
         console.error("profile sync failed", err);
+        return null;
     }
 }
 

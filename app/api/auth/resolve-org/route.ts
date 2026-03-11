@@ -17,6 +17,16 @@ export async function GET(req: NextRequest) {
           // No-op: this endpoint is read-only and does not set cookies.
         },
       },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: () => null,
+          setItem: () => { },
+          removeItem: () => { },
+        },
+      },
     }
   )
 

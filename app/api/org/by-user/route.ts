@@ -16,13 +16,22 @@ export async function GET() {
 
   const user = data.user
 
-  await ensureUserProfile(user)
+  // Ensure profile exists. This also handles ID consolidation.
+  const profile = await ensureUserProfile(user)
 
-  const slug = await getUserOrgSlug(user.id)
+  // Try direct member lookup first
+  let slug = await getUserOrgSlug(user.id)
+
+  // Fallback to profile's designated organization if necessary
+  if (!slug && (profile as any)?.organization_id) {
+    const { getOrganization } = await import("@/lib/data/organizations")
+    const org = await getOrganization((profile as any).organization_id)
+    slug = org?.slug || null
+  }
 
   if (!slug) {
     return NextResponse.json(
-      { error: "Organization not found" },
+      { error: "Organization not found", slug: null },
       { status: 404 }
     )
   }

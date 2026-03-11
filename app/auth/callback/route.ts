@@ -54,6 +54,16 @@ export async function GET(req: NextRequest) {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
       },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: () => null,
+          setItem: () => { },
+          removeItem: () => { },
+        },
+      },
     }
   )
 

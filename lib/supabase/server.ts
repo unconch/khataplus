@@ -20,6 +20,13 @@ export async function createClient() {
       },
       auth: {
         autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: (key: string) => null,
+          setItem: (key: string, value: string) => { },
+          removeItem: (key: string) => { },
+        },
       },
     }
   )
