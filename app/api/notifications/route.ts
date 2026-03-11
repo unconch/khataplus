@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
+import { getSession } from "@/lib/session-server"
 import { getCurrentOrgId } from "@/lib/data/auth"
 import { sql } from "@/lib/db"
 import { getSystemAlerts } from "@/lib/monitoring"

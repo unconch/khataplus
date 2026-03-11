@@ -6,7 +6,7 @@ import { getUserOrgSlug } from "@/lib/data/organizations"
 export const runtime = "nodejs"
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.getUser()
 

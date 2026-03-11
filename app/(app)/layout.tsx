@@ -69,8 +69,17 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     ])
 
     const headersList = await headers()
-    const pathPrefix = headersList.get("x-path-prefix") || ""
-    const xInvokePath = headersList.get("x-invoke-path") || ""
+    const xPathPrefixHeader = headersList.get("x-path-prefix") || ""
+    const xInvokePathHeader = headersList.get("x-invoke-path") || ""
+
+    // xInvokePath represents the logical route (e.g., /dashboard)
+    const xInvokePath = xInvokePathHeader || ""
+
+    // pathPrefix represents the tenant segment (e.g., /slug)
+    // We prioritize the header, but if missing (e.g. direct access on localhost), we derive it
+    const segments = xInvokePath.split("/").filter(Boolean)
+    const pathSlug = xPathPrefixHeader.replace(/^\//, "") || segments[0] || ""
+    const pathPrefix = xPathPrefixHeader || (pathSlug ? `/${pathSlug}` : "")
 
     if (dbUnavailable) {
       return (
@@ -115,18 +124,18 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
       return (
         <TenantProvider tenant={demoTenant}>
-            <AppShell
-              profile={null}
-              role="admin"
-              settings={demoSettings}
-              orgId={demoTenant.id}
-              orgName={demoTenant.name}
-              orgSlug={demoTenant.slug}
-              orgPlanType="business"
-              pathPrefix={pathPrefix}
-            >
-              {children}
-            </AppShell>
+          <AppShell
+            profile={null}
+            role="admin"
+            settings={demoSettings}
+            orgId={demoTenant.id}
+            orgName={demoTenant.name}
+            orgSlug={demoTenant.slug}
+            orgPlanType="business"
+            pathPrefix={pathPrefix}
+          >
+            {children}
+          </AppShell>
         </TenantProvider>
       )
     }
@@ -220,10 +229,17 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const reservedPrefixPaths = new Set(["login", "sign-up", "auth"])
 
     // Canonicalize app URLs to tenant-prefixed paths (app.domain/<slug>/*).
-    if (tenant?.slug && !pathPrefix) {
-      if (xInvokePath === "/dashboard" || xInvokePath.startsWith("/dashboard/")) {
+    if (
+      tenant?.slug &&
+      (xInvokePath === "/dashboard" || xInvokePath.startsWith("/dashboard/"))
+    ) {
+      // Only redirect if the URL does not already contain the slug
+      if (pathSlug !== tenant.slug) {
         redirect(`/${tenant.slug}${xInvokePath}`)
       }
+    }
+
+    if (tenant?.slug && pathSlug !== tenant.slug) {
       if (reservedPrefixPaths.has(invokeFirst) && invokeSegments.length > 1) {
         const suffix = `/${invokeSegments.slice(1).join("/")}`
         redirect(`/${tenant.slug}${suffix}`)

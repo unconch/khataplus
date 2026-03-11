@@ -42,27 +42,23 @@ export default function LoginPage() {
     return () => clearTimeout(t)
   }, [cooldown])
 
-  const getAppHostFromCurrentHost = (hostname: string): string => {
-    if (!hostname) return "app.khataplus.online"
-    if (hostname === "localhost" || hostname === "127.0.0.1") return hostname
-    if (hostname.endsWith(".localhost")) return hostname
-    let base = hostname.toLowerCase()
-    if (base.startsWith("www.")) base = base.slice(4)
-    if (base.startsWith("demo.")) base = base.slice(5)
-    if (base.startsWith("pos.")) base = base.slice(4)
-    if (base.startsWith("app.")) base = base.slice(4)
-    return `app.${base}`
-  }
-
   const redirectToAppDashboard = (slug: string) => {
     if (typeof window === "undefined") return
+
     const { protocol, hostname, port } = window.location
-    const appHost = getAppHostFromCurrentHost(hostname)
     const portPart = port ? `:${port}` : ""
-    const path = `/${slug}/dashboard`
-    const needsAppHost = hostname !== appHost
-    const url = needsAppHost ? `${protocol}//${appHost}${portPart}${path}` : path
-    window.location.replace(url)
+
+    if (hostname === "localhost") {
+      window.location.assign(`/${slug}/dashboard`)
+      return
+    }
+
+    let appHost = hostname
+    if (!hostname.startsWith("app.")) {
+      appHost = `app.${hostname.replace(/^www\./, "")}`
+    }
+
+    window.location.assign(`${protocol}//${appHost}${portPart}/${slug}/dashboard`)
   }
 
   const waitForSession = async (attempts = 6, delay = 200) => {
@@ -104,8 +100,14 @@ export default function LoginPage() {
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault()
-    if (code.length < 6) return toast.error("Enter the 6-digit code")
+
+    if (code.length < 6) {
+      toast.error("Enter the 6-digit code")
+      return
+    }
+
     setLoading(true)
+
     try {
       const { error } = await withTimeout(
         supabase.auth.verifyOtp({
@@ -114,12 +116,14 @@ export default function LoginPage() {
           type: "email",
         })
       )
+
       if (error) {
         toast.error("Invalid verification code")
         return
       }
 
       const session = await waitForSession()
+
       if (!session?.user) {
         toast.error("Login session failed. Please try again.")
         return
@@ -128,20 +132,32 @@ export default function LoginPage() {
       let slug = session.user.user_metadata?.active_org_slug
 
       if (!slug) {
-        const res = await fetch("/api/org/by-user", { method: "GET" })
-        if (res.ok) {
-          const payload = await res.json()
-          slug = typeof payload?.slug === "string" ? payload.slug : ""
+        const res = await fetch("/api/org/by-user", {
+          method: "GET",
+          credentials: "include"
+        })
+
+        if (res.status === 404) {
+          window.location.assign("/setup-organization")
+          return
         }
+
+        if (!res.ok) {
+          toast.error("Failed to load workspace")
+          return
+        }
+
+        const payload = await res.json()
+        slug = typeof payload?.slug === "string" ? payload.slug : ""
       }
 
       if (!slug) {
-        await supabase.auth.signOut()
-        toast.error("Your account is not linked to any workspace. Contact your administrator.")
+        window.location.assign("/setup-organization")
         return
       }
 
       redirectToAppDashboard(slug)
+
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {

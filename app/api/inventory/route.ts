@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getInventory } from "@/lib/data/inventory";
 import { updateInventoryStock } from "@/lib/data/inventory";
 import { archiveInventoryItem } from "@/lib/data/inventory";
-import { getSession } from "@/lib/session";
+import { getSession } from "@/lib/session-server";
 import { getOrgContext } from "@/lib/server/org-context";
 import { requireRole } from "@/lib/server/permissions";
 

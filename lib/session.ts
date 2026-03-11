@@ -1,6 +1,6 @@
 import "server-only"
 import { cookies } from "next/headers"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 
 export interface SessionStepUpClaims {
   authTime: number | null
@@ -71,7 +71,7 @@ function extractStepUpClaimsFromToken(token: string | null): SessionStepUpClaims
 
 export async function getSession() {
   try {
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createClient()
 
     const [{ data: sessionData }, { data: userData }] = await Promise.all([
       supabase.auth.getSession(),

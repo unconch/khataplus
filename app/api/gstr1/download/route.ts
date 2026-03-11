@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session';
+import { getSession } from '@/lib/session-server';
 import { getGstr1Data } from '@/lib/gst-reports';
 import { generateGstr1Json } from '@/lib/gstr-json';
 import { sql } from '@/lib/db';

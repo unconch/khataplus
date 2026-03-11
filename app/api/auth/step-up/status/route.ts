@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { sql } from "@/lib/db"
-import { getSession } from "@/lib/session"
+import { getSession } from "@/lib/session-server"
 import { assertRecentOtpStepUp, getOrgDeletionStepUpFlowId, StepUpRequiredError } from "@/lib/step-up"
 
 export async function GET(request: Request) {

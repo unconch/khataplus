@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server"
 import { respondToOrganizationDeletion } from "@/lib/data/organizations"
 import { StepUpRequiredError } from "@/lib/step-up"
-import { getSession } from "@/lib/session"
+import { getSession } from "@/lib/session-server"
 import { getOrgContext } from "@/lib/server/org-context"
 import { requireRole } from "@/lib/server/permissions"
 

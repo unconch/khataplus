@@ -1,18 +1,9 @@
 ﻿import { NextResponse, NextRequest } from "next/server"
 
 const SYSTEM_PREFIXES = new Set([
-  "auth",
-  "api",
-  "_next",
-  "pricing",
-  "features",
-  "solutions",
-  "docs",
-  "roadmap",
-  "privacy",
-  "terms",
-  "offline",
-  "monitoring",
+  "auth", "api", "_next", "pricing", "features",
+  "solutions", "docs", "roadmap", "privacy", "terms",
+  "offline", "monitoring",
 ])
 
 function hasSessionCookie(req: NextRequest) {
@@ -22,7 +13,7 @@ function hasSessionCookie(req: NextRequest) {
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const host = (req.headers.get("host") || "").split(":")[0]
-
+  const isLocalhost = host === "localhost" || host === "127.0.0.1"
   const isAppHost = host.startsWith("app.")
   const isAuthPath = pathname.startsWith("/auth")
   const isPublic =
@@ -34,7 +25,10 @@ export default function proxy(req: NextRequest) {
     pathname.startsWith("/docs/") ||
     pathname === "/solutions"
 
-  // Keep auth on main domain
+  const segments = pathname.split("/").filter(Boolean)
+  const slug = segments[0]
+
+  // Keep auth on main domain (production only)
   if (isAppHost && isAuthPath) {
     const mainHost = host.replace(/^app\./, "")
     const url = new URL(pathname, `https://${mainHost}`)
@@ -48,13 +42,16 @@ export default function proxy(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  const segments = pathname.split("/").filter(Boolean)
-  const slug = segments[0]
-
-  if (isAppHost && slug && !SYSTEM_PREFIXES.has(slug)) {
+  // Handle slug routing — both localhost and app host
+  if ((isAppHost || isLocalhost) && slug && !SYSTEM_PREFIXES.has(slug)) {
+    const rest = segments.slice(1).join("/")
     const rewrite = req.nextUrl.clone()
-    rewrite.pathname = "/" + segments.slice(1).join("/") || "/dashboard"
-    return NextResponse.rewrite(rewrite)
+    rewrite.pathname = rest ? `/${rest}` : "/dashboard"
+
+    const response = NextResponse.rewrite(rewrite)
+    response.headers.set("x-path-prefix", `/${slug}`)
+    response.headers.set("x-invoke-path", rewrite.pathname)
+    return response
   }
 
   return NextResponse.next()

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
+import { getSession } from "@/lib/session-server"
 import { ensureProfile } from "@/lib/data/profiles"
 
 export async function POST(request: Request) {
