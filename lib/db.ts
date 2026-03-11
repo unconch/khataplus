@@ -1,20 +1,10 @@
 import "server-only"
 import { neon } from "@neondatabase/serverless"
+import { cache } from "react"
+import { createClient } from "@/lib/supabase/server"
 
 let prodSqlInstance: any = null
 let demoSqlInstance: any = null
-
-const ISOLATED_TABLES = [
-  "inventory",
-  "sales",
-  "expenses",
-  "daily_reports",
-  "audit_logs",
-  "customers",
-  "khata_transactions",
-  "suppliers",
-  "supplier_transactions",
-]
 
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY = 500
@@ -88,20 +78,6 @@ export function getDemoSql() {
   return getClient(connectionUrl, true)
 }
 
-function toSchemaName(input: string): string {
-  const normalized = input.replace(/-/g, "_")
-  return normalized.startsWith("org_") ? normalized : `org_${normalized}`
-}
-
-function prefixIsolatedTables(query: string, schema: string): string {
-  let rewritten = query
-  for (const table of ISOLATED_TABLES) {
-    const regex = new RegExp(`(?<!\\.)\\b${table}\\b`, "g")
-    rewritten = rewritten.replace(regex, `"${schema}".${table}`)
-  }
-  return rewritten
-}
-
 function normalizeRows(result: any): any[] {
   if (Array.isArray(result)) return result
   if (Array.isArray(result?.rows)) return result.rows
@@ -121,7 +97,6 @@ export const sql = async (
   while (attempt < MAX_RETRIES) {
     attempt++
     let connectionUrl = process.env.DATABASE_URL
-    let targetSchema: string | null = null
     let isGuest = false
 
     try {
@@ -131,17 +106,12 @@ export const sql = async (
         const headersList = await headers()
         const cookieStore = await cookies()
 
-        const orgId = headersList.get("x-org-id")
-        if (orgId) targetSchema = toSchemaName(orgId)
-
         const userId = cookieStore.get("userId")?.value || null
-        const path = headersList.get("x-invoke-path") || ""
         const host = (headersList.get("x-forwarded-host") || headersList.get("host") || "").toLowerCase()
         const hostname = host.split(",")[0]?.trim().split(":")[0] || ""
         const isDemoHost = hostname === "demo.khataplus.online" || hostname.startsWith("demo.")
         if (
           (!userId && cookieStore.has("guest_mode")) ||
-          path.startsWith("/demo") ||
           headersList.get("x-guest-mode") === "true" ||
           isDemoHost
         ) {
@@ -158,48 +128,21 @@ export const sql = async (
 
     try {
       let queryText: string
-      let baseQueryText: string
       let queryParams: any[]
 
       if (typeof stringsOrQuery === "string") {
-        baseQueryText = stringsOrQuery
-        queryText =
-          targetSchema && !isGuest
-            ? prefixIsolatedTables(baseQueryText, targetSchema)
-            : baseQueryText
-        queryParams =
-          values.length === 1 && Array.isArray(values[0]) ? values[0] : values
+        queryText = stringsOrQuery
+        queryParams = values.length === 1 && Array.isArray(values[0]) ? values[0] : values
       } else {
-        baseQueryText = stringsOrQuery.reduce(
+        queryText = stringsOrQuery.reduce(
           (acc, str, i) => acc + str + (i < values.length ? `$${i + 1}` : ""),
           ""
         )
-        queryText =
-          targetSchema && !isGuest
-            ? prefixIsolatedTables(baseQueryText, targetSchema)
-            : baseQueryText
         queryParams = values
       }
 
-      try {
-        const result = await client.query(queryText, queryParams)
-        return normalizeRows(result)
-      } catch (schemaErr: any) {
-        const code = schemaErr?.code || ""
-        const message = schemaErr?.message || String(schemaErr)
-        const missingIsolatedRelation =
-          !!targetSchema &&
-          !isGuest &&
-          code === "42P01" &&
-          new RegExp(`relation\\s+\"${targetSchema}\\.`).test(message)
-
-        if (missingIsolatedRelation) {
-          const fallbackResult = await client.query(baseQueryText, queryParams)
-          return normalizeRows(fallbackResult)
-        }
-
-        throw schemaErr
-      }
+      const result = await client.query(queryText, queryParams)
+      return normalizeRows(result)
     } catch (dbErr: any) {
       lastError = dbErr
       const message = dbErr?.message || String(dbErr)
@@ -230,39 +173,62 @@ export const sql = async (
   throw lastError
 }
 
-  ; (sql as any).withSchema = async (
-    orgId: string,
-    stringsOrQuery: TemplateStringsArray | string,
-    ...values: any[]
-  ) => {
-    const schemaName = toSchemaName(orgId)
-    const connectionUrl = process.env.DATABASE_URL
-    if (!connectionUrl) throw new Error("DATABASE_URL not set")
-    const client = getClient(connectionUrl, false)
+;(sql as any).query = async (query: string, params: any[] = []) => {
+  return sql(query, params)
+}
 
-    let queryText: string
-    let queryParams: any[]
+;(sql as any).unsafe = async (query: string, params: any[] = []) => {
+  return sql(query, params)
+}
 
-    if (typeof stringsOrQuery === "string") {
-      queryText = prefixIsolatedTables(stringsOrQuery, schemaName)
-      queryParams = values.length === 1 && Array.isArray(values[0]) ? values[0] : values
-    } else {
-      const rawQuery = stringsOrQuery.reduce(
-        (acc, str, i) => acc + str + (i < values.length ? `$${i + 1}` : ""),
-        ""
+export const getOrgBySlug = cache(async (slug: string) => {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("id, slug, name")
+    .eq("slug", slug)
+    .single()
+
+  if (error) {
+    throw new Error("Organization not found")
+  }
+
+  return data
+})
+
+export const getUserMembership = cache(
+  async (userId: string, slug: string) => {
+    const supabase = await createClient()
+
+    const { data } = await supabase
+      .from("organization_members")
+      .select(`
+      organization_id,
+      role,
+      organizations (
+        id,
+        slug
       )
-      queryText = prefixIsolatedTables(rawQuery, schemaName)
-      queryParams = values
+    `)
+      .eq("user_id", userId)
+      .eq("organizations.slug", slug)
+      .maybeSingle()
+
+    return data
+  }
+)
+
+export const resolveTenant = cache(
+  async (userId: string, slug: string) => {
+    const membership = await getUserMembership(userId, slug)
+
+    if (!membership) return null
+
+    return {
+      orgId: membership.organization_id,
+      slug,
+      role: membership.role,
     }
-
-    const result = await client.query(queryText, queryParams)
-    return normalizeRows(result)
   }
-
-  ; (sql as any).query = async (query: string, params: any[] = []) => {
-    return sql(query, params)
-  }
-
-  ; (sql as any).unsafe = async (query: string, params: any[] = []) => {
-    return sql(query, params)
-  }
+)

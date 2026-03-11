@@ -1,9 +1,7 @@
-import { HomeDashboardClient } from "@/components/dashboard/home-dashboard-client"
-
-type Props = {
+export default function DashboardPage({
+  params,
+}: {
   params: { slug: string }
-}
-
-export default function DashboardPage({ params }: Props) {
-  return <HomeDashboardClient orgSlug={params.slug} />
+}) {
+  return <div>Dashboard for {params.slug}</div>
 }
