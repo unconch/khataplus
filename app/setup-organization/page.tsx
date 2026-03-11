@@ -33,11 +33,11 @@ export default async function SetupOrganizationPage({
         redirect(SETUP_REAUTH_LOGIN)
     }
 
-    const sessionRes = await getSession()
+    const sessionRes = await getSession().catch(() => null)
     const userId = sessionRes?.userId
 
     if (!userId) {
-        redirect(SETUP_REAUTH_LOGIN)
+        redirect("/auth/login")
     }
 
     const [userOrgs, profile] = await Promise.all([getUserOrganizationsResolved(userId), getProfile(userId)])
