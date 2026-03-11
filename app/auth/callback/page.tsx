@@ -36,7 +36,7 @@ export default async function AuthCallback() {
     redirect("/setup-organization")
   }
 
-  const slug = membership.organizations?.slug
+  const slug = membership.organizations?.[0]?.slug
   const appOrigin = await getAppOrigin()
 
   if (!slug) {
