@@ -10,7 +10,7 @@ import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-const SETUP_REAUTH_LOGIN = `/auth/login?next=${encodeURIComponent("/setup-organization?reauth=1")}`
+const SETUP_REAUTH_LOGIN = `/auth/login?next=${encodeURIComponent("/onboarding?reauth=1")}`
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -192,7 +192,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             organization: org
           }] as any
         }
-      } else if (!pathPrefix || pathPrefix === "/setup-organization") {
+      } else if (!pathPrefix || pathPrefix === "/onboarding") {
         console.log("--- [DEBUG] AppLayout: No Orgs -> forcing re-auth before setup ---")
         redirect(SETUP_REAUTH_LOGIN)
       } else {

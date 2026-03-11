@@ -23,8 +23,8 @@ function getAppHostFromCurrentHost(hostname: string): string {
 
 function isAppTargetPath(path: string): boolean {
   return (
-    path === "/setup-organization" ||
-    path.startsWith("/setup-organization/") ||
+    path === "/onboarding" ||
+    path.startsWith("/onboarding/") ||
     path === "/dashboard" ||
     path.startsWith("/dashboard/") ||
     /^\/[^/]+\/dashboard(?:\/|$)/.test(path) ||
@@ -50,7 +50,7 @@ export default function InviteSignUpPage() {
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite") || ""
   const next = useMemo(
-    () => (inviteToken ? `/invite/${encodeURIComponent(inviteToken)}` : "/setup-organization"),
+    () => (inviteToken ? `/invite/${encodeURIComponent(inviteToken)}` : "/onboarding"),
     [inviteToken]
   )
 

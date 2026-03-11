@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import OnboardingWizard from "@/components/onboarding-wizard"
 
-export default async function SetupOrganizationPage() {
+export default async function OnboardingPage() {
   const supabase = await createClient()
 
   const {
@@ -9,13 +10,12 @@ export default async function SetupOrganizationPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/auth/sign-in")
+    redirect("/auth/login")
   }
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Setup Organization</h1>
-      <p>User: {user.email}</p>
+    <div className="min-h-screen flex items-center justify-center">
+      <OnboardingWizard userId={user.id} />
     </div>
   )
 }

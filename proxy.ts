@@ -1,9 +1,14 @@
-﻿import { NextResponse, NextRequest } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 
 const SYSTEM_PREFIXES = new Set([
-  "auth", "api", "_next", "setup-organization", "pricing",
-  "features", "solutions", "docs", "roadmap", "privacy",
-  "terms", "offline", "monitoring",
+  "auth",
+  "api",
+  "_next",
+  "onboarding",
+  "pricing",
+  "features",
+  "solutions",
+  "docs",
 ])
 
 function hasSessionCookie(req: NextRequest) {
@@ -19,7 +24,7 @@ export default function proxy(req: NextRequest) {
 
   if (
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/setup-organization") ||
+    pathname.startsWith("/onboarding") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
     pathname === "/"
@@ -32,7 +37,7 @@ export default function proxy(req: NextRequest) {
   const isAuthPath = pathname.startsWith("/auth")
   const isPublic =
     pathname === "/" ||
-    pathname === "/setup-organization" ||
+    pathname === "/onboarding" ||
     pathname === "/pricing" ||
     pathname === "/features" ||
     pathname === "/roadmap" ||
@@ -57,7 +62,7 @@ export default function proxy(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Handle slug routing — both localhost and app host
+  // Handle slug routing � both localhost and app host
   if (
     (isAppHost || isLocalhost) &&
     slug &&
@@ -82,3 +87,4 @@ export default function proxy(req: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }
+

@@ -23,7 +23,7 @@ export default async function AnalyticsPage() {
 
   if (!orgId) {
     const { redirect } = await import("next/navigation")
-    redirect("/setup-organization")
+    redirect("/onboarding")
     return null;
   }
 

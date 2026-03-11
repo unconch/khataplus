@@ -30,7 +30,7 @@ function isDashboardPath(pathname: string): boolean {
 }
 
 function isSetupOrganizationPath(pathname: string): boolean {
-  return pathname === "/setup-organization" || pathname.startsWith("/setup-organization/")
+  return pathname === "/onboarding" || pathname.startsWith("/onboarding/")
 }
 
 async function getPrimaryOrganizationSlug(userId: string): Promise<string> {

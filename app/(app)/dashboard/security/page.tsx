@@ -25,7 +25,7 @@ export default async function SecurityPage() {
     }
 
     if (!orgId) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
         return null
     }
 

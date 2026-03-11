@@ -11,8 +11,8 @@ import { TeamManagement } from "@/components/team-management"
 import { SecuritySettings } from "@/components/security-settings"
 import { getUserSessions } from "@/lib/session-governance"
 import { cn } from "@/lib/utils"
-import { cookies } from "next/headers"
 import { BILLING_PLANS } from "@/lib/billing-plans"
+import { createClient } from "@/lib/supabase/server"
 
 export default async function SettingsPage() {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
     }
 
     if (!orgId) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
         return null
     }
 
@@ -71,12 +71,15 @@ export default async function SettingsPage() {
 }
 
 async function SettingsContent({ orgId, userId }: { orgId: string, userId: string }) {
-    const cookieStore = await cookies()
-    const sessionJwt =
-        cookieStore.get("DS")?.value ||
-        cookieStore.get("__Secure-DS")?.value ||
-        ""
-    const currentSessionId = sessionJwt ? sessionJwt.slice(-24) : ""
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect("/auth/login")
+        return null
+    }
 
     const [org, settings, profile, userOrgs, sessions] = await Promise.all([
         getOrganization(orgId),
@@ -85,8 +88,6 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
         getUserOrganizations(userId),
         getUserSessions(userId)
     ])
-
-    const mergedSessions = Array.from(new Set([...(currentSessionId ? [currentSessionId] : []), ...sessions]))
 
     const { isGuestMode } = await import("@/lib/data/auth")
     const isGuest = await isGuestMode()
@@ -266,7 +267,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             profile={profile}
                             isAdmin={isAdmin}
                             orgId={orgId}
-                            initialSessions={mergedSessions}
+                            initialSessions={sessions}
                             initialSettings={settings}
                         />
                     </SettingsCard>

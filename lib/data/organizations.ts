@@ -199,7 +199,7 @@ export async function createOrganization(name: string, userId: string, details?:
 
         // Revalidate paths to ensure layout and dashboard reflect new organization
         revalidatePath("/", "layout");
-        revalidatePath("/setup-organization");
+        revalidatePath("/onboarding");
         revalidatePath("/dashboard");
         revalidatePath(`/${slug}/dashboard`);
 
@@ -942,5 +942,5 @@ async function executeOrganizationDeletion(
 
     // 7. Revalidate layout cache
     revalidatePath("/", "layout")
-    revalidatePath("/setup-organization")
+    revalidatePath("/onboarding")
 }

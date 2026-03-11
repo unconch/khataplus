@@ -20,5 +20,5 @@ export default async function AuthCallback({
     redirect("/auth/sign-in")
   }
 
-  redirect("/setup-organization")
+  redirect("/onboarding")
 }

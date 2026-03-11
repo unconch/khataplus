@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { Logo } from "@/components/ui/logo"
@@ -138,7 +138,7 @@ export default function LoginPage() {
         })
 
         if (res.status === 404) {
-          window.location.assign("/setup-organization")
+          window.location.assign("/onboarding")
           return
         }
 
@@ -152,7 +152,7 @@ export default function LoginPage() {
       }
 
       if (!slug) {
-        window.location.assign("/setup-organization")
+        window.location.assign("/onboarding")
         return
       }
 
@@ -263,7 +263,7 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* STEP 1 — Email */}
+          {/* STEP 1 � Email */}
           {step === "email" && (
             <div className="space-y-8">
               <div className="text-center lg:text-left">
@@ -306,7 +306,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* STEP 2 — OTP */}
+          {/* STEP 2 � OTP */}
           {step === "verify" && (
             <div className="space-y-8">
               <div className="text-center lg:text-left">
@@ -356,7 +356,7 @@ export default function LoginPage() {
                   onClick={() => { setStep("email"); setCode("") }}
                   className="w-full py-3 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                 >
-                  ← Change email
+                  ? Change email
                 </button>
               </form>
             </div>
@@ -373,7 +373,7 @@ export default function LoginPage() {
 
           <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <Link href="/demo" className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">
-              Or try the demo without signing up →
+              Or try the demo without signing up ?
             </Link>
           </div>
         </div>

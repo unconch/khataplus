@@ -16,7 +16,7 @@ export default async function InviteMembersPage() {
 
   const orgId = user.isGuest ? "demo-org" : await getCurrentOrgId(user.userId)
   if (!orgId) {
-    redirect("/setup-organization")
+    redirect("/onboarding")
     return null
   }
 

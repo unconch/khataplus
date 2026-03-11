@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/login?error=no_user`)
     }
 
-    const redirectTo = next.startsWith("/") ? next : "/setup-organization"
+    const redirectTo = next.startsWith("/") ? next : "/onboarding"
 
     const response = NextResponse.redirect(`${origin}${redirectTo}`)
     response.cookies.delete("kp_auth_next")
