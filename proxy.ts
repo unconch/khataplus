@@ -11,6 +11,10 @@ function hasSessionCookie(req: NextRequest) {
 }
 
 export default function proxy(req: NextRequest) {
+  if (process.env.NODE_ENV === "development") {
+    return NextResponse.next()
+  }
+
   const { pathname } = req.nextUrl
   const host = (req.headers.get("host") || "").split(":")[0]
   const isLocalhost = host === "localhost" || host === "127.0.0.1"
