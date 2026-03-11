@@ -1,9 +1,9 @@
 ﻿import { NextResponse, NextRequest } from "next/server"
 
 const SYSTEM_PREFIXES = new Set([
-  "auth", "api", "_next", "pricing", "features",
-  "solutions", "docs", "roadmap", "privacy", "terms",
-  "offline", "monitoring",
+  "auth", "api", "_next", "setup-organization", "pricing",
+  "features", "solutions", "docs", "roadmap", "privacy",
+  "terms", "offline", "monitoring",
 ])
 
 function hasSessionCookie(req: NextRequest) {
@@ -32,6 +32,7 @@ export default function proxy(req: NextRequest) {
   const isAuthPath = pathname.startsWith("/auth")
   const isPublic =
     pathname === "/" ||
+    pathname === "/setup-organization" ||
     pathname === "/pricing" ||
     pathname === "/features" ||
     pathname === "/roadmap" ||
@@ -57,7 +58,12 @@ export default function proxy(req: NextRequest) {
   }
 
   // Handle slug routing — both localhost and app host
-  if ((isAppHost || isLocalhost) && slug && !SYSTEM_PREFIXES.has(slug)) {
+  if (
+    (isAppHost || isLocalhost) &&
+    slug &&
+    !SYSTEM_PREFIXES.has(slug) &&
+    segments.length > 1
+  ) {
     const rest = segments.slice(1).join("/")
     const rewrite = req.nextUrl.clone()
     rewrite.pathname = rest ? `/${rest}` : "/dashboard"
@@ -68,7 +74,9 @@ export default function proxy(req: NextRequest) {
     return response
   }
 
-  return NextResponse.next()
+  const res = NextResponse.next()
+  res.headers.set("x-proxy-path", pathname)
+  return res
 }
 
 export const config = {
