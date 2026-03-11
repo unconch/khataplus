@@ -1,22 +1,16 @@
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
-import { getAppHostFromHostname } from "@/lib/auth-redirect"
 
-async function getAppOrigin(): Promise<string> {
-  const headerList = await headers()
-  const forwardedHost = headerList.get("x-forwarded-host")
-  const hostHeader = forwardedHost || headerList.get("host") || "app.khataplus.online"
-  const firstHost = hostHeader.split(",")[0]?.trim() || "app.khataplus.online"
-  const [hostname, port] = firstHost.split(":")
-  const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname?.endsWith(".localhost")
-  const protocol = headerList.get("x-forwarded-proto") || (isLocal ? "http" : "https")
-  const appHost = getAppHostFromHostname(hostname || "app.khataplus.online")
-  return `${protocol}://${appHost}${port ? `:${port}` : ""}`
-}
-
-export default async function AuthCallback() {
+export default async function AuthCallback({
+  searchParams,
+}: {
+  searchParams: { code?: string }
+}) {
   const supabase = await createClient()
+
+  if (searchParams?.code) {
+    await supabase.auth.exchangeCodeForSession(searchParams.code)
+  }
 
   const {
     data: { user },
@@ -37,11 +31,10 @@ export default async function AuthCallback() {
   }
 
   const slug = membership.organizations?.[0]?.slug
-  const appOrigin = await getAppOrigin()
 
   if (!slug) {
     redirect("/setup-organization")
   }
 
-  redirect(`${appOrigin}/${slug}/dashboard`)
+  redirect(`/${slug}/dashboard`)
 }
