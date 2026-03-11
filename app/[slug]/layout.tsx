@@ -1,6 +1,6 @@
 import { ReactNode } from "react"
-import { notFound } from "next/navigation"
-import { getOrganizationBySlug } from "@/lib/data/organizations"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 
 type Props = {
   children: ReactNode
@@ -8,11 +8,14 @@ type Props = {
 }
 
 export default async function OrgLayout({ children, params }: Props) {
-  const { slug } = await params
-  const org = await getOrganizationBySlug(slug)
+  await params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!org && process.env.NODE_ENV !== "development") {
-    notFound()
+  if (!user) {
+    redirect("/auth/sign-in")
   }
 
   return <div>{children}</div>

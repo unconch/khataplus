@@ -20,21 +20,5 @@ export default async function AuthCallback({
     redirect("/auth/sign-in")
   }
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organizations(slug)")
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (!membership) {
-    redirect("/setup-organization?reauth=1")
-  }
-
-  const slug = membership.organizations?.[0]?.slug
-
-  if (!slug) {
-    redirect("/setup-organization?reauth=1")
-  }
-
-  redirect(`/${slug}/dashboard`)
+  redirect("/setup-organization")
 }

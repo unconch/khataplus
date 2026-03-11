@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -228,6 +229,7 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
     const totalSteps = 4
     const [loading, setLoading] = useState(false)
     const [nameAvailability, setNameAvailability] = useState<NameAvailabilityState>("idle")
+    const router = useRouter()
     const draftStorageKey = useMemo(() => `onboarding-draft:${userId}`, [userId])
     const supabase = createClient()
 
@@ -294,6 +296,30 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
         })
         return () => subscription.unsubscribe()
     }, [draftStorageKey, watch])
+
+    useEffect(() => {
+        let active = true
+
+        const checkOrg = async () => {
+            try {
+                const res = await fetch("/api/organizations", { cache: "no-store" })
+                if (!res.ok) return
+                const orgs = await res.json().catch(() => [])
+                if (!active || !Array.isArray(orgs) || orgs.length === 0) return
+                const slug = orgs[0]?.slug || orgs[0]?.organization?.slug
+                if (slug) {
+                    router.replace(`/${slug}/dashboard`)
+                }
+            } catch {
+                // Ignore and let user continue onboarding.
+            }
+        }
+
+        void checkOrg()
+        return () => {
+            active = false
+        }
+    }, [router])
 
     useEffect(() => {
         if (step !== 2) return
