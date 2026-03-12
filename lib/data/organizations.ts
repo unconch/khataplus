@@ -3,7 +3,6 @@
 import { randomHex, generateUUID } from '../universal-crypto';
 
 import { sql } from "../db";
-import { neon } from "@neondatabase/serverless";
 import type { Organization, OrganizationMember, OrganizationInvite, SystemSettings } from "../types";
 import { authorize, audit } from "../security";
 import { cache } from "react";
@@ -39,27 +38,16 @@ async function generateShortOrganizationId(): Promise<string> {
     return `org_${randomHex(12).toLowerCase()}`;
 }
 
-const orgLookupSql = neon(process.env.DATABASE_URL!);
-
 export async function getUserOrgSlug(userId: string): Promise<string | null> {
     try {
-        const result = await Promise.race([
-            orgLookupSql`
-                SELECT o.slug
-                FROM organization_members m
-                JOIN organizations o
-                ON m.org_id = o.id
-                WHERE m.user_id = ${userId}
-                LIMIT 1
-            `,
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("DB timeout")), 5000)
-            ),
-        ]);
-
-        const rows = result as any[];
-        if (!rows || rows.length === 0) return null;
-        return rows[0].slug ?? null;
+        const result = await sql`
+            SELECT o.slug
+            FROM organization_members m
+            JOIN organizations o ON m.org_id = o.id
+            WHERE m.user_id = ${userId}
+            LIMIT 1
+        `;
+        return result[0]?.slug ?? null;
     } catch (err) {
         console.error("getUserOrgSlug failed:", err);
         return null;
