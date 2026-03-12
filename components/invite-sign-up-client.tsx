@@ -8,40 +8,8 @@ import { ArrowRight, Loader2, UserPlus } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 
-function getAppHostFromCurrentHost(hostname: string): string {
-  if (!hostname) return "app.khataplus.online"
-  if (hostname === "localhost" || hostname === "127.0.0.1") return "app.localhost"
-  if (hostname.endsWith(".localhost")) return "app.localhost"
-
-  let base = hostname.toLowerCase()
-  if (base.startsWith("www.")) base = base.slice(4)
-  if (base.startsWith("demo.")) base = base.slice(5)
-  if (base.startsWith("pos.")) base = base.slice(4)
-  if (base.startsWith("app.")) base = base.slice(4)
-  return `app.${base}`
-}
-
-function isAppTargetPath(path: string): boolean {
-  return (
-    path === "/onboarding" ||
-    path.startsWith("/onboarding/") ||
-    path === "/dashboard" ||
-    path.startsWith("/dashboard/") ||
-    /^\/[^/]+\/dashboard(?:\/|$)/.test(path) ||
-    path === "/invite" ||
-    path.startsWith("/invite/")
-  )
-}
-
 function redirectAfterAuth(targetRaw: string) {
-  const target = targetRaw || "/dashboard"
-  if (typeof window !== "undefined" && isAppTargetPath(target)) {
-    const { protocol, hostname, port } = window.location
-    const appHost = getAppHostFromCurrentHost(hostname)
-    const portPart = port ? `:${port}` : ""
-    window.location.assign(`${protocol}//${appHost}${portPart}${target}`)
-    return
-  }
+  const target = targetRaw || "/onboarding"
   window.location.assign(target)
 }
 
