@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isReserved, isValidSlug } from "@/lib/system-routes"
 import { getProductionSql } from "@/lib/db"
-import { rateLimit, getIP } from "@/lib/rate-limit"
+import { RateLimitError, rateLimit, getIP } from "@/lib/rate-limit"
 
 export async function GET(req: NextRequest) {
     const ip = getIP(req.headers)
 
     // Rate limit: 60 req/min/IP
-    await rateLimit(`availability:${ip}`, 60, 60000)
+    try {
+        await rateLimit(`availability:${ip}`, 60, 60000)
+    } catch (error: any) {
+        if (error instanceof RateLimitError || error?.status === 429) {
+            const retryAfter = Math.ceil((error?.retryAfterMs || 0) / 1000)
+            return NextResponse.json(
+                { available: false, error: "Rate limit exceeded" },
+                { status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined }
+            )
+        }
+        throw error
+    }
 
     const { searchParams } = new URL(req.url)
     const slug = searchParams.get("slug")

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createOrganization } from "@/lib/data/organizations"
 import { createServerClient } from "@supabase/ssr"
 import { isValidSlug, isReserved } from "@/lib/system-routes"
-import { rateLimit } from "@/lib/rate-limit"
+import { RateLimitError, rateLimit } from "@/lib/rate-limit"
 
 export async function POST(req: NextRequest) {
     // 1. Auth Guard (Edge-safe)
@@ -17,7 +17,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Rate Limit: 5 req/hour/user
-    await rateLimit(`create-org:${user.id}`, 5, 3600000)
+    try {
+        await rateLimit(`create-org:${user.id}`, 5, 3600000)
+    } catch (error: any) {
+        if (error instanceof RateLimitError || error?.status === 429) {
+            const retryAfter = Math.ceil((error?.retryAfterMs || 0) / 1000)
+            return NextResponse.json(
+                { error: "Rate limit exceeded" },
+                { status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined }
+            )
+        }
+        throw error
+    }
 
     try {
         const body = await req.json()
