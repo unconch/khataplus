@@ -263,7 +263,7 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* STEP 1 — Email */}
+          {/* STEP 1 - Email */}
           {step === "email" && (
             <div className="space-y-8">
               <div className="text-center lg:text-left">
@@ -306,7 +306,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* STEP 2 — OTP */}
+          {/* STEP 2 - OTP */}
           {step === "verify" && (
             <div className="space-y-8">
               <div className="text-center lg:text-left">
