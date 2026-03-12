@@ -2,6 +2,7 @@ import { Client } from '@neondatabase/serverless';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { SYSTEM_ROUTES } from "../lib/system-routes";
 
 // Load env vars
 dotenv.config({ path: '.env.local' });
@@ -23,6 +24,15 @@ async function main() {
 
         console.log("Applying schema...");
         await client.query(schemaSql);
+
+        const conflicts = await client.query(
+            "SELECT slug FROM organizations WHERE slug = ANY($1)",
+            [SYSTEM_ROUTES]
+        );
+        if (conflicts.rows.length > 0) {
+            const slugs = conflicts.rows.map((r: any) => r.slug).join(", ");
+            throw new Error(`Reserved route conflict: ${slugs}`);
+        }
 
         console.log("✅ Schema applied successfully.");
 

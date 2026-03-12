@@ -1,4 +1,17 @@
 {
     "buildCommand": "npm run build",
-    "framework": "nextjs"
+    "framework": "nextjs",
+    "redirects": [
+        {
+            "source": "/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "app.khataplus.online"
+                }
+            ],
+            "destination": "https://khataplus.online/:path*",
+            "permanent": true
+        }
+    ]
 }

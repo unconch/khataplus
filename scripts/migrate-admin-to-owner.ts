@@ -1,5 +1,6 @@
 
 import { sql } from '@/lib/db-standalone';
+import { assertNoReservedSlugConflicts } from "./migration-guard";
 
 async function migrate() {
     console.log("Starting migration: Admin -> Owner...");
@@ -31,6 +32,8 @@ async function migrate() {
             RETURNING *
         `;
         console.log(`Updated ${profiles.length} profiles from 'main admin' to 'owner'.`);
+
+        await assertNoReservedSlugConflicts(sql);
 
         console.log("Migration complete.");
     } catch (error) {

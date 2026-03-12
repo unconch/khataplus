@@ -2,6 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { assertNoReservedSlugConflicts } from './scripts/migration-guard';
 
 dotenv.config({ path: '.env.local' });
 
@@ -35,6 +36,7 @@ async function applyMigration() {
             await (sql as any).query(statement);
         }
 
+        await assertNoReservedSlugConflicts(sql);
         console.log("Migration applied successfully!");
     } catch (err) {
         console.error("Migration failed:", err);

@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import dotenv from 'dotenv';
 import path from 'path';
+import { assertNoReservedSlugConflicts } from "./migration-guard";
 
 // Load env vars from .env.local
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
@@ -74,6 +75,8 @@ async function main() {
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `;
+
+        await assertNoReservedSlugConflicts(sql);
 
         console.log("✅ Admin Enhancement tables created successfully.");
 

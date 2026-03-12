@@ -48,6 +48,21 @@ export async function register() {
     };
 
     await import("./sentry.server.config");
+
+    // Boot-time crash if conflicts detected between SYSTEM_ROUTES and existing org slugs
+    try {
+      const { getProductionSql } = await import("./lib/db");
+      const { assertNoReservedSlugConflicts } = await import("./lib/system-routes");
+      const db = getProductionSql();
+      await assertNoReservedSlugConflicts(db);
+    } catch (err: any) {
+      if (err?.message?.includes("Reserved route conflict")) {
+        throw err; // Re-throw to crash the server / fail deployment
+      }
+      // If it's a DB connection error or missing table, we log but don't crash 
+      // to allow initial migrations to run if needed.
+      console.warn("[Instrumentation] Slug conflict check skipped or failed:", err.message);
+    }
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

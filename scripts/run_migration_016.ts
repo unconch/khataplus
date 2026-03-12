@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
+import { assertNoReservedSlugConflicts } from "./migration-guard";
 
 // Load environment variables from .env.local
 dotenv.config({ path: ".env.local" });
@@ -22,6 +23,7 @@ async function runMigration() {
         // Execute directly using tagged template since it's a simple safe statement
         console.log("Adding hsn_code to inventory...");
         await sql`ALTER TABLE inventory ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(10)`;
+        await assertNoReservedSlugConflicts(sql);
 
         console.log("✅ Migration applied successfully!");
     } catch (error) {

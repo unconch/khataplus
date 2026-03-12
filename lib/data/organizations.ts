@@ -13,6 +13,7 @@ import { getProfile } from "./profiles";
 import { initializeOrganizationSchema } from "./schema-init";
 import { assertRecentOtpStepUp } from "../step-up";
 import { getStaffSeatLimit } from "../billing-plans";
+import { isValidSlug, isReserved } from "../system-routes";
 
 async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
     await sql`
@@ -71,23 +72,34 @@ export async function getTotalOrganizationCount(): Promise<number> {
     return parseInt(result[0].count);
 }
 
-export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string }): Promise<Organization> {
+export async function createOrganization(name: string, userId: string, details?: { gstin?: string; address?: string; phone?: string; slug?: string }): Promise<Organization> {
     // Keep organization names globally unique (case-insensitive) for predictable lookup and cleaner UX.
     const existingName = await sql`SELECT id FROM organizations WHERE LOWER(name) = LOWER(${name}) LIMIT 1`;
     if (existingName.length > 0) {
         throw new Error(`An organization with the name "${name}" already exists.`);
     }
 
-    let slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    let slug = details?.slug || name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+    if (isReserved(slug)) {
+        throw new Error("This name is reserved.");
+    }
+
+    if (!isValidSlug(slug)) {
+        throw new Error("Workspace URL must be 3-32 characters and contain only lowercase letters, numbers, or single hyphens.");
+    }
 
     // Handle potential slug collisions
     const existingSlug = await sql`SELECT slug FROM organizations WHERE slug = ${slug}`;
     if (existingSlug.length > 0) {
+        if (details?.slug) {
+            throw new Error("This workspace URL is already in use.");
+        }
         const suffix = randomHex(4);
         slug = `${slug}-${suffix}`;
     }
 
-    console.log("[DB/Orgs] Generated slug:", slug);
+    console.log("[DB/Orgs] Generated/Validated slug:", slug);
 
     try {
         const orgId = await generateShortOrganizationId();
@@ -494,33 +506,33 @@ export async function getSystemSettings(orgId?: string) {
     const flavor = isGuest ? "demo" : "prod";
 
     const fetchSettings = async (): Promise<SystemSettings> => {
-            const { getDemoSql, getProductionSql } = await import("../db");
-            const db = isGuest ? getDemoSql() : getProductionSql();
+        const { getDemoSql, getProductionSql } = await import("../db");
+        const db = isGuest ? getDemoSql() : getProductionSql();
 
-            const result = await db`SELECT settings, updated_at FROM organizations WHERE id = ${orgId}`;
-            if (result.length === 0 || !result[0].settings) {
-                return {
-                    id: orgId,
-                    allow_staff_inventory: true,
-                    allow_staff_sales: true,
-                    allow_staff_reports: true,
-                    allow_staff_reports_entry_only: false,
-                    allow_staff_analytics: false,
-                    allow_staff_add_inventory: false,
-                    gst_enabled: true,
-                    gst_inclusive: false,
-                    show_buy_price_in_sales: false,
-                    updated_at: new Date().toISOString()
-                } as SystemSettings;
-            }
-            const s = result[0].settings;
+        const result = await db`SELECT settings, updated_at FROM organizations WHERE id = ${orgId}`;
+        if (result.length === 0 || !result[0].settings) {
             return {
                 id: orgId,
-                ...s,
-                show_buy_price_in_sales: Boolean(s?.show_buy_price_in_sales),
-                updated_at: result[0].updated_at instanceof Date ? result[0].updated_at.toISOString() : String(result[0].updated_at),
+                allow_staff_inventory: true,
+                allow_staff_sales: true,
+                allow_staff_reports: true,
+                allow_staff_reports_entry_only: false,
+                allow_staff_analytics: false,
+                allow_staff_add_inventory: false,
+                gst_enabled: true,
+                gst_inclusive: false,
+                show_buy_price_in_sales: false,
+                updated_at: new Date().toISOString()
             } as SystemSettings;
-        };
+        }
+        const s = result[0].settings;
+        return {
+            id: orgId,
+            ...s,
+            show_buy_price_in_sales: Boolean(s?.show_buy_price_in_sales),
+            updated_at: result[0].updated_at instanceof Date ? result[0].updated_at.toISOString() : String(result[0].updated_at),
+        } as SystemSettings;
+    };
 
     if (isGuest) {
         return fetchSettings();

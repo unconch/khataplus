@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import dotenv from 'dotenv';
+import { assertNoReservedSlugConflicts } from "./migration-guard";
 
 // Load env vars
 dotenv.config({ path: '.env.local' });
@@ -37,6 +38,8 @@ async function main() {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `;
+
+        await assertNoReservedSlugConflicts(sql);
 
         console.log("✅ pSEO tables created successfully.");
 

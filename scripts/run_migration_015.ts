@@ -1,6 +1,9 @@
 
 import { neon } from '@neondatabase/serverless';
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { assertNoReservedSlugConflicts } from "./migration-guard";
 
 // Load environment variables from .env.local
 dotenv.config({ path: ".env.local" });
@@ -25,6 +28,12 @@ async function runMigration() {
         // 2. Add Index
         console.log("Adding index idx_sales_customer_gstin...");
         await sql`CREATE INDEX IF NOT EXISTS idx_sales_customer_gstin ON sales(customer_gstin)`;
+
+        // 3. Org slug unique index (idempotent)
+        const migrationPath = path.join(process.cwd(), "lib", "migrations", "015_org_slug_unique_index.sql");
+        const migrationSql = fs.readFileSync(migrationPath, "utf8");
+        await (sql as any).query(migrationSql);
+        await assertNoReservedSlugConflicts(sql);
 
         console.log("✅ Migration applied successfully!");
     } catch (error) {
