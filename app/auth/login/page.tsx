@@ -43,22 +43,7 @@ export default function LoginPage() {
   }, [cooldown])
 
   const redirectToAppDashboard = (slug: string) => {
-    if (typeof window === "undefined") return
-
-    const { protocol, hostname, port } = window.location
-    const portPart = port ? `:${port}` : ""
-
-    if (hostname === "localhost") {
-      window.location.assign(`/${slug}/dashboard`)
-      return
-    }
-
-    let appHost = hostname
-    if (!hostname.startsWith("app.")) {
-      appHost = `app.${hostname.replace(/^www\./, "")}`
-    }
-
-    window.location.assign(`${protocol}//${appHost}${portPart}/${slug}/dashboard`)
+    window.location.assign(`/${slug}/dashboard`)
   }
 
   const waitForSession = async (attempts = 6, delay = 200) => {
