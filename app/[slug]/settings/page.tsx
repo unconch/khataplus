@@ -1,7 +1,8 @@
 type Props = {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
-export default function SettingsPage({ params }: Props) {
-  return <div>Settings for org: {params.slug}</div>
+export default async function SettingsPage({ params }: Props) {
+  const { slug } = await params
+  return <div>Settings for org: {slug}</div>
 }

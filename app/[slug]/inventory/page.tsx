@@ -1,7 +1,8 @@
 type Props = {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
-export default function InventoryPage({ params }: Props) {
-  return <div>Inventory for org: {params.slug}</div>
+export default async function InventoryPage({ params }: Props) {
+  const { slug } = await params
+  return <div>Inventory for org: {slug}</div>
 }

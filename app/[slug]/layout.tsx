@@ -8,7 +8,7 @@ export default async function OrgLayout({
   params,
 }: {
   children: React.ReactNode
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
   const supabase = await createClient()
 
@@ -20,7 +20,7 @@ export default async function OrgLayout({
     redirect("/auth/login")
   }
 
-  const slug = params.slug
+  const { slug } = await params
 
   if (!slug) {
     redirect("/onboarding")
