@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
 import { isPublic } from "@/lib/system-routes"
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     const { pathname, hostname } = req.nextUrl
 
     // 0. Legacy subdomain redirect (remove after deprecation)
