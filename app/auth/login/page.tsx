@@ -6,7 +6,7 @@ import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { sendOtpAction, verifyOtpAction } from "@/app/actions/auth"
 
 type Step = "email" | "verify"
 
@@ -20,14 +20,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
-  const supabase = createClient()
-
-  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-    ]) as Promise<T>
-  }
 
   const maskEmail = (value: string) => {
     const [local, domain] = value.split("@")
@@ -42,36 +34,17 @@ export default function LoginPage() {
     return () => clearTimeout(t)
   }, [cooldown])
 
-  const redirectToAppDashboard = (slug: string) => {
-    window.location.assign(`/${slug}/dashboard`)
-  }
-
-  const waitForSession = async (attempts = 6, delay = 200) => {
-    for (let i = 0; i < attempts; i++) {
-      const { data } = await supabase.auth.getSession()
-      if (data?.session?.user) return data.session
-      await new Promise((r) => setTimeout(r, delay))
-    }
-    return null
-  }
-
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: { shouldCreateUser: false },
-        })
-      )
-      if (error) {
-        const msg = error.message.toLowerCase().includes("signups not allowed")
-          ? "No account found for this email. Please sign up first."
-          : error.message
-        throw new Error(msg)
+      const result = await sendOtpAction(email)
+      
+      if (result.error) {
+        throw new Error(result.error)
       }
+      
       setMaskedEmail(maskEmail(email))
       setCooldown(30)
       setStep("verify")
@@ -94,55 +67,16 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error } = await withTimeout(
-        supabase.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: code,
-          type: "email",
-        })
-      )
+      const result = await verifyOtpAction(email, code)
 
-      if (error) {
-        toast.error("Invalid verification code")
+      if (result.error) {
+        toast.error(result.error)
         return
       }
 
-      const session = await waitForSession()
-
-      if (!session?.user) {
-        toast.error("Login session failed. Please try again.")
-        return
+      if (result.redirectUrl) {
+        window.location.assign(result.redirectUrl)
       }
-
-      let slug = session.user.user_metadata?.active_org_slug
-
-      if (!slug) {
-        const res = await fetch("/api/org/by-user", {
-          method: "GET",
-          credentials: "include"
-        })
-
-        if (res.status === 404) {
-          window.location.assign("/onboarding")
-          return
-        }
-
-        if (!res.ok) {
-          toast.error("Failed to load workspace")
-          return
-        }
-
-        const payload = await res.json()
-        slug = typeof payload?.slug === "string" ? payload.slug : ""
-      }
-
-      if (!slug) {
-        window.location.assign("/onboarding")
-        return
-      }
-
-      redirectToAppDashboard(slug)
-
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
@@ -154,13 +88,9 @@ export default function LoginPage() {
     if (resendLoading || cooldown > 0) return
     setResendLoading(true)
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: { shouldCreateUser: false },
-        })
-      )
-      if (error) throw new Error(error.message)
+      const result = await sendOtpAction(email)
+      if (result.error) throw new Error(result.error)
+      
       setMaskedEmail(maskEmail(email))
       setCooldown(30)
       toast.success("New code sent!")
@@ -341,7 +271,7 @@ export default function LoginPage() {
                   onClick={() => { setStep("email"); setCode("") }}
                   className="w-full py-3 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                 >
-                  ? Change email
+                  Change email
                 </button>
               </form>
             </div>
@@ -358,7 +288,7 @@ export default function LoginPage() {
 
           <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <Link href="/demo" className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">
-              Or try the demo without signing up ?
+              Or try the demo without signing up
             </Link>
           </div>
         </div>

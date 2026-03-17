@@ -6,7 +6,7 @@ import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { sendOtpAction, verifyOtpAction } from "@/app/actions/auth"
 
 type Step = "name" | "email" | "otp"
 
@@ -16,29 +16,6 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
-  const supabase = createClient()
-
-  const getEmailRedirectTo = () => {
-    if (typeof window === "undefined") return undefined
-    const base = window.location.origin
-    return `${base}/onboarding`
-  }
-
-  const withTimeout = async <T,>(promise: Promise<T>, ms = 8000) => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-    ])
-  }
-
-  const waitForSession = async (attempts = 6, delayMs = 200) => {
-    for (let i = 0; i < attempts; i += 1) {
-      const { data } = await supabase.auth.getSession()
-      if (data.session?.user) return data.session
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-    }
-    return null
-  }
 
   const benefits = [
     "GST-compliant invoicing",
@@ -56,21 +33,12 @@ export default function SignUpPage() {
 
   // STEP 2 — Email → send OTP
   async function handleEmail(e: React.FormEvent) {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     if (!email.trim()) return toast.error("Please enter your email")
     setLoading(true)
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: true,
-            data: { full_name: name },
-            emailRedirectTo: getEmailRedirectTo(),
-          },
-        })
-      )
-      if (error) throw new Error(error.message || "Failed to send code")
+      const result = await sendOtpAction(email, name)
+      if (result.error) throw new Error(result.error)
       toast.success("Verification code sent!")
       setStep("otp")
     } catch (err: any) {
@@ -86,30 +54,16 @@ export default function SignUpPage() {
     if (otp.length < 6) return toast.error("Enter the 6-digit code")
     setLoading(true)
     try {
-      const { data, error } = await withTimeout(
-        supabase.auth.verifyOtp({
-          email,
-          token: otp,
-          type: "email",
-        })
-      )
-      if (error || !data.user?.id) throw new Error(error?.message || "Invalid code")
+      const result = await verifyOtpAction(email, otp)
+      if (result.error) throw new Error(result.error)
 
-      if (data.session?.access_token && data.session?.refresh_token) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-      }
-
-      try {
-        await supabase
-          .from("profiles")
-          .upsert({ id: data.user.id, full_name: name, email: data.user.email || email })
-      } catch { }
       toast.success("Account created!")
-      await waitForSession()
-      window.location.assign("/onboarding")
+      
+      if (result.redirectUrl) {
+        window.location.assign(result.redirectUrl)
+      } else {
+        window.location.assign("/onboarding")
+      }
     } catch (err: any) {
       toast.error(err?.message || "Invalid or expired code")
     } finally {
