@@ -112,11 +112,12 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
-          <ClientProviders />
           <Suspense fallback={null}>
             <SystemAnnouncement />
           </Suspense>
+          <ClientProviders>
+            {children}
+          </ClientProviders>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

@@ -10,16 +10,19 @@ const OfflineBanner = dynamic(() => import("@/components/offline-banner").then(m
 const ScrollToTop = dynamic(() => import("@/components/scroll-to-top").then(m => m.ScrollToTop), { ssr: false })
 const ReferralTracker = dynamic(() => import("@/components/referral-tracker").then(m => m.ReferralTracker), { ssr: false })
 
-export function ClientProviders() {
+export function ClientProviders({ children }: { children: React.ReactNode }) {
     return (
         <MotionProvider>
             <SyncProvider>
-                <Suspense fallback={null}>
-                    <ReferralTracker />
-                </Suspense>
-                <ScrollToTop />
-                <OfflineBanner />
-                <PwaInstallPrompt />
+                <div className="contents">
+                    <Suspense fallback={null}>
+                        <ReferralTracker />
+                    </Suspense>
+                    <ScrollToTop />
+                    <OfflineBanner />
+                    <PwaInstallPrompt />
+                    {children}
+                </div>
             </SyncProvider>
         </MotionProvider>
     )
