@@ -12,21 +12,34 @@ export default async function OrgLayout({
 }) {
   const supabase = await createClient()
 
+  const { slug } = await params
+
+  // 1. Resolve Auth (Guests allowed for demo)
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  const isDemo = slug === "demo"
+
+  if (!user && !isDemo) {
     redirect("/auth/login")
   }
-
-  const { slug } = await params
 
   if (!slug) {
     redirect("/onboarding")
   }
 
-  const tenant = await resolveTenant(user.id, slug)
+  // 2. Resolve Tenant
+  let tenant = user ? await resolveTenant(user.id, slug) : null
+
+  // synthetic tenant for demo
+  if (!tenant && isDemo) {
+    tenant = {
+      orgId: "demo-org-id", // Should match your demo data org_id
+      slug: "demo",
+      role: "owner",
+    }
+  }
 
   if (!tenant) {
     redirect("/onboarding")

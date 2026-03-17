@@ -220,7 +220,16 @@ export const getUserMembership = cache(
 )
 
 export const resolveTenant = cache(
-  async (userId: string, slug: string) => {
+  async (userId: string | undefined | null, slug: string) => {
+    if (slug === "demo") {
+      return {
+        orgId: "demo-org-id", // Standard ID for demo
+        slug: "demo",
+        role: "owner",
+      }
+    }
+    
+    if (!userId) return null
     const membership = await getUserMembership(userId, slug)
 
     if (!membership) return null
