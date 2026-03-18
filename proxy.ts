@@ -28,6 +28,17 @@ export default async function proxy(request: NextRequest) {
   const isAppScoped = firstSegment === "app"
   const pathSlug = isAppScoped ? segments[1] : null
 
+  // Common public-route typo aliases so marketing nav never hard-fails.
+  if (pathname === "/features") {
+    return NextResponse.redirect(new URL("/features", request.url), 307)
+  }
+  if (pathname === "/pricing") {
+    return NextResponse.redirect(new URL("/pricing", request.url), 307)
+  }
+  if (pathname === "/merchant-academy" || pathname === "/merchantacademy") {
+    return NextResponse.redirect(new URL("/docs", request.url), 307)
+  }
+
   // 1. Skip middleware for static assets
   if (STATIC_ASSETS.some(prefix => pathname.startsWith(prefix))) {
     return NextResponse.next()
