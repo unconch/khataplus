@@ -4,7 +4,6 @@ import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { cn } from "@/lib/utils"
-import { getCurrentUser } from "@/lib/data/auth"
 
 const topFeatures = [
   {
@@ -132,36 +131,18 @@ const featureCards = [
   }
 ]
 
-export default async function FeaturesPage() {
-  let user: Awaited<ReturnType<typeof getCurrentUser>> = null
-  try {
-    user = await getCurrentUser()
-  } catch {
-    user = null
-  }
-
-  let orgSlug: string | null = null
-  if (user && !user.isGuest) {
-    try {
-      const { getUserOrganizations } = await import("@/lib/data/organizations")
-      const orgs = await getUserOrganizations(user.userId)
-      orgSlug = orgs[0]?.organization?.slug || null
-    } catch {
-      orgSlug = null
-    }
-  }
-
+export default function FeaturesPage() {
   const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
-  const ctaHref = user ? (orgSlug ? `/app/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`
+  const ctaHref = `${mainOrigin}/auth/sign-up`
   const demoDashboardUrl = "/demo/dashboard"
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f6fbff_0%,#f8fbfa_48%,#ffffff_100%)] text-zinc-900 overflow-x-hidden">
       <Navbar
-        isAuthenticated={!!user}
+        isAuthenticated={false}
         isLight={true}
-        orgSlug={orgSlug}
-        isGuest={user?.isGuest}
+        orgSlug={null}
+        isGuest={false}
       />
 
       <section className="relative px-6 pt-36 pb-16 md:pt-48 md:pb-20">

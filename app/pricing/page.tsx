@@ -1,37 +1,15 @@
 import { Navbar, PricingSection, PricingComparison, SiteFooter } from "@/components/landing-page/index"
 import { getTotalOrganizationCount } from "@/lib/data/organizations"
-import { getCurrentUser } from "@/lib/data/auth"
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-static"
 
 export default async function PricingPage() {
     let orgCount = 0
-    let user: Awaited<ReturnType<typeof getCurrentUser>> = null
 
     try {
         orgCount = await getTotalOrganizationCount()
     } catch (error) {
         console.warn("[pricing] orgCount fetch failed, defaulting to 0", error)
-    }
-
-    try {
-        user = await getCurrentUser()
-    } catch (error) {
-        console.warn("[pricing] user fetch failed, treating as anonymous", error)
-        user = null
-    }
-
-    const isAuthenticated = !!user
-
-    let orgSlug = null
-    if (user && !user.isGuest) {
-        try {
-            const { getUserOrganizations } = await import("@/lib/data/organizations")
-            const orgs = await getUserOrganizations(user.userId)
-            orgSlug = orgs[0]?.organization?.slug || null
-        } catch (error) {
-            console.warn("[pricing] org lookup failed, skipping redirect slug", error)
-        }
     }
 
     return (
@@ -46,16 +24,16 @@ export default async function PricingPage() {
 
             <div className="relative z-10 font-sans">
                 <Navbar
-                    isAuthenticated={isAuthenticated}
+                    isAuthenticated={false}
                     lightMode={true}
-                    orgSlug={orgSlug}
-                    isGuest={user?.isGuest}
+                    orgSlug={null}
+                    isGuest={false}
                 />
                 <div className="pt-32 pb-20">
                     <PricingSection
                         orgCount={orgCount}
-                        isAuthenticated={isAuthenticated}
-                        orgSlug={orgSlug}
+                        isAuthenticated={false}
+                        orgSlug={null}
                     />
                     <PricingComparison />
                 </div>
