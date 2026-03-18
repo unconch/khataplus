@@ -94,7 +94,10 @@ export default async function proxy(request: NextRequest) {
   const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(domain)
   const isLocalHost = domain === "localhost" || domain.endsWith(".localhost")
 
-  if (domainParts.length >= 2 && !isIpv4 && !isLocalHost) {
+  // Only treat host as tenant subdomain when there are 3+ labels
+  // (e.g. demo.khataplus.online). Apex domains like khataplus.online
+  // must not be interpreted as tenant slugs.
+  if (domainParts.length >= 3 && !isIpv4 && !isLocalHost) {
     const subdomain = domainParts[0]
     // Filter out common system subdomains
     if (subdomain !== "www" && subdomain !== "app" && subdomain !== domain) {
