@@ -12,7 +12,7 @@ export default function OnboardingWizard({ userId }: { userId: string }) {
       const orgs = await res.json()
 
       if (orgs?.length > 0) {
-        router.replace(`/${orgs[0].slug}/dashboard`)
+      router.replace(`/app/${orgs[0].slug}/dashboard`)
       }
     }
 

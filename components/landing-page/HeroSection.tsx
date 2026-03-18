@@ -17,7 +17,7 @@ interface HeroSectionProps {
 export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionProps) {
     const { signUpUrl } = useMainAuthUrls()
     const demoDashboardUrl = useDemoDashboardUrl()
-    const primaryHref = isAuthenticated ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : signUpUrl
+    const primaryHref = isAuthenticated ? (orgSlug ? `/app/${orgSlug}/dashboard` : "/dashboard") : signUpUrl
     const { enableMotion } = useMotion()
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768
 
@@ -55,21 +55,27 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
                         <AdvancedScrollReveal variant="slideUp" delay={600}>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                                <Link href={primaryHref} className="w-full sm:w-auto px-4">
+                                <div
+                                    onClick={() => window.location.href = primaryHref}
+                                    className="w-full sm:w-auto px-4 cursor-pointer"
+                                >
                                     <div className="relative group">
                                         <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse" />
-                                        <button className="relative w-full sm:w-auto h-18 px-12 bg-white text-zinc-950 rounded-full text-xl font-black shadow-2xl flex items-center justify-center gap-3 uppercase tracking-tighter hover:scale-[1.02] transition-all active:scale-95">
+                                        <div className="relative w-full sm:w-auto h-18 px-12 bg-white text-zinc-950 rounded-full text-xl font-black shadow-2xl flex items-center justify-center gap-3 uppercase tracking-tighter hover:scale-[1.02] transition-all active:scale-95">
                                             {isAuthenticated ? "Go to Dashboard" : "Sign Up"}
                                             <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                                        </button>
+                                        </div>
                                     </div>
-                                </Link>
+                                </div>
 
-                                <Link href={demoDashboardUrl} className="w-full sm:w-auto px-4">
-                                    <button className="w-full sm:w-auto h-18 px-10 bg-white/5 backdrop-blur-md text-white text-xl border border-white/20 hover:bg-white/10 rounded-full transition-all font-black uppercase tracking-tighter hover:border-white/40 shadow-xl">
+                                <div
+                                    onClick={() => window.location.href = demoDashboardUrl}
+                                    className="w-full sm:w-auto px-4 cursor-pointer"
+                                >
+                                    <div className="w-full sm:w-auto h-18 px-10 bg-white/5 backdrop-blur-md text-white text-xl border border-white/20 hover:bg-white/10 rounded-full transition-all font-black uppercase tracking-tighter hover:border-white/40 shadow-xl flex items-center justify-center">
                                         Instant Demo
-                                    </button>
-                                </Link>
+                                    </div>
+                                </div>
                             </div>
                         </AdvancedScrollReveal>
                     </div>

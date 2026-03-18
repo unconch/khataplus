@@ -316,7 +316,7 @@ export function SettingsForm({
       if (slugChanged && nextSlug) {
         toast.info(`Access URL updated to ${nextSlug}. Redirecting...`, { duration: 4000 })
         setTimeout(() => {
-          window.location.href = `/${nextSlug}/dashboard/settings`
+          window.location.href = `/app/${nextSlug}/dashboard/settings`
         }, 700)
       } else {
         router.refresh()

@@ -65,7 +65,7 @@ export default async function SolutionsPage() {
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href={user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`}
+                href={user ? (orgSlug ? `/app/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl bg-zinc-950 px-10 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:bg-zinc-900 hover:-translate-y-1 active:translate-y-0 group"
                   >
                     Get Started Free

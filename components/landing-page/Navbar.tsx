@@ -101,13 +101,13 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
     const displayOrg = orgName || "Workspace"
 
     const primaryHref = effectiveAuth
-        ? (effectiveOrgSlug ? `/${effectiveOrgSlug}/dashboard` : "/dashboard")
+        ? (effectiveOrgSlug ? `/app/${effectiveOrgSlug}/dashboard` : "/dashboard")
         : signUpUrl
     const primaryLabel = effectiveAuth
         ? "Dashboard"
         : "Start Free Trial"
     const secondaryHref = effectiveAuth
-        ? (effectiveOrgSlug ? `/${effectiveOrgSlug}/settings/profile` : "/settings/profile")
+        ? (effectiveOrgSlug ? `/app/${effectiveOrgSlug}/settings/profile` : "/settings/profile")
         : signInUrl
     const secondaryLabel = effectiveAuth
         ? "Settings"

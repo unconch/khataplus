@@ -152,7 +152,7 @@ export default async function FeaturesPage() {
   }
 
   const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
-  const ctaHref = user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`
+  const ctaHref = user ? (orgSlug ? `/app/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`
   const demoDashboardUrl = "/demo/dashboard"
 
   return (

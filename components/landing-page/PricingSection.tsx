@@ -226,7 +226,7 @@ function PricingContent({
 
     const handleStartTrial = () => {
         if (!isAuthenticated) { router.push(signUpUrl); return; }
-        if (orgSlug) { router.push(`/${orgSlug}/dashboard`); return; }
+                if (orgSlug) { router.push(`/app/${orgSlug}/dashboard`); return; }
         router.push("/onboarding")
     }
 
