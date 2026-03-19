@@ -188,15 +188,9 @@ export default async function proxy(request: NextRequest) {
     return finalizeResponse(sessionResponse, NextResponse.redirect(loginUrl, 303))
   }
 
-  // Canonicalize generic dashboard URLs to app slug-scoped URLs.
-  if (user && slug && (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))) {
-    const canonicalPath = `/app/${slug}${pathname}`
-    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(canonicalPath, request.url), 303))
-  }
-
   // If a user is already authenticated, skip auth pages.
   if (user && isAuthRoute && !isAuthCallbackRoute) {
-    const dashboardPath = slug ? `/app/${slug}/dashboard` : "/app/dashboard"
+    const dashboardPath = "/dashboard"
     return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(dashboardPath, request.url), 303))
   }
 
