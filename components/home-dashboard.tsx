@@ -37,6 +37,7 @@ const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.Respo
 
 interface HomeDashboardProps {
     profile: Profile
+    orgRole?: string
     org: Organization
     settings: SystemSettings
     onboardingStats: {
