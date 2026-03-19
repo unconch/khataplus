@@ -85,8 +85,8 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const timeoutId = window.setTimeout(register, 0)
-    return () => window.clearTimeout(timeoutId)
+    const timeoutId = globalThis.setTimeout(register, 0)
+    return () => globalThis.clearTimeout(timeoutId)
   }, [])
 
   return (

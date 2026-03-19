@@ -24,16 +24,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Profile, SystemSettings, DailyReport, Organization, Sale } from "@/lib/types"
 import { resolveGreeting, resetGreetingEngine, type AppStateKey, type MotionProfile, type UserContextKey, type GreetingPeriod } from "@/lib/greeting-engine"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 const SearchDialog = dynamic(() => import("@/components/search-dialog").then((m) => m.SearchDialog), { ssr: false })
 const PwaInstallPrompt = dynamic(() => import("@/components/pwa-install-prompt").then((m) => m.PwaInstallPrompt), { ssr: false })
-const AreaChart = dynamic(() => import("recharts").then((m) => m.AreaChart), { ssr: false })
-const Area = dynamic(() => import("recharts").then((m) => m.Area), { ssr: false })
-const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false })
-const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false })
-const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), { ssr: false })
-const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false })
 
 interface HomeDashboardProps {
     profile: Profile
@@ -80,8 +74,8 @@ export function HomeDashboard({
             const idleId = window.requestIdleCallback(() => setEnableDeferredUI(true), { timeout: 1200 })
             return () => window.cancelIdleCallback(idleId)
         }
-        const timer = window.setTimeout(() => setEnableDeferredUI(true), 200)
-        return () => window.clearTimeout(timer)
+        const timer = globalThis.setTimeout(() => setEnableDeferredUI(true), 200)
+        return () => globalThis.clearTimeout(timer)
     }, [])
 
     useEffect(() => {
