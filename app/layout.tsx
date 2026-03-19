@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { AuthProvider } from "@/components/auth-provider"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -118,17 +117,17 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <MotionProvider>
             <PWAProvider>
-              <AuthProvider>
-                <SyncProvider>
-                  <Suspense fallback={null}>
-                    <ReferralTracker />
-                  </Suspense>
-                  <ScrollToTop />
+              <SyncProvider>
+                <Suspense fallback={null}>
+                  <ReferralTracker />
+                </Suspense>
+                <ScrollToTop />
+                <Suspense fallback={null}>
                   <SystemAnnouncement />
-                  <OfflineBanner />
-                  {children}
-                </SyncProvider>
-              </AuthProvider>
+                </Suspense>
+                <OfflineBanner />
+                {children}
+              </SyncProvider>
             </PWAProvider>
           </MotionProvider>
         </ThemeProvider>
