@@ -1,18 +1,34 @@
 import { getOrganization, getSystemSettings, getUserOrganizations } from "@/lib/data/organizations"
-import { getCurrentOrgId } from "@/lib/data/auth"
 import { getProfile } from "@/lib/data/profiles"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { SettingsForm } from "@/components/settings-form"
 import { Suspense } from "react"
-import { Loader2, Shield, User, Building2, Users, Settings2, Globe, Zap, Cpu } from "lucide-react"
+import { Loader2, Shield, User, Building2, Users, Zap, Cpu } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TeamManagement } from "@/components/team-management"
-import { SecuritySettings } from "@/components/security-settings"
+import dynamic from "next/dynamic"
 import { getUserSessions } from "@/lib/session-governance"
 import { cn } from "@/lib/utils"
+import { cookies } from "next/headers"
 import { BILLING_PLANS } from "@/lib/billing-plans"
-import { createClient } from "@/lib/supabase/server"
+
+const TeamManagement = dynamic(
+    () => import("@/components/team-management").then((m) => m.TeamManagement),
+    {
+        loading: () => (
+            <div className="h-32 w-full rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20 motion-safe:animate-pulse" />
+        ),
+    }
+)
+
+const SecuritySettings = dynamic(
+    () => import("@/components/security-settings").then((m) => m.SecuritySettings),
+    {
+        loading: () => (
+            <div className="h-32 w-full rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20 motion-safe:animate-pulse" />
+        ),
+    }
+)
 
 export default async function SettingsPage() {
     const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
@@ -32,7 +48,7 @@ export default async function SettingsPage() {
     }
 
     if (!orgId) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
         return null
     }
 
@@ -42,25 +58,9 @@ export default async function SettingsPage() {
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
             <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-amber-500/5 blur-[80px] rounded-full pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3 px-1">
-                        <div className="h-px w-8 bg-zinc-950 dark:bg-zinc-100 opacity-20" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-400">Governance</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-0.5 bg-zinc-950 dark:bg-zinc-100 rounded-full opacity-10" />
-                        <h1 className="text-4xl font-black tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-5xl animate-in fade-in slide-in-from-left-6 duration-700">
-                            Control <span className="text-zinc-400 font-light italic">Center</span>
-                        </h1>
-                    </div>
-                </div>
-
-            </div>
-
             <Suspense fallback={
-                <div className="h-[400px] w-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-950/20 rounded-2xl border border-dashed border-zinc-100 dark:border-zinc-800 animate-pulse">
-                    <Loader2 className="h-8 w-8 animate-spin text-zinc-200" />
+                <div className="h-[400px] w-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-950/20 rounded-2xl border border-dashed border-zinc-100 dark:border-zinc-800 motion-safe:animate-pulse">
+                    <Loader2 className="h-8 w-8 motion-safe:animate-spin text-zinc-200" />
                     <span className="mt-4 text-[9px] font-black uppercase tracking-widest text-zinc-300">Calibrating</span>
                 </div>
             }>
@@ -71,15 +71,12 @@ export default async function SettingsPage() {
 }
 
 async function SettingsContent({ orgId, userId }: { orgId: string, userId: string }) {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect("/auth/login")
-        return null
-    }
+    const cookieStore = await cookies()
+    const sessionJwt =
+        cookieStore.get("DS")?.value ||
+        cookieStore.get("__Secure-DS")?.value ||
+        ""
+    const currentSessionId = sessionJwt ? sessionJwt.slice(-24) : ""
 
     const [org, settings, profile, userOrgs, sessions] = await Promise.all([
         getOrganization(orgId),
@@ -89,16 +86,18 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
         getUserSessions(userId)
     ])
 
+    const mergedSessions = Array.from(new Set([...(currentSessionId ? [currentSessionId] : []), ...sessions]))
+
     const { isGuestMode } = await import("@/lib/data/auth")
     const isGuest = await isGuestMode()
 
     if (isGuest) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-zinc-50/50 dark:bg-zinc-950/20 space-y-6 animate-in fade-in zoom-in-95 duration-1000">
+            <div className="flex flex-col items-center justify-center p-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-zinc-50/50 dark:bg-zinc-950/20 space-y-6 animate-in fade-in zoom-in-95 duration-1000 md:animate-none md:duration-0 lg:animate-in lg:fade-in lg:zoom-in-95 lg:duration-1000">
                 <div className="relative">
-                    <div className="absolute inset-0 bg-amber-500 blur-xl opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-amber-500 blur-xl opacity-20 motion-safe:animate-pulse" />
                     <div className="relative w-16 h-16 rounded-2xl bg-zinc-950 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 shadow-xl">
-                        <Cpu size={28} className="animate-bounce" />
+                        <Cpu size={28} className="motion-safe:animate-bounce md:animate-none lg:motion-safe:animate-bounce" />
                     </div>
                 </div>
                 <div className="text-center space-y-2">
@@ -108,9 +107,9 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                     </p>
                 </div>
                 <div className="pt-2">
-                    <a href="/auth/sign-up" className="group flex items-center gap-3 px-8 py-3 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 dark:hover:bg-emerald-600 hover:text-white transition-all duration-500 shadow-lg">
+                    <a href="/auth/sign-up" className="group flex items-center gap-3 px-8 py-3 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 dark:hover:bg-emerald-600 hover:text-white transition-all duration-500 md:duration-0 lg:duration-500 shadow-lg">
                         Go Pro
-                        <Zap size={10} className="group-hover:animate-ping" />
+                        <Zap size={10} className="group-hover:motion-safe:animate-ping" />
                     </a>
                 </div>
             </div>
@@ -129,25 +128,27 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
     let invoiceCountThisYear = 0
     let invoiceTotalThisYear = 0
     let firstInvoiceAt: Date | null = null
-    try {
-        const { sql } = await import("@/lib/db")
-        const rows = await sql`
-            SELECT
-                COUNT(*)::int AS invoice_count,
-                COALESCE(SUM(amount), 0)::numeric AS invoice_total,
-                MIN(created_at) AS first_invoice_at
-            FROM platform_invoices
-            WHERE org_id = ${orgId}
-              AND status = 'paid'
-              AND created_at >= date_trunc('year', now())
-        `
-        invoiceCountThisYear = Number(rows?.[0]?.invoice_count || 0)
-        invoiceTotalThisYear = Number(rows?.[0]?.invoice_total || 0)
-        firstInvoiceAt = rows?.[0]?.first_invoice_at ? new Date(rows[0].first_invoice_at as string) : null
-    } catch {
-        invoiceCountThisYear = 0
-        invoiceTotalThisYear = 0
-        firstInvoiceAt = null
+    if (eligibleForAnnualNudge && isMonthlyCycle) {
+        try {
+            const { sql } = await import("@/lib/db")
+            const rows = await sql`
+                SELECT
+                    COUNT(*)::int AS invoice_count,
+                    COALESCE(SUM(amount), 0)::numeric AS invoice_total,
+                    MIN(created_at) AS first_invoice_at
+                FROM platform_invoices
+                WHERE org_id = ${orgId}
+                  AND status = 'paid'
+                  AND created_at >= date_trunc('year', now())
+            `
+            invoiceCountThisYear = Number(rows?.[0]?.invoice_count || 0)
+            invoiceTotalThisYear = Number(rows?.[0]?.invoice_total || 0)
+            firstInvoiceAt = rows?.[0]?.first_invoice_at ? new Date(rows[0].first_invoice_at as string) : null
+        } catch {
+            invoiceCountThisYear = 0
+            invoiceTotalThisYear = 0
+            firstInvoiceAt = null
+        }
     }
 
     const monthlyStartDate = firstInvoiceAt || new Date(org.updated_at || org.created_at)
@@ -173,12 +174,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
     const orgRole = membership?.role || "staff"
     const isAdmin = orgRole === "owner" || String(profile?.role) === "main admin"
 
-    if (orgRole === "staff") {
-        redirect("/dashboard")
-        return null
-    }
-
-    const tabStyles = "flex items-center gap-2 px-6 h-full rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100"
+    const tabStyles = "flex items-center gap-2 px-6 h-full rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:data-[state=active]:shadow-[0_10px_24px_rgba(0,0,0,0.45)] data-[state=active]:ring-1 data-[state=active]:ring-zinc-200/80 dark:data-[state=active]:ring-white/10 transition-all duration-300 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100"
 
     return (
         <Tabs defaultValue={showAnnualNudge ? "organization" : "profile"} className="w-full space-y-10">
@@ -207,7 +203,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
             </div>
 
             <div className="max-w-4xl mx-auto w-full px-4">
-                <TabsContent value="profile" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <TabsContent value="profile" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500 md:animate-none md:duration-0 lg:animate-in lg:fade-in lg:slide-in-from-bottom-4 lg:duration-500">
                     <SettingsCard
                         icon={<User size={18} />}
                         title="Personal Identity"
@@ -226,7 +222,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                     </SettingsCard>
                 </TabsContent>
 
-                <TabsContent value="organization" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <TabsContent value="organization" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500 md:animate-none md:duration-0 lg:animate-in lg:fade-in lg:slide-in-from-bottom-4 lg:duration-500">
                     <SettingsCard
                         icon={<Building2 size={18} />}
                         title="Organization"
@@ -245,7 +241,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                     </SettingsCard>
                 </TabsContent>
 
-                <TabsContent value="team" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <TabsContent value="team" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500 md:animate-none md:duration-0 lg:animate-in lg:fade-in lg:slide-in-from-bottom-4 lg:duration-500">
                     <SettingsCard
                         icon={<Users size={18} />}
                         title="Team Management"
@@ -256,7 +252,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                     </SettingsCard>
                 </TabsContent>
 
-                <TabsContent value="security" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <TabsContent value="security" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500 md:animate-none md:duration-0 lg:animate-in lg:fade-in lg:slide-in-from-bottom-4 lg:duration-500">
                     <SettingsCard
                         icon={<Shield size={18} />}
                         title="Vault & Governance"
@@ -267,7 +263,7 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             profile={profile}
                             isAdmin={isAdmin}
                             orgId={orgId}
-                            initialSessions={sessions}
+                            initialSessions={mergedSessions}
                             initialSettings={settings}
                         />
                     </SettingsCard>
@@ -292,7 +288,7 @@ function SettingsCard({ icon, title, description, children, color = "zinc" }: { 
                 <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
                 <div className="relative z-10 flex items-center gap-6">
-                    <div className={cn("p-3 rounded-xl text-white shadow-lg transition-transform duration-500 group-hover:scale-110", colors[color as keyof typeof colors])}>
+                    <div className={cn("p-3 rounded-xl text-white shadow-lg transition-transform duration-500 md:duration-0 lg:duration-500 group-hover:scale-110 md:group-hover:scale-100 lg:group-hover:scale-110", colors[color as keyof typeof colors])}>
                         {icon}
                     </div>
                     <div>

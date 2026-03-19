@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-    Menu, X, ArrowRight, LogOut, User
+    Menu, X, ArrowRight
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
@@ -15,23 +15,16 @@ interface NavbarProps {
     lightMode?: boolean
     orgSlug?: string | null
     isGuest?: boolean
-    userName?: string | null
-    orgName?: string | null
 }
 
-export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug, isGuest, userName, orgName }: NavbarProps) {
+export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [userMenuOpen, setUserMenuOpen] = useState(false)
     const scrolledRef = useRef(false)
     const rafRef = useRef<number | null>(null)
-    const userMenuRef = useRef<HTMLDivElement | null>(null)
     const { signInUrl, signUpUrl } = useMainAuthUrls()
 
     useEffect(() => {
-        // Issue 3 Fix: Only run scroll logic on desktop to save mobile CPU/battery
-        if (typeof window !== "undefined" && window.innerWidth < 768) return
-
         const updateScrolled = () => {
             const nextScrolled = window.scrollY > 50
             if (nextScrolled !== scrolledRef.current) {
@@ -71,62 +64,28 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
         }
     }, [mobileMenuOpen])
 
-    useEffect(() => {
-        if (!userMenuOpen) return
-        const onClick = (event: MouseEvent) => {
-            if (!userMenuRef.current) return
-            if (!userMenuRef.current.contains(event.target as Node)) {
-                setUserMenuOpen(false)
-            }
-        }
-        const onKey = (event: KeyboardEvent) => {
-            if (event.key === "Escape") setUserMenuOpen(false)
-        }
-        document.addEventListener("click", onClick)
-        document.addEventListener("keydown", onKey)
-        return () => {
-            document.removeEventListener("click", onClick)
-            document.removeEventListener("keydown", onKey)
-        }
-    }, [userMenuOpen])
-
     const isSolid = isLight || lightMode || scrolled || mobileMenuOpen
     const keepBlended = !(isLight || lightMode)
     const useSolidPalette = !keepBlended && isSolid
 
-    // Issue 1 & 2 Fix: Use props directly to avoid redundant state and network requests
-    const effectiveAuth = isAuthenticated
-    const effectiveOrgSlug = orgSlug
-    const displayName = userName || "User"
-    const displayOrg = orgName || "Workspace"
-
-    const primaryHref = effectiveAuth
-        ? (effectiveOrgSlug ? `/app/${effectiveOrgSlug}/dashboard` : "/dashboard")
+    const primaryHref = isAuthenticated
+        ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
         : signUpUrl
-    const primaryLabel = effectiveAuth
-        ? "Dashboard"
+    const primaryLabel = isAuthenticated
+        ? "Go to Dashboard"
         : "Start Free Trial"
-    const secondaryHref = effectiveAuth
-        ? (effectiveOrgSlug ? `/app/${effectiveOrgSlug}/settings/profile` : "/settings/profile")
+    const secondaryHref = isAuthenticated
+        ? (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
         : signInUrl
-    const secondaryLabel = effectiveAuth
+    const secondaryLabel = isAuthenticated
         ? "Settings"
         : "Sign In"
-
-    const initials = displayName
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase())
-        .join("") || "U"
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50">
             <div
                 className={cn(
-                    "transition-all duration-500",
-                    // Issue 4 Fix: Lighter blur on mobile for GPU efficiency
-                    "backdrop-blur-md md:backdrop-blur-xl",
+                    "transition-all duration-500 backdrop-blur-xl",
                     keepBlended
                         ? "bg-[linear-gradient(90deg,rgba(16,185,129,0.18)_0%,rgba(51,65,85,0.24)_58%,rgba(30,41,59,0.18)_100%)] border border-white/10"
                         : "bg-white/70 border-b border-white/30",
@@ -150,132 +109,28 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </nav>
 
                         <div className="hidden md:flex items-center gap-4">
-                            {effectiveAuth ? (
-                                <>
-                                    <Link
-                                        href={primaryHref}
-                                        className={cn(
-                                            "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                            useSolidPalette
-                                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                                : "bg-white text-slate-900 hover:bg-slate-100"
-                                        )}
-                                    >
-                                        {primaryLabel}
-                                    </Link>
-                                    <div className="relative" ref={userMenuRef}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setUserMenuOpen((prev) => !prev)}
-                                            className={cn(
-                                                "flex items-center gap-3 px-3 py-2 rounded-xl border transition-all",
-                                                useSolidPalette
-                                                    ? "border-slate-200/80 bg-white/60 text-slate-900 hover:bg-white"
-                                                    : "border-white/15 bg-white/10 text-white hover:bg-white/15"
-                                            )}
-                                            aria-haspopup="menu"
-                                            aria-expanded={userMenuOpen}
-                                        >
-                                            <span className={cn(
-                                                "h-9 w-9 rounded-lg flex items-center justify-center font-black text-[11px]",
-                                                useSolidPalette ? "bg-emerald-600 text-white" : "bg-white text-slate-900"
-                                            )}>
-                                                {initials}
-                                            </span>
-                                            <span className="flex flex-col leading-tight text-left">
-                                                <span className="text-[11px] font-black tracking-tight">{displayName}</span>
-                                                <span className={cn("text-[9px] font-bold uppercase tracking-widest", useSolidPalette ? "text-slate-500" : "text-white/60")}>
-                                                    {displayOrg}
-                                                </span>
-                                            </span>
-                                        </button>
-                                        {userMenuOpen && (
-                                            <div
-                                                role="menu"
-                                                className={cn(
-                                                    "absolute right-0 mt-3 min-w-[240px] rounded-2xl border shadow-2xl overflow-hidden",
-                                                    useSolidPalette
-                                                        ? "bg-white border-slate-200/80 text-slate-900"
-                                                        : "bg-[#131418] border-white/10 text-white"
-                                                )}
-                                            >
-                                                <div className="px-4 py-3">
-                                                    <div className={cn(
-                                                        "flex items-center gap-3 rounded-xl px-3 py-2",
-                                                        useSolidPalette ? "bg-slate-50" : "bg-white/5"
-                                                    )}>
-                                                        <span className={cn(
-                                                            "h-9 w-9 rounded-lg flex items-center justify-center font-black text-[11px]",
-                                                            useSolidPalette ? "bg-emerald-600 text-white" : "bg-white text-slate-900"
-                                                        )}>
-                                                            {initials}
-                                                        </span>
-                                                        <div className="flex flex-col leading-tight">
-                                                            <span className="text-[12px] font-black tracking-tight">{displayName}</span>
-                                                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", useSolidPalette ? "text-slate-500" : "text-white/60")}>
-                                                                {displayOrg}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className={cn("h-px", useSolidPalette ? "bg-slate-200/80" : "bg-white/10")} />
-
-                                                <Link
-                                                    href={secondaryHref}
-                                                    className={cn(
-                                                        "flex items-center gap-2 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors",
-                                                        useSolidPalette ? "hover:bg-slate-50" : "hover:bg-white/10"
-                                                    )}
-                                                    role="menuitem"
-                                                >
-                                                    <User className="h-4 w-4" />
-                                                    {secondaryLabel}
-                                                </Link>
-
-                                                <div className={cn("h-px", useSolidPalette ? "bg-slate-200/80" : "bg-white/10")} />
-
-                                                <Link
-                                                    href="/api/auth/logout"
-                                                    className={cn(
-                                                        "flex items-center gap-2 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-colors",
-                                                        useSolidPalette ? "hover:bg-slate-50 text-red-600" : "hover:bg-white/10 text-red-400"
-                                                    )}
-                                                    role="menuitem"
-                                                >
-                                                    <LogOut className="h-4 w-4" />
-                                                    Logout
-                                                </Link>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={secondaryHref}
-                                        className={cn(
-                                            "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                            useSolidPalette
-                                                ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
-                                                : "text-white/90 hover:text-white hover:bg-white/10"
-                                        )}
-                                    >
-                                        {secondaryLabel}
-                                    </Link>
-                                    <Link
-                                        href={primaryHref}
-                                        className={cn(
-                                            "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                            useSolidPalette
-                                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                                : "bg-white text-slate-900 hover:bg-slate-100"
-                                        )}
-                                    >
-                                        {primaryLabel}
-                                    </Link>
-                                </>
-                            )}
+                            <Link
+                                href={secondaryHref}
+                                className={cn(
+                                    "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    useSolidPalette
+                                        ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-white/90 hover:text-white hover:bg-white/10"
+                                )}
+                            >
+                                {secondaryLabel}
+                            </Link>
+                            <Link
+                                href={primaryHref}
+                                className={cn(
+                                    "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    useSolidPalette
+                                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                        : "bg-white text-slate-900 hover:bg-slate-100"
+                                )}
+                            >
+                                {primaryLabel}
+                            </Link>
                         </div>
 
                         <button
@@ -294,10 +149,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
             <div
                 className={cn(
                     "md:hidden transition-all duration-500 overflow-hidden border-b",
-                    // Issue 5 Fix: Use transform/opacity instead of max-height for GPU-accelerated animation
-                    mobileMenuOpen
-                        ? "translate-y-0 opacity-100 bg-white border-slate-200 pointer-events-auto h-auto visible"
-                        : "-translate-y-4 opacity-0 border-transparent pointer-events-none h-0 invisible"
+                    mobileMenuOpen ? "max-h-screen opacity-100 bg-white border-slate-200" : "max-h-0 opacity-0 border-transparent"
                 )}
             >
                 <div className="max-w-7xl mx-auto px-6 py-10 space-y-4">

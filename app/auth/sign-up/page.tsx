@@ -1,290 +1,180 @@
 "use client"
 
-import { useState } from "react"
-import { Logo } from "@/components/ui/logo"
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
+import { FormEvent, useMemo, useState } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import { sendOtpAction, verifyOtpAction } from "@/app/actions/auth"
-
-type Step = "name" | "email" | "otp"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Logo } from "@/components/ui/logo"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, ArrowRight, Loader2, Mail, Sparkles, UserRound } from "lucide-react"
 
 export default function SignUpPage() {
-  const [step, setStep] = useState<Step>("name")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const next = useMemo(() => {
+    const raw = searchParams.get("next")
+    if (!raw) return "/setup-organization"
+    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/setup-organization"
+    return raw
+  }, [searchParams])
+
+  const loginHref = `/auth/login${next ? `?next=${encodeURIComponent(next)}` : ""}`
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [otp, setOtp] = useState("")
+  const [code, setCode] = useState("")
+  const [phase, setPhase] = useState<"email" | "verify">("email")
+  const [maskedEmail, setMaskedEmail] = useState("")
+  const [verifyLoginId, setVerifyLoginId] = useState("")
+  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const benefits = [
-    "GST-compliant invoicing",
-    "Real-time inventory tracking",
-    "Works offline on any device",
-    "Khata (credit) management",
-  ]
-
-  // STEP 1 — Name
-  function handleName(e: React.FormEvent) {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return toast.error("Please enter your name")
-    setStep("email")
-  }
-
-  // STEP 2 — Email → send OTP
-  async function handleEmail(e: React.FormEvent) {
-    if (e && e.preventDefault) e.preventDefault()
-    if (!email.trim()) return toast.error("Please enter your email")
+    setError("")
     setLoading(true)
     try {
-      const result = await sendOtpAction(email, name)
-      if (result.error) throw new Error(result.error)
-      toast.success("Verification code sent!")
-      setStep("otp")
-    } catch (err: any) {
-      toast.error(err?.message || "Something went wrong")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // STEP 3 — Verify OTP
-  async function handleOtp(e: React.FormEvent) {
-    e.preventDefault()
-    if (otp.length < 6) return toast.error("Enter the 6-digit code")
-    setLoading(true)
-    try {
-      const result = await verifyOtpAction(email, otp)
-      if (result.error) throw new Error(result.error)
-
-      toast.success("Account created!")
-      
-      if (result.redirectUrl) {
-        window.location.assign(result.redirectUrl)
-      } else {
-        window.location.assign("/onboarding")
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email: phase === "verify" ? (verifyLoginId || email) : email,
+          code: phase === "verify" ? code : "",
+          next,
+        }),
+      })
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || "Registration failed")
+      if (data?.phase === "verify") {
+        setPhase("verify")
+        setMaskedEmail(data?.maskedEmail || email)
+        setVerifyLoginId(email.trim().toLowerCase())
+        return
       }
+      let target = data?.next || next || "/app/dashboard"
+      if (target === "/app/dashboard" || target.startsWith("/app/dashboard/")) {
+        let resolvedSlug = ""
+        try {
+          const ctxRes = await fetch("/api/auth/context", { cache: "no-store" })
+          const ctx = await ctxRes.json().catch(() => ({} as any))
+          if (ctx?.orgSlug) {
+            resolvedSlug = String(ctx.orgSlug).trim()
+          }
+        } catch {
+          // ignore and fallback
+        }
+        if (resolvedSlug) {
+          target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
+        }
+      }
+      router.replace(target)
+      router.refresh()
     } catch (err: any) {
-      toast.error(err?.message || "Invalid or expired code")
+      setError(err?.message || "Could not create account.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-svh w-full flex">
+    <div className="min-h-svh bg-[#0a1020] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(900px_600px_at_0%_0%,rgba(20,184,166,0.24),transparent),radial-gradient(900px_600px_at_100%_100%,rgba(99,102,241,0.24),transparent)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(10,16,32,0.97),rgba(17,24,39,0.95))]" />
 
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px]" />
+      <Link href="/" className="absolute left-5 top-5 z-20 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur">
+        <Logo size={24} className="text-teal-300" />
+        <div>
+          <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
+          <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-300">Create Account</p>
         </div>
-        <div className="relative z-10 flex flex-col w-full p-16 text-white">
-          <div className="mb-auto">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
-                <Logo size={32} className="text-white" />
-              </div>
-              <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
-            </Link>
-          </div>
-          <div className="space-y-12">
-            <div>
-              <h1 className="text-6xl xl:text-7xl font-black leading-[0.9] tracking-tighter mb-6">
-                Manage<br />
-                <span className="text-emerald-400">Smarter.</span>
-              </h1>
-              <p className="text-xl text-white/70 max-w-sm font-medium leading-relaxed">
-                India's most powerful business OS.
-              </p>
+      </Link>
+
+      <div className="relative z-10 min-h-svh grid lg:grid-cols-[540px_1fr]">
+        <section className="flex items-center justify-center p-4 sm:p-8">
+          <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.45)] p-6 sm:p-8">
+            <div className="mb-6">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-teal-300 font-black">Onboarding</p>
+              <h3 className="text-3xl font-black tracking-tight mt-1">Create your workspace</h3>
             </div>
-            <div className="grid grid-cols-1 gap-6">
-              {benefits.map((benefit) => (
-                <div key={benefit} className="flex items-center gap-4 group">
-                  <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:bg-emerald-500/40 group-hover:scale-110 transition-all duration-300 shadow-xl">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-400" />
-                  </div>
-                  <span className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">{benefit}</span>
+
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Full Name</label>
+                <div className="relative">
+                  <UserRound className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input value={name} onChange={(e) => setName(e.target.value)} className="pl-9 h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400" placeholder="Your name" required />
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-auto pt-12 border-t border-white/10">
-            <p className="text-sm text-white/40 font-medium">Copyright 2026 KhataPlus Online. All rights reserved.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950 relative overflow-hidden">
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-purple-600/10 blur-[130px] rounded-full" />
-          <div className="absolute bottom-1/4 right-1/4 w-[50%] h-[50%] bg-emerald-600/10 blur-[130px] rounded-full" />
-        </div>
-
-        <div className="absolute top-6 left-6 lg:hidden z-20">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={32} className="text-purple-600" />
-            <span className="font-bold text-xl text-zinc-900 dark:text-white">KhataPlus</span>
-          </Link>
-        </div>
-
-        <div className="w-full max-w-md space-y-8 relative z-10">
-
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 justify-center lg:justify-start">
-            {(["name", "email", "otp"] as Step[]).map((s, i) => (
-              <div key={s} className="flex items-center gap-2">
-                <div className={cn(
-                  "h-2 w-8 rounded-full transition-all duration-300",
-                  step === s ? "bg-purple-600 w-12" :
-                    (["name", "email", "otp"].indexOf(step) > i) ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-800"
-                )} />
               </div>
-            ))}
-          </div>
 
-          {/* STEP 1 — Name */}
-          {step === "name" && (
-            <div className="space-y-8">
-              <div className="space-y-2">
-                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                  Hey there! <span className="text-purple-600">👋</span>
-                </h2>
-                <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">
-                  What should we call you?
-                </p>
-              </div>
-              <form onSubmit={handleName} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/50 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all font-bold placeholder:text-zinc-400 text-zinc-900 dark:text-white"
-                    placeholder="Your full name"
-                  />
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Email</label>
+                <div className="relative">
+                  <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400" placeholder="you@shop.com" disabled={phase === "verify"} required />
                 </div>
-                <button
-                  type="submit"
-                  className="w-full py-5 rounded-2xl font-black text-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-95 hover:translate-y-[-2px] transition-all flex items-center justify-center gap-2 group"
-                >
-                  Continue <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* STEP 2 — Email */}
-          {step === "email" && (
-            <div className="space-y-8">
-              <div className="space-y-2">
-                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                  Hi, <span className="text-purple-600">{name.split(" ")[0]}!</span>
-                </h2>
-                <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">
-                  What's your email address?
-                </p>
               </div>
-              <form onSubmit={handleEmail} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/50 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all font-bold placeholder:text-zinc-400 text-zinc-900 dark:text-white"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={cn(
-                    "w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 group",
-                    loading
-                      ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed border-2 border-zinc-200 dark:border-zinc-800"
-                      : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-95 hover:translate-y-[-2px]"
-                  )}
-                >
-                  {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <>Send Code <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" /></>}
-                </button>
-                <button type="button" onClick={() => setStep("name")} className="w-full py-3 text-sm font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
-                  ← Change name
-                </button>
-              </form>
-            </div>
-          )}
 
-          {/* STEP 3 — OTP */}
-          {step === "otp" && (
-            <div className="space-y-8">
-              <div className="space-y-2">
-                <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                  Check your <span className="text-emerald-500">inbox</span>
-                </h2>
-                <p className="text-zinc-500 dark:text-zinc-400">
-                  We sent a 6-digit code to <span className="font-bold text-zinc-900 dark:text-white">{email}</span>
-                </p>
-              </div>
-              <form onSubmit={handleOtp} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Verification Code</label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    required
-                    autoFocus
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full text-center text-3xl tracking-[1.2em] font-black py-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-zinc-200 dark:placeholder:text-zinc-800 text-zinc-900 dark:text-white"
-                    placeholder="000000"
-                  />
+              {phase === "verify" && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Verification Code</label>
+                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400 tracking-[0.22em] font-black" placeholder="Enter 6-digit code" required />
+                  <p className="text-[11px] text-zinc-300">Code sent to <span className="font-black">{maskedEmail || email}</span></p>
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading || otp.length < 6}
-                  className={cn(
-                    "w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2",
-                    loading || otp.length < 6
-                      ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed"
-                      : "bg-emerald-600 text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-600/20"
-                  )}
-                >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Create Account"}
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleEmail({ preventDefault: () => { } } as any)}
-                  className="w-full py-3 text-sm font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
-                >
-                  {loading ? "Resending..." : "Resend code"}
-                </button>
-                <button type="button" onClick={() => setStep("email")} className="w-full py-3 text-sm font-bold text-purple-600 hover:text-purple-700 transition-colors">
-                  ← Change email
-                </button>
-              </form>
-            </div>
-          )}
+              )}
 
-          <div className="text-center">
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-purple-600 hover:text-purple-700 font-semibold inline-flex items-center gap-1 group">
-                Sign in <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </p>
+              {error && (
+                <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button type="submit" disabled={loading} className="w-full h-11 text-xs uppercase tracking-widest font-black bg-teal-500 hover:bg-teal-400 text-zinc-950">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Continue" : "Send Verification Code"} <ArrowRight className="h-4 w-4 ml-2" /></>}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-300">{phase === "verify" ? "Need to fix email?" : "Already have an account?"}</span>
+              {phase === "verify" ? (
+                <button type="button" className="text-teal-300 font-black uppercase tracking-widest hover:text-teal-200" onClick={() => { setPhase("email"); setCode(""); setError(""); setVerifyLoginId("") }}>
+                  Change Email
+                </button>
+              ) : (
+                <Link href={loginHref} className="text-teal-300 font-black uppercase tracking-widest hover:text-teal-200">Sign In</Link>
+              )}
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section className="hidden lg:flex flex-col justify-center px-12 xl:px-20">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-300 mb-6">Setup Journey</p>
+          <h2 className="text-6xl font-black leading-[0.88] tracking-[-0.03em]">
+            Start Fast.
+            <span className="block text-teal-300">Scale Smoothly.</span>
+          </h2>
+          <p className="mt-6 text-zinc-300 max-w-md font-medium">
+            Get verified in seconds and launch your organization with clean defaults for team, billing, and reports.
+          </p>
+          <div className="mt-10 space-y-4 max-w-lg">
+            <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-zinc-300 font-black">Step 1</p>
+              <p className="text-lg font-black mt-1">Verify identity by OTP</p>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-zinc-300 font-black">Step 2</p>
+              <p className="text-lg font-black mt-1">Create organization basics</p>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-zinc-300 font-black">Step 3</p>
+              <p className="text-lg font-black mt-1">Land on dashboard with slug routing</p>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )
 }
+

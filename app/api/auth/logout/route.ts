@@ -1,10 +1,55 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 
-export async function POST() {
-  const supabase = await createClient()
+function resolveReturnTo(request: Request) {
+  const url = new URL(request.url)
+  const returnTo = url.searchParams.get("returnTo") || "/auth/login"
 
-  await supabase.auth.signOut()
+  if (!returnTo.startsWith("/") || returnTo.startsWith("//")) {
+    return "/auth/login"
+  }
 
-  return NextResponse.json({ success: true })
+  return returnTo
 }
+
+async function handleLogout(request: Request) {
+  const returnTo = resolveReturnTo(request)
+  const url = new URL(request.url)
+
+  try {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+  } catch (error) {
+    console.warn("[AuthLogout] Supabase signOut failed, continuing with local cookie cleanup:", error)
+  }
+
+  const cookieStore = await cookies()
+
+  const response = NextResponse.redirect(new URL(returnTo, url.origin))
+  const stale = new Date(0)
+  const cookieNames = [
+    "biometric_verified",
+    "kp_auth_next",
+    "kp_org_slug",
+  ]
+
+  for (const name of cookieNames) {
+    response.cookies.set(name, "", {
+      expires: stale,
+      maxAge: 0,
+      path: "/",
+    })
+  }
+
+  return response
+}
+
+export async function GET(request: Request) {
+  return handleLogout(request)
+}
+
+export async function POST(request: Request) {
+  return handleLogout(request)
+}
+

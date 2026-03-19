@@ -485,44 +485,6 @@
     }
   }
 
-  /* Two-Layer Glow Hero Pattern */
-  .hero-glow {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.25), transparent 50%),
-      radial-gradient(circle at 70% 60%, rgba(99, 102, 241, 0.25), transparent 55%),
-      radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.18), transparent 60%);
-  }
-
-  .hero-glow-light {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 28% 35%, rgba(16, 185, 129, 0.12), transparent 55%),
-      radial-gradient(circle at 72% 55%, rgba(59, 130, 246, 0.12), transparent 60%),
-      radial-gradient(circle at 50% 78%, rgba(245, 158, 11, 0.08), transparent 65%);
-  }
-
-  @keyframes hero-gradient-shift {
-    0% {
-      transform: translateY(0px);
-    }
-
-    50% {
-      transform: translateY(-40px);
-    }
-
-    100% {
-      transform: translateY(0px);
-    }
-  }
-
-  .hero-gradient-motion {
-    animation: hero-gradient-shift 12s ease-in-out infinite;
-    will-change: transform;
-  }
-
   @keyframes spin-y {
     from {
       transform: rotateY(0deg);
@@ -646,7 +608,6 @@
   }
 
   @keyframes greet-soft-pulse {
-
     0%,
     100% {
       transform: scale(1);
@@ -799,7 +760,6 @@
   }
 
   html.static-motion .orbital-glow,
-  html.static-motion .hero-gradient-motion,
   html.static-motion .animate-gradient-x,
   html.static-motion .animate-spin,
   html.static-motion .animate-spin-y,
@@ -816,7 +776,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-
     .greet-anim-fade,
     .greet-anim-slide-up,
     .greet-anim-slide-left,
@@ -828,6 +787,85 @@
     }
   }
 
+  /* Low-end device safe degradations.
+     These rules intentionally do not affect default desktop rendering. */
+  @media (update: slow), (pointer: coarse), (hover: none) and (max-width: 1024px) {
+    .premium-glass,
+    .glass,
+    .glass-sharp,
+    .glass-panel,
+    .glass-sheet,
+    .glass-control {
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 6px 18px 0 rgba(31, 38, 135, 0.06);
+    }
+
+    .premium-glass-strong {
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.08);
+    }
+
+    .liquid-glass {
+      -webkit-backdrop-filter: blur(12px) saturate(125%);
+      backdrop-filter: blur(12px) saturate(125%);
+      box-shadow:
+        0 12px 24px -8px rgba(0, 0, 0, 0.45),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .liquid-glass::after {
+      filter: blur(20px);
+      animation-duration: 36s;
+    }
+
+    .orbital-blob {
+      filter: blur(32px);
+      animation-duration: 48s;
+    }
+
+    .hover-scale,
+    .hover-lift,
+    .hover-scale-lift {
+      transition-property: transform, opacity;
+      transition-duration: 140ms;
+    }
+
+    .active-scale,
+    button:active,
+    [role="button"]:active,
+    .active-press:active {
+      transition-property: transform;
+      transition-duration: 80ms;
+    }
+
+    /* Narrow broad transitions to avoid expensive "all" on low-end devices. */
+    [class*="transition-all"] {
+      transition-property: opacity, transform, color, background-color, border-color, box-shadow;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) and (update: slow), (prefers-reduced-motion: reduce) and (pointer: coarse), (prefers-reduced-motion: reduce) and (hover: none) and (max-width: 1024px) {
+    .premium-glass,
+    .glass,
+    .glass-sharp,
+    .glass-panel,
+    .glass-sheet,
+    .glass-control,
+    .premium-glass-strong,
+    .liquid-glass {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    .liquid-glass::after,
+    .orbital-blob {
+      filter: none !important;
+      animation: none !important;
+    }
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -835,113 +873,4 @@
     animation: none !important;
     transition: none !important;
   }
-}
-
-@media (prefers-reduced-motion: reduce),
-(update: slow) {
-
-  .orbital-glow,
-  .orbital-blob,
-  .hero-gradient-motion {
-    display: none !important;
-    animation: none !important;
-    filter: none !important;
-  }
-}
-
-/* 8️⃣ LANDING PAGE ANIMATIONS */
-@keyframes float-slow {
-
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(20px, -20px, 0);
-  }
-}
-
-@keyframes float-slower {
-
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(-25px, 25px, 0);
-  }
-}
-
-@keyframes float-medium {
-
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(15px, 15px, 0);
-  }
-}
-
-.animate-float-slow {
-  animation: float-slow 10s ease-in-out infinite;
-}
-
-.animate-float-slower {
-  animation: float-slower 12s ease-in-out infinite;
-}
-
-.animate-float-medium {
-  animation: float-medium 8s ease-in-out infinite;
-}
-
-.will-change-transform {
-  will-change: transform;
-}
-
-@keyframes ticker-scroll {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.ticker-scroll {
-  animation: ticker-scroll 30s linear infinite;
-  will-change: transform;
-}
-
-@keyframes float-slow {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-40px);
-  }
-}
-
-.float-slow {
-  animation: float-slow 12s ease-in-out infinite;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-
-  .ticker-scroll,
-  .float-slow {
-    animation: none !important;
-  }
-}
-
-.bg-gradient-radial {
-  background: radial-gradient(circle, var(--tw-gradient-from), transparent 70%);
 }

@@ -61,7 +61,7 @@ export default function RoadmapPage() {
             {/* Hero Section */}
             <section className="pt-32 pb-24 px-6 relative overflow-hidden">
                 {/* Background Glow */}
-                <div className="absolute inset-0 pointer-events-none hero-glow hero-gradient-motion" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
                 <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
                     <AdvancedScrollReveal variant="slideUp">

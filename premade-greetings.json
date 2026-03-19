@@ -1,0 +1,330 @@
+{
+  "count": 65,
+  "greetings": [
+    {
+      "id": "emr_mx_01",
+      "lang": "mix",
+      "text": "5am club? Either very dedicated or never slept. Respect either way. 🌅"
+    },
+    {
+      "id": "emr_de_01",
+      "lang": "desi",
+      "text": "Itni subah? Bhai sun, even the sun is still stretching."
+    },
+    {
+      "id": "emr_en_01",
+      "lang": "en",
+      "text": "Up before the birds. That's a different breed of hustler. 🔥"
+    },
+    {
+      "id": "emr_mx_02",
+      "lang": "mix",
+      "text": "5am mein kaam? Your future self is already proud."
+    },
+    {
+      "id": "emr_en_02",
+      "lang": "en",
+      "text": "World's still asleep and you're already here. Scary good. 🌄"
+    },
+    {
+      "id": "mor_mx_01",
+      "lang": "mix",
+      "text": "Uth gaye? Bold move. Most people hit snooze 4 times. ☕"
+    },
+    {
+      "id": "mor_de_01",
+      "lang": "desi",
+      "text": "Subah subah aa gaye — chai pee li ya seedha kaam pe lag gaye?"
+    },
+    {
+      "id": "mor_en_01",
+      "lang": "en",
+      "text": "8am and already here? The day doesn't stand a chance."
+    },
+    {
+      "id": "mor_en_02",
+      "lang": "en",
+      "text": "Morning hustle unlocked. Let's see what today's made of. 🚀"
+    },
+    {
+      "id": "mor_mx_02",
+      "lang": "mix",
+      "text": "Fresh morning, fresh tasks. One chai and we're ready. ☕"
+    },
+    {
+      "id": "mdm_en_01",
+      "lang": "en",
+      "text": "Peak productivity hours — don't waste them on scrolling. 👀"
+    },
+    {
+      "id": "mdm_en_02",
+      "lang": "en",
+      "text": "10am: the sweet spot between fresh and focused. Let's go."
+    },
+    {
+      "id": "mdm_mx_01",
+      "lang": "mix",
+      "text": "Subah ho gayi bhai, to-do list is already judging you. 😅"
+    },
+    {
+      "id": "mdm_en_03",
+      "lang": "en",
+      "text": "Morning meeting survived? Great. Now the real work begins."
+    },
+    {
+      "id": "mdm_mx_02",
+      "lang": "mix",
+      "text": "Brain is warm, chai is ready, excuses are not allowed. 🔥"
+    },
+    {
+      "id": "prl_en_01",
+      "lang": "en",
+      "text": "Almost lunch but not yet — this hour is pure gold. Use it."
+    },
+    {
+      "id": "prl_en_02",
+      "lang": "en",
+      "text": "11am: too late to start slow, too early to think about food. Focus. 😄"
+    },
+    {
+      "id": "prl_en_03",
+      "lang": "en",
+      "text": "The last stretch before lunch break. Make it count. 💪"
+    },
+    {
+      "id": "prl_mx_01",
+      "lang": "mix",
+      "text": "Ek ghante mein lunch — abhi wala time serious hai. 👀"
+    },
+    {
+      "id": "prl_en_04",
+      "lang": "en",
+      "text": "Pre-lunch productivity hits different. You've got this."
+    },
+    {
+      "id": "lun_en_01",
+      "lang": "en",
+      "text": "Lunch time! Eat well, come back stronger. 🍛"
+    },
+    {
+      "id": "lun_de_01",
+      "lang": "desi",
+      "text": "Khaana khao, 5 minute rest karo, phir wapas aa jao. Deal?"
+    },
+    {
+      "id": "lun_en_02",
+      "lang": "en",
+      "text": "Lunch break is sacred. We'll be here when you're back. 😌"
+    },
+    {
+      "id": "lun_mx_01",
+      "lang": "mix",
+      "text": "Dopahar ka khana ho gaya? Now refuel and reload. 💪"
+    },
+    {
+      "id": "lun_en_03",
+      "lang": "en",
+      "text": "Food first, tasks second. That's just science. 🍽️"
+    },
+    {
+      "id": "psl_mx_01",
+      "lang": "mix",
+      "text": "Post-lunch nap toh nahi le liya? 😏"
+    },
+    {
+      "id": "psl_en_01",
+      "lang": "en",
+      "text": "The post-lunch slump is real — don't let it win today."
+    },
+    {
+      "id": "psl_de_01",
+      "lang": "desi",
+      "text": "Khana ho gaya, ab wapas kaam pe. No excuses. 💪"
+    },
+    {
+      "id": "psl_en_02",
+      "lang": "en",
+      "text": "2pm energy check: still alive? Good. Tasks are waiting."
+    },
+    {
+      "id": "psl_mx_02",
+      "lang": "mix",
+      "text": "Food coma ya focus — you decide. Choose wisely. 😄"
+    },
+    {
+      "id": "aft_en_01",
+      "lang": "en",
+      "text": "3pm slump aa gaya hai — don't let it win."
+    },
+    {
+      "id": "aft_mx_01",
+      "lang": "mix",
+      "text": "Chai break #3 of the day? No judgement here. ☕"
+    },
+    {
+      "id": "aft_en_02",
+      "lang": "en",
+      "text": "Afternoon check-in: you're doing better than you think."
+    },
+    {
+      "id": "aft_de_01",
+      "lang": "desi",
+      "text": "Aadha din gaya, aadha bacha hai — make it count."
+    },
+    {
+      "id": "aft_en_03",
+      "lang": "en",
+      "text": "4pm: too early to wind down, too late to start something big. Perfect for clearing the backlog."
+    },
+    {
+      "id": "eev_en_01",
+      "lang": "en",
+      "text": "5pm — officially acceptable to think about wrapping up. Not yet though. 😏"
+    },
+    {
+      "id": "eev_en_02",
+      "lang": "en",
+      "text": "Golden hour for finishing what the morning promised."
+    },
+    {
+      "id": "eev_de_01",
+      "lang": "desi",
+      "text": "Sham shuru ho gayi. One final push and the day is yours."
+    },
+    {
+      "id": "eev_en_03",
+      "lang": "en",
+      "text": "5 o'clock and still at it? You're doing more than most. 💪"
+    },
+    {
+      "id": "eev_en_04",
+      "lang": "en",
+      "text": "Almost there. Don't stop now when the finish line is right here."
+    },
+    {
+      "id": "eve_de_01",
+      "lang": "desi",
+      "text": "Sham ho gayi! You survived another day. 🎉"
+    },
+    {
+      "id": "eve_mx_01",
+      "lang": "mix",
+      "text": "Sham ki chai aur pending tasks — name a more iconic duo. ☕"
+    },
+    {
+      "id": "eve_de_02",
+      "lang": "desi",
+      "text": "Din bhar ka kaam — ab thoda relax bhi banta hai."
+    },
+    {
+      "id": "eve_mx_02",
+      "lang": "mix",
+      "text": "Evening check-in: how many tasks did you actually finish? Be honest. 😅"
+    },
+    {
+      "id": "eve_en_01",
+      "lang": "en",
+      "text": "7pm and still here? That's commitment. Wrap up strong. 🔥"
+    },
+    {
+      "id": "lev_mx_01",
+      "lang": "mix",
+      "text": "Dinner ho gaya? Good. One last look before you close for the night."
+    },
+    {
+      "id": "lev_en_01",
+      "lang": "en",
+      "text": "9pm — wrapping up or just getting started? Either way, we're here."
+    },
+    {
+      "id": "lev_de_01",
+      "lang": "desi",
+      "text": "Raat shuru ho rahi hai. Aaj ka hisaab kitaab karte hain. 📋"
+    },
+    {
+      "id": "lev_en_02",
+      "lang": "en",
+      "text": "The day's almost done. Quick review and then rest. You've earned it."
+    },
+    {
+      "id": "lev_en_03",
+      "lang": "en",
+      "text": "Last call for tasks before tonight's shutdown. 🌙"
+    },
+    {
+      "id": "ent_en_01",
+      "lang": "en",
+      "text": "10pm club — not early, not too late. Just dedicated. 🌙"
+    },
+    {
+      "id": "ent_de_01",
+      "lang": "desi",
+      "text": "Raat ke das baj gaye. Thoda aur ya wrap up?"
+    },
+    {
+      "id": "ent_en_02",
+      "lang": "en",
+      "text": "Night shift mode on. The focused ones do their best work now."
+    },
+    {
+      "id": "ent_de_02",
+      "lang": "desi",
+      "text": "11pm and still at it? Main toh impress ho gaya. 👏"
+    },
+    {
+      "id": "ent_en_03",
+      "lang": "en",
+      "text": "Late night, clear mind. Let's finish what we started."
+    },
+    {
+      "id": "mid_mx_01",
+      "lang": "mix",
+      "text": "Aadhi raat ko? You're either very behind or very ahead. Respect. 🌙"
+    },
+    {
+      "id": "mid_en_01",
+      "lang": "en",
+      "text": "Midnight grind is a whole different energy. Use it wisely."
+    },
+    {
+      "id": "mid_en_02",
+      "lang": "en",
+      "text": "12am — technically a new day. Fresh start right now if you want."
+    },
+    {
+      "id": "mid_en_03",
+      "lang": "en",
+      "text": "The world is fully asleep. The work is fully yours. 🌙"
+    },
+    {
+      "id": "mid_mx_02",
+      "lang": "mix",
+      "text": "Midnight oil burning bright. Don't forget to rest after. 💪"
+    },
+    {
+      "id": "lnt_de_01",
+      "lang": "desi",
+      "text": "Bhai so jao. Seriously. The tasks will be here tomorrow. 😅"
+    },
+    {
+      "id": "lnt_mx_01",
+      "lang": "mix",
+      "text": "3am? Either a legend or a deadline. Either way, let's finish fast."
+    },
+    {
+      "id": "lnt_en_01",
+      "lang": "en",
+      "text": "Itni raat ko kaam? Your dedication is either inspiring or concerning. Both. 🌙"
+    },
+    {
+      "id": "lnt_mx_02",
+      "lang": "mix",
+      "text": "Almost morning. Might as well call it an early start. 😄"
+    },
+    {
+      "id": "lnt_en_02",
+      "lang": "en",
+      "text": "Last lap of the night. Close it out and get some rest. You've earned it. 🌅"
+    }
+  ]
+}

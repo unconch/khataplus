@@ -7,6 +7,16 @@ import { cache } from "react";
 import { createAuditLog } from "./audit";
 import { authorize, audit } from "../security";
 
+const VALID_PROFILE_ROLES = new Set(["main admin", "owner", "staff"]);
+
+function normalizeProfileRole(role?: string | null): "main admin" | "owner" | "staff" {
+    const value = String(role || "").trim().toLowerCase();
+    if (value === "main admin") return "main admin";
+    if (value === "owner" || value === "admin") return "owner";
+    if (value === "staff" || value === "manager" || value === "user") return "staff";
+    return "staff";
+}
+
 async function syncToAuth(_userId: string, _data: { name?: string | null, phone?: string | null, role?: string }): Promise<boolean> {
     // Supabase Auth is the source of truth for authentication; profile metadata stays in Postgres.
     return true;
@@ -31,11 +41,12 @@ export async function getProfiles() {
 
 
 export const upsertProfile = async (profile: Profile): Promise<Profile> => {
+    const normalizedRole = normalizeProfileRole(profile.role);
     let result;
     try {
         result = await sql`
             INSERT INTO profiles(id, email, name, role, biometric_required, phone)
-            VALUES(${profile.id}, ${profile.email}, ${profile.name || ""}, ${profile.role}, ${profile.biometric_required || false}, ${profile.phone || null})
+            VALUES(${profile.id}, ${profile.email}, ${profile.name || ""}, ${normalizedRole}, ${profile.biometric_required || false}, ${profile.phone || null})
             ON CONFLICT(id) DO UPDATE SET
                 email = EXCLUDED.email,
                 name = EXCLUDED.name,
@@ -48,7 +59,7 @@ export const upsertProfile = async (profile: Profile): Promise<Profile> => {
         if (err.message?.includes('column') && err.message?.includes('phone')) {
             result = await sql`
                 INSERT INTO profiles(id, email, name, role, biometric_required)
-                VALUES(${profile.id}, ${profile.email}, ${profile.name || ""}, ${profile.role}, ${profile.biometric_required || false})
+                VALUES(${profile.id}, ${profile.email}, ${profile.name || ""}, ${normalizedRole}, ${profile.biometric_required || false})
                 ON CONFLICT(id) DO UPDATE SET
                     email = EXCLUDED.email,
                     name = EXCLUDED.name,
@@ -125,11 +136,40 @@ export async function updateProfileBiometricStatus(id: string, required: boolean
 
 export async function updateUserRole(userId: string, role: string, orgId?: string): Promise<void> {
     await authorize("Update User Role", "admin", orgId);
-    await sql`UPDATE profiles SET role = ${role}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
-    await audit("Updated User Role", "profile", userId, { role }, orgId);
+    const normalizedRole = normalizeProfileRole(role);
+    await sql`UPDATE profiles SET role = ${normalizedRole}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
+    await audit("Updated User Role", "profile", userId, { role: normalizedRole }, orgId);
 
     // Reliable Auth Sync
-    await syncToAuth(userId, { role });
+    await syncToAuth(userId, { role: normalizedRole });
+}
+
+export async function approveUser(userId: string, adminId: string): Promise<void> {
+    await authorize("Approve User", "admin");
+    const target = await getProfile(userId);
+    await sql`UPDATE profiles SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
+    await createAuditLog({
+        user_id: adminId,
+        action: 'Approve User',
+        entity_type: 'profile',
+        entity_id: userId,
+        details: { target_email: target?.email },
+        org_id: 'system'
+    });
+}
+
+export async function disableUser(userId: string, adminId: string): Promise<void> {
+    await authorize("Disable User", "admin");
+    const target = await getProfile(userId);
+    await sql`UPDATE profiles SET status = 'disabled', updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
+    await createAuditLog({
+        user_id: adminId,
+        action: 'Disable User',
+        entity_type: 'profile',
+        entity_id: userId,
+        details: { target_email: target?.email },
+        org_id: 'system'
+    });
 }
 
 /**
@@ -279,16 +319,18 @@ export async function ensureProfile(userId: string, email: string, name?: string
             const tempEmail = `temp_${Date.now()}_${p.email}`;
             console.log(`[ensureProfile] Creating new profile record with temp email...`);
             try {
+                const sourceRole = normalizeProfileRole(p.role);
                 await sql`
                     INSERT INTO profiles (id, email, name, phone, role, biometric_required, created_at, updated_at)
-                    VALUES (${userId}, ${tempEmail}, ${name || p.name}, ${phone || p.phone}, ${p.role}, ${p.biometric_required}, ${p.created_at}, CURRENT_TIMESTAMP) 
+                    VALUES (${userId}, ${tempEmail}, ${name || p.name}, ${phone || p.phone}, ${sourceRole}, ${p.biometric_required}, ${p.created_at}, CURRENT_TIMESTAMP) 
                     ON CONFLICT (id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
                 `;
             } catch (colErr: any) {
                 if (colErr.message?.includes('column') && colErr.message?.includes('phone')) {
+                    const sourceRole = normalizeProfileRole(p.role);
                     await sql`
                         INSERT INTO profiles (id, email, name, role, biometric_required, created_at, updated_at)
-                        VALUES (${userId}, ${tempEmail}, ${name || p.name}, ${p.role}, ${p.biometric_required}, ${p.created_at}, CURRENT_TIMESTAMP)
+                        VALUES (${userId}, ${tempEmail}, ${name || p.name}, ${sourceRole}, ${p.biometric_required}, ${p.created_at}, CURRENT_TIMESTAMP)
                         ON CONFLICT (id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
                     `;
                 } else throw colErr;
@@ -324,7 +366,7 @@ export async function ensureProfile(userId: string, email: string, name?: string
             await sql`UPDATE public.profiles SET email = ${email} WHERE id = ${userId}`;
 
             // Sync
-            await syncToAuth(userId, { name: name || p.name, phone: phone || p.phone, role: p.role });
+            await syncToAuth(userId, { name: name || p.name, phone: phone || p.phone, role: normalizeProfileRole(p.role) });
 
             const updated = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
             const pUpdated = updated[0] as any;
@@ -343,18 +385,19 @@ export async function ensureProfile(userId: string, email: string, name?: string
     console.log(`[ensureProfile] Creating BRAND NEW profile for ${email}`);
     try {
         const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const defaultRole = normalizeProfileRole("staff");
         let result;
         try {
             result = await sql`
-                INSERT INTO profiles (id, email, name, phone, role, biometric_required, referral_code) 
-                VALUES (${userId}, ${email}, ${name || ""}, ${phone || null}, 'staff', false, ${referralCode})
+                INSERT INTO profiles (id, email, name, phone, role, status, biometric_required, referral_code) 
+                VALUES (${userId}, ${email}, ${name || ""}, ${phone || null}, ${defaultRole}, 'pending', false, ${referralCode})
                 RETURNING *
             `;
         } catch (colErr: any) {
             if (colErr.message?.includes('column')) {
                 result = await sql`
-                    INSERT INTO profiles (id, email, name, role, biometric_required)
-                    VALUES (${userId}, ${email}, ${name || ""}, 'staff', false)
+                    INSERT INTO profiles (id, email, name, role, status, biometric_required)
+                    VALUES (${userId}, ${email}, ${name || ""}, ${defaultRole}, 'pending', false)
                     RETURNING *
                 `;
             } else throw colErr;
@@ -366,7 +409,7 @@ export async function ensureProfile(userId: string, email: string, name?: string
             });
         }
 
-        await syncToAuth(userId, { name: name || undefined, phone: phone || undefined, role: 'staff' });
+        await syncToAuth(userId, { name: name || undefined, phone: phone || undefined, role: defaultRole });
 
         const p = result[0] as any;
         return {
@@ -376,6 +419,35 @@ export async function ensureProfile(userId: string, email: string, name?: string
         } as Profile;
     } catch (createErr: any) {
         console.error(`[ensureProfile] Failed to create brand new profile:`, createErr);
+        if (createErr?.code === "23514" || String(createErr?.message || "").includes("profiles_role_check")) {
+            const fallback = await sql`
+                INSERT INTO profiles (id, email, name, role, biometric_required)
+                VALUES (${userId}, ${email}, ${name || ""}, 'staff', false)
+                ON CONFLICT (id) DO UPDATE SET
+                    email = EXCLUDED.email,
+                    name = EXCLUDED.name,
+                    role = 'staff',
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            `;
+            const p = fallback[0] as any;
+            return {
+                ...p,
+                created_at: p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
+                updated_at: p.updated_at instanceof Date ? p.updated_at.toISOString() : String(p.updated_at),
+            } as Profile;
+        }
+        if (createErr?.code === "23505") {
+            const existing = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
+            if (existing[0]) {
+                const p = existing[0] as any;
+                return {
+                    ...p,
+                    created_at: p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
+                    updated_at: p.updated_at instanceof Date ? p.updated_at.toISOString() : String(p.updated_at),
+                } as Profile;
+            }
+        }
         throw new Error(`Profile creation failed: ${createErr.message}`);
     }
 }

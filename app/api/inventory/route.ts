@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getInventory } from "@/lib/data/inventory";
 import { updateInventoryStock } from "@/lib/data/inventory";
 import { archiveInventoryItem } from "@/lib/data/inventory";
-import { getSession } from "@/lib/session";
-import { getOrgContext } from "@/lib/server/org-context";
-import { requireRole } from "@/lib/server/permissions";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -51,18 +48,6 @@ export async function PATCH(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session?.userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-        try {
-            const { role } = await getOrgContext();
-            requireRole(role, ["owner", "admin", "manager"]);
-        } catch (err) {
-            if (err instanceof Response) return err;
-            throw err;
-        }
-
         const body = await req.json();
         const id = typeof body?.id === "string" ? body.id : "";
         const orgId = typeof body?.orgId === "string" ? body.orgId : "";

@@ -16,7 +16,7 @@ export default async function ReportsPage() {
     const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
 
     if (!orgId) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
     }
 
     try {

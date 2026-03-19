@@ -16,7 +16,6 @@ export default async function SolutionsPage() {
   }
 
   let orgSlug: string | null = null
-  const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
   if (user && !user.isGuest) {
     try {
       const { getUserOrganizations } = await import("@/lib/data/organizations")
@@ -42,7 +41,8 @@ export default async function SolutionsPage() {
         <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-[length:32px_32px]" />
 
         {/* Ambient Vibrant Gradients (Sarvam style) */}
-        <div className="absolute inset-0 pointer-events-none hero-glow-light hero-gradient-motion" />
+        <div className="absolute top-[-20%] left-[20%] w-[60vw] h-[60vw] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.06)_0%,transparent_60%)] blur-[100px] rounded-full point-events-none" />
+        <div className="absolute top-[20%] right-[-20%] w-[50vw] h-[50vw] bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05)_0%,transparent_60%)] blur-[100px] rounded-full point-events-none" />
 
 
         <div className="container mx-auto px-6 relative z-10">
@@ -65,7 +65,7 @@ export default async function SolutionsPage() {
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                href={user ? (orgSlug ? `/app/${orgSlug}/dashboard` : "/dashboard") : `${mainOrigin}/auth/sign-up`}
+                    href={user ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : "/auth/sign-up"}
                     className="inline-flex items-center justify-center gap-3 rounded-2xl bg-zinc-950 px-10 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:bg-zinc-900 hover:-translate-y-1 active:translate-y-0 group"
                   >
                     Get Started Free

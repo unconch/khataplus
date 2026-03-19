@@ -14,9 +14,9 @@ export async function AuthGuard({ children, requireAdmin = false }: AuthGuardPro
     return <>{children}</>
   }
 
-  const { getSession } = await import("@/lib/session")
-  const session = await getSession()
-  const userId = session?.userId
+  const { getCurrentUser } = await import("@/lib/data/auth")
+  const currentUser = await getCurrentUser()
+  const userId = currentUser?.userId
 
   if (!userId) {
     redirect("/auth/login")

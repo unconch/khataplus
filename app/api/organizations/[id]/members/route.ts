@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { createInvite, getOrganizationMembers, updateMemberRole, removeMember, getOrganization } from "@/lib/data/organizations"
-import { getOrgContext } from "@/lib/server/org-context"
-import { requireRole } from "@/lib/server/permissions"
 
 const normalizeOrigin = (value?: string | null): string | null => {
     if (!value) return null
@@ -63,13 +61,6 @@ export async function GET(
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
-        try {
-            const { role } = await getOrgContext()
-            requireRole(role, ["owner", "admin"])
-        } catch (err) {
-            if (err instanceof Response) return err
-            throw err
-        }
 
         const { id: orgId } = await params
         const members = await getOrganizationMembers(orgId)
@@ -91,13 +82,6 @@ export async function POST(
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
-        try {
-            const { role } = await getOrgContext()
-            requireRole(role, ["owner", "admin"])
-        } catch (err) {
-            if (err instanceof Response) return err
-            throw err
-        }
 
         const { id: orgId } = await params
         const { email, role } = await request.json().catch(() => ({}))
@@ -107,7 +91,7 @@ export async function POST(
 
         // Generate invite link
         const origin = resolvePublicOrigin(request)
-        const inviteLink = `${origin}/auth/invite-sign-up?invite=${invite.token}`
+        const inviteLink = `${origin}/auth/sign-up?invite=${invite.token}`
 
         return NextResponse.json({
             ...invite,
@@ -131,13 +115,6 @@ export async function PATCH(
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-        try {
-            const { role } = await getOrgContext()
-            requireRole(role, ["owner", "admin"])
-        } catch (err) {
-            if (err instanceof Response) return err
-            throw err
         }
 
         const { id: orgId } = await params

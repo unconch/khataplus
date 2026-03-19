@@ -15,8 +15,6 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Logo } from "@/components/ui/logo"
-import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
-import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 interface PSEOLandingPageProps {
     category: string
@@ -24,8 +22,6 @@ interface PSEOLandingPageProps {
 }
 
 export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
-    const demoDashboardUrl = useDemoDashboardUrl()
-    const { signUpUrl } = useMainAuthUrls()
     const formattedCategory = (category || "Retail").split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
     const formattedCity = (city || "India").split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
 
@@ -38,7 +34,7 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                         <Logo size={32} />
                         <span className="font-black italic tracking-tighter text-xl">KHATAPLUS</span>
                     </Link>
-                    <Link href={signUpUrl}>
+                    <Link href="/auth/sign-up">
                         <Button className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest px-6 h-11">
                             Start Free Trial
                         </Button>
@@ -73,12 +69,12 @@ export function PSEOLandingPage({ category, city }: PSEOLandingPageProps) {
                         <div
                             className="flex flex-col sm:flex-row gap-4 pt-4 animate-in fade-in slide-up duration-700 delay-200"
                         >
-                            <Link href={signUpUrl} className="flex-1">
+                            <Link href="/auth/sign-up" className="flex-1">
                                 <Button className="w-full h-16 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3">
                                     Get Started for Free <ArrowRight size={18} />
                                 </Button>
                             </Link>
-                            <Link href={demoDashboardUrl} className="flex-1">
+                            <Link href="/demo" className="flex-1">
                                 <Button variant="outline" className="w-full h-16 rounded-[2rem] border-2 border-zinc-100 dark:border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3">
                                     View Live Demo
                                 </Button>

@@ -21,20 +21,9 @@ export async function GET(request: NextRequest) {
 
     const { month, orgId } = validation.data;
 
-    const { getIP, rateLimit, RateLimitError } = await import('@/lib/rate-limit');
+    const { getIP, rateLimit } = await import('@/lib/rate-limit');
     const ip = getIP(request.headers);
-    try {
-        await rateLimit(`gstr-download-${ip}`, 5, 60000); // 5 downloads per minute
-    } catch (error: any) {
-        if (error instanceof RateLimitError || error?.status === 429) {
-            const retryAfter = Math.ceil((error?.retryAfterMs || 0) / 1000)
-            return NextResponse.json(
-                { error: "Rate limit exceeded" },
-                { status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined }
-            )
-        }
-        throw error
-    }
+    await rateLimit(`gstr-download-${ip}`, 5, 60000); // 5 downloads per minute
 
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

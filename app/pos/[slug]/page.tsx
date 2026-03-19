@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import type { InventoryItem } from "@/lib/types"
-import { PosTerminal } from "@/components/pos-terminal"
+import { PosTerminal } from "@/components/pos/pos-terminal"
 
 export const dynamic = "force-dynamic"
 
@@ -32,7 +32,7 @@ async function DedicatedPosContent({ slug }: { slug: string }) {
 
     const user = await getCurrentUser()
     if (!user) {
-        redirect(`/auth/login?next=${encodeURIComponent(`/${slug}/pos`)}`)
+        redirect(`/auth/login?next=${encodeURIComponent(`/pos/${slug}`)}`)
     }
 
     const org = await getOrganizationBySlug(slug)
@@ -44,7 +44,7 @@ async function DedicatedPosContent({ slug }: { slug: string }) {
     const membership = orgs.find((row: any) => row?.organization?.id === org.id || row?.org_id === org.id)
 
     if (!membership) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
     }
 
     const settings = await getSystemSettings(org.id)
@@ -70,4 +70,3 @@ async function DedicatedPosContent({ slug }: { slug: string }) {
         </div>
     )
 }
-

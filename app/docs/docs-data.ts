@@ -79,7 +79,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         lastUpdated: "February 28, 2026",
         icon: Rocket,
         quickActions: [
-            { label: "Open Setup", href: "/onboarding" },
+            { label: "Open Setup", href: "/setup-organization" },
             { label: "Open Dashboard", href: "/dashboard" },
         ],
         whenToUse: [

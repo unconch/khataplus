@@ -1,15 +1,37 @@
 import { Navbar, SiteFooter } from "@/components/landing-page/index"
+import { getCurrentUser } from "@/lib/data/auth"
 import { DocsHomeClient } from "./docs-home-client"
 import { Copy, ChevronDown } from "lucide-react"
 
-export default function DocsPage() {
+export default async function DocsPage() {
+    let user: Awaited<ReturnType<typeof getCurrentUser>> = null
+
+    try {
+        user = await getCurrentUser()
+    } catch {
+        user = null
+    }
+
+    let orgSlug: string | null = null
+    if (user && !user.isGuest) {
+        try {
+            const { getUserOrganizations } = await import("@/lib/data/organizations")
+            const orgs = await getUserOrganizations(user.userId)
+            orgSlug = orgs[0]?.organization?.slug || null
+        } catch {
+            orgSlug = null
+        }
+    }
+
+    const isAuthenticated = !!user
+
     return (
         <main className="min-h-screen bg-[#1c1c1c] text-zinc-300 selection:bg-zinc-700 selection:text-white pb-32">
             <Navbar
-                isAuthenticated={false}
+                isAuthenticated={isAuthenticated}
                 lightMode={false}
-                orgSlug={null}
-                isGuest={false}
+                orgSlug={orgSlug}
+                isGuest={user?.isGuest}
             />
 
             {/* Adjusting padding to account for fixed navbar, removing bottom borders */}

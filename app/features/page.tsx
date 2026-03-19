@@ -1,9 +1,20 @@
+"use client"
+
 import Link from "next/link"
-import { ArrowRight, BarChart3, CloudOff, CreditCard, FileText, Shield, Store, Users, Truck, Wallet, ReceiptText, ScanLine, Upload, FileSpreadsheet, QrCode, UserCheck, Search } from "lucide-react"
+import Image from "next/image"
+import { useEffect, useState } from "react"
+import { ArrowRight, BarChart3, CloudOff, CreditCard, FileText, Shield, Store, Users, Truck, Wallet, ReceiptText, ScanLine, Upload, FileSpreadsheet, QrCode, UserCheck, Search, WifiOff } from "lucide-react"
 import { Navbar } from "@/components/landing-page/Navbar"
 import { SiteFooter } from "@/components/landing-page/SiteFooter"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { cn } from "@/lib/utils"
+import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
+
+type AuthContext = {
+  isAuthenticated: boolean
+  isGuest: boolean
+  orgSlug: string | null
+}
 
 const topFeatures = [
   {
@@ -132,22 +143,50 @@ const featureCards = [
 ]
 
 export default function FeaturesPage() {
-  const mainOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://khataplus.online"
-  const ctaHref = `${mainOrigin}/auth/sign-up`
-  const demoDashboardUrl = "/demo/dashboard"
+  const [auth, setAuth] = useState<AuthContext>({
+    isAuthenticated: false,
+    isGuest: false,
+    orgSlug: null,
+  })
+
+  useEffect(() => {
+    let isMounted = true
+    const loadAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/context", { cache: "no-store" })
+        if (!response.ok) return
+        const data = (await response.json()) as AuthContext
+        if (isMounted) {
+          setAuth({
+            isAuthenticated: !!data.isAuthenticated,
+            isGuest: !!data.isGuest,
+            orgSlug: data.orgSlug || null,
+          })
+        }
+      } catch {
+        // keep defaults
+      }
+    }
+    loadAuth()
+    return () => { isMounted = false }
+  }, [])
+
+  const ctaHref = auth.isAuthenticated ? (auth.orgSlug ? `/${auth.orgSlug}/dashboard` : "/dashboard") : "/auth/sign-up"
+  const demoDashboardUrl = useDemoDashboardUrl()
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f6fbff_0%,#f8fbfa_48%,#ffffff_100%)] text-zinc-900 overflow-x-hidden">
       <Navbar
-        isAuthenticated={false}
+        isAuthenticated={auth.isAuthenticated}
         isLight={true}
-        orgSlug={null}
-        isGuest={false}
+        orgSlug={auth.orgSlug}
+        isGuest={auth.isGuest}
       />
 
       <section className="relative px-6 pt-36 pb-16 md:pt-48 md:pb-20">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 hero-glow-light hero-gradient-motion" />
+          <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-200/30 blur-[100px]" />
+          <div className="absolute top-24 right-[-120px] h-[320px] w-[320px] rounded-full bg-emerald-200/20 blur-[90px]" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-5xl text-center">
@@ -157,12 +196,17 @@ export default function FeaturesPage() {
               KHATAPLUS FEATURES
             </div>
             <h1 className="mt-8 text-5xl font-black tracking-[-0.04em] text-zinc-950 md:text-7xl leading-[0.95]">
+              Built for NorthEast India.
+              <br />
               <span className="bg-gradient-to-r from-cyan-700 to-emerald-700 bg-clip-text text-transparent">
                 Designed for your shop.
               </span>
             </h1>
             <p className="mx-auto mt-7 max-w-3xl text-lg font-medium leading-relaxed text-zinc-600 md:text-xl">
               KhataPlus brings billing, stock, khata, and reports into one simple workflow. Your team gets faster daily operations, clearer records, and fewer manual mistakes.
+            </p>
+            <p className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-sm font-bold text-emerald-800">
+              Trusted by 500+ shops across Assam, Meghalaya & Manipur
             </p>
           </AdvancedScrollReveal>
         </div>
@@ -173,7 +217,11 @@ export default function FeaturesPage() {
           <div className="mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-cyan-200 bg-gradient-to-br from-cyan-100/75 via-sky-50 to-white p-8 md:p-10 shadow-[0_20px_50px_-30px_rgba(8,145,178,0.5)]">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="max-w-2xl">
-                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black tracking-[0.16em] text-cyan-700">
+                  <WifiOff size={13} />
+                  NORTH EAST READY
+                </div>
+                <h2 className="mt-4 text-3xl md:text-4xl font-black tracking-tight text-zinc-900">
                   Billing does not stop when internet drops.
                 </h2>
                 <p className="mt-3 text-lg text-zinc-700">
@@ -237,10 +285,35 @@ export default function FeaturesPage() {
         </div>
       </section>
 
+      <section className="px-6 pb-16 md:pb-20">
+        <AdvancedScrollReveal variant="slideUp">
+          <div className="mx-auto max-w-6xl rounded-[2.25rem] border border-white/80 bg-white/60 p-6 md:p-8 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Live Product View</p>
+                <h3 className="mt-1 text-2xl font-black tracking-tight text-zinc-900 md:text-3xl">See KhataPlus in action</h3>
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+              <Image
+                src="/images/dashboard-preview.png"
+                alt="KhataPlus dashboard screenshot"
+                width={1400}
+                height={840}
+                className="h-auto w-full object-cover"
+                priority={false}
+              />
+            </div>
+          </div>
+        </AdvancedScrollReveal>
+      </section>
+
       <section className="relative px-6 py-24 md:py-32 flex justify-center overflow-hidden">
         {/* Floating ambient colors behind */}
         <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center">
-          <div className="absolute inset-0 hero-glow-light hero-gradient-motion" />
+          <div className="absolute w-[400px] h-[400px] bg-fuchsia-100/80 rounded-full filter blur-[100px] -translate-x-1/2 -translate-y-1/4 animate-pulse" />
+          <div className="absolute w-[400px] h-[400px] bg-cyan-100/80 rounded-full filter blur-[100px] translate-x-1/3 translate-y-1/4 animate-pulse opacity-75" style={{ animationDelay: "1s" }} />
+          <div className="absolute w-[300px] h-[300px] bg-emerald-100/80 rounded-full filter blur-[100px] -translate-x-1/4 translate-y-1/3 animate-pulse opacity-60" style={{ animationDelay: "2s" }} />
         </div>
 
         <AdvancedScrollReveal variant="slideUp" className="w-full max-w-[800px] relative z-10">

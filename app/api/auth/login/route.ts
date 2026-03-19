@@ -1,78 +1,59 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { requestLoginOtp, verifyLoginOtp } from "@/lib/data/auth"
 
 function toSafePath(next: unknown): string {
-  if (typeof next !== "string") return "/dashboard"
-  if (!next.startsWith("/") || next.startsWith("/auth/")) return "/dashboard"
+  if (typeof next !== "string") return "/app/dashboard"
+  if (!next.startsWith("/") || next.startsWith("/auth/")) return "/app/dashboard"
   return next
-}
-
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@")
-  if (!local || !domain) return email
-  if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
-  return `${local.slice(0, 2)}***@${domain}`
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}))
+    const body = await request.json().catch(() => ({} as any))
     const email = String(body?.email || "").trim().toLowerCase()
-    const code = String(body?.code || "").trim()
+    const code = String(body?.code || "").trim().replace(/\s+/g, "").replace(/^#/, "")
     const next = toSafePath(body?.next)
 
     if (!email) {
       return NextResponse.json({ error: "Email is required." }, { status: 400 })
     }
 
-    const supabase = await createClient()
-
-    // STEP 1 — Send OTP
     if (!code) {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: false },
-      })
-
-      if (error) {
-        const msg = error.message.toLowerCase().includes("signups not allowed")
-          ? "No account found for this email. Please sign up first."
-          : error.message
-        return NextResponse.json({ error: msg }, { status: 400 })
+      const otp = await requestLoginOtp({ email, next })
+      if (!otp.ok) {
+        return NextResponse.json({ error: otp.error || "Failed to send verification code email." }, { status: otp.status || 400 })
       }
-
       return NextResponse.json({
         ok: true,
         phase: "verify",
-        maskedEmail: maskEmail(email),
+        maskedEmail: otp.maskedEmail || email,
+        next,
       })
     }
 
-    // STEP 2 — Verify OTP
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: "email",
-    })
-
-    if (error || !data.user?.id) {
-      return NextResponse.json(
-        { error: error?.message || "Invalid verification code." },
-        { status: 401 }
-      )
+    const result = await verifyLoginOtp({ email, token: code, next })
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error || "Invalid verification code." }, { status: result.status || 401 })
     }
-
-    return NextResponse.json({
+    const orgSlug = result.org?.slug ? String(result.org.slug).trim() : ""
+    const resolvedNext =
+      orgSlug && (next === "/app/dashboard" || next.startsWith("/app/dashboard/"))
+        ? next.replace(/^\/app\/dashboard/, `/app/${orgSlug}/dashboard`)
+        : (result.redirectTo || next)
+    const response = NextResponse.json({
       ok: true,
       phase: "done",
-      next,
+      next: resolvedNext,
+      orgSlug: orgSlug || undefined,
     })
-
-  } catch (err: any) {
-    console.error("[Auth Login]", err)
-    return NextResponse.json(
-      { error: err?.message || "Login failed." },
-      { status: 500 }
-    )
+    const slugMatch = resolvedNext.match(/^\/app\/([^/]+)\/dashboard(?:\/|$)/)
+    const persistedSlug = slugMatch?.[1] || orgSlug
+    if (persistedSlug) {
+      response.cookies.set("kp_org_slug", persistedSlug, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 30 })
+    }
+    return response
+  } catch (error: any) {
+    console.error("[Auth Login] Failed:", error)
+    return NextResponse.json({ error: error?.message || "Login failed." }, { status: 500 })
   }
 }

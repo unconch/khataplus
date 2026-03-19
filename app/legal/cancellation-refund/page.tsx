@@ -47,8 +47,8 @@ export default function CancellationRefundPolicyPage() {
                             <h2 className="text-2xl font-bold text-zinc-900 mb-3">2. Paid Subscriptions</h2>
                             <h3 className="text-xl font-bold text-zinc-900 mb-2">2.1 Subscription Plans</h3>
                             <ul className="list-disc pl-6 space-y-2 mb-4">
-                                <li><strong>Starter Plan:</strong> ₹99/month</li>
-                                <li><strong>Pro Plan:</strong> ₹299/month</li>
+                                <li><strong>Starter Plan:</strong> ₹299/month</li>
+                                <li><strong>Pro Plan:</strong> ₹999/month</li>
                                 <li><strong>Custom Enterprise:</strong> Contact sales for pricing</li>
                             </ul>
 

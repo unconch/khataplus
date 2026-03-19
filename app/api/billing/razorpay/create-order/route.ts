@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 
 const PRICING_PAISE: Record<string, { monthly: number; yearly: number }> = {
-  keep: { monthly: 49_00, yearly: 490_00 },
-  starter: { monthly: 99_00, yearly: 990_00 },
-  pro: { monthly: 299_00, yearly: 2990_00 },
+  keep: { monthly: 49_00, yearly: 399_00 },
+  starter: { monthly: 179_00, yearly: 1499_00 },
+  pro: { monthly: 449_00, yearly: 3999_00 },
   business: { monthly: 899_00, yearly: 7999_00 },
 }
 

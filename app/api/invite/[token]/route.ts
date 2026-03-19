@@ -20,8 +20,7 @@ export async function GET(
             email: invite.email,
             role: invite.role,
             orgName: org?.name,
-            orgSlug: org?.slug,
-            orgId: org?.id || invite.org_id
+            orgSlug: org?.slug
         })
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })
@@ -58,9 +57,7 @@ export async function POST(
         return NextResponse.json({
             success: true,
             orgName: org?.name,
-            orgSlug: org?.slug,
-            orgId: invite.org_id,
-            role: invite.role
+            orgSlug: org?.slug
         })
     } catch (e: any) {
         const message = String(e?.message || "Failed to accept invite")

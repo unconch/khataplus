@@ -7,7 +7,6 @@ import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { toast } from "sonner"
 import type { BillingPlanKey } from "@/lib/billing-plans"
 import { cn } from "@/lib/utils"
-import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 const formatINR = (value: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value)
@@ -41,7 +40,7 @@ const tiers: PricingTier[] = [
         planKey: "keep",
         name: "Keep",
         icon: Shield,
-        price: { monthly: 49, yearly: 490 },
+        price: { monthly: 49, yearly: 499 },
         desc: "For shops getting started.",
         features: [
             "25 Invoices / Month",
@@ -58,7 +57,7 @@ const tiers: PricingTier[] = [
         planKey: "starter",
         name: "Starter",
         icon: Zap,
-        price: { monthly: 99, yearly: 990 },
+        price: { monthly: 199, yearly: 1999 },
         desc: "For growing local shops.",
         features: [
             "Unlimited Billing",
@@ -75,7 +74,7 @@ const tiers: PricingTier[] = [
         planKey: "pro",
         name: "Pro",
         icon: Crown,
-        price: { monthly: 299, yearly: 2990 },
+        price: { monthly: 599, yearly: 5999 },
         desc: "For serious multi-store growth.",
         features: [
             "Full POS Terminal",
@@ -102,7 +101,6 @@ function PricingContent({
 }) {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { signUpUrl } = useMainAuthUrls()
     const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
@@ -225,9 +223,9 @@ function PricingContent({
     }
 
     const handleStartTrial = () => {
-        if (!isAuthenticated) { router.push(signUpUrl); return; }
-                if (orgSlug) { router.push(`/app/${orgSlug}/dashboard`); return; }
-        router.push("/onboarding")
+        if (!isAuthenticated) { router.push("/auth/sign-up"); return; }
+        if (orgSlug) { router.push(`/${orgSlug}/dashboard`); return; }
+        router.push("/setup-organization")
     }
 
     return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +23,58 @@ interface Member {
   user?: { name: string; email: string }
 }
 
+const roleColors = {
+  owner: "bg-amber-500/10 text-amber-600 border-amber-200/50",
+  manager: "bg-indigo-500/10 text-indigo-600 border-indigo-200/50",
+  staff: "bg-zinc-500/10 text-zinc-500 border-zinc-200/50",
+} as const
+
+const TeamMemberCard = memo(function TeamMemberCard({
+  member,
+  onRemove,
+}: {
+  member: Member
+  onRemove: (userId: string) => void
+}) {
+  return (
+    <div className="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 lg:hover:border-zinc-400 dark:lg:hover:border-zinc-600 shadow-sm lg:hover:shadow-md lg:transition-all lg:duration-500 overflow-hidden">
+      <div className="absolute top-0 right-0 p-4 opacity-5 lg:group-hover:opacity-10 lg:transition-opacity lg:duration-300">
+        <UserCog size={48} className="rotate-12" />
+      </div>
+
+      <div className="relative z-10 flex items-center gap-4">
+        <div className="h-10 w-10 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 font-black text-sm shadow-lg lg:transition-all lg:duration-500 lg:group-hover:rotate-3 lg:group-hover:scale-105">
+          {(member.user?.name || member.user?.email || "?")[0].toUpperCase()}
+        </div>
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <p className="font-black text-sm tracking-tight text-zinc-900 dark:text-zinc-100 leading-none">{member.user?.name || member.user?.email?.split("@")[0]}</p>
+            <Badge className={cn("text-[8px] h-3.5 px-1.5 p-0 font-black uppercase tracking-widest border", roleColors[member.role])}>
+              {member.role === "owner" && <Sparkles size={8} className="mr-0.5" />}
+              {member.role}
+            </Badge>
+          </div>
+          <p className="text-[10px] font-bold text-zinc-400 tracking-tight flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-emerald-500 lg:animate-pulse inline-block" />
+            {member.user?.email}
+          </p>
+        </div>
+      </div>
+
+      {member.role !== "owner" && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg lg:hover:bg-red-500 lg:hover:text-white lg:transition-all lg:duration-300 opacity-0 lg:group-hover:opacity-100"
+          onClick={() => onRemove(member.user_id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  )
+})
+
 export function TeamManagement({ orgId, orgName }: TeamPageProps) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,10 +83,6 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
   const [copied, setCopied] = useState(false)
   const [sending, setSending] = useState(false)
   const [inviteWarning, setInviteWarning] = useState("")
-
-  useEffect(() => {
-    void fetchMembers()
-  }, [orgId])
 
   const safeJson = async (res: Response) => {
     const text = await res.text()
@@ -46,7 +94,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     }
   }
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const res = await fetch(`/api/organizations/${orgId}/members`)
       if (!res.ok) {
@@ -63,9 +111,13 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orgId])
 
-  const copyText = async (text: string) => {
+  useEffect(() => {
+    void fetchMembers()
+  }, [fetchMembers])
+
+  const copyText = useCallback(async (text: string) => {
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text)
@@ -86,9 +138,9 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     document.body.removeChild(el)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
+  }, [])
 
-  const handleInvite = async () => {
+  const handleInvite = useCallback(async () => {
     setSending(true)
     setInviteWarning("")
     try {
@@ -118,9 +170,9 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
     } finally {
       setSending(false)
     }
-  }
+  }, [copyText, inviteRole, orgId])
 
-  const handleRemove = async (userId: string) => {
+  const handleRemove = useCallback(async (userId: string) => {
     if (!confirm("Are you certain you want to remove this member from the organization?")) return
     try {
       const res = await fetch(`/api/organizations/${orgId}/members`, {
@@ -138,16 +190,10 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
       console.error(e)
       toast.error("Failed to remove member")
     }
-  }
-
-  const roleColors = {
-    owner: "bg-amber-500/10 text-amber-600 border-amber-200/50",
-    manager: "bg-indigo-500/10 text-indigo-600 border-indigo-200/50",
-    staff: "bg-zinc-500/10 text-zinc-500 border-zinc-200/50",
-  }
+  }, [fetchMembers, orgId])
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
+    <div className="space-y-10 lg:animate-in lg:fade-in lg:slide-in-from-bottom-2 lg:duration-700">
       {/* Invite Section */}
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-3 px-2">
@@ -167,8 +213,8 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
           </Link>
         </div>
 
-        <div className="relative group overflow-hidden p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 transition-all">
-          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+        <div className="relative group overflow-hidden p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 lg:transition-all lg:duration-300">
+          <div className="absolute top-0 right-0 p-6 opacity-10 lg:group-hover:opacity-20 lg:transition-opacity lg:duration-300">
             <Sparkles size={80} className="text-orange-500" />
           </div>
 
@@ -190,22 +236,22 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
             <Button
               onClick={handleInvite}
               disabled={sending}
-              className="h-10 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 hover:bg-orange-600 dark:hover:bg-orange-600 hover:text-white dark:hover:text-white shadow-lg font-black uppercase tracking-[0.2em] text-[9px] transition-all duration-500 hover:scale-[1.02] active:scale-[0.98]"
+              className="h-10 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 hover:bg-orange-600 dark:hover:bg-orange-600 hover:text-white dark:hover:text-white shadow-lg font-black uppercase tracking-[0.2em] text-[9px] lg:transition-all lg:duration-500 lg:hover:scale-[1.02] lg:active:scale-[0.98]"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2.5" /> : <ShieldCheck className="h-4 w-4 mr-2.5" />}
               Generate Link
             </Button>
 
             {inviteLink && (
-              <div className="flex items-center gap-3 p-1.5 pl-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl shadow-inner animate-in zoom-in-95 duration-500">
+              <div className="flex items-center gap-3 p-1.5 pl-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl shadow-inner lg:animate-in lg:zoom-in-95 lg:duration-500">
                 <Input value={inviteLink} readOnly className="border-0 focus-visible:ring-0 bg-transparent text-[9px] font-mono font-bold tracking-tighter h-7 p-0" />
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
+                  className="h-7 w-7 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 lg:transition-all lg:duration-300"
                   onClick={() => copyText(inviteLink)}
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500 lg:animate-in lg:zoom-in" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             )}
@@ -256,44 +302,7 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {members.map((member) => (
-              <div
-                key={member.id}
-                className="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-sm hover:shadow-md transition-all duration-500 overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <UserCog size={48} className="rotate-12" />
-                </div>
-
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 font-black text-sm shadow-lg transition-all duration-500 group-hover:rotate-3 group-hover:scale-105">
-                    {(member.user?.name || member.user?.email || "?")[0].toUpperCase()}
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <p className="font-black text-sm tracking-tight text-zinc-900 dark:text-zinc-100 leading-none">{member.user?.name || member.user?.email?.split("@")[0]}</p>
-                      <Badge className={cn("text-[8px] h-3.5 px-1.5 p-0 font-black uppercase tracking-widest border", roleColors[member.role])}>
-                        {member.role === 'owner' && <Sparkles size={8} className="mr-0.5" />}
-                        {member.role}
-                      </Badge>
-                    </div>
-                    <p className="text-[10px] font-bold text-zinc-400 tracking-tight flex items-center gap-1.5">
-                      <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                      {member.user?.email}
-                    </p>
-                  </div>
-                </div>
-
-                {member.role !== "owner" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100"
-                    onClick={() => handleRemove(member.user_id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+              <TeamMemberCard key={member.id} member={member} onRemove={handleRemove} />
             ))}
           </div>
         )}

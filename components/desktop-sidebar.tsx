@@ -34,6 +34,11 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         if (sluggedMatch?.[1]) {
             return sluggedMatch[1]
         }
+        // Canonical app-scoped path: `/app/{slug}/dashboard/...` -> `/dashboard/...`
+        const appSluggedMatch = pathname.match(/^\/app\/[^/]+(\/dashboard(?:\/.*)?$)/)
+        if (appSluggedMatch?.[1]) {
+            return appSluggedMatch[1]
+        }
         return pathname
     })()
 
@@ -82,10 +87,6 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
             </div>
 
             <nav className="flex-1 px-4 space-y-1.5">
-                <div className="px-6 mb-4">
-                    <p className="text-[9px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.3em]">Operational Flow</p>
-                </div>
-
                 {navItems.filter(item => item.show).map((item, idx) => {
                     const itemKey = `${item.label}-${item.href}`
                     const isHome = item.href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")

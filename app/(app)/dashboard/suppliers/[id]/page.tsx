@@ -65,7 +65,7 @@ async function LedgerContent({ supplierId }: { supplierId: string }) {
     }
 
     if (!orgId) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
         return null
     }
 
@@ -78,4 +78,3 @@ async function LedgerContent({ supplierId }: { supplierId: string }) {
 
     return <SupplierLedger supplier={supplier} transactions={transactions} orgId={orgId} userId={userId} />
 }
-

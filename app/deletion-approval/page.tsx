@@ -142,14 +142,16 @@ function DeletionApprovalContent() {
                         </p>
                         {message && <p className="text-xs text-amber-700 mt-3">{message}</p>}
                     </div>
-                    <div className="space-y-3">
-                        <Button className="w-full" onClick={() => router.push(`/auth/login?next=${encodeURIComponent(returnTo)}`)}>
-                            Verify with OTP
-                        </Button>
-                        <Button variant="outline" className="w-full" onClick={() => router.push("/dashboard")}>
-                            Cancel
-                        </Button>
+
+                    <div className="rounded-xl border border-zinc-200 overflow-hidden">
+                        <div className="p-4 text-sm text-zinc-600">
+                            Step-up verification now uses the standard login flow.
+                        </div>
                     </div>
+
+                    <Button className="w-full mt-5" onClick={() => router.push(`/auth/login?next=${encodeURIComponent(returnTo)}`)}>
+                        Continue to Login Verification
+                    </Button>
                 </div>
             </div>
         )
@@ -269,3 +271,4 @@ export default function DeletionApprovalPage() {
         </Suspense>
     )
 }
+

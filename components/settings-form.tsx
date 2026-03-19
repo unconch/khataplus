@@ -122,12 +122,6 @@ interface SettingsFormProps {
   isAdmin: boolean
   orgRole?: string
   viewMode?: "full" | "profile" | "organization"
-  billingNudge?: {
-    showAnnualNudge: boolean
-    spentThisYear: number
-    saveWithAnnual: number
-    targetPlan: "keep" | "starter" | "pro"
-  }
 }
 
 export function SettingsForm({
@@ -136,7 +130,6 @@ export function SettingsForm({
   initialProfile,
   isAdmin,
   viewMode = "full",
-  billingNudge,
 }: SettingsFormProps) {
   const [org, setOrg] = useState(initialOrg)
   const [profile, setProfile] = useState(initialProfile)
@@ -316,7 +309,7 @@ export function SettingsForm({
       if (slugChanged && nextSlug) {
         toast.info(`Access URL updated to ${nextSlug}. Redirecting...`, { duration: 4000 })
         setTimeout(() => {
-          window.location.href = `/app/${nextSlug}/dashboard/settings`
+          window.location.href = `/${nextSlug}/dashboard/settings`
         }, 700)
       } else {
         router.refresh()
@@ -330,7 +323,7 @@ export function SettingsForm({
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+    <div className="space-y-8 md:animate-in md:fade-in md:slide-in-from-bottom-2 md:duration-700">
       {showProfileSection && (
         <div className="space-y-5">
           <div className="flex items-center gap-3 px-2">
@@ -411,23 +404,6 @@ export function SettingsForm({
                 </Button>
               </Link>
             </div>
-
-            {billingNudge?.showAnnualNudge && (
-              <div className="mt-4 rounded-xl border border-emerald-200 bg-white/80 px-4 py-3">
-                <p className="text-sm font-semibold text-zinc-900">
-                  You&apos;ve spent ₹{Math.round(billingNudge.spentThisYear).toLocaleString("en-IN")} so far this year.
-                </p>
-                <p className="mt-1 text-sm text-zinc-700">
-                  Switch to annual and save ₹{Math.round(billingNudge.saveWithAnnual).toLocaleString("en-IN")}.
-                </p>
-                <Link
-                  href={`/pricing?highlight=${billingNudge.targetPlan}&from=annual-nudge`}
-                  className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-600 px-3 text-xs font-black uppercase tracking-wide text-white hover:bg-emerald-500"
-                >
-                  Switch to Annual -&gt;
-                </Link>
-              </div>
-            )}
           </div>
 
           <div className="space-y-5">
@@ -653,12 +629,14 @@ export function SettingsForm({
           onClick={handleSave}
           disabled={loading || !canSave || hasAddressValidationError || hasSlugValidationError}
           className={cn(
-            "h-11 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500 shadow-xl",
-            canSave ? "bg-zinc-950 dark:bg-zinc-100 hover:scale-105 active:scale-95 shadow-zinc-200 dark:shadow-zinc-950" : "bg-zinc-100 grayscale cursor-not-allowed"
+            "h-11 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-colors md:transition-all md:duration-500 shadow-xl",
+            canSave
+              ? "bg-gradient-to-r from-amber-200 via-orange-200 to-rose-200 text-slate-900 md:hover:from-amber-100 md:hover:via-orange-100 md:hover:to-rose-100 md:hover:scale-105 md:active:scale-95 shadow-orange-200/70 dark:from-amber-300 dark:via-orange-300 dark:to-rose-300 dark:text-slate-950 dark:shadow-orange-950/50"
+              : "bg-zinc-100 text-zinc-400 grayscale cursor-not-allowed"
           )}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-2" />}
-          Commit Changes
+          Save
         </Button>
       </div>
     </div>
@@ -667,10 +645,10 @@ export function SettingsForm({
 
 function SettingField({ label, icon, children, disabled }: { label: string, icon?: React.ReactNode, children: React.ReactNode, disabled?: boolean }) {
   return (
-    <div className={cn("space-y-2 group transition-all", disabled && "opacity-80")}>
+    <div className={cn("space-y-2 group transition-colors md:transition-all", disabled && "opacity-80")}>
       <div className="flex items-center gap-2 px-1">
-        <span className="text-zinc-400 group-hover:text-foreground transition-colors">{icon}</span>
-        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+        <span className="text-zinc-400 md:group-hover:text-foreground transition-colors">{icon}</span>
+        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 md:group-hover:text-zinc-700 md:dark:group-hover:text-zinc-300 transition-colors">
           {label}
         </Label>
       </div>

@@ -66,3 +66,4 @@ test-db.ts
 test-groq.mjs
 build.log
 middleware.old.ts
+.env*.local

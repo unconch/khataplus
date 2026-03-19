@@ -27,7 +27,7 @@ export default async function SuppliersPage() {
     }
 
     if (!orgId) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
         return null
     }
 

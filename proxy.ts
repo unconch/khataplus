@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+
 import { updateSession } from "@/lib/supabase/server"
-import { createServerClient } from "@supabase/ssr"
 
-console.log("[Proxy] Proxy file loaded")
-
-// Routes that don't need authentication
 const PUBLIC_ROUTES = [
   "/auth/login",
   "/auth/sign-up",
+  "/auth/sign-up-success",
+  "/auth/invite-sign-up",
   "/auth/callback",
   "/auth/oauth-callback",
   "/demo",
@@ -20,45 +19,18 @@ const STATIC_ASSETS = [
   "/api/public",
 ]
 
-export default async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const hostname = request.headers.get("host") || ""
-  const segments = pathname.split("/").filter(Boolean)
-  const firstSegment = segments[0]
-  const isAppScoped = firstSegment === "app"
-  const pathSlug = isAppScoped ? segments[1] : null
+const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
+const INVALID_SLUGS = new Set(["", "undefined", "null"])
 
-  // Common typo aliases so marketing nav never hard-fails.
-  if (pathname === "/merchant-academy" || pathname === "/merchantacademy") {
-    return NextResponse.redirect(new URL("/docs", request.url), 307)
+function normalizeSlug(input: string | null | undefined): string | null {
+  const value = String(input || "").trim().toLowerCase()
+  if (!value || INVALID_SLUGS.has(value) || value.includes(".")) {
+    return null
   }
+  return value
+}
 
-  // 1. Skip middleware for static assets
-  if (STATIC_ASSETS.some(prefix => pathname.startsWith(prefix))) {
-    return NextResponse.next()
-  }
-
-  console.log(`[Proxy] Request Details - Host: ${hostname}, Path: ${pathname}`)
-
-  // 2. Refresh session and get response object
-  let supabaseResponse: NextResponse
-  try {
-    supabaseResponse = await updateSession(request)
-  } catch (error) {
-    console.error("[Proxy] updateSession failed:", error)
-    supabaseResponse = NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    })
-  }
-
-  // ... (security headers part)
-
-
-  // --------------------------------------------------------------------------
-  // PERIMETER HARDENING: Security Headers (ASVS Level 3)
-  // --------------------------------------------------------------------------
+function applySecurityHeaders(response: NextResponse) {
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://accounts.google.com https://*.vercel-scripts.com https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com;
@@ -73,144 +45,225 @@ export default async function proxy(request: NextRequest) {
     frame-ancestors 'none';
     block-all-mixed-content;
     upgrade-insecure-requests;
-  `.replace(/\s{2,}/g, ' ').trim();
+  `.replace(/\s{2,}/g, " ").trim()
 
   const securityHeaders = {
-    'Content-Security-Policy': cspHeader,
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'X-Permitted-Cross-Domain-Policies': 'none',
+    "Content-Security-Policy": cspHeader,
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Permitted-Cross-Domain-Policies": "none",
   }
 
   Object.entries(securityHeaders).forEach(([key, value]) => {
-    supabaseResponse.headers.set(key, value)
+    response.headers.set(key, value)
   })
 
-  // 3. Resolve Tenant Slug (Path or Subdomain)
+  return response
+}
+
+function copyCookies(source: NextResponse, target: NextResponse) {
+  source.cookies.getAll().forEach((cookie) => {
+    const { name, value, ...options } = cookie
+    target.cookies.set(name, value, options)
+  })
+}
+
+function finalizeResponse(source: NextResponse, target: NextResponse) {
+  copyCookies(source, target)
+  return applySecurityHeaders(target)
+}
+
+export default async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl
+  const hostname = request.headers.get("host") || ""
+  const segments = pathname.split("/").filter(Boolean)
+  const firstSegment = segments[0]
+  const isAppScoped = firstSegment === "app"
+  const isCanonicalAppDashboard = pathname === "/app/dashboard" || pathname.startsWith("/app/dashboard/")
+  const pathSlug = isAppScoped && segments[1] !== "dashboard" ? segments[1] : null
+
+  if (pathname === "/merchant-academy" || pathname === "/merchantacademy") {
+    return NextResponse.redirect(new URL("/docs", request.url), 307)
+  }
+
+  if (STATIC_ASSETS.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next()
+  }
+
+  const hasSupabaseAuthCookie = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token"))
+  const hasGuestCookie = request.cookies.has("guest_mode")
+  const isPublicMarketingPath =
+    pathname === "/" ||
+    pathname === "/features" ||
+    pathname === "/feathures" ||
+    pathname === "/pricing" ||
+    pathname === "/roadmap" ||
+    pathname === "/docs" ||
+    pathname === "/solutions" ||
+    pathname === "/security"
+
+  // Fast path for anonymous/public requests: avoid Supabase round-trip in proxy.
+  if (isPublicMarketingPath && !hasSupabaseAuthCookie && !hasGuestCookie) {
+    return applySecurityHeaders(NextResponse.next())
+  }
+
+  let sessionResponse = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+  let user = null
+
+  try {
+    const sessionResult = await updateSession(request)
+    sessionResponse = sessionResult.response
+    user = sessionResult.user
+
+    if (sessionResult.error && !sessionResult.error.message.toLowerCase().includes("auth session missing")) {
+      console.error("[Proxy] updateSession failed:", sessionResult.error)
+    }
+  } catch (error) {
+    console.error("[Proxy] updateSession threw:", error)
+  }
+
+  if (user && request.cookies.has("guest_mode") && !pathname.startsWith("/demo")) {
+    sessionResponse.cookies.delete("guest_mode")
+  }
+
+  applySecurityHeaders(sessionResponse)
+
   let slug: string | null = null
-  
-  // Subdomain detection (e.g., demo.khataplus.online or demo.localhost)
-  const hostParts = hostname.split(":") // remove port
-  const domain = hostParts[0]
+  const domain = hostname.split(":")[0] || ""
   const domainParts = domain.split(".")
-  
   const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(domain)
   const isLocalHost = domain === "localhost" || domain.endsWith(".localhost")
 
-  // Only treat host as tenant subdomain when there are 3+ labels
-  // (e.g. demo.khataplus.online). Apex domains like khataplus.online
-  // must not be interpreted as tenant slugs.
   if (domainParts.length >= 3 && !isIpv4 && !isLocalHost) {
     const subdomain = domainParts[0]
-    // Filter out common system subdomains
     if (subdomain !== "www" && subdomain !== "app" && subdomain !== domain) {
       slug = subdomain
     }
   }
 
-  if (!slug && pathSlug && !pathSlug.includes(".")) {
-    slug = pathSlug
+  if (!slug && pathSlug) {
+    slug = normalizeSlug(pathSlug)
   } else if (!slug && firstSegment === "demo") {
-    // Force demo slug if path is /demo...
     slug = "demo"
   }
 
-  // Guest Mode & Auth Logic
+  // Prefer active org slug from authenticated user metadata when URL doesn't carry one.
+  const activeOrgSlug =
+    user &&
+    typeof (user as any).user_metadata?.active_org_slug === "string" &&
+    (user as any).user_metadata.active_org_slug.trim().length > 0
+      ? (user as any).user_metadata.active_org_slug.trim()
+      : null
+  if (!slug && activeOrgSlug) {
+    slug = normalizeSlug(activeOrgSlug)
+  }
+  if (!slug) {
+    slug = normalizeSlug(request.cookies.get("kp_org_slug")?.value)
+  }
+
   const isDemo = slug === "demo"
-  const isGuest = request.cookies.has("guest_mode") || isDemo
-  
-  console.log(`[Proxy] Slug Discovery - Slug: ${slug}, isDemo: ${isDemo}, isGuest: ${isGuest}`)
-  const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route)) || pathname === "/"
+  const isGuest = isDemo || (!user && hasGuestCookie)
   const isAuthRoute = pathname.startsWith("/auth")
-  const isProtectedRoute = pathname.startsWith("/app/") || pathname.startsWith("/dashboard")
+  const isProtectedRoute =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/app/")
+  const isAuthCallbackRoute = pathname === "/auth/callback" || pathname === "/auth/oauth-callback"
+  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) || pathname === "/"
 
-  // ... (auth logic part)
-
-
-  // Redirect to login if not authenticated and not a public/guest route
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Redirect to login if not authenticated and not a public/guest route
-  if (!user && isProtectedRoute && !isGuest) {
+  if (!user && isProtectedRoute && !isGuest && !isPublicRoute) {
     const loginUrl = new URL("/auth/login", request.url)
-    loginUrl.searchParams.set("next", pathname)
-    return NextResponse.redirect(loginUrl)
+    loginUrl.searchParams.set("next", `${pathname}${search}`)
+    return finalizeResponse(sessionResponse, NextResponse.redirect(loginUrl, 303))
   }
 
-  if (user && isAuthRoute && pathname !== "/auth/callback") {
-    // If an authenticated user hits auth pages, send them to app shell
-    // so CTA clicks don't appear to "do nothing" on the landing page.
-    const dashboardPath = slug ? `/app/${slug}/dashboard` : "/dashboard"
-    return NextResponse.redirect(new URL(dashboardPath, request.url))
+  // Canonicalize generic dashboard URLs to app slug-scoped URLs.
+  if (user && slug && (pathname === "/dashboard" || pathname.startsWith("/dashboard/"))) {
+    const canonicalPath = `/app/${slug}${pathname}`
+    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(canonicalPath, request.url), 303))
   }
 
-  // 5. Perform Rewrite for Tenant Routing
+  // If a user is already authenticated, skip auth pages.
+  if (user && isAuthRoute && !isAuthCallbackRoute) {
+    const dashboardPath = slug ? `/app/${slug}/dashboard` : "/app/dashboard"
+    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(dashboardPath, request.url), 303))
+  }
+
+  // Canonical /app/dashboard aliases should resolve to app slug-scoped dashboard.
+  if (isCanonicalAppDashboard) {
+    if (slug) {
+      const canonicalPath =
+        pathname === "/app/dashboard"
+          ? `/app/${slug}/dashboard`
+          : pathname.replace(/^\/app\/dashboard/, `/app/${slug}/dashboard`)
+      return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(canonicalPath, request.url), 303))
+    }
+  }
+
+  // Canonicalize legacy tenant dashboard URLs to /app/{slug}/dashboard
+  if (user && slug && firstSegment === slug && (pathname === `/${slug}/dashboard` || pathname.startsWith(`/${slug}/dashboard/`))) {
+    const suffix = pathname.slice(`/${slug}`.length)
+    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(`/app/${slug}${suffix}`, request.url), 303))
+  }
+  // Canonicalize legacy tenant POS URLs to /app/{slug}/pos...
+  if (user && slug && firstSegment === slug && (pathname === `/${slug}/pos` || pathname.startsWith(`/${slug}/pos/`))) {
+    const suffix = pathname.slice(`/${slug}`.length)
+    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(`/app/${slug}${suffix}`, request.url), 303))
+  }
+
   if (slug) {
-    // Determine if we should rewrite this path
-    const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
+    const isDirectTenantPath = !isAppScoped && firstSegment === slug
     const shouldRewrite = isAppScoped
       ? !!pathSlug && !pathSlug.includes(".")
-      : !!firstSegment && !CRITICAL_SYSTEM_ROUTES.has(firstSegment) && !firstSegment.includes(".")
-    
-    if (isGuest) {
-      supabaseResponse.headers.set("x-guest-mode", "true")
-    }
-    supabaseResponse.headers.set("x-tenant-slug", slug)
+      : pathname === "/" ||
+        isDirectTenantPath ||
+        (!!firstSegment && !CRITICAL_SYSTEM_ROUTES.has(firstSegment) && !firstSegment.includes("."))
 
-    // Internal rewrite target:
-    // - /app/{slug}/... -> /{slug}/...
-    // - subdomain tenant routes (e.g. demo.domain.com/dashboard) -> /{slug}/dashboard
+    if (isGuest) {
+      sessionResponse.headers.set("x-guest-mode", "true")
+    }
+    sessionResponse.headers.set("x-tenant-slug", slug)
+
     if (shouldRewrite) {
       const rewrittenPath = isAppScoped
-        ? `/${slug}${segments.slice(2).length ? `/${segments.slice(2).join("/")}` : ""}`
-        : `/${slug}${pathname === "/" ? "" : pathname}`
+        ? `/${segments.slice(2).join("/")}`
+        : isDirectTenantPath
+          ? `/${segments.slice(1).join("/")}`
+        : pathname === "/"
+          ? `/${slug}`
+          : `/${slug}${pathname}`
+
       const rewrittenUrl = new URL(rewrittenPath, request.url)
-      
-      console.log(`[Middleware] Rewriting to: ${rewrittenUrl.toString()}`)
+      const forwardedHeaders = new Headers(request.headers)
+      forwardedHeaders.set("x-tenant-slug", slug)
+      if (isGuest) {
+        forwardedHeaders.set("x-guest-mode", "true")
+      }
+
       const rewriteResponse = NextResponse.rewrite(rewrittenUrl, {
         request: {
-          headers: supabaseResponse.headers,
+          headers: forwardedHeaders,
         },
       })
-      
-      supabaseResponse.cookies.getAll().forEach((c) => {
-        rewriteResponse.cookies.set(c.name, c.value)
-      })
 
-      if (isDemo && !request.cookies.has("guest_mode")) {
+      if (isDemo && !hasGuestCookie && !user) {
         rewriteResponse.cookies.set("guest_mode", "true", { path: "/", maxAge: 3600 })
       }
-      
-      return rewriteResponse
+
+      return finalizeResponse(sessionResponse, rewriteResponse)
     }
   }
 
-  return supabaseResponse
+  return sessionResponse
 }
 
 export const config = {

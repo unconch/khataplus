@@ -1,297 +1,352 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Logo } from "@/components/ui/logo"
-import { ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import { sendOtpAction, verifyOtpAction } from "@/app/actions/auth"
-
-type Step = "email" | "verify"
-
-export const dynamic = "force-dynamic"
+import { startAuthentication } from "@simplewebauthn/browser"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Logo } from "@/components/ui/logo"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, ArrowRight, Loader2, Mail, KeyRound } from "lucide-react"
 
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("email")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const next = useMemo(() => {
+    const raw = searchParams.get("next")
+    if (!raw) return "/app/dashboard"
+    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/app/dashboard"
+    return raw
+  }, [searchParams])
+
+  const signUpHref = `/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`
+  const resendCooldownSeconds = 30
+  const pendingLoginStorageKey = "kp_login_pending"
+  const pendingLoginMaxAgeMs = 1000 * 60 * 15
+
   const [email, setEmail] = useState("")
-  const [maskedEmail, setMaskedEmail] = useState("")
   const [code, setCode] = useState("")
+  const [phase, setPhase] = useState<"email" | "verify">("email")
+  const [maskedEmail, setMaskedEmail] = useState("")
+  const [verifyLoginId, setVerifyLoginId] = useState("")
+  const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
 
-  const maskEmail = (value: string) => {
-    const [local, domain] = value.split("@")
-    if (!local || !domain) return value
-    if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
-    return `${local.slice(0, 2)}***@${domain}`
+  const clearPendingLogin = () => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.removeItem(pendingLoginStorageKey)
+  }
+
+  const savePendingLogin = (loginId: string, masked: string) => {
+    if (typeof window === "undefined" || !loginId) return
+    window.sessionStorage.setItem(
+      pendingLoginStorageKey,
+      JSON.stringify({
+        email: loginId,
+        maskedEmail: masked || loginId,
+        createdAt: Date.now(),
+      })
+    )
   }
 
   useEffect(() => {
-    if (cooldown <= 0) return
-    const t = setTimeout(() => setCooldown((v) => v - 1), 1000)
-    return () => clearTimeout(t)
-  }, [cooldown])
-
-  async function handleSendCode(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim()) return toast.error("Please enter your email")
-    setLoading(true)
+    if (typeof window === "undefined") return
     try {
-      const result = await sendOtpAction(email)
-      
-      if (result.error) {
-        throw new Error(result.error)
+      const raw = window.sessionStorage.getItem(pendingLoginStorageKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as { email?: string; maskedEmail?: string; createdAt?: number }
+      const loginId = String(parsed?.email || "").trim().toLowerCase()
+      const masked = String(parsed?.maskedEmail || loginId).trim()
+      const createdAt = Number(parsed?.createdAt || 0)
+      if (!loginId || !createdAt || Date.now() - createdAt > pendingLoginMaxAgeMs) {
+        clearPendingLogin()
+        return
       }
-      
-      setMaskedEmail(maskEmail(email))
-      setCooldown(30)
-      setStep("verify")
-      toast.success("Verification code sent!")
-    } catch (err: any) {
-      toast.error(err?.message || "Something went wrong")
-    } finally {
-      setLoading(false)
+      setEmail(loginId)
+      setVerifyLoginId(loginId)
+      setMaskedEmail(masked || loginId)
+      setPhase("verify")
+    } catch {
+      clearPendingLogin()
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
-    if (code.length < 6) {
-      toast.error("Enter the 6-digit code")
+  const openPasskeyFlow = async () => {
+    const loginId = email.trim().toLowerCase()
+    if (!loginId) {
+      setError("Enter your email first, then use passkey.")
       return
     }
 
-    setLoading(true)
-
+    setError("")
+    setInfo("")
+    setPasskeyLoading(true)
     try {
-      const result = await verifyOtpAction(email, code)
+      const startRes = await fetch("/api/auth/passkey/login/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginId }),
+      })
+      const startData = await startRes.json().catch(() => ({} as any))
+      if (!startRes.ok) {
+        throw new Error(startData?.error || "Could not start passkey login")
+      }
 
-      if (result.error) {
-        toast.error(result.error)
+      const authOptionsRaw =
+        startData?.options ??
+        startData?.publicKey ??
+        startData?.data?.options ??
+        startData?.data?.publicKey ??
+        null
+      const transactionId =
+        String(
+          startData?.transactionId ??
+            startData?.transactionID ??
+            startData?.data?.transactionId ??
+            startData?.data?.transactionID ??
+            ""
+        ).trim()
+      if (!authOptionsRaw || !transactionId) {
+        throw new Error("Passkey login response is invalid")
+      }
+      const authOptions =
+        (typeof authOptionsRaw === "string" ? JSON.parse(authOptionsRaw) : authOptionsRaw?.publicKey || authOptionsRaw) as any
+
+      const passkeyResponse = await startAuthentication({ optionsJSON: authOptions })
+
+      const finishRes = await fetch("/api/auth/passkey/login/finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginId,
+          transactionId,
+          response: passkeyResponse,
+          next,
+        }),
+      })
+      const finishData = await finishRes.json().catch(() => ({} as any))
+      if (!finishRes.ok) {
+        throw new Error(finishData?.error || "Passkey verification failed")
+      }
+      let target = finishData?.next || next || "/app/dashboard"
+      if (target === "/app/dashboard" || target.startsWith("/app/dashboard/")) {
+        const slugFromResponse = typeof finishData?.orgSlug === "string" ? finishData.orgSlug.trim() : ""
+        let resolvedSlug = slugFromResponse
+        if (!resolvedSlug) {
+          try {
+            const ctxRes = await fetch("/api/auth/context", { cache: "no-store" })
+            const ctx = await ctxRes.json().catch(() => ({} as any))
+            if (ctx?.orgSlug) {
+              resolvedSlug = String(ctx.orgSlug).trim()
+            }
+          } catch {
+            // ignore and fallback to /app/dashboard
+          }
+        }
+        if (resolvedSlug) {
+          target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
+        }
+      }
+      router.replace(target)
+      router.refresh()
+    } catch (err: any) {
+      const fallbackEmail = loginId
+      try {
+        const otpRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: fallbackEmail, code: "", next }),
+        })
+        const otpData = await otpRes.json().catch(() => ({} as any))
+        if (otpRes.ok && otpData?.phase === "verify") {
+          setPhase("verify")
+          setMaskedEmail(otpData?.maskedEmail || fallbackEmail)
+          setVerifyLoginId(fallbackEmail)
+          setResendCooldown(resendCooldownSeconds)
+          setInfo("No passkey found or passkey is unavailable. We sent you a login code instead.")
+          return
+        }
+      } catch {
+        // keep passkey error
+      }
+
+      if (err?.name === "NotAllowedError") {
+        setError("Passkey login was cancelled.")
+      } else {
+        setError(err?.message || "Passkey login failed.")
+      }
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setInfo("")
+    setLoading(true)
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: phase === "verify" ? verifyLoginId || email : email,
+          code: phase === "verify" ? code : "",
+          next,
+        }),
+      })
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || "Login failed")
+      if (data?.phase === "verify") {
+        const loginId = email.trim().toLowerCase()
+        setPhase("verify")
+        setMaskedEmail(data?.maskedEmail || email)
+        setVerifyLoginId(loginId)
+        savePendingLogin(loginId, data?.maskedEmail || loginId)
+        if (phase === "email") setResendCooldown(resendCooldownSeconds)
         return
       }
-
-      if (result.redirectUrl) {
-        window.location.assign(result.redirectUrl)
+      let target = data?.next || next || "/app/dashboard"
+      if (target === "/app/dashboard" || target.startsWith("/app/dashboard/")) {
+        const slugFromResponse = typeof data?.orgSlug === "string" ? data.orgSlug.trim() : ""
+        let resolvedSlug = slugFromResponse
+        if (!resolvedSlug) {
+          try {
+            const ctxRes = await fetch("/api/auth/context", { cache: "no-store" })
+            const ctx = await ctxRes.json().catch(() => ({} as any))
+            if (ctx?.orgSlug) {
+              resolvedSlug = String(ctx.orgSlug).trim()
+            }
+          } catch {
+            // ignore and fallback to /app/dashboard
+          }
+        }
+        if (resolvedSlug) {
+          target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
+        }
       }
+      clearPendingLogin()
+      router.replace(target)
+      router.refresh()
     } catch (err: any) {
-      toast.error(err?.message || "Invalid or expired code")
+      setError(err?.message || "Could not sign in.")
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleResend() {
-    if (resendLoading || cooldown > 0) return
+  const onResendCode = async () => {
+    const loginId = (verifyLoginId || email).trim().toLowerCase()
+    if (!loginId || resendCooldown > 0 || resendLoading) return
+
+    setError("")
+    setInfo("")
     setResendLoading(true)
     try {
-      const result = await sendOtpAction(email)
-      if (result.error) throw new Error(result.error)
-      
-      setMaskedEmail(maskEmail(email))
-      setCooldown(30)
-      toast.success("New code sent!")
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginId, code: "", next }),
+      })
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || "Could not resend code")
+
+      setMaskedEmail(data?.maskedEmail || loginId)
+      savePendingLogin(loginId, data?.maskedEmail || loginId)
+      setInfo("A new code was sent.")
+      setResendCooldown(resendCooldownSeconds)
     } catch (err: any) {
-      toast.error(err?.message || "Could not resend code")
+      setError(err?.message || "Could not resend code.")
     } finally {
       setResendLoading(false)
     }
   }
 
   return (
-    <div className="min-h-svh w-full flex">
+    <div className="min-h-svh bg-[#0b1220] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(16,185,129,0.25),transparent),radial-gradient(900px_500px_at_100%_110%,rgba(14,165,233,0.24),transparent)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,18,32,0.95),rgba(17,24,39,0.98))]" />
 
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-950 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0" />
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-violet-600/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-600/20 rounded-full blur-[120px]" />
+      <Link href="/" className="absolute left-5 top-5 z-20 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur">
+        <Logo size={24} className="text-emerald-300" />
+        <div>
+          <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
+          <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-300">Secure Login</p>
         </div>
-        <div className="relative z-10 flex flex-col w-full p-16 text-white">
-          <div className="mb-auto">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
-                <Logo size={32} className="text-white" />
-              </div>
-              <span className="font-black text-2xl tracking-tighter">KhataPlus</span>
-            </Link>
-          </div>
-          <div className="space-y-12">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-black/10 backdrop-blur-md rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] mb-8 border border-white/10">
-                <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                Enterprise Grade Security
-              </div>
-              <h1 className="text-6xl xl:text-7xl font-black leading-[0.9] tracking-tighter mb-6">
-                Welcome<br />
-                <span className="text-emerald-400">Back.</span>
-              </h1>
-              <p className="text-xl text-white/70 max-w-sm font-medium leading-relaxed">
-                Your business ecosystem is ready. Log in to continue your growth.
-              </p>
+      </Link>
+
+      <div className="relative z-10 min-h-svh grid lg:grid-cols-[1.1fr_540px]">
+        <section className="hidden lg:flex flex-col justify-center px-12 xl:px-20">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300 mb-6">Account Access</p>
+          <h2 className="text-6xl font-black leading-[0.88] tracking-[-0.03em]">Sign In.<span className="block text-emerald-300">Run Your Store.</span></h2>
+          <p className="mt-6 text-zinc-300 max-w-md font-medium">OTP-first login with optional passkey. Fast access for billing, inventory, and ledger operations.</p>
+        </section>
+
+        <section className="flex items-center justify-center p-4 sm:p-8">
+          <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.45)] p-6 sm:p-8">
+            <div className="mb-6">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300 font-black">Welcome Back</p>
+              <h3 className="text-3xl font-black tracking-tight mt-1">Sign in to continue</h3>
             </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
-                <Zap className="h-4 w-4 text-emerald-300" />
-                Zero Latency
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm font-bold border border-white/10">
-                <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                Protected
-              </div>
-            </div>
-          </div>
-          <div className="mt-auto pt-12 border-t border-white/10">
-            <p className="text-sm text-white/40 font-medium">Copyright 2026 KhataPlus Online. All rights reserved.</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 pt-20 lg:pt-6 bg-zinc-50 dark:bg-zinc-950 relative overflow-hidden">
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[60%] h-[60%] bg-emerald-600/10 blur-[130px] rounded-full" />
-          <div className="absolute bottom-1/4 right-1/4 w-[50%] h-[50%] bg-violet-600/10 blur-[130px] rounded-full" />
-        </div>
-
-        <div className="absolute top-6 left-6 lg:hidden z-20">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={28} className="text-emerald-600" />
-            <span className="font-bold text-lg text-zinc-900 dark:text-white">KhataPlus</span>
-          </Link>
-        </div>
-
-        <div className="w-full max-w-md space-y-8 relative z-10">
-
-          {/* Step pills */}
-          <div className="flex items-center gap-2 justify-center lg:justify-start">
-            {(["email", "verify"] as Step[]).map((s, i) => (
-              <div key={s} className={cn(
-                "h-2 rounded-full transition-all duration-300",
-                step === s ? "bg-emerald-600 w-12" :
-                  i < ["email", "verify"].indexOf(step) ? "bg-emerald-500 w-8" : "bg-zinc-200 dark:bg-zinc-800 w-8"
-              )} />
-            ))}
-          </div>
-
-          {/* STEP 1 - Email */}
-          {step === "email" && (
-            <div className="space-y-8">
-              <div className="text-center lg:text-left">
-                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                  Welcome <span className="text-emerald-600">Back.</span>
-                </h2>
-                <p className="mt-3 text-lg text-zinc-500 dark:text-zinc-400 font-medium">
-                  Enter your email to receive a login code.
-                </p>
-              </div>
-              <form onSubmit={handleSendCode} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/50 focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all font-bold placeholder:text-zinc-400 text-zinc-900 dark:text-white"
-                    placeholder="you@example.com"
-                  />
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Email</label>
+                <div className="relative">
+                  <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400" placeholder="you@shop.com" disabled={phase === "verify"} required />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={cn(
-                    "w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 group",
-                    loading
-                      ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed border-2 border-zinc-200 dark:border-zinc-800"
-                      : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 active:scale-95 hover:translate-y-[-2px]"
-                  )}
-                >
-                  {loading
-                    ? <Loader2 className="h-6 w-6 animate-spin" />
-                    : <>Send Login Code <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" /></>
-                  }
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* STEP 2 - OTP */}
-          {step === "verify" && (
-            <div className="space-y-8">
-              <div className="text-center lg:text-left">
-                <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                  Check your <span className="text-emerald-500">inbox</span>
-                </h2>
-                <p className="mt-3 text-zinc-500 dark:text-zinc-400">
-                  Code sent to <span className="font-bold text-zinc-900 dark:text-white">{maskedEmail || email}</span>
-                </p>
               </div>
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Verification Code</label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    required
-                    autoFocus
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full text-center text-3xl tracking-[1.2em] font-black py-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-zinc-200 dark:placeholder:text-zinc-800 text-zinc-900 dark:text-white"
-                    placeholder="000000"
-                  />
+
+              {phase === "verify" && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Verification Code</label>
+                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400 tracking-[0.22em] font-black" placeholder="Enter 6-digit code" required />
+                  <p className="text-[11px] text-zinc-300">Code sent to <span className="font-black">{maskedEmail || email}</span></p>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-300 hover:text-emerald-200 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
+                    <span className="text-zinc-400">{resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "Ready"}</span>
+                  </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading || code.length < 6}
-                  className={cn(
-                    "w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2",
-                    loading || code.length < 6
-                      ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed"
-                      : "bg-emerald-600 text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-600/20"
-                  )}
-                >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Sign In"}
+              )}
+
+              {error && <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
+              {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">{info}</div>}
+
+              <Button type="submit" disabled={loading} className="w-full h-11 text-xs uppercase tracking-widest font-black bg-emerald-500 hover:bg-emerald-400 text-zinc-950">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Sign In" : "Send Login Code"} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
+
+              {phase === "email" && (
+                <Button type="button" variant="outline" className="w-full h-11 text-xs uppercase tracking-widest font-black border-white/25 bg-white/5 hover:bg-white/10 text-zinc-100 disabled:opacity-60" onClick={openPasskeyFlow} disabled={passkeyLoading}>
+                  {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                  {passkeyLoading ? "Verifying Passkey..." : "Use Passkey"}
+                </Button>
+              )}
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-300">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
+              {phase === "verify" ? (
+                <button type="button" className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200" onClick={() => { setPhase("email"); setCode(""); setError(""); setInfo(""); setVerifyLoginId(""); setMaskedEmail(""); setResendCooldown(0); clearPendingLogin() }}>
+                  Change Email
                 </button>
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resendLoading || cooldown > 0}
-                  className="w-full py-3 text-sm font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
-                >
-                  {resendLoading ? "Resending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setStep("email"); setCode("") }}
-                  className="w-full py-3 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-                >
-                  Change email
-                </button>
-              </form>
+              ) : (
+                <Link href={signUpHref} className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200">Create Account</Link>
+              )}
             </div>
-          )}
-
-          <div className="text-center">
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Don't have an account?{" "}
-              <Link href="/auth/sign-up" className="text-emerald-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1 group">
-                Create one <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </p>
           </div>
-
-          <div className="text-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
-            <Link href="/demo" className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">
-              Or try the demo without signing up
-            </Link>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   )

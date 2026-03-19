@@ -50,7 +50,7 @@ async function InventoryAssetContent({ itemId }: { itemId: string }) {
 
     const orgId = user.isGuest ? "demo-org" : await getCurrentOrgId(user.userId)
     if (!orgId) {
-        redirect("/onboarding")
+        redirect("/setup-organization")
         return null
     }
 
@@ -164,4 +164,3 @@ function MetricCard({
         </div>
     )
 }
-
