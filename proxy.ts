@@ -106,8 +106,9 @@ export default async function proxy(request: NextRequest) {
     pathname === "/solutions" ||
     pathname === "/security"
 
-  // Fast path for anonymous/public requests: avoid Supabase round-trip in proxy.
-  if (isPublicMarketingPath && !hasSupabaseAuthCookie && !hasGuestCookie) {
+  // Fast path for marketing routes: avoid tenant/session logic that can cause
+  // root-path rewrite loops or slow auth round-trips.
+  if (isPublicMarketingPath) {
     return applySecurityHeaders(NextResponse.next())
   }
 
@@ -165,7 +166,8 @@ export default async function proxy(request: NextRequest) {
   if (!slug && activeOrgSlug) {
     slug = normalizeSlug(activeOrgSlug)
   }
-  if (!slug) {
+  // Cookie-based tenant affinity should not influence public marketing routes.
+  if (!slug && !isPublicMarketingPath) {
     slug = normalizeSlug(request.cookies.get("kp_org_slug")?.value)
   }
 
