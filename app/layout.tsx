@@ -57,17 +57,10 @@ export const viewport: Viewport = {
   ],
 }
 
-import { OfflineBanner } from "@/components/offline-banner"
-import { SyncProvider } from "@/components/sync-provider"
 import { SystemAnnouncement } from "@/components/system-announcement"
-import { MotionProvider } from "@/components/motion-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
-import { ReferralTracker } from "@/components/referral-tracker"
-import { ScrollToTop } from "@/components/scroll-to-top"
-import { PWAProvider } from "@/components/pwa-provider"
 import { Toaster } from "sonner"
 
 export default function RootLayout({
@@ -115,25 +108,13 @@ export default function RootLayout({
           <div className="orbital-blob orbital-blob-2" />
         </div>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <MotionProvider>
-            <PWAProvider>
-              <SyncProvider>
-                <Suspense fallback={null}>
-                  <ReferralTracker />
-                </Suspense>
-                <ScrollToTop />
-                <Suspense fallback={null}>
-                  <SystemAnnouncement />
-                </Suspense>
-                <OfflineBanner />
-                {children}
-              </SyncProvider>
-            </PWAProvider>
-          </MotionProvider>
+          <Suspense fallback={null}>
+            <SystemAnnouncement />
+          </Suspense>
+          {children}
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
-        <PwaInstallPrompt />
         <Toaster position="top-center" richColors />
       </body>
     </html>
