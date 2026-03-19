@@ -122,6 +122,12 @@ interface SettingsFormProps {
   isAdmin: boolean
   orgRole?: string
   viewMode?: "full" | "profile" | "organization"
+  billingNudge?: {
+    showAnnualNudge: boolean
+    spentThisYear: number
+    saveWithAnnual: number
+    targetPlan: "keep" | "starter" | "pro"
+  }
 }
 
 export function SettingsForm({
@@ -130,6 +136,7 @@ export function SettingsForm({
   initialProfile,
   isAdmin,
   viewMode = "full",
+  billingNudge: _billingNudge,
 }: SettingsFormProps) {
   const [org, setOrg] = useState(initialOrg)
   const [profile, setProfile] = useState(initialProfile)
