@@ -35,8 +35,52 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       )
     }
 
-    const { getCurrentUser } = await import("@/lib/data/auth")
+    const { getCurrentUser, isGuestMode } = await import("@/lib/data/auth")
     const { hasPlanFeature } = await import("@/lib/plan-features")
+    const headersList = await headers()
+    const pathPrefix = headersList.get("x-path-prefix") || ""
+    const xInvokePath = headersList.get("x-invoke-path") || ""
+    const isGuest = await isGuestMode()
+
+    if (isGuest) {
+      console.log("--- [DEBUG] Guest Mode Active: Rendering Sandbox Shell ---")
+      const { getSystemSettings } = await import("@/lib/data")
+      const { getDemoSql } = await import("@/lib/db")
+      const { TenantProvider } = await import("@/components/tenant-provider")
+      const demoSql = getDemoSql()
+      const orgsResult = await demoSql`SELECT * FROM organizations WHERE id = 'demo-org' LIMIT 1`
+      let demoTenant = (orgsResult[0] as unknown as Organization) || null
+
+      if (!demoTenant) {
+        demoTenant = {
+          id: "demo-org",
+          name: "KhataPlus Demo Shop",
+          slug: "demo",
+          created_by: "system",
+          created_at: new Date().toISOString()
+        } as Organization
+      }
+
+      const demoSettings = await getSystemSettings(demoTenant.id)
+
+      return (
+        <TenantProvider tenant={demoTenant}>
+          <AppShell
+            profile={null}
+            role="admin"
+            settings={demoSettings}
+            orgId={demoTenant.id}
+            orgName={demoTenant.name}
+            orgSlug={demoTenant.slug}
+            orgPlanType="business"
+            pathPrefix={pathPrefix}
+          >
+            {children}
+          </AppShell>
+        </TenantProvider>
+      )
+    }
+
     const currentUser = await getCurrentUser()
     const userId = currentUser?.userId
 
@@ -67,10 +111,6 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       userId ? safeFetch(() => getUserOrganizationsResolved(userId), [] as any) : Promise.resolve([])
     ])
 
-    const headersList = await headers()
-    const pathPrefix = headersList.get("x-path-prefix") || ""
-    const xInvokePath = headersList.get("x-invoke-path") || ""
-
     if (dbUnavailable) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
@@ -86,47 +126,6 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             Retry
           </button>
         </div>
-      )
-    }
-
-    // Check for Guest Mode
-    const { isGuestMode } = await import("@/lib/data/auth")
-    const isGuest = await isGuestMode()
-
-    if (isGuest) {
-      console.log("--- [DEBUG] Guest Mode Active: Rendering Sandbox Shell ---")
-      const { getDemoSql } = await import("@/lib/db")
-      const demoSql = getDemoSql()
-      const orgsResult = await demoSql`SELECT * FROM organizations WHERE id = 'demo-org' LIMIT 1`
-      let demoTenant = (orgsResult[0] as unknown as Organization) || null
-
-      if (!demoTenant) {
-        demoTenant = {
-          id: "demo-org",
-          name: "KhataPlus Demo Shop",
-          slug: "demo",
-          created_by: "system",
-          created_at: new Date().toISOString()
-        } as Organization
-      }
-
-      const demoSettings = await getSystemSettings(demoTenant.id)
-
-      return (
-        <TenantProvider tenant={demoTenant}>
-            <AppShell
-              profile={null}
-              role="admin"
-              settings={demoSettings}
-              orgId={demoTenant.id}
-              orgName={demoTenant.name}
-              orgSlug={demoTenant.slug}
-              orgPlanType="business"
-              pathPrefix={pathPrefix}
-            >
-              {children}
-            </AppShell>
-        </TenantProvider>
       )
     }
 
