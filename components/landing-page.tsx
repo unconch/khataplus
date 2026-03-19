@@ -15,7 +15,9 @@ export function LandingPage({
   return (
     <main className="min-h-screen bg-[#fafafa] selection:bg-emerald-100 scroll-smooth">
       <HeroSection isAuthenticated={isAuthenticated} orgSlug={orgSlug} isGuest={isGuest} />
-      <HeroShowcaseSection />
+      <div className="hidden md:block">
+        <HeroShowcaseSection />
+      </div>
       <LandingPageClient />
     </main>
   )

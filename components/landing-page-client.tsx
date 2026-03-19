@@ -1,10 +1,12 @@
+import dynamic from "next/dynamic"
 import { LazySection } from "@/components/lazy-section"
-import { FeaturesSection } from "@/components/landing-page/FeaturesSection"
-import { FreeToolsSection } from "@/components/landing-page/FreeToolsSection"
-import { HowItWorksSection } from "@/components/landing-page/HowItWorksSection"
-import { PlatformSection } from "@/components/landing-page/PlatformSection"
-import { SiteFooter } from "@/components/landing-page/SiteFooter"
-import { SolutionsSection } from "@/components/landing-page/SolutionsSection"
+
+const FeaturesSection = dynamic(() => import("@/components/landing-page/FeaturesSection").then((m) => m.FeaturesSection))
+const SolutionsSection = dynamic(() => import("@/components/landing-page/SolutionsSection").then((m) => m.SolutionsSection))
+const PlatformSection = dynamic(() => import("@/components/landing-page/PlatformSection").then((m) => m.PlatformSection))
+const HowItWorksSection = dynamic(() => import("@/components/landing-page/HowItWorksSection").then((m) => m.HowItWorksSection))
+const FreeToolsSection = dynamic(() => import("@/components/landing-page/FreeToolsSection").then((m) => m.FreeToolsSection))
+const SiteFooter = dynamic(() => import("@/components/landing-page/SiteFooter").then((m) => m.SiteFooter))
 
 export function LandingPageClient() {
   return (
