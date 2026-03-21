@@ -473,6 +473,7 @@ export async function exchangeAuthCodeForSession(code: string, next?: string): P
         : undefined
 
   try {
+    const { ensureProfile } = await import("@/lib/data/profiles")
     await ensureProfile(user.id, user.email || `supabase_${user.id}@local.invalid`, name)
   } catch (profileError) {
     // Avoid trapping users at auth callback for transient/profile migration issues.
