@@ -2,7 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import withPWAInit from "@ducanh2912/next-pwa";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
-const enablePwa = process.env.NEXT_ENABLE_PWA === "true" || process.env.VERCEL === "1";
+const enablePwa = process.env.NEXT_ENABLE_PWA === "true";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -13,6 +13,7 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: false, // prevent jarring reload when coming back online
   workboxOptions: {
+    navigateFallbackDenylist: [/^\/api\//],
     disableDevLogs: true,
     runtimeCaching: [
       {
