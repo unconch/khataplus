@@ -61,7 +61,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
 
   // 1. Static assets — skip everything
-  if (STATIC_PREFIXES.some((p) => pathname.startsWith(p))) {
+  if (pathname.startsWith("/api/") || STATIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
