@@ -418,7 +418,7 @@ export default function LoginPage() {
                 <div className="space-y-1.5">
                   <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Verification Code</label>
                   <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl" placeholder="Enter 6-digit code" required />
-                  <p className="text-[11px] text-zinc-500">Code sent to <span className="font-black text-zinc-800">{maskedEmail || email}</span></p>
+                  <p className="text-[11px] text-zinc-500">Code sent to <span className="font-black text-zinc-800">{verifyLoginId || email}</span></p>
                   <div className="flex items-center justify-between text-[11px]">
                     <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
                     <span className="text-zinc-400">{resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "Ready"}</span>
