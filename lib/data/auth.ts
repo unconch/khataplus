@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { sql } from "@/lib/db"
-import { getProfile, ensureProfile } from "@/lib/data/profiles"
+import { getProfile } from "@/lib/data/profiles"
 import { createClient } from "@/lib/supabase/server"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -135,6 +135,12 @@ export function sanitizeNextPath(next: unknown, fallback = "/app/dashboard") {
   }
 
   return candidate || fallback
+}
+
+async function persistActiveOrgSlug(slug: string | null) {
+  if (!slug) return
+  // Placeholder persistence; intentionally fire-and-forget in verifyOtp
+  return
 }
 
 async function resolveAppOrigin() {
@@ -374,31 +380,39 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
         ? user.user_metadata.name
         : undefined
 
-  try {
-    await withTimeout(
-      ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata),
-      800,
-      "PROFILE_SYNC"
-    )
-  } catch (error) {
-    // Don't block successful auth on profile sync issues; user can continue and profile can self-heal later.
-    console.warn("[AUTH] Profile sync failed after OTP verification; continuing session flow", error)
-  }
+  const metadataSlug = normalizeSlug(
+    (user as any)?.user_metadata?.active_org_slug || (user as any)?.user_metadata?.activeOrgSlug
+  )
+  const cookieSlug: string | null = null
 
-  const org = await withTimeout(getPrimaryOrganizationForUser(user.id), 600, "ORG_LOOKUP")
-  const redirectTo = await withTimeout(resolvePostAuthRedirect(user.id, safeNext), 600, "REDIRECT_RESOLVE")
+  // Fire all post-auth tasks without waiting
+  Promise.allSettled([
+    (async () => {
+      try {
+        const { ensureProfile } = await import("@/lib/data/profiles")
+        await ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata)
+      } catch (e) {
+        console.warn("[AUTH] ensureProfile failed", e)
+      }
+    })(),
+    persistActiveOrgSlug(metadataSlug || cookieSlug || null).catch(() => {}),
+  ])
+
+  // Return immediately — don't wait for DB calls
+  const redirectTo = metadataSlug
+    ? `/app/${metadataSlug}/dashboard`
+    : cookieSlug
+      ? `/app/${cookieSlug}/dashboard`
+      : "/app/dashboard"
 
   return {
     ok: true,
     status: 200,
-    phase: "authenticated",
+    phase: "authenticated" as const,
     next: safeNext,
     redirectTo,
-    org,
-    user: {
-      email: user.email || email,
-      id: user.id,
-    },
+    org: metadataSlug ? { id: "", name: null, role: null, slug: metadataSlug } : null,
+    user: { email: user.email || email, id: user.id },
   }
 }
 
