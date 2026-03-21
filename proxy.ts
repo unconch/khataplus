@@ -54,6 +54,12 @@ function copyCookies(source: NextResponse, target: NextResponse) {
 
 function finalizeResponse(source: NextResponse, target: NextResponse) {
   copyCookies(source, target)
+  // Propagate custom headers (path context, invoke path) to downstream handlers
+  source.headers.forEach((value, key) => {
+    if (key.startsWith("x-path-prefix") || key.startsWith("x-invoke-path")) {
+      target.headers.set(key, value)
+    }
+  })
   return applySecurityHeaders(target)
 }
 
@@ -184,6 +190,12 @@ export default async function proxy(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24 * 30,
     })
+  }
+
+  // Set x-path-prefix header so AppLayout knows the slug context
+  if (user && slug && pathname.startsWith("/app/")) {
+    sessionResponse.headers.set("x-path-prefix", `/app/${slug}`)
+    sessionResponse.headers.set("x-invoke-path", pathname)
   }
 
   return finalizeResponse(sessionResponse, sessionResponse)
