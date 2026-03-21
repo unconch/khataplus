@@ -1,4 +1,3 @@
-import { withSentryConfig } from "@sentry/nextjs";
 import withPWAInit from "@ducanh2912/next-pwa";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
@@ -60,49 +59,10 @@ const withAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-const isNonEmptyString = (value) =>
-  typeof value === "string" &&
-  value.trim() !== "" &&
-  value.trim().toLowerCase() !== "undefined" &&
-  value.trim().toLowerCase() !== "null";
-
-const sentryOrg = isNonEmptyString(process.env.SENTRY_ORG)
-  ? process.env.SENTRY_ORG.trim()
-  : undefined;
-const sentryProject = isNonEmptyString(process.env.SENTRY_PROJECT)
-  ? process.env.SENTRY_PROJECT.trim()
-  : undefined;
-const sentryAuthToken = isNonEmptyString(process.env.SENTRY_AUTH_TOKEN)
-  ? process.env.SENTRY_AUTH_TOKEN.trim()
-  : undefined;
-const vercelOrgId = isNonEmptyString(process.env.VERCEL_ORG_ID)
-  ? process.env.VERCEL_ORG_ID.trim()
-  : undefined;
-const vercelProjectId = isNonEmptyString(process.env.VERCEL_PROJECT_ID)
-  ? process.env.VERCEL_PROJECT_ID.trim()
-  : undefined;
-const enableAutomaticVercelMonitors = Boolean(
-  process.env.SENTRY_ENABLE_VERCEL_MONITORS === "true" &&
-  process.env.VERCEL === "1" &&
-  sentryOrg &&
-  sentryProject &&
-  sentryAuthToken &&
-  vercelOrgId &&
-  vercelProjectId,
-);
-
 const isCiBuild = process.env.CI === "true" || process.env.VERCEL === "1";
 const enableTypecheck = process.env.NEXT_ENABLE_TYPECHECK === "true";
 const disableTypecheck = process.env.NEXT_DISABLE_TYPECHECK === "true";
 const ignoreBuildErrors = disableTypecheck || (!isCiBuild && !enableTypecheck);
-
-const enableSentryBuild = Boolean(
-  isCiBuild &&
-    process.env.SENTRY_ENABLE_BUILD === "true" &&
-    sentryOrg &&
-    sentryProject &&
-    sentryAuthToken
-);
 
 
 /** @type {import('next').NextConfig} */
@@ -130,7 +90,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://accounts.google.com/gsi/client https://*.vercel-scripts.com https://checkout.razorpay.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "connect-src 'self' https://*.supabase.co https://sweet-feather-8f6f.khataplus.workers.dev https://api.razorpay.com https://o*.ingest.sentry.io https://*.vercel-insights.com https://*.vercel-analytics.com",
+              "connect-src 'self' https://*.supabase.co https://sweet-feather-8f6f.khataplus.workers.dev https://api.razorpay.com https://*.vercel-insights.com https://*.vercel-analytics.com",
               "img-src 'self' data: https://*.supabase.co https://*.googleusercontent.com",
               "font-src 'self' data: https://fonts.gstatic.com",
               "frame-src https://checkout.razorpay.com https://accounts.google.com",
@@ -144,23 +104,4 @@ const nextConfig = {
 
 const baseConfig = withAnalyzer(withPWA(nextConfig));
 
-const sentryConfigOptions = {
-  ...(sentryOrg ? { org: sentryOrg } : {}),
-  ...(sentryProject ? { project: sentryProject } : {}),
-  ...(sentryAuthToken ? { authToken: sentryAuthToken } : {}),
-  silent: !process.env.CI,
-  tunnelRoute: "/monitoring",
-  ...(sentryAuthToken ? { widenClientFileUpload: true } : {}),
-  webpack: {
-    ...(enableAutomaticVercelMonitors ? { automaticVercelMonitors: true } : {}),
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-};
-
-const finalConfig = enableSentryBuild
-  ? withSentryConfig(baseConfig, sentryConfigOptions)
-  : baseConfig;
-
-export default finalConfig;
+export default baseConfig;
