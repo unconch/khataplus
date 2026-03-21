@@ -59,14 +59,15 @@ function finalizeResponse(source: NextResponse, target: NextResponse) {
 
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
-  const hostname = request.headers.get("host") || ""
-  const segments = pathname.split("/").filter(Boolean)
-  const firstSegment = segments[0] || ""
 
   // 1. Static assets — skip everything
   if (STATIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }
+
+  const hostname = request.headers.get("host") || ""
+  const segments = pathname.split("/").filter(Boolean)
+  const firstSegment = segments[0] || ""
 
   // 2. Hard redirects
   if (pathname === "/merchant-academy" || pathname === "/merchantacademy") {
