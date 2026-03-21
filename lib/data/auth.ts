@@ -380,9 +380,16 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
         ? user.user_metadata.name
         : undefined
 
-  const metadataSlug = normalizeSlug(
-    (user as any)?.user_metadata?.active_org_slug || (user as any)?.user_metadata?.activeOrgSlug
-  )
+  const metadataSlug = (() => {
+    const v = String(
+      (user as any)?.user_metadata?.active_org_slug ||
+        (user as any)?.user_metadata?.activeOrgSlug ||
+        ""
+    )
+      .trim()
+      .toLowerCase()
+    return v && v !== "undefined" && v !== "null" && !v.includes(".") ? v : null
+  })()
   const cookieSlug: string | null = null
 
   // Fire all post-auth tasks without waiting
