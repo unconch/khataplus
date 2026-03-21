@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = new Set([
   "/demo",
 ])
 
-const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/public"]
+const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/"]
 const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
 const INVALID_SLUGS = new Set(["", "undefined", "null"])
 
