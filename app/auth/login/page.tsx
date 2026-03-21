@@ -229,7 +229,7 @@ export default function LoginPage() {
                 },
                 body: JSON.stringify({ email: loginId, create_user: false }),
               },
-              6000
+              28000
             )
             const payload = await directOtp.json().catch(() => ({} as any))
             if (directOtp.ok) {
@@ -250,7 +250,7 @@ export default function LoginPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email: loginId, code: "", next }),
             },
-            8000
+            28000
           )
           const data = await res.json().catch(() => ({} as any))
           if (!res.ok) {
@@ -334,8 +334,8 @@ export default function LoginPage() {
                 apikey: supabaseAnonKey,
               },
               body: JSON.stringify({ email: loginId, create_user: false }),
-            },
-            6000
+              },
+            28000
           )
           const data = await res.json().catch(() => ({} as any))
           if (res.ok) {
@@ -356,7 +356,7 @@ export default function LoginPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: loginId, code: "", next }),
           },
-          8000
+          28000
         )
         const data = await res.json().catch(() => ({} as any))
         if (!res.ok) throw new Error(data?.error || lastError)
