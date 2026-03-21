@@ -8,8 +8,11 @@ function toSafePath(next: unknown): string {
 }
 
 export async function POST(request: Request) {
+  const start = Date.now()
+  console.log("[LOGIN] POST started")
   try {
     const body = await request.json().catch(() => ({} as any))
+    console.log("[LOGIN] body parsed", Date.now() - start, "ms")
     const email = String(body?.email || "").trim().toLowerCase()
     const code = String(body?.code || "").trim().replace(/\s+/g, "").replace(/^#/, "")
     const next = toSafePath(body?.next)
@@ -20,6 +23,7 @@ export async function POST(request: Request) {
 
     if (!code) {
       const otp = await requestLoginOtp({ email, next })
+      console.log("[LOGIN] OTP result", Date.now() - start, "ms", otp.ok, otp.error)
       if (!otp.ok) {
         return NextResponse.json({ error: otp.error || "Failed to send verification code email." }, { status: otp.status || 400 })
       }
