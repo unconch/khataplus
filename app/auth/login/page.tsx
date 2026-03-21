@@ -186,7 +186,6 @@ export default function LoginPage() {
         }
       }
       router.replace(target)
-      router.refresh()
     } catch (err: any) {
       const fallbackEmail = loginId
       try {
@@ -334,8 +333,8 @@ export default function LoginPage() {
         }
       }
       clearPendingLogin()
+      setLoading(false)
       router.replace(target)
-      router.refresh()
     } catch (err: any) {
       if (requestingOtp) {
         setPhase("email")

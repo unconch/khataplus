@@ -3,10 +3,9 @@
 import Link from "next/link"
 import { AdvancedScrollReveal } from "@/components/advanced-scroll-reveal"
 import { Sparkles, UserPlus, PackagePlus, Rocket, ArrowRight } from "lucide-react"
-import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
 
 export function HowItWorksSection() {
-    const { signUpUrl } = useMainAuthUrls()
+    const signUpUrl = "/auth/sign-up"
 
     return (
         <section id="how" className="py-20 md:py-24 px-6 bg-transparent relative overflow-hidden">
@@ -80,7 +79,7 @@ export function HowItWorksSection() {
                         <div className="absolute -top-10 -left-6 w-56 h-56 rounded-full bg-white/40 blur-3xl pointer-events-none" />
                         <div className="absolute -bottom-16 -right-8 w-72 h-72 rounded-full bg-cyan-200/30 blur-3xl pointer-events-none" />
                         <div className="absolute inset-[1px] rounded-[calc(3rem-1px)] border border-white/70 pointer-events-none" />
-                        <div className="absolute -inset-x-16 -top-24 h-48 bg-white/55 blur-2xl rotate-6 group-hover:translate-x-8 transition-transform duration-1000 pointer-events-none" />
+                        <div className="absolute -inset-x-6 sm:-inset-x-16 -top-24 h-48 bg-white/55 blur-2xl rotate-6 group-hover:translate-x-8 transition-transform duration-1000 pointer-events-none" />
 
                         <h3 className="text-3xl md:text-5xl font-semibold tracking-tighter text-zinc-900 mb-8 relative z-10">Ready to run your <br /> business smarter?</h3>
 
@@ -106,7 +105,7 @@ function TimelineStep({ number, icon: Icon, title, desc, align, color, shadow, g
             <div className={`flex flex-col md:flex-row items-start md:items-center gap-8 md:gap-16 relative ${align === 'left' ? 'md:flex-row-reverse' : ''}`}>
 
                 {/* Content Side */}
-                <div className={`w-full md:w-[calc(50%-4rem)] ${align === 'left' ? 'md:text-left' : 'md:text-right'} pl-20 md:pl-0`}>
+                <div className={`w-full md:w-[calc(50%-4rem)] ${align === 'left' ? 'md:text-left' : 'md:text-right'} pl-24 md:pl-0`}>
                     <div className={`inline-flex items-center gap-4 mb-4 ${align === 'left' ? '' : 'md:flex-row-reverse'}`}>
                         <span className={`${color} font-mono text-base font-bold tracking-widest`}>{number}</span>
                         <div className={`h-1 w-12 ${glowBar} rounded-full`} />
@@ -116,8 +115,8 @@ function TimelineStep({ number, icon: Icon, title, desc, align, color, shadow, g
                 </div>
 
                 {/* Center Node */}
-                <div className={`absolute left-10 md:left-1/2 top-0 md:top-1/2 -translate-y-1/2 -translate-x-1/2 w-16 h-16 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center z-10 transition-transform duration-500 group-hover:scale-110 group-hover:border-zinc-300 ${shadow}`}>
-                    <Icon size={24} strokeWidth={1.5} className={color} />
+                <div className={`absolute left-10 md:left-1/2 top-0 md:top-1/2 -translate-y-1/2 -translate-x-1/2 w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white border border-zinc-200 flex items-center justify-center z-10 transition-transform duration-500 group-hover:scale-110 group-hover:border-zinc-300 ${shadow}`}>
+                    <Icon size={20} strokeWidth={1.5} className={color} />
                 </div>
 
                 {/* Empty Side for Spacing */}
