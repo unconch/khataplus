@@ -36,6 +36,27 @@ export default function LoginPage() {
   const [resendLoading, setResendLoading] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [otpSendPending, setOtpSendPending] = useState(false)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  const maskForUi = (raw: string) => {
+    const value = String(raw || "").trim().toLowerCase()
+    const [local, domain] = value.split("@")
+    if (!local || !domain) return value
+    if (local.length <= 2) return `${local[0] || "*"}*@${domain}`
+    return `${local.slice(0, 2)}***@${domain}`
+  }
+
+  async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 8000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(url, { ...init, signal: controller.signal })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
 
   const clearPendingLogin = () => {
     if (typeof window === "undefined") return
@@ -82,6 +103,11 @@ export default function LoginPage() {
     const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
     return () => clearTimeout(timer)
   }, [resendCooldown])
+
+  useEffect(() => {
+    // Warm up the auth route to reduce first-submit cold start delay.
+    fetch("/api/auth/login", { method: "GET", cache: "no-store" }).catch(() => undefined)
+  }, [])
 
   const openPasskeyFlow = async () => {
     const loginId = email.trim().toLowerCase()
@@ -196,6 +222,76 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     setInfo("")
+    const requestingOtp = phase === "email"
+    const loginId = email.trim().toLowerCase()
+    if (requestingOtp && loginId) {
+      setPhase("verify")
+      setVerifyLoginId(loginId)
+      setMaskedEmail(maskForUi(loginId))
+      setResendCooldown(resendCooldownSeconds)
+      setInfo("Sending verification code...")
+      setOtpSendPending(true)
+      try {
+        let sent = false
+        let lastError = "Could not send verification code."
+
+        if (supabaseUrl && supabaseAnonKey) {
+          try {
+            const directOtp = await fetchWithTimeout(
+              `${supabaseUrl}/auth/v1/otp`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: supabaseAnonKey,
+                },
+                body: JSON.stringify({ email: loginId, create_user: false }),
+              },
+              6000
+            )
+            const payload = await directOtp.json().catch(() => ({} as any))
+            if (directOtp.ok) {
+              sent = true
+            } else {
+              lastError = payload?.error_description || payload?.msg || payload?.error || lastError
+            }
+          } catch (err: any) {
+            lastError = err?.name === "AbortError" ? "OTP request timed out. Retrying..." : err?.message || lastError
+          }
+        }
+
+        if (!sent) {
+          const res = await fetchWithTimeout(
+            "/api/auth/login",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: loginId, code: "", next }),
+            },
+            8000
+          )
+          const data = await res.json().catch(() => ({} as any))
+          if (!res.ok) {
+            throw new Error(data?.error || lastError)
+          }
+          sent = true
+        }
+
+        if (sent) {
+          setMaskedEmail(maskForUi(loginId))
+          savePendingLogin(loginId, maskForUi(loginId))
+          setInfo("Code sent. Check your email.")
+        }
+      } catch (err: any) {
+        setPhase("email")
+        setCode("")
+        setResendCooldown(0)
+        setError(err?.name === "AbortError" ? "OTP request timed out. Please tap continue again." : err?.message || "Could not sign in.")
+      } finally {
+        setOtpSendPending(false)
+      }
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch("/api/auth/login", {
@@ -210,12 +306,12 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok) throw new Error(data?.error || "Login failed")
       if (data?.phase === "verify") {
-        const loginId = email.trim().toLowerCase()
         setPhase("verify")
         setMaskedEmail(data?.maskedEmail || email)
         setVerifyLoginId(loginId)
         savePendingLogin(loginId, data?.maskedEmail || loginId)
-        if (phase === "email") setResendCooldown(resendCooldownSeconds)
+        if (requestingOtp) setResendCooldown(resendCooldownSeconds)
+        setInfo("Code sent. Check your email.")
         return
       }
       let target = data?.next || next || "/app/dashboard"
@@ -241,6 +337,11 @@ export default function LoginPage() {
       router.replace(target)
       router.refresh()
     } catch (err: any) {
+      if (requestingOtp) {
+        setPhase("email")
+        setCode("")
+        setResendCooldown(0)
+      }
       setError(err?.message || "Could not sign in.")
     } finally {
       setLoading(false)
@@ -255,18 +356,53 @@ export default function LoginPage() {
     setInfo("")
     setResendLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginId, code: "", next }),
-      })
-      const data = await res.json().catch(() => ({} as any))
-      if (!res.ok) throw new Error(data?.error || "Could not resend code")
+      let resent = false
+      let lastError = "Could not resend code"
 
-      setMaskedEmail(data?.maskedEmail || loginId)
-      savePendingLogin(loginId, data?.maskedEmail || loginId)
+      if (supabaseUrl && supabaseAnonKey) {
+        try {
+          const res = await fetchWithTimeout(
+            `${supabaseUrl}/auth/v1/otp`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: supabaseAnonKey,
+              },
+              body: JSON.stringify({ email: loginId, create_user: false }),
+            },
+            6000
+          )
+          const data = await res.json().catch(() => ({} as any))
+          if (res.ok) {
+            resent = true
+          } else {
+            lastError = data?.error_description || data?.msg || data?.error || lastError
+          }
+        } catch (err: any) {
+          lastError = err?.name === "AbortError" ? "Resend timed out. Please try again." : err?.message || lastError
+        }
+      }
+
+      if (!resent) {
+        const res = await fetchWithTimeout(
+          "/api/auth/login",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginId, code: "", next }),
+          },
+          8000
+        )
+        const data = await res.json().catch(() => ({} as any))
+        if (!res.ok) throw new Error(data?.error || lastError)
+      }
+
+      setMaskedEmail(maskForUi(loginId))
+      savePendingLogin(loginId, maskForUi(loginId))
       setInfo("A new code was sent.")
       setResendCooldown(resendCooldownSeconds)
+      setOtpSendPending(false)
     } catch (err: any) {
       setError(err?.message || "Could not resend code.")
     } finally {
@@ -275,74 +411,78 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-svh bg-[#0b1220] text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(16,185,129,0.25),transparent),radial-gradient(900px_500px_at_100%_110%,rgba(14,165,233,0.24),transparent)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,18,32,0.95),rgba(17,24,39,0.98))]" />
-
-      <Link href="/" className="absolute left-5 top-5 z-20 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur">
-        <Logo size={24} className="text-emerald-300" />
-        <div>
-          <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
-          <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-300">Secure Login</p>
-        </div>
-      </Link>
-
-      <div className="relative z-10 min-h-svh grid lg:grid-cols-[1.1fr_540px]">
-        <section className="hidden lg:flex flex-col justify-center px-12 xl:px-20">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300 mb-6">Account Access</p>
-          <h2 className="text-6xl font-black leading-[0.88] tracking-[-0.03em]">Sign In.<span className="block text-emerald-300">Run Your Store.</span></h2>
-          <p className="mt-6 text-zinc-300 max-w-md font-medium">OTP-first login with optional passkey. Fast access for billing, inventory, and ledger operations.</p>
+    <div className="min-h-svh bg-[#f2f3f5] text-zinc-900 p-3 sm:p-4">
+      <div className="min-h-[calc(100svh-24px)] sm:min-h-[calc(100svh-32px)] overflow-hidden rounded-2xl border border-zinc-200 bg-[#f2f3f5] grid lg:grid-cols-2">
+        <section className="hidden lg:flex flex-col justify-between bg-[#05070b] text-white px-14 py-14">
+          <div className="inline-flex items-center gap-3">
+            <Logo size={28} className="text-white" />
+            <span className="text-4xl font-black italic">KhataPlus</span>
+          </div>
+          <div>
+            <h2 className="text-6xl leading-[1.02] font-semibold tracking-tight">Welcome back to your business command center.</h2>
+            <p className="mt-5 text-3xl text-zinc-300">Fast, secure, and built for daily operations.</p>
+          </div>
+          <p className="text-sm text-zinc-500">Ledger, Billing, Inventory. One place.</p>
         </section>
 
-        <section className="flex items-center justify-center p-4 sm:p-8">
-          <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.45)] p-6 sm:p-8">
+        <section className="relative flex items-center justify-center p-6 sm:p-8 lg:p-10 min-h-svh lg:min-h-0 bg-[radial-gradient(90%_80%_at_20%_15%,#5b50d7_0%,transparent_58%),radial-gradient(90%_85%_at_80%_85%,#5b50d7_0%,transparent_60%),linear-gradient(180deg,#f2efea,#f6eee8)]">
+          <Link href="/" className="absolute left-5 top-5 z-20 inline-flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/90 px-3 py-2 shadow-sm lg:hidden">
+            <Logo size={24} className="text-emerald-500" />
+            <div>
+              <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-500">Secure Login</p>
+            </div>
+          </Link>
+
+          <div className="w-full max-w-md rounded-3xl border border-zinc-300 bg-white/90 shadow-[0_20px_60px_rgba(16,24,40,0.20)] p-6 sm:p-8">
             <div className="mb-6">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300 font-black">Welcome Back</p>
-              <h3 className="text-3xl font-black tracking-tight mt-1">Sign in to continue</h3>
+              <p className="text-center text-[11px] uppercase tracking-[0.2em] text-indigo-600 font-black">Secure Login</p>
+              <h3 className="text-center text-5xl font-semibold tracking-tight mt-3">Sign in</h3>
+              <p className="text-center text-zinc-500 mt-2">Continue to your dashboard</p>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Email</label>
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Email</label>
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400" placeholder="you@shop.com" disabled={phase === "verify"} required />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl" placeholder="you@shop.com" disabled={phase === "verify"} required />
                 </div>
               </div>
 
               {phase === "verify" && (
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-300 font-bold">Verification Code</label>
-                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-11 bg-black/25 border-white/20 text-white placeholder:text-zinc-400 tracking-[0.22em] font-black" placeholder="Enter 6-digit code" required />
-                  <p className="text-[11px] text-zinc-300">Code sent to <span className="font-black">{maskedEmail || email}</span></p>
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Verification Code</label>
+                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl" placeholder="Enter 6-digit code" required />
+                  <p className="text-[11px] text-zinc-500">Code sent to <span className="font-black text-zinc-800">{maskedEmail || email}</span></p>
                   <div className="flex items-center justify-between text-[11px]">
-                    <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-300 hover:text-emerald-200 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
+                    <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
                     <span className="text-zinc-400">{resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "Ready"}</span>
                   </div>
                 </div>
               )}
 
               {error && <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
-              {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">{info}</div>}
+              {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-800">{info}</div>}
 
-              <Button type="submit" disabled={loading} className="w-full h-11 text-xs uppercase tracking-widest font-black bg-emerald-500 hover:bg-emerald-400 text-zinc-950">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Sign In" : "Send Login Code"} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
+              <Button type="submit" disabled={loading || otpSendPending} className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white">{loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Sign In" : "Continue"} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
 
               {phase === "email" && (
-                <Button type="button" variant="outline" className="w-full h-11 text-xs uppercase tracking-widest font-black border-white/25 bg-white/5 hover:bg-white/10 text-zinc-100 disabled:opacity-60" onClick={openPasskeyFlow} disabled={passkeyLoading}>
+                <Button type="button" variant="outline" className="w-full h-12 rounded-lg text-base border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 disabled:opacity-60" onClick={openPasskeyFlow} disabled={passkeyLoading}>
                   {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
                   {passkeyLoading ? "Verifying Passkey..." : "Use Passkey"}
                 </Button>
               )}
             </form>
 
-            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-300">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
+            <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-500">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
               {phase === "verify" ? (
-                <button type="button" className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200" onClick={() => { setPhase("email"); setCode(""); setError(""); setInfo(""); setVerifyLoginId(""); setMaskedEmail(""); setResendCooldown(0); clearPendingLogin() }}>
+                <button type="button" className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700" onClick={() => { setPhase("email"); setCode(""); setError(""); setInfo(""); setVerifyLoginId(""); setMaskedEmail(""); setResendCooldown(0); clearPendingLogin() }}>
                   Change Email
                 </button>
               ) : (
-                <Link href={signUpHref} className="text-emerald-300 font-black uppercase tracking-widest hover:text-emerald-200">Create Account</Link>
+                <Link href={signUpHref} className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700">Create Account</Link>
               )}
             </div>
           </div>
