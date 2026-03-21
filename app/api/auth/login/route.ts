@@ -7,6 +7,21 @@ function toSafePath(next: unknown): string {
   return next
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_TIMEOUT`)), ms)
+    promise
+      .then((value) => {
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((err) => {
+        clearTimeout(timer)
+        reject(err)
+      })
+  })
+}
+
 export async function POST(request: Request) {
   const start = Date.now()
   console.log("[LOGIN] POST started")
@@ -35,7 +50,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const result = await verifyLoginOtp({ email, token: code, next })
+    const result = await withTimeout(verifyLoginOtp({ email, token: code, next }), 7000, "OTP_VERIFY")
     if (!result.ok) {
       return NextResponse.json({ error: result.error || "Invalid verification code." }, { status: result.status || 401 })
     }

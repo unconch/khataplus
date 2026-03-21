@@ -104,6 +104,21 @@ function isValidEmail(email: string) {
   return EMAIL_PATTERN.test(email)
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_TIMEOUT`)), ms)
+    promise
+      .then((value) => {
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((err) => {
+        clearTimeout(timer)
+        reject(err)
+      })
+  })
+}
+
 export function maskEmail(email: string) {
   const [local, domain] = email.split("@")
   if (!local || !domain) return email
@@ -360,14 +375,18 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
         : undefined
 
   try {
-    await ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata)
+    await withTimeout(
+      ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata),
+      800,
+      "PROFILE_SYNC"
+    )
   } catch (error) {
     // Don't block successful auth on profile sync issues; user can continue and profile can self-heal later.
     console.warn("[AUTH] Profile sync failed after OTP verification; continuing session flow", error)
   }
 
-  const org = await getPrimaryOrganizationForUser(user.id)
-  const redirectTo = await resolvePostAuthRedirect(user.id, safeNext)
+  const org = await withTimeout(getPrimaryOrganizationForUser(user.id), 600, "ORG_LOOKUP")
+  const redirectTo = await withTimeout(resolvePostAuthRedirect(user.id, safeNext), 600, "REDIRECT_RESOLVE")
 
   return {
     ok: true,
