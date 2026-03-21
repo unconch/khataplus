@@ -166,25 +166,8 @@ export default function LoginPage() {
       if (!finishRes.ok) {
         throw new Error(finishData?.error || "Passkey verification failed")
       }
-      let target = finishData?.next || next || "/app/dashboard"
-      if (target === "/app/dashboard" || target.startsWith("/app/dashboard/")) {
-        const slugFromResponse = typeof finishData?.orgSlug === "string" ? finishData.orgSlug.trim() : ""
-        let resolvedSlug = slugFromResponse
-        if (!resolvedSlug) {
-          try {
-            const ctxRes = await fetch("/api/auth/context", { cache: "no-store" })
-            const ctx = await ctxRes.json().catch(() => ({} as any))
-            if (ctx?.orgSlug) {
-              resolvedSlug = String(ctx.orgSlug).trim()
-            }
-          } catch {
-            // ignore and fallback to /app/dashboard
-          }
-        }
-        if (resolvedSlug) {
-          target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
-        }
-      }
+      const target = finishData?.next || next || "/app/dashboard"
+      clearPendingLogin()
       router.replace(target)
     } catch (err: any) {
       const fallbackEmail = loginId
@@ -313,25 +296,7 @@ export default function LoginPage() {
         setInfo("Code sent. Check your email.")
         return
       }
-      let target = data?.next || next || "/app/dashboard"
-      if (target === "/app/dashboard" || target.startsWith("/app/dashboard/")) {
-        const slugFromResponse = typeof data?.orgSlug === "string" ? data.orgSlug.trim() : ""
-        let resolvedSlug = slugFromResponse
-        if (!resolvedSlug) {
-          try {
-            const ctxRes = await fetch("/api/auth/context", { cache: "no-store" })
-            const ctx = await ctxRes.json().catch(() => ({} as any))
-            if (ctx?.orgSlug) {
-              resolvedSlug = String(ctx.orgSlug).trim()
-            }
-          } catch {
-            // ignore and fallback to /app/dashboard
-          }
-        }
-        if (resolvedSlug) {
-          target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
-        }
-      }
+      const target = data?.next || next || "/app/dashboard"
       clearPendingLogin()
       setLoading(false)
       router.replace(target)
