@@ -42,7 +42,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         return pathname
     })()
 
-    const posHref = pathPrefix ? `${pathPrefix}/pos/sales` : "/dashboard/sales"
+    const posHref = pathPrefix ? `${pathPrefix}/pos` : "/pos"
 
     const navItems: Array<{
         href: string
@@ -53,13 +53,13 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
     }> = [
             { href: `${pathPrefix}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
             { href: posHref, label: "POS Terminal", icon: Monitor, show: isAdmin || settings.allow_staff_sales },
-            { href: `${pathPrefix}/dashboard/khata`, label: "Khata Rail", icon: Users, show: true },
-            { href: `${pathPrefix}/dashboard/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
-            { href: `${pathPrefix}/dashboard/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
-            { href: `${pathPrefix}/dashboard/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics, feature: "analytics_dashboard" },
-            { href: `${pathPrefix}/dashboard/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports, feature: "reports" },
-            { href: `${pathPrefix}/dashboard/migration`, label: "Migration", icon: Database, show: isAdmin, feature: "migration_import" },
-            { href: `${pathPrefix}/dashboard/settings`, label: "Settings", icon: Settings, show: isAdmin },
+            { href: `${pathPrefix}/khata`, label: "Khata Rail", icon: Users, show: true },
+            { href: `${pathPrefix}/sales`, label: "Sales", icon: BadgeIndianRupee, show: isAdmin || settings.allow_staff_sales },
+            { href: `${pathPrefix}/inventory`, label: "Inventory", icon: Package, show: isAdmin || settings.allow_staff_inventory },
+            { href: `${pathPrefix}/analytics`, label: "Analytics", icon: BarChart3, show: isAdmin || settings.allow_staff_analytics, feature: "analytics_dashboard" },
+            { href: `${pathPrefix}/reports`, label: "Reports", icon: FileText, show: isAdmin || settings.allow_staff_reports, feature: "reports" },
+            { href: `${pathPrefix}/migration`, label: "Migration", icon: Database, show: isAdmin, feature: "migration_import" },
+            { href: `${pathPrefix}/settings`, label: "Settings", icon: Settings, show: isAdmin },
         ]
 
     return (
