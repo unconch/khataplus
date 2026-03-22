@@ -406,11 +406,28 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
   ])
 
   // Return immediately — don't wait for DB calls
-  const redirectTo = metadataSlug
-    ? `/app/${metadataSlug}/dashboard`
-    : cookieSlug
-      ? `/app/${cookieSlug}/dashboard`
-      : "/app/dashboard"
+  let resolvedSlug = metadataSlug || cookieSlug
+
+  // If no slug in metadata/cookie, try Neon as fallback
+  if (!resolvedSlug) {
+    try {
+      const org = await withTimeout(
+        getPrimaryOrganizationForUser(user.id),
+        1500,
+        "ORG_LOOKUP"
+      )
+      resolvedSlug = org?.slug || null
+      if (resolvedSlug) {
+        persistActiveOrgSlug(resolvedSlug).catch(() => {})
+      }
+    } catch {
+      // ignore, fall back to /app/dashboard
+    }
+  }
+
+  const redirectTo = resolvedSlug
+    ? `/app/${resolvedSlug}/dashboard`
+    : "/app/dashboard"
 
   return {
     ok: true,
