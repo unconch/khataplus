@@ -112,7 +112,7 @@ function PricingContent({
     const [loadingPlanKey, setLoadingPlanKey] = useState<BillingPlanKey | null>(null)
     const [paymentToastShown, setPaymentToastShown] = useState(false)
     const [pulseStarterCard, setPulseStarterCard] = useState(false)
-    const accentByPlan: Record<BillingPlanKey, string> = {
+    const accentByPlan: Partial<Record<BillingPlanKey, string>> = {
         keep: "emerald",
         starter: "sky",
     }
