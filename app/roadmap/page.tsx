@@ -14,7 +14,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-const roadmapData = [
+type RoadmapPhase = {
+    phase: string
+    status: string
+    title: string
+    description: string
+    icon: typeof Shield
+    items: Array<{
+        title: string
+        completed: boolean
+    }>
+    tone: string
+    iconBg: string
+    iconColor: string
+    current?: boolean
+}
+
+const roadmapData: RoadmapPhase[] = [
     {
         phase: "Phase 1",
         status: "Completed",
