@@ -30,6 +30,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
   const isAdmin = role === "admin" || role === "main admin"
   const router = useRouter()
   const pathname = usePathname()
+  const isPosRoute = Boolean(pathname && pathname.includes("/pos"))
 
   useEffect(() => {
     const slug = String(orgSlug || "").trim()
@@ -40,6 +41,19 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     const target = query ? `${targetBase}?${query}` : targetBase
     router.replace(target)
   }, [orgSlug, pathname, router])
+
+  if (isPosRoute) {
+    return (
+      <PWAProvider>
+        <PWABadgeManager isAdmin={isAdmin} />
+        <div className="min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
+          <main className="h-svh w-full overflow-hidden">
+            {children}
+          </main>
+        </div>
+      </PWAProvider>
+    )
+  }
 
   return (
     <PWAProvider>

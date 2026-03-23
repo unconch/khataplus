@@ -27,6 +27,13 @@ export type QuickAction = {
     href: string
 }
 
+export type ClickGuideStep = {
+    href: string
+    page: string
+    button: string
+    note: string
+}
+
 export type DocArticle = {
     slug: string
     group: DocGroupId
@@ -36,6 +43,7 @@ export type DocArticle = {
     lastUpdated: string
     icon: LucideIcon
     quickActions: QuickAction[]
+    clickGuide: ClickGuideStep[]
     whenToUse: string[]
     steps: string[]
     example: string
@@ -82,6 +90,11 @@ export const DOC_ARTICLES: DocArticle[] = [
             { label: "Open Setup", href: "/setup-organization" },
             { label: "Open Dashboard", href: "/dashboard" },
         ],
+        clickGuide: [
+            { href: "/setup-organization", page: "Setup Organization", button: "Save Business Profile", note: "Create your workspace and finish the first setup step." },
+            { href: "/dashboard/inventory", page: "Inventory", button: "Add Item", note: "Create your first product with stock, GST, and HSN." },
+            { href: "/dashboard/sales", page: "Sales", button: "New Invoice", note: "Run one test sale and confirm the invoice flow." },
+        ],
         whenToUse: [
             "You are using KhataPlus for the first time.",
             "You want to train a new staff member quickly.",
@@ -112,6 +125,11 @@ export const DOC_ARTICLES: DocArticle[] = [
         quickActions: [
             { label: "Go to Sales", href: "/dashboard/sales" },
             { label: "Open Customers", href: "/dashboard/customers" },
+        ],
+        clickGuide: [
+            { href: "/dashboard/sales", page: "Sales", button: "Add Customer", note: "Start the bill by selecting or creating the customer." },
+            { href: "/dashboard/sales", page: "Sales", button: "Add Item", note: "Add products, quantity, GST, and verify totals." },
+            { href: "/dashboard/sales", page: "Sales", button: "Save Invoice", note: "Finish the invoice and generate the bill cleanly." },
         ],
         whenToUse: [
             "You are billing a walk-in or repeat customer.",
@@ -144,6 +162,11 @@ export const DOC_ARTICLES: DocArticle[] = [
             { label: "Open Ledger", href: "/dashboard/khata" },
             { label: "Open Customers", href: "/dashboard/customers" },
         ],
+        clickGuide: [
+            { href: "/dashboard/khata", page: "Khata", button: "Open Customer Ledger", note: "Go to the customer with the pending due." },
+            { href: "/dashboard/khata", page: "Khata", button: "Record Payment", note: "Open the payment flow from that ledger." },
+            { href: "/dashboard/khata", page: "Khata", button: "Save Payment", note: "Confirm amount and update the running balance." },
+        ],
         whenToUse: [
             "Customer pays full or partial pending amount.",
             "You need to correct due balance.",
@@ -174,6 +197,11 @@ export const DOC_ARTICLES: DocArticle[] = [
             { label: "Open Inventory", href: "/dashboard/inventory" },
             { label: "Open Sales", href: "/dashboard/sales" },
         ],
+        clickGuide: [
+            { href: "/dashboard/inventory", page: "Inventory", button: "Add Item", note: "Create a product with opening stock and GST details." },
+            { href: "/dashboard/inventory", page: "Inventory", button: "Adjust Stock", note: "Correct mismatch when physical and system stock differ." },
+            { href: "/dashboard/inventory", page: "Inventory", button: "Save Update", note: "Store the new stock level with a reason note." },
+        ],
         whenToUse: [
             "Stock count does not match physical stock.",
             "You are adding a new product to catalog.",
@@ -203,6 +231,11 @@ export const DOC_ARTICLES: DocArticle[] = [
         quickActions: [
             { label: "Open GST Reports", href: "/dashboard/reports/gst" },
             { label: "Open Product List", href: "/dashboard/inventory" },
+        ],
+        clickGuide: [
+            { href: "/dashboard/inventory", page: "Inventory", button: "Edit Item", note: "Fix HSN or GST percentage on the affected product." },
+            { href: "/dashboard/reports/gst", page: "GST Reports", button: "Re-run Report", note: "Refresh totals after correcting source tax values." },
+            { href: "/dashboard/reports/gst", page: "GST Reports", button: "Export GSTR-1", note: "Download a fresh GST output only after verification." },
         ],
         whenToUse: [
             "Report tax totals do not match expected values.",
@@ -235,6 +268,11 @@ export const DOC_ARTICLES: DocArticle[] = [
             { label: "Open Team Settings", href: "/dashboard/settings" },
             { label: "Open Admin", href: "/dashboard/admin" },
         ],
+        clickGuide: [
+            { href: "/dashboard/admin", page: "Admin", button: "Invite Member", note: "Add the staff member you want to give access to." },
+            { href: "/dashboard/settings", page: "Settings", button: "Change Role", note: "Assign the correct permission level for their work." },
+            { href: "/dashboard/admin", page: "Admin", button: "Save Access", note: "Confirm the role and test the allowed workflow." },
+        ],
         whenToUse: [
             "Adding or removing staff access.",
             "A user cannot access required page.",
@@ -263,6 +301,11 @@ export const DOC_ARTICLES: DocArticle[] = [
         quickActions: [
             { label: "Open Migration", href: "/dashboard/migration" },
             { label: "Download Sample CSV", href: "/dashboard/migration" },
+        ],
+        clickGuide: [
+            { href: "/dashboard/migration", page: "Migration", button: "Download Template", note: "Start with the expected import format before mapping columns." },
+            { href: "/dashboard/migration", page: "Migration", button: "Upload CSV", note: "Load the file and inspect preview errors first." },
+            { href: "/dashboard/migration", page: "Migration", button: "Run Import", note: "Import only after the preview is fully clean." },
         ],
         whenToUse: [
             "Switching from old billing/ledger software.",
@@ -295,6 +338,11 @@ export const DOC_ARTICLES: DocArticle[] = [
             { label: "Open Pricing", href: "/pricing" },
             { label: "Open Billing Settings", href: "/dashboard/settings" },
         ],
+        clickGuide: [
+            { href: "/pricing", page: "Pricing", button: "Compare Plans", note: "Review feature limits and pick the plan that fits your team." },
+            { href: "/pricing", page: "Pricing", button: "Start 14-day trial", note: "Begin the upgrade flow from the public pricing page." },
+            { href: "/dashboard/settings", page: "Settings", button: "Verify Billing Status", note: "Confirm the new plan is active after payment." },
+        ],
         whenToUse: [
             "Trial is nearing expiry.",
             "You need advanced features or add-ons.",
@@ -322,6 +370,11 @@ export const DOC_ARTICLES: DocArticle[] = [
         quickActions: [
             { label: "Open Reports", href: "/dashboard/reports" },
             { label: "Open Migration", href: "/dashboard/migration" },
+        ],
+        clickGuide: [
+            { href: "/dashboard/reports", page: "Reports", button: "Open Affected Report", note: "Start with the screen where the mismatch is visible." },
+            { href: "/dashboard/migration", page: "Migration", button: "Review Import Errors", note: "Check whether the source data caused the problem." },
+            { href: "/dashboard/reports", page: "Reports", button: "Refresh Output", note: "Rebuild the result only after fixing the root cause." },
         ],
         whenToUse: [
             "Numbers do not match expected values.",

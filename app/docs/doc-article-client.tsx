@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { Check, ChevronDown, Copy, ScanLine } from "lucide-react"
+import { ArrowRight, Check, ChevronDown, Copy, MousePointerClick, ScanLine } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useDocsNav } from "./docs-nav-provider"
 import { DOC_BY_SLUG, GROUP_LABELS, type DocGroupId } from "./docs-data"
 
 const ARTICLE_ANCHORS = [
@@ -91,7 +92,9 @@ const GROUP_UI_FOCUS: Record<DocGroupId, Array<{ title: string; hint: string }>>
 
 export function DocArticleClient({ slug }: { slug: string }) {
     const [copied, setCopied] = useState(false)
+    const [copiedGuide, setCopiedGuide] = useState(false)
     const [activeAnchor, setActiveAnchor] = useState(ARTICLE_ANCHORS[0].id)
+    const { theme } = useDocsNav()
     const article = useMemo(() => DOC_BY_SLUG[slug], [slug])
 
     useEffect(() => {
@@ -117,6 +120,7 @@ export function DocArticleClient({ slug }: { slug: string }) {
     const Icon = article.icon
     const workflow = GROUP_WORKFLOWS[article.group]
     const uiFocus = GROUP_UI_FOCUS[article.group]
+    const isLight = theme === "light"
 
     const doCopy = async () => {
         if (!article.copyExample) return
@@ -129,39 +133,52 @@ export function DocArticleClient({ slug }: { slug: string }) {
         }
     }
 
+    const doCopyGuide = async () => {
+        try {
+            const guideText = article.clickGuide
+                .map((step, index) => `${index + 1}. Open ${step.page} (${step.href}) -> click "${step.button}" -> ${step.note}`)
+                .join("\n")
+            await navigator.clipboard.writeText(guideText)
+            setCopiedGuide(true)
+            setTimeout(() => setCopiedGuide(false), 1200)
+        } catch {
+            setCopiedGuide(false)
+        }
+    }
+
     return (
         <section className="pt-24 pb-32">
             <div className="max-w-7xl mx-auto px-6 lg:px-12">
                 <div className="mb-10 flex items-center gap-2">
-                    <Link href="/docs" className="text-[13px] font-medium text-zinc-500 hover:text-zinc-300 transition-colors">
+                    <Link href="/docs" className={cn("text-[13px] font-medium transition-colors", isLight ? "text-zinc-500 hover:text-zinc-800" : "text-zinc-500 hover:text-zinc-300")}>
                         Docs
                     </Link>
-                    <span className="text-zinc-600">/</span>
-                    <span className="text-[13px] font-medium text-zinc-100">{article.title}</span>
+                    <span className={cn(isLight ? "text-zinc-400" : "text-zinc-600")}>/</span>
+                    <span className={cn("text-[13px] font-medium", isLight ? "text-zinc-900" : "text-zinc-100")}>{article.title}</span>
                 </div>
 
                 <div className="grid gap-16 lg:grid-cols-[1fr_260px]">
                     <article className="min-w-0">
-                        <header className="pb-10 border-b border-zinc-800">
+                        <header className={cn("border-b pb-10", isLight ? "border-zinc-200" : "border-zinc-800")}>
                             <div className="flex items-center gap-4 mb-6">
-                                <div className="rounded-xl bg-[#1e1e1e] border border-zinc-800 p-3 shadow-sm">
-                                    <Icon className="h-6 w-6 text-zinc-300" />
+                                <div className={cn("rounded-xl border p-3 shadow-sm", isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#1e1e1e]")}>
+                                    <Icon className={cn("h-6 w-6", isLight ? "text-zinc-700" : "text-zinc-300")} />
                                 </div>
                                 <div>
-                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                    <p className={cn("text-[11px] font-semibold uppercase tracking-wider", isLight ? "text-zinc-500" : "text-zinc-400")}>
                                         {GROUP_LABELS[article.group]}
                                     </p>
-                                    <h1 className="mt-1 text-3xl md:text-5xl font-semibold tracking-tight text-white">
+                                    <h1 className={cn("mt-1 text-3xl font-semibold tracking-tight md:text-5xl", isLight ? "text-zinc-950" : "text-white")}>
                                         {article.title}
                                     </h1>
                                 </div>
                             </div>
 
-                            <p className="text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl">
+                            <p className={cn("max-w-2xl text-lg font-normal leading-relaxed", isLight ? "text-zinc-600" : "text-zinc-400")}>
                                 {article.purpose}
                             </p>
 
-                            <div className="mt-8 flex flex-wrap items-center gap-6 text-[13px] text-zinc-500">
+                            <div className={cn("mt-8 flex flex-wrap items-center gap-6 text-[13px]", isLight ? "text-zinc-500" : "text-zinc-500")}>
                                 <div className="flex items-center gap-2">
                                     <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
                                     Updated {article.lastUpdated}
@@ -171,39 +188,174 @@ export function DocArticleClient({ slug }: { slug: string }) {
                                     {article.readTime} min read
                                 </div>
                             </div>
+
+                            {article.quickActions.length > 0 && (
+                                <div className={cn(
+                                    "mt-8 rounded-2xl border p-5",
+                                    isLight
+                                        ? "border-zinc-200 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)]"
+                                        : "border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_24%),linear-gradient(180deg,#1b1b1f_0%,#151519_100%)]"
+                                )}>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Buttons You Will Use In The App</p>
+                                    <div className="mt-4 flex flex-wrap gap-3">
+                                        {article.quickActions.map((action) => (
+                                            <div
+                                                key={action.label}
+                                                className={cn(
+                                                    "inline-flex min-w-[220px] items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_14px_32px_-26px_rgba(0,0,0,0.18)]",
+                                                    isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-900/80 shadow-[0_14px_32px_-26px_rgba(0,0,0,0.9)]"
+                                                )}
+                                            >
+                                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </span>
+                                                <div>
+                                                    <div className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Quick action</div>
+                                                    <div className={cn("mt-1 text-sm font-semibold", isLight ? "text-zinc-900" : "text-zinc-100")}>{action.label}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {article.clickGuide.length > 0 && (
+                                <div className={cn(
+                                    "mt-8 rounded-[1.7rem] border p-6",
+                                    isLight
+                                        ? "border-zinc-200 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.08),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_26%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] shadow-[0_24px_54px_-34px_rgba(15,23,42,0.18)]"
+                                        : "border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.06),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_26%),linear-gradient(180deg,#1b1b1f_0%,#151519_100%)] shadow-[0_24px_54px_-34px_rgba(0,0,0,0.7)]"
+                                )}>
+                                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">What To Click</p>
+                                            <h2 className={cn("mt-2 text-xl font-bold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>Follow this exact in-app path</h2>
+                                            <p className={cn("mt-2 max-w-2xl text-sm leading-relaxed", isLight ? "text-zinc-600" : "text-zinc-400")}>
+                                                Use these as your page and button cues while reading the guide.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={doCopyGuide}
+                                            className={cn(
+                                                "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-semibold transition-colors",
+                                                copiedGuide
+                                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                                    : "border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:border-zinc-600 hover:text-white"
+                                            )}
+                                        >
+                                            {copiedGuide ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                                            {copiedGuide ? "Copied path" : "Copy path"}
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-6 grid gap-4">
+                                        {article.clickGuide.map((step, index) => (
+                                            <div key={`${step.page}-${step.button}`} className={cn(
+                                                "rounded-2xl border p-4",
+                                                isLight ? "border-zinc-200 bg-white/90" : "border-zinc-800/90 bg-zinc-950/70"
+                                            )}>
+                                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 text-sm font-black text-emerald-300">
+                                                            {index + 1}
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                <div className={cn(
+                                                                    "rounded-xl border px-3 py-2",
+                                                                    isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-[#1d1d22]"
+                                                                )}>
+                                                                    <div className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Open page</div>
+                                                                    <div className={cn("mt-1 text-sm font-semibold", isLight ? "text-zinc-900" : "text-zinc-100")}>{step.page}</div>
+                                                                </div>
+                                                                <ArrowRight className="hidden h-4 w-4 text-zinc-600 md:block" />
+                                                                <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-emerald-200 shadow-[0_12px_28px_-20px_rgba(16,185,129,0.65)]">
+                                                                    <MousePointerClick className="h-4 w-4 text-emerald-300" />
+                                                                    <div>
+                                                                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300/80">Click button</div>
+                                                                        <div className="mt-1 text-sm font-bold">{step.button}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <p className={cn("text-sm leading-relaxed", isLight ? "text-zinc-600" : "text-zinc-400")}>{step.note}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <Link
+                                                        href={step.href}
+                                                        className={cn(
+                                                            "inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors",
+                                                            isLight
+                                                                ? "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:text-zinc-950"
+                                                                : "border-zinc-700 bg-zinc-900/90 text-zinc-200 hover:border-zinc-600 hover:text-white"
+                                                        )}
+                                                    >
+                                                        Open page
+                                                        <ArrowRight className="h-4 w-4 text-emerald-400" />
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </header>
 
                         <div className="mt-12 space-y-20">
                             <section id="when-to-use" className="scroll-mt-32">
-                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">When to Use This</h2>
+                                <h2 className={cn("mb-6 text-2xl font-semibold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>When to Use This</h2>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     {article.whenToUse.map((item) => (
-                                        <div key={item} className="group relative rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5 transition-all hover:bg-[#252525]">
+                                        <div key={item} className={cn(
+                                            "group relative rounded-xl border p-5 transition-all",
+                                            isLight ? "border-zinc-200 bg-white hover:bg-zinc-50" : "border-zinc-800 bg-[#1e1e1e] hover:bg-[#252525]"
+                                        )}>
                                             <div className="flex items-start gap-4">
                                                 <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
                                                     <Check className="h-3 w-3 text-zinc-300" />
                                                 </div>
-                                                <p className="text-[15px] text-zinc-300 leading-relaxed">{item}</p>
+                                                <p className={cn("text-[15px] leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>{item}</p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-8 rounded-xl border border-zinc-800 bg-[#1e1e1e] p-8">
+                                <div className={cn("mt-8 rounded-xl border p-8", isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#1e1e1e]")}>
                                     <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-3">Strategic Value</p>
-                                    <p className="text-base text-zinc-300 leading-relaxed max-w-2xl">"{GROUP_WHY[article.group]}"</p>
+                                    <p className={cn("max-w-2xl text-base leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>"{GROUP_WHY[article.group]}"</p>
                                 </div>
                             </section>
 
                             <section id="workflow" className="scroll-mt-32">
-                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Workflow Process</h2>
+                                <h2 className={cn("mb-6 text-2xl font-semibold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>Workflow Process</h2>
 
-                                <div className="rounded-xl border border-zinc-800 bg-[#1e1e1e] p-8 shadow-sm">
+                                <div className={cn(
+                                    "rounded-2xl border p-8 shadow-sm",
+                                    isLight
+                                        ? "border-zinc-200 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.08),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)]"
+                                        : "border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.06),transparent_24%),linear-gradient(180deg,#1b1b1f_0%,#151519_100%)]"
+                                )}>
+                                    <div className="mb-5 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Follow this order</p>
+                                            <p className={cn("mt-1 text-sm", isLight ? "text-zinc-600" : "text-zinc-400")}>Treat these like the actual buttons and screens you will move through in the app.</p>
+                                        </div>
+                                        <div className={cn(
+                                            "hidden rounded-full border px-3 py-1.5 text-[11px] font-semibold md:inline-flex",
+                                            isLight ? "border-zinc-200 bg-white text-zinc-500" : "border-zinc-800 bg-zinc-900/80 text-zinc-400"
+                                        )}>
+                                            {workflow.length} steps
+                                        </div>
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-4">
                                         {workflow.map((step, idx) => (
                                             <div key={step} className="flex items-center gap-4">
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-[10px] font-medium text-zinc-500 mb-2">Step {idx + 1}</span>
-                                                    <span className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-[13px] font-medium text-zinc-200">
+                                                    <span className={cn(
+                                                        "rounded-xl border px-4 py-2.5 text-[13px] font-medium shadow-[0_10px_20px_-18px_rgba(15,23,42,0.18)]",
+                                                        isLight ? "border-zinc-200 bg-white text-zinc-900" : "border-zinc-700 bg-zinc-900 text-zinc-100 shadow-[0_10px_20px_-18px_rgba(0,0,0,0.9)]"
+                                                    )}>
                                                         {step}
                                                     </span>
                                                 </div>
@@ -220,18 +372,21 @@ export function DocArticleClient({ slug }: { slug: string }) {
 
                                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                                     {uiFocus.map((shot) => (
-                                        <div key={shot.title} className="group rounded-xl border border-zinc-800 bg-[#1e1e1e] p-6 transition-all hover:bg-[#252525]">
+                                        <div key={shot.title} className={cn(
+                                            "group rounded-xl border p-6 transition-all",
+                                            isLight ? "border-zinc-200 bg-white hover:bg-zinc-50" : "border-zinc-800 bg-[#1e1e1e] hover:bg-[#252525]"
+                                        )}>
                                             <div className="flex items-center gap-3 mb-4">
-                                                <div className="rounded-lg bg-zinc-800 p-2 border border-zinc-700">
-                                                    <ScanLine className="h-4 w-4 text-zinc-400 group-hover:text-zinc-200" />
+                                                <div className={cn("rounded-lg border p-2", isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-700 bg-zinc-800")}>
+                                                    <ScanLine className={cn("h-4 w-4", isLight ? "text-zinc-500 group-hover:text-zinc-800" : "text-zinc-400 group-hover:text-zinc-200")} />
                                                 </div>
                                                 <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
                                                     UI Reference
                                                 </p>
                                             </div>
-                                            <h3 className="text-[15px] font-medium text-zinc-200">{shot.title}</h3>
-                                            <p className="mt-2 text-sm text-zinc-500 leading-relaxed">
-                                                <span className="text-zinc-400">{shot.hint}</span>
+                                            <h3 className={cn("text-[15px] font-medium", isLight ? "text-zinc-800" : "text-zinc-200")}>{shot.title}</h3>
+                                            <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                                                <span className={cn(isLight ? "text-zinc-600" : "text-zinc-400")}>{shot.hint}</span>
                                             </p>
                                         </div>
                                     ))}
@@ -239,19 +394,45 @@ export function DocArticleClient({ slug }: { slug: string }) {
                             </section>
 
                             <section id="steps" className="scroll-mt-32">
-                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Detailed Instructions</h2>
+                                <div className="mb-6">
+                                    <h2 className={cn("text-2xl font-semibold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>Detailed Instructions</h2>
+                                    <p className={cn("mt-2 text-sm", isLight ? "text-zinc-600" : "text-zinc-400")}>Follow these in order while working inside the app.</p>
+                                </div>
                                 <div className="space-y-4">
                                     {article.steps.map((step, index) => (
-                                        <div key={index} className="group rounded-xl border border-zinc-800 bg-[#1e1e1e] p-6 transition-all hover:bg-[#252525]">
+                                        <div
+                                            key={index}
+                                            className={cn(
+                                                "group rounded-xl border p-6 transition-all",
+                                                isLight ? "border-zinc-200 bg-white hover:bg-zinc-50" : "border-zinc-800 bg-[#1e1e1e] hover:bg-[#252525]"
+                                            )}
+                                        >
                                             <div className="flex items-start gap-5">
-                                                <div className="flex-shrink-0 flex items-center justify-center mt-0.5">
-                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 text-[13px] font-medium text-zinc-300 border border-zinc-700">
+                                                <div className="mt-0.5 flex-shrink-0 flex items-center justify-center">
+                                                    <span className={cn(
+                                                        "flex h-7 w-7 items-center justify-center rounded-full border text-[13px] font-medium",
+                                                        isLight ? "border-zinc-200 bg-zinc-50 text-zinc-700" : "border-zinc-700 bg-zinc-800 text-zinc-300"
+                                                    )}>
                                                         {index + 1}
                                                     </span>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[15px] leading-relaxed text-zinc-300 group-hover:text-zinc-100 transition-colors">
-                                                        {step}
+                                                <div className="flex-1">
+                                                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                                        <p className={cn(
+                                                            "text-[15px] leading-relaxed transition-colors",
+                                                            isLight ? "text-zinc-700 group-hover:text-zinc-950" : "text-zinc-300 group-hover:text-zinc-100"
+                                                        )}>
+                                                            {step}
+                                                        </p>
+                                                        <span className={cn(
+                                                            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]",
+                                                            isLight ? "border-zinc-200 bg-zinc-50 text-zinc-500" : "border-zinc-700 bg-zinc-900/80 text-zinc-400"
+                                                        )}>
+                                                            Step {index + 1}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 text-[13px] text-zinc-500">
+                                                        Complete this step in the app, then move to the next one.
                                                     </p>
                                                 </div>
                                             </div>
@@ -261,33 +442,33 @@ export function DocArticleClient({ slug }: { slug: string }) {
                             </section>
 
                             <section id="example" className="scroll-mt-32">
-                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Practical Application</h2>
-                                <div className="rounded-2xl border border-zinc-800 bg-[#1e1e1e] p-8 md:p-10">
+                                <h2 className={cn("mb-6 text-2xl font-semibold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>Practical Application</h2>
+                                <div className={cn("rounded-2xl border p-8 md:p-10", isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#1e1e1e]")}>
                                     <div className="max-w-2xl">
                                         <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-3">Real Scenario</p>
-                                        <p className="text-lg font-medium text-zinc-200 leading-relaxed">
+                                        <p className={cn("text-lg font-medium leading-relaxed", isLight ? "text-zinc-800" : "text-zinc-200")}>
                                             "{article.example}"
                                         </p>
                                     </div>
 
                                     <div className="mt-10 grid gap-4 sm:grid-cols-2">
                                         {article.tip && (
-                                            <div className="rounded-xl border border-zinc-700 bg-zinc-800 p-5">
+                                            <div className={cn("rounded-xl border p-5", isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-700 bg-zinc-800")}>
                                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Pro Tip</p>
-                                                <p className="text-sm text-zinc-300 leading-relaxed">{article.tip}</p>
+                                                <p className={cn("text-sm leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>{article.tip}</p>
                                             </div>
                                         )}
                                         {article.warning && (
-                                            <div className="rounded-xl border border-zinc-700 bg-zinc-800 p-5">
+                                            <div className={cn("rounded-xl border p-5", isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-700 bg-zinc-800")}>
                                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Important Check</p>
-                                                <p className="text-sm text-zinc-300 leading-relaxed">{article.warning}</p>
+                                                <p className={cn("text-sm leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>{article.warning}</p>
                                             </div>
                                         )}
                                     </div>
 
                                     {article.copyExample && (
-                                        <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl">
-                                            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-[#1e1e1e]">
+                                        <div className={cn("mt-8 overflow-hidden rounded-xl border shadow-xl", isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-950")}>
+                                            <div className={cn("flex items-center justify-between border-b px-4 py-3", isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-[#1e1e1e]")}>
                                                 <div className="flex gap-2">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                                                     <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
@@ -299,16 +480,16 @@ export function DocArticleClient({ slug }: { slug: string }) {
                                                     className={cn(
                                                         "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all border",
                                                         copied
-                                                            ? "bg-zinc-700 text-white border-zinc-600"
-                                                            : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700"
+                                                            ? (isLight ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "bg-zinc-700 text-white border-zinc-600")
+                                                            : (isLight ? "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:text-zinc-950 hover:bg-zinc-50" : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700")
                                                     )}
                                                 >
                                                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                                                     {copied ? "Copied" : "Copy snippet"}
                                                 </button>
                                             </div>
-                                            <div className="p-5 overflow-x-auto bg-[#1a1a1a]">
-                                                <pre className="text-[13px] text-zinc-300 font-mono leading-relaxed">
+                                            <div className={cn("overflow-x-auto p-5", isLight ? "bg-zinc-50" : "bg-[#1a1a1a]")}>
+                                                <pre className={cn("text-[13px] font-mono leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>
                                                     <code>{article.copyExample}</code>
                                                 </pre>
                                             </div>
@@ -318,12 +499,15 @@ export function DocArticleClient({ slug }: { slug: string }) {
                             </section>
 
                             <section id="issues" className="scroll-mt-32">
-                                <h2 className="text-2xl font-semibold tracking-tight text-white mb-6">Common Gotchas</h2>
+                                <h2 className={cn("mb-6 text-2xl font-semibold tracking-tight", isLight ? "text-zinc-950" : "text-white")}>Common Gotchas</h2>
                                 <div className="space-y-3">
                                     {article.commonMistakes.map((item) => (
-                                        <div key={item} className="flex items-start gap-4 rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5 group transition-colors hover:bg-[#252525]">
-                                            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500" />
-                                            <p className="text-[15px] text-zinc-300 leading-relaxed">{item}</p>
+                                        <div key={item} className={cn(
+                                            "group flex items-start gap-4 rounded-xl border p-5 transition-colors",
+                                            isLight ? "border-zinc-200 bg-white hover:bg-zinc-50" : "border-zinc-800 bg-[#1e1e1e] hover:bg-[#252525]"
+                                        )}>
+                                            <div className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", isLight ? "bg-zinc-400" : "bg-zinc-500")} />
+                                            <p className={cn("text-[15px] leading-relaxed", isLight ? "text-zinc-700" : "text-zinc-300")}>{item}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -335,7 +519,7 @@ export function DocArticleClient({ slug }: { slug: string }) {
                         <div className="sticky top-32 space-y-10">
                             <div>
                                 <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-4">On this page</h4>
-                                <nav className="space-y-1 border-l border-zinc-800 pl-4">
+                                <nav className={cn("space-y-1 border-l pl-4", isLight ? "border-zinc-200" : "border-zinc-800")}>
                                     {ARTICLE_ANCHORS.map((anchor) => (
                                         <a
                                             key={anchor.id}
@@ -343,8 +527,8 @@ export function DocArticleClient({ slug }: { slug: string }) {
                                             className={cn(
                                                 "block text-[13px] transition-all duration-200 py-1.5 relative group/nav",
                                                 activeAnchor === anchor.id
-                                                    ? "text-white font-medium"
-                                                    : "text-zinc-500 hover:text-zinc-300"
+                                                    ? (isLight ? "text-zinc-950 font-medium" : "text-white font-medium")
+                                                    : (isLight ? "text-zinc-500 hover:text-zinc-800" : "text-zinc-500 hover:text-zinc-300")
                                             )}
                                         >
                                             {anchor.label}
@@ -354,16 +538,20 @@ export function DocArticleClient({ slug }: { slug: string }) {
                             </div>
 
                             {article.quickActions.length > 0 && (
-                                <div className="rounded-xl border border-zinc-800 bg-[#1e1e1e] p-5">
+                                <div className={cn("rounded-xl border p-5", isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#1e1e1e]")}>
                                     <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-4">Related Actions</h4>
                                     <div className="space-y-2">
                                         {article.quickActions.map((action) => (
                                             <Link
                                                 key={action.label}
                                                 href={action.href}
-                                                className="flex items-center gap-2 text-[13px] font-medium text-zinc-300 hover:text-white transition-colors group/link bg-zinc-800/50 hover:bg-zinc-800 py-2 px-3 rounded-lg border border-zinc-700/50"
+                                                className={cn(
+                                                    "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-[13px] font-medium transition-colors",
+                                                    isLight ? "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950" : "border-zinc-700/60 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                                )}
                                             >
-                                                {action.label}
+                                                <span>{action.label}</span>
+                                                <ArrowRight className="h-4 w-4 text-emerald-400" />
                                             </Link>
                                         ))}
                                     </div>

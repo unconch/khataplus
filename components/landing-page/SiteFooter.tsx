@@ -61,11 +61,12 @@ export function SiteFooter() {
 
                     <div className="flex items-center gap-8">
                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-zinc-900 font-bold">Systems Operational</span>
+                            <span className="inline-flex items-center gap-2 text-zinc-900 font-black tracking-tight uppercase">
+                                <span className="text-zinc-500">Proudly</span>
+                                <span>Built in Northeast</span>
+                                <span className="inline-block text-[2em] leading-none relative top-[1px]">🇮🇳</span>
+                            </span>
                         </div>
-                        <div className="h-4 w-px bg-zinc-200 hidden md:block" />
-                        <div className="text-zinc-500 italic">Built in Northeast India 🇮🇳</div>
                     </div>
                 </div>
             </div>

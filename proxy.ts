@@ -15,6 +15,19 @@ const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/"]
 const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
 const INVALID_SLUGS = new Set(["", "undefined", "null"])
 
+const APP_SECTION_PREFIXES = [
+  "/dashboard",
+  "/sales",
+  "/inventory",
+  "/khata",
+  "/analytics",
+  "/reports",
+  "/settings",
+  "/migration",
+  "/security",
+  "/pos",
+] as const
+
 function normalizeSlug(input: string | null | undefined): string | null {
   const value = String(input || "").trim().toLowerCase()
   if (!value || INVALID_SLUGS.has(value) || value.includes(".")) return null
@@ -56,7 +69,7 @@ function finalizeResponse(source: NextResponse, target: NextResponse) {
   copyCookies(source, target)
   // Propagate custom headers (path context, invoke path) to downstream handlers
   source.headers.forEach((value, key) => {
-    if (key.startsWith("x-path-prefix") || key.startsWith("x-invoke-path")) {
+    if (key === "x-tenant-slug" || key.startsWith("x-path-prefix") || key.startsWith("x-invoke-path")) {
       target.headers.set(key, value)
     }
   })
@@ -88,6 +101,7 @@ export default async function proxy(request: NextRequest) {
     pathname === "/pricing" ||
     pathname === "/roadmap" ||
     pathname === "/docs" ||
+    pathname.startsWith("/docs/") ||
     pathname === "/solutions" ||
     pathname === "/security"
 
@@ -181,6 +195,26 @@ export default async function proxy(request: NextRequest) {
     return finalizeResponse(sessionResponse, sessionResponse)
   }
 
+  // Tenant root paths -> canonical /app/{slug}/* routes
+  // Example: demo.khataplus.online/sales -> /app/demo/sales
+  const shouldRouteToApp =
+    !pathname.startsWith("/app/") &&
+    APP_SECTION_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+
+  if ((user || hasGuestCookie) && bestSlug && shouldRouteToApp) {
+    const pathPrefix = `/app/${bestSlug}`
+    const rewritePath = `${pathPrefix}${pathname}`
+
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-tenant-slug", bestSlug)
+    requestHeaders.set("x-path-prefix", pathPrefix)
+    requestHeaders.set("x-invoke-path", rewritePath)
+
+    const rewriteTo = new URL(`${rewritePath}${search}`, request.url)
+    const rewriteResponse = NextResponse.rewrite(rewriteTo, { request: { headers: requestHeaders } })
+    return finalizeResponse(sessionResponse, rewriteResponse)
+  }
+
   // 12. Persist best slug to cookie for future requests
   if (user && !cookieOrgSlug && activeOrgSlug) {
     sessionResponse.cookies.set("kp_org_slug", activeOrgSlug, {
@@ -192,10 +226,15 @@ export default async function proxy(request: NextRequest) {
     })
   }
 
-  // Set x-path-prefix header so AppLayout knows the slug context
-  if (user && slug && pathname.startsWith("/app/")) {
-    sessionResponse.headers.set("x-path-prefix", `/app/${slug}`)
-    sessionResponse.headers.set("x-invoke-path", pathname)
+  // For canonical app routes, inject tenant headers into the downstream request.
+  if ((user || hasGuestCookie) && slug && pathname.startsWith("/app/")) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-tenant-slug", slug)
+    requestHeaders.set("x-path-prefix", `/app/${slug}`)
+    requestHeaders.set("x-invoke-path", pathname)
+
+    const nextResponse = NextResponse.next({ request: { headers: requestHeaders } })
+    return finalizeResponse(sessionResponse, nextResponse)
   }
 
   return finalizeResponse(sessionResponse, sessionResponse)

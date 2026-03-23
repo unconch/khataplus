@@ -175,9 +175,10 @@ export function HomeDashboard({
     const [timeRange, setTimeRange] = useState<"today" | "week" | "month">("month")
     const greetingClassName = useMemo(() => {
         const len = greeting.length
-        if (len > 95) return "text-2xl md:text-3xl sm:text-4xl leading-tight tracking-tight"
-        if (len > 72) return "text-[1.75rem] md:text-[2.15rem] sm:text-[2.45rem] leading-tight tracking-tight"
-        return "text-3xl md:text-4xl sm:text-5xl tracking-tight"
+        // Long greetings need more vertical room than the default display sizes.
+        if (len > 95) return "text-[1.85rem] sm:text-[2.25rem] md:text-[2.75rem] leading-[1.18] tracking-[-0.02em]"
+        if (len > 72) return "text-[2.1rem] sm:text-[2.7rem] md:text-[3.35rem] leading-[1.15] tracking-[-0.025em]"
+        return "text-[2.4rem] sm:text-[3.2rem] md:text-[4.25rem] leading-[1.1] tracking-[-0.03em]"
     }, [greeting])
 
     const metrics = useMemo(() => {
@@ -229,7 +230,7 @@ export function HomeDashboard({
                     <h1
                         key={greeting}
                         className={cn(
-                            "font-black max-w-4xl transition-colors md:transition-all md:duration-500",
+                            "font-black max-w-4xl whitespace-normal [text-wrap:balance] break-words pb-1 transition-colors md:transition-all md:duration-500",
                             greetingClassName,
                             greetingToneClass
                         )}

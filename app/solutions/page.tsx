@@ -33,6 +33,7 @@ export default async function SolutionsPage() {
         lightMode={true}
         orgSlug={orgSlug}
         isGuest={user?.isGuest}
+        forcePublicActions={true}
       />
 
       {/* Sarvam.ai White Theme Hero Section */}

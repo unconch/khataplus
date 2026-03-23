@@ -28,7 +28,8 @@ async function initDemoDb() {
         '013_fix_daily_reports_unique.sql',
         '014_add_org_id_to_audit_logs.sql',
         '015_add_gst_columns_to_sales.sql',
-        '016_add_hsn_to_inventory.sql'
+        '016_add_hsn_to_inventory.sql',
+        '017_demo_feature_requests.sql'
     ];
 
     console.log(`🚀 Starting Full Database Initialization on: ${url.split('@')[1]}`);

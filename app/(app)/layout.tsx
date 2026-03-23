@@ -212,11 +212,16 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     const settings = await getSystemSettings(orgId)
     const resolvedPathPrefix = pathPrefix || (tenant?.slug ? `/app/${tenant.slug}` : "")
 
+    const wantsAnalytics = xInvokePath.includes("/analytics")
+    const wantsReports = xInvokePath.includes("/reports")
+    const wantsMigration = xInvokePath.includes("/migration")
+    const wantsSales = xInvokePath.includes("/sales") || xInvokePath.includes("/pos")
+
     // Role-based route protection
     if (orgRole === "staff") {
-      if (xInvokePath.includes("/dashboard/analytics") && !settings.allow_staff_analytics) redirect("/dashboard")
-      if (xInvokePath.includes("/dashboard/reports") && !settings.allow_staff_reports) redirect("/dashboard")
-      if (xInvokePath.includes("/dashboard/sales") && !settings.allow_staff_sales) redirect("/dashboard")
+      if (wantsAnalytics && !settings.allow_staff_analytics) redirect("/dashboard")
+      if (wantsReports && !settings.allow_staff_reports) redirect("/dashboard")
+      if (wantsSales && !settings.allow_staff_sales) redirect("/dashboard")
     }
 
     if (orgRole !== "owner" && xInvokePath.includes("/dashboard/admin")) {
@@ -224,15 +229,9 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     const planType = String(tenant?.plan_type || "free")
-    if (xInvokePath.includes("/dashboard/analytics") && !hasPlanFeature(planType, "analytics_dashboard")) {
-      redirect("/pricing")
-    }
-    if (xInvokePath.includes("/dashboard/reports") && !hasPlanFeature(planType, "reports")) {
-      redirect("/pricing")
-    }
-    if (xInvokePath.includes("/dashboard/migration") && !hasPlanFeature(planType, "migration_import")) {
-      redirect("/pricing")
-    }
+    if (wantsAnalytics && !hasPlanFeature(planType, "analytics_dashboard")) redirect("/pricing")
+    if (wantsReports && !hasPlanFeature(planType, "reports")) redirect("/pricing")
+    if (wantsMigration && !hasPlanFeature(planType, "migration_import")) redirect("/pricing")
 
     const { TrialExpiredGuard } = await import("@/components/trial-expired-guard")
 

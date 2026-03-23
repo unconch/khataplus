@@ -42,7 +42,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         return pathname
     })()
 
-    const posHref = pathPrefix ? `${pathPrefix}/pos` : "/pos"
+    const posHref = pathPrefix ? `${pathPrefix}/pos/sales` : "/pos/sales"
 
     const navItems: Array<{
         href: string

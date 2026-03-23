@@ -15,9 +15,10 @@ interface NavbarProps {
     lightMode?: boolean
     orgSlug?: string | null
     isGuest?: boolean
+    forcePublicActions?: boolean
 }
 
-export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug }: NavbarProps) {
+export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug, isGuest = false, forcePublicActions = false }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const scrolledRef = useRef(false)
@@ -65,57 +66,54 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
     }, [mobileMenuOpen])
 
     const isSolid = isLight || lightMode || scrolled || mobileMenuOpen
-    const keepBlended = !(isLight || lightMode)
-    const useSolidPalette = !keepBlended && isSolid
+    const useSolidPalette = isSolid
 
-    const primaryHref = isAuthenticated
-        ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
-        : signUpUrl
-    const primaryLabel = isAuthenticated
-        ? "Go to Dashboard"
-        : "Start Free Trial"
-    const secondaryHref = isAuthenticated
-        ? (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
-        : signInUrl
-    const secondaryLabel = isAuthenticated
-        ? "Settings"
-        : "Sign In"
+    const isPublicVisitor = forcePublicActions || !isAuthenticated || isGuest
+
+    const primaryHref = isPublicVisitor
+        ? signUpUrl
+        : (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
+    const primaryLabel = isPublicVisitor
+        ? "Start Free Trial"
+        : "Go to Dashboard"
+    const secondaryHref = isPublicVisitor
+        ? signInUrl
+        : (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
+    const secondaryLabel = isPublicVisitor
+        ? "Sign In"
+        : "Settings"
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50">
-            <div
-                className={cn(
-                    "transition-all duration-500 backdrop-blur-xl",
-                    keepBlended
-                        ? "bg-[linear-gradient(90deg,rgba(16,185,129,0.18)_0%,rgba(51,65,85,0.24)_58%,rgba(30,41,59,0.18)_100%)] border border-white/10"
-                        : "bg-white/70 border-b border-white/30",
-                    "mx-0 mt-0 rounded-none border-x-0"
-                )}
-            >
-                <div className="w-full px-4 md:px-6">
-                    <div className="relative h-12 md:h-16 flex items-center justify-between">
-                        <Link href="/" className="flex items-center gap-3">
-                            <Logo size={42} className="text-emerald-600" />
-                            <span className={cn("text-2xl font-black tracking-tighter italic", useSolidPalette ? "text-slate-900" : "text-white")}>
+            <div className="mx-auto max-w-7xl px-4 pt-4 md:px-6 md:pt-5">
+                <div
+                    className={cn(
+                        "relative rounded-[2rem] border shadow-[0_18px_40px_-28px_rgba(15,23,42,0.18)] transition-all duration-500 backdrop-blur-xl",
+                        useSolidPalette
+                            ? "border-zinc-200/80 bg-white/92"
+                            : "border-white/40 bg-white/82"
+                    )}
+                >
+                    <div className="relative flex h-16 items-center justify-between px-5 md:h-[72px] md:px-6">
+                        <Link href="/" className="shrink-0 flex items-center gap-3">
+                            <Logo size={38} className="text-emerald-600" />
+                            <span className="text-[2rem] font-black tracking-[-0.05em] italic leading-none text-slate-950">
                                 KhataPlus
                             </span>
                         </Link>
 
-                        <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+                        <nav className="hidden flex-1 items-center justify-center gap-10 px-8 md:flex">
                             <DesktopNavLink href="/features" label="Features" solid={useSolidPalette} />
                             <DesktopNavLink href="/roadmap" label="Roadmap" solid={useSolidPalette} />
                             <DesktopNavLink href="/pricing" label="Pricing" solid={useSolidPalette} />
                             <DesktopNavLink href="/docs" label="Merchant Academy" solid={useSolidPalette} />
                         </nav>
 
-                        <div className="hidden md:flex items-center gap-4">
+                        <div className="hidden shrink-0 items-center gap-5 md:flex">
                             <Link
                                 href={secondaryHref}
                                 className={cn(
-                                    "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    useSolidPalette
-                                        ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
-                                        : "text-white/90 hover:text-white hover:bg-white/10"
+                                    "inline-flex items-center justify-center py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:text-slate-950"
                                 )}
                             >
                                 {secondaryLabel}
@@ -123,10 +121,8 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                             <Link
                                 href={primaryHref}
                                 className={cn(
-                                    "px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    useSolidPalette
-                                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                        : "bg-white text-slate-900 hover:bg-slate-100"
+                                    "inline-flex items-center justify-center rounded-[1rem] px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition-all",
+                                    "bg-[linear-gradient(180deg,#232323_0%,#141414_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_10px_24px_-16px_rgba(0,0,0,0.55)] hover:-translate-y-[1px] hover:bg-[linear-gradient(180deg,#2b2b2b_0%,#181818_100%)]"
                                 )}
                             >
                                 {primaryLabel}
@@ -134,7 +130,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </div>
 
                         <button
-                            className={cn("md:hidden p-2 -mr-2 transition-colors", useSolidPalette ? "text-slate-900" : "text-white")}
+                            className="p-2 -mr-2 text-slate-900 transition-colors md:hidden"
                             onClick={() => setMobileMenuOpen((prev) => !prev)}
                             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
                             aria-expanded={mobileMenuOpen}
@@ -148,11 +144,11 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
             {/* Mobile Menu */}
             <div
                 className={cn(
-                    "md:hidden transition-all duration-500 overflow-hidden border-b",
-                    mobileMenuOpen ? "max-h-screen opacity-100 bg-white border-slate-200" : "max-h-0 opacity-0 border-transparent"
+                    "mx-4 mt-3 overflow-hidden rounded-[2rem] border bg-white/92 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition-all duration-500 backdrop-blur-xl md:hidden",
+                    mobileMenuOpen ? "max-h-screen border-slate-200 opacity-100" : "max-h-0 border-transparent opacity-0"
                 )}
             >
-                <div className="max-w-7xl mx-auto px-6 py-10 space-y-4">
+                <div className="mx-auto max-w-7xl space-y-4 px-6 py-8">
                     <MobileNavLink href="/features" label="Features" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/roadmap" label="Roadmap" onClick={() => setMobileMenuOpen(false)} />
                     <MobileNavLink href="/pricing" label="Pricing" onClick={() => setMobileMenuOpen(false)} />
@@ -185,8 +181,8 @@ function DesktopNavLink({ href, label, solid = false }: { href: string; label: s
         <Link
             href={href}
             className={cn(
-                "inline-flex items-center gap-1 text-sm font-black uppercase tracking-widest transition-all",
-                solid ? "text-slate-700 hover:text-emerald-600" : "text-white/90 hover:text-white"
+                "inline-flex items-center gap-1 whitespace-nowrap py-2 text-[12px] font-black uppercase tracking-[0.14em] transition-all",
+                solid ? "text-slate-700 hover:text-slate-950" : "text-slate-700 hover:text-slate-950"
             )}
         >
             <span>{label}</span>
