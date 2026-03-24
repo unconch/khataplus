@@ -544,13 +544,16 @@ quantity = COALESCE(${updates.quantity}, quantity),
 }
 
 export const getSalesByDate = cache(async (date: string): Promise<(Sale & { inventory?: InventoryItem })[]> => {
+        const orgId = await getCurrentOrgId();
+    if (!orgId) return [];
+
     return nextCache(
         async (date: string) => {
             const data = await sql`
                 SELECT s.*, i.name as inventory_name, i.sku as inventory_sku, i.buy_price as inventory_buy_price
                 FROM sales s
                 LEFT JOIN inventory i ON s.inventory_id = i.id
-                WHERE s.sale_date = ${date}
+                WHERE s.sale_date = ${date} AND s.org_id = ${orgId}
                 ORDER BY s.created_at DESC
             `;
 
@@ -568,8 +571,8 @@ export const getSalesByDate = cache(async (date: string): Promise<(Sale & { inve
                 } : undefined
             })) as any;
         },
-        [`sales - by - date - ${date} `],
-        { tags: ["sales", `sales - ${date} `] }
+        [`sales-by-date-${orgId}-${date}`],
+        { tags: ["sales", `sales-${orgId}`, `sales-${date}`] }
     )(date);
 });
 

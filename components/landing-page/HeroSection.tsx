@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Navbar } from "./Navbar"
-import { useDemoDashboardUrl } from "@/hooks/use-demo-dashboard-url"
 
 interface HeroSectionProps {
     isAuthenticated: boolean
@@ -13,7 +12,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionProps) {
     const signUpUrl = "/auth/sign-up"
-    const demoDashboardUrl = useDemoDashboardUrl()
+    const demoDashboardUrl = "/demo"
     const primaryHref = isAuthenticated ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : signUpUrl
 
     return (

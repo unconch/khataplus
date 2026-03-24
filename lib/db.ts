@@ -223,7 +223,7 @@ export const resolveTenant = cache(
   async (userId: string | undefined | null, slug: string) => {
     if (slug === "demo") {
       return {
-        orgId: "demo-org-id", // Standard ID for demo
+        orgId: "demo-org", // Standard ID for demo
         slug: "demo",
         role: "owner",
       }

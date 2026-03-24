@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { sql } from "@/lib/db"
-import { audit } from "@/lib/security"
+import { authorize, audit } from "@/lib/security"
+import { rateLimit, getIP } from "@/lib/rate-limit"
 
 function resolveRazorpayCredentials() {
     const mode = (process.env.RAZORPAY_MODE || "test").toLowerCase()
@@ -21,32 +22,46 @@ function resolveRazorpayCredentials() {
 
 export async function POST(req: Request) {
     try {
+        // Rate limit: 10 requests per minute per IP
+        await rateLimit(`payment-verify:${getIP(req.headers)}`, 10, 60_000)
+
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orgId, plan, cycle } = await req.json()
 
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !orgId) {
             return NextResponse.json({ error: "Missing payment details" }, { status: 400 })
         }
+
+        // Auth: Verify caller owns this organization
+        await authorize("Verify Payment", "owner", orgId)
 
         const { keySecret } = resolveRazorpayCredentials()
         if (!keySecret) {
             return NextResponse.json({ error: "Razorpay not configured" }, { status: 500 })
         }
 
-        // Verify signature
+        // Verify signature using constant-time comparison to prevent timing attacks
         const body = razorpay_order_id + "|" + razorpay_payment_id
         const expectedSignature = crypto
             .createHmac("sha256", keySecret)
             .update(body.toString())
             .digest("hex")
 
-        const isAuthentic = expectedSignature === razorpay_signature
+        let isAuthentic = false
+        try {
+            isAuthentic = crypto.timingSafeEqual(
+                Buffer.from(expectedSignature, 'hex'),
+                Buffer.from(razorpay_signature, 'hex')
+            )
+        } catch {
+            // Buffer length mismatch — signature is invalid
+            isAuthentic = false
+        }
 
         if (!isAuthentic) {
             return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 })
         }
 
         // Update Organization Plan
-        // In a real app, you'd calculate expiration based on current date + cycle
         const expirationDate = new Date()
         if (cycle === 'yearly') expirationDate.setFullYear(expirationDate.getFullYear() + 1)
         else expirationDate.setMonth(expirationDate.getMonth() + 1)
@@ -71,6 +86,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, message: "Payment verified successfully" })
 
     } catch (error: any) {
+        if (error?.name === "RateLimitError") {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+        }
         console.error("[Razorpay/Verify] Error:", error.message)
         return NextResponse.json({ error: "Verification failed" }, { status: 500 })
     }

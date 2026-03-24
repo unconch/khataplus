@@ -70,7 +70,8 @@ const tiers: PricingTier[] = [
             "1 Store Location",
             "50 Inventory Items",
             "CSV Import",
-            "Basic Billing Reports"
+            "Basic Billing Reports",
+            "Basic Analytics"
         ],
         cta: "Start 14-day trial",
         lockedGst: true
@@ -85,7 +86,7 @@ const tiers: PricingTier[] = [
         features: [
             "Unlimited Billing",
             "3 Staff Seats",
-            "2 Store Locations",
+            "1 Store Location",
             "500 Inventory Items",
             "GST Billing",
             "WhatsApp Sharing",
@@ -303,9 +304,6 @@ function PricingContent({
                                 accentByPlan[tier.planKey] === "sky" && "ring-1 ring-sky-300/80",
                                 accentByPlan[tier.planKey] === "violet" && "ring-1 ring-violet-100/70"
                             )}>
-                                {!tier.popular && (
-                                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.72),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.03),transparent_32%)]" />
-                                )}
                                 {tier.popular && (
                                     <div className="absolute top-4 right-4 bg-emerald-500 text-zinc-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wide">
                                         Popular

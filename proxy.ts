@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = new Set([
   "/demo",
 ])
 
-const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/"]
+const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/", "/manifest.json", "/robots.txt", "/sitemap.xml", "/sw.js"]
 const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
 const INVALID_SLUGS = new Set(["", "undefined", "null"])
 
@@ -87,6 +87,8 @@ export default async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || ""
   const segments = pathname.split("/").filter(Boolean)
   const firstSegment = segments[0] || ""
+  const domain = hostname.split(":")[0]?.toLowerCase() || ""
+  const isDemoHost = domain === "demo.khataplus.online" || domain.startsWith("demo.")
 
   // 2. Hard redirects
   if (pathname === "/merchant-academy" || pathname === "/merchantacademy") {
@@ -133,7 +135,6 @@ export default async function proxy(request: NextRequest) {
 
   // Subdomain slug
   let slug: string | null = null
-  const domain = hostname.split(":")[0] || ""
   const domainParts = domain.split(".")
   const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(domain)
   const isLocalHost = domain === "localhost" || domain.endsWith(".localhost")
@@ -145,16 +146,23 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (!slug && pathSlug) slug = normalizeSlug(pathSlug)
-  else if (!slug && firstSegment === "demo") slug = "demo"
+  if (!slug && isDemoHost) slug = "demo"
+  if (!slug && firstSegment === "demo") slug = "demo"
 
   const activeOrgSlug = normalizeSlug(user?.user_metadata?.active_org_slug || user?.user_metadata?.activeOrgSlug)
   const cookieOrgSlug = normalizeSlug(request.cookies.get("kp_org_slug")?.value)
+  const hasGuestAccess = request.cookies.has("guest_mode") || isDemoHost
 
   // Best known slug — prefer metadata over cookie
   const bestSlug = activeOrgSlug || cookieOrgSlug || slug
 
   // 6. Public auth routes
   if (PUBLIC_ROUTES.has(pathname)) {
+    if (!user && hasGuestAccess && bestSlug && pathname.startsWith("/auth/")) {
+      const redirectPath = bestSlug === "demo" ? `/dashboard${search}` : `/app/${bestSlug}/dashboard${search}`
+      const redirectTo = new URL(redirectPath, request.url)
+      return finalizeResponse(sessionResponse, NextResponse.redirect(redirectTo, 302))
+    }
     if (user && bestSlug) {
       // User is already authenticated with a known org — redirect away from login
       const redirectTo = new URL(`/app/${bestSlug}/dashboard${search}`, request.url)
@@ -165,8 +173,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // 7. Unauthenticated — redirect to login
-  const hasGuestCookie = request.cookies.has("guest_mode")
-  if (!user && !hasGuestCookie) {
+  if (!user && !hasGuestAccess) {
     const redirectUrl = new URL("/auth/login", request.url)
     redirectUrl.searchParams.set("next", pathname + search)
     return finalizeResponse(sessionResponse, NextResponse.redirect(redirectUrl, 302))
@@ -182,6 +189,16 @@ export default async function proxy(request: NextRequest) {
   if (user && pathname.startsWith("/app/") && slug && activeOrgSlug && slug !== activeOrgSlug) {
     const rest = pathname.replace(/^\/app\/[^/]+/, "")
     const redirectTo = new URL(`/app/${activeOrgSlug}${rest}${search}`, request.url)
+    return finalizeResponse(sessionResponse, NextResponse.redirect(redirectTo, 307))
+  }
+
+  if (isDemoHost && pathname === "/app/demo") {
+    return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(`/dashboard${search}`, request.url), 307))
+  }
+
+  if (isDemoHost && pathname.startsWith("/app/demo/")) {
+    const cleanPath = pathname.replace(/^\/app\/demo/, "") || "/dashboard"
+    const redirectTo = new URL(`${cleanPath}${search}`, request.url)
     return finalizeResponse(sessionResponse, NextResponse.redirect(redirectTo, 307))
   }
 
@@ -201,7 +218,7 @@ export default async function proxy(request: NextRequest) {
     !pathname.startsWith("/app/") &&
     APP_SECTION_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
 
-  if ((user || hasGuestCookie) && bestSlug && shouldRouteToApp) {
+  if ((user || hasGuestAccess) && bestSlug && shouldRouteToApp) {
     const pathPrefix = `/app/${bestSlug}`
     const rewritePath = `${pathPrefix}${pathname}`
 
@@ -227,7 +244,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // For canonical app routes, inject tenant headers into the downstream request.
-  if ((user || hasGuestCookie) && slug && pathname.startsWith("/app/")) {
+  if ((user || hasGuestAccess) && slug && pathname.startsWith("/app/")) {
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set("x-tenant-slug", slug)
     requestHeaders.set("x-path-prefix", `/app/${slug}`)

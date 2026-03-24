@@ -28,11 +28,13 @@ import { DesktopSidebar } from "@/components/desktop-sidebar"
 
 export function AppShell({ children, profile, role, settings, orgId, orgName, orgSlug, orgPlanType, pathPrefix = "" }: AppShellProps) {
   const isAdmin = role === "admin" || role === "main admin"
+  const isDemoShell = orgId === "demo-org"
   const router = useRouter()
   const pathname = usePathname()
   const isPosRoute = Boolean(pathname && pathname.includes("/pos"))
 
   useEffect(() => {
+    if (isDemoShell) return
     const slug = String(orgSlug || "").trim()
     if (!slug || slug === "undefined" || slug === "null") return
     if (!pathname?.startsWith("/dashboard")) return
@@ -40,7 +42,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     const query = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : ""
     const target = query ? `${targetBase}?${query}` : targetBase
     router.replace(target)
-  }, [orgSlug, pathname, router])
+  }, [isDemoShell, orgSlug, pathname, router])
 
   if (isPosRoute) {
     return (

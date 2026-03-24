@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
     Users,
@@ -24,10 +25,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Profile, SystemSettings, DailyReport, Organization, Sale } from "@/lib/types"
 import { resolveGreeting, resetGreetingEngine, type AppStateKey, type MotionProfile, type UserContextKey, type GreetingPeriod } from "@/lib/greeting-engine"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 const SearchDialog = dynamic(() => import("@/components/search-dialog").then((m) => m.SearchDialog), { ssr: false })
 const PwaInstallPrompt = dynamic(() => import("@/components/pwa-install-prompt").then((m) => m.PwaInstallPrompt), { ssr: false })
+const HomeDashboardChart = dynamic(() => import("@/components/home-dashboard-chart").then((m) => m.HomeDashboardChart), {
+    ssr: false,
+    loading: () => <div className="h-full w-full rounded-2xl bg-muted/30 animate-pulse" />,
+})
 
 interface HomeDashboardProps {
     profile: Profile
@@ -58,15 +62,51 @@ export function HomeDashboard({
     lowStockCount,
     inventoryCount,
 }: HomeDashboardProps) {
-    const [isMounted, setIsMounted] = useState(false)
+    const router = useRouter()
+    const firstName = profile.name?.split(" ")[0] || "User"
     const [searchOpen, setSearchOpen] = useState(false)
     const [isMobileViewport, setIsMobileViewport] = useState(false)
     const [enableDeferredUI, setEnableDeferredUI] = useState(false)
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsMounted(true), 100)
-        return () => clearTimeout(timer)
+        if (typeof window === "undefined" || !window.matchMedia) return
+        const mediaQuery = window.matchMedia("(max-width: 767px)")
+        const update = () => setIsMobileViewport(mediaQuery.matches)
+        update()
+        mediaQuery.addEventListener("change", update)
+        return () => mediaQuery.removeEventListener("change", update)
     }, [])
+
+    const initialGreeting = useMemo(() => {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"
+        return resolveGreeting({
+            timezone,
+            name: firstName,
+            tone: "mix",
+            userContext: "firstLoginToday",
+            appState: "allClear",
+            motionProfile: "lite",
+        })
+    }, [firstName])
+    const [greeting, setGreeting] = useState(initialGreeting.text)
+    const [greetingToneClass, setGreetingToneClass] = useState(() => {
+        const periodToneMap: Record<GreetingPeriod, string> = {
+            earlyMorning: "bg-gradient-to-r from-cyan-700 via-sky-600 to-blue-500 bg-clip-text text-transparent dark:from-cyan-300 dark:via-sky-300 dark:to-blue-400",
+            morning: "bg-gradient-to-r from-sky-700 via-blue-600 to-indigo-500 bg-clip-text text-transparent dark:from-sky-300 dark:via-blue-300 dark:to-indigo-400",
+            midMorning: "bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-500 bg-clip-text text-transparent dark:from-blue-300 dark:via-indigo-300 dark:to-violet-400",
+            preLunch: "bg-gradient-to-r from-amber-700 via-orange-600 to-yellow-500 bg-clip-text text-transparent dark:from-amber-300 dark:via-orange-300 dark:to-yellow-400",
+            lunch: "bg-gradient-to-r from-orange-700 via-amber-600 to-lime-500 bg-clip-text text-transparent dark:from-orange-300 dark:via-amber-300 dark:to-lime-400",
+            postLunch: "bg-gradient-to-r from-lime-700 via-emerald-600 to-teal-500 bg-clip-text text-transparent dark:from-lime-300 dark:via-emerald-300 dark:to-teal-400",
+            afternoon: "bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-500 bg-clip-text text-transparent dark:from-emerald-300 dark:via-teal-300 dark:to-cyan-400",
+            earlyEvening: "bg-gradient-to-r from-violet-700 via-purple-600 to-fuchsia-500 bg-clip-text text-transparent dark:from-violet-300 dark:via-purple-300 dark:to-fuchsia-400",
+            evening: "bg-gradient-to-r from-fuchsia-700 via-pink-600 to-rose-500 bg-clip-text text-transparent dark:from-fuchsia-300 dark:via-pink-300 dark:to-rose-400",
+            lateEvening: "bg-gradient-to-r from-indigo-700 via-violet-600 to-purple-500 bg-clip-text text-transparent dark:from-indigo-300 dark:via-violet-300 dark:to-purple-400",
+            earlyNight: "bg-gradient-to-r from-blue-800 via-indigo-700 to-violet-600 bg-clip-text text-transparent dark:from-blue-200 dark:via-indigo-300 dark:to-violet-400",
+            midnight: "bg-gradient-to-r from-slate-700 via-zinc-600 to-neutral-500 bg-clip-text text-transparent dark:from-slate-200 dark:via-zinc-300 dark:to-neutral-400",
+            lateNight: "bg-gradient-to-r from-zinc-700 via-neutral-600 to-stone-500 bg-clip-text text-transparent dark:from-zinc-200 dark:via-neutral-300 dark:to-stone-400",
+        }
+        return periodToneMap[initialGreeting.timePeriod] || "bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 bg-clip-text text-transparent dark:from-slate-100 dark:via-slate-300 dark:to-slate-500"
+    })
 
     useEffect(() => {
         if (typeof window === "undefined") return
@@ -79,19 +119,10 @@ export function HomeDashboard({
     }, [])
 
     useEffect(() => {
-        if (typeof window === "undefined" || !window.matchMedia) return
-        const mediaQuery = window.matchMedia("(max-width: 767px)")
-        const update = () => setIsMobileViewport(mediaQuery.matches)
-        update()
-        mediaQuery.addEventListener("change", update)
-        return () => mediaQuery.removeEventListener("change", update)
-    }, [])
+        if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches) {
+            return
+        }
 
-    const firstName = profile.name?.split(" ")[0] || "User"
-    const [greeting, setGreeting] = useState("Hello")
-    const [greetingToneClass, setGreetingToneClass] = useState("bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 bg-clip-text text-transparent dark:from-slate-100 dark:via-slate-300 dark:to-slate-500")
-
-    useEffect(() => {
         const resetVersionKey = "kh:greeting:reset-version"
         const resetVersion = "2026-02-26-dataset-reset"
         if (window.localStorage.getItem(resetVersionKey) !== resetVersion) {
@@ -175,10 +206,9 @@ export function HomeDashboard({
     const [timeRange, setTimeRange] = useState<"today" | "week" | "month">("month")
     const greetingClassName = useMemo(() => {
         const len = greeting.length
-        // Long greetings need more vertical room than the default display sizes.
-        if (len > 95) return "text-[1.85rem] sm:text-[2.25rem] md:text-[2.75rem] leading-[1.18] tracking-[-0.02em]"
-        if (len > 72) return "text-[2.1rem] sm:text-[2.7rem] md:text-[3.35rem] leading-[1.15] tracking-[-0.025em]"
-        return "text-[2.4rem] sm:text-[3.2rem] md:text-[4.25rem] leading-[1.1] tracking-[-0.03em]"
+        if (len > 95) return "text-[1.85rem] sm:text-[2.25rem] md:text-[2.75rem] leading-[1.22] tracking-[-0.015em]"
+        if (len > 72) return "text-[2.1rem] sm:text-[2.7rem] md:text-[3.2rem] leading-[1.18] tracking-[-0.02em]"
+        return "text-[2.4rem] sm:text-[3.2rem] md:text-[4rem] leading-[1.14] tracking-[-0.025em]"
     }, [greeting])
 
     const metrics = useMemo(() => {
@@ -213,8 +243,6 @@ export function HomeDashboard({
 
     const stockAlertsCount = inventoryCount === 0 ? 0 : lowStockCount
 
-    if (!isMounted) return null
-
     const formatCurrency = (val: number) => {
         const rs = "\u20B9"
         return `${rs}${Math.round(val).toLocaleString()}`
@@ -230,7 +258,7 @@ export function HomeDashboard({
                     <h1
                         key={greeting}
                         className={cn(
-                            "font-black max-w-4xl whitespace-normal [text-wrap:balance] break-words pb-1 transition-colors md:transition-all md:duration-500",
+                            "font-black max-w-5xl whitespace-normal text-pretty break-words pb-2 transition-colors md:transition-all md:duration-500",
                             greetingClassName,
                             greetingToneClass
                         )}
@@ -257,9 +285,27 @@ export function HomeDashboard({
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-2xl border-zinc-100 dark:border-white/10">
-                            <ActionLink icon={IndianRupee} label="Record Sale" sub="Counter Entry" href={`/dashboard/sales?action=new`} color="emerald" />
-                            <ActionLink icon={Box} label="Stock In" sub="Inventory" href={`/dashboard/inventory`} color="blue" />
-                            <ActionLink icon={Users} label="Khata Entry" sub="Manage Ledger" href={`/dashboard/customers`} color="purple" />
+                            <ActionLink
+                                icon={IndianRupee}
+                                label="Record Sale"
+                                sub="Counter Entry"
+                                onSelect={() => router.push("/dashboard/sales?action=new")}
+                                color="emerald"
+                            />
+                            <ActionLink
+                                icon={Box}
+                                label="Stock In"
+                                sub="Inventory"
+                                onSelect={() => router.push("/dashboard/inventory")}
+                                color="blue"
+                            />
+                            <ActionLink
+                                icon={Users}
+                                label="Khata Entry"
+                                sub="Manage Ledger"
+                                onSelect={() => router.push("/dashboard/customers")}
+                                color="purple"
+                            />
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -306,35 +352,15 @@ export function HomeDashboard({
                     </div>
 
                     <div className="h-[240px] md:h-[340px] w-full mt-6 md:mt-10">
-                        {enableDeferredUI ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.15} />
-                                            <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="5 5" vertical={false} stroke="rgba(0,0,0,0.03)" />
-                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#888" }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#888" }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.15)" }}
-                                        cursor={{ stroke: "var(--primary)", strokeWidth: 1, strokeDasharray: "4 4" }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="revenue"
-                                        stroke="var(--primary)"
-                                        strokeWidth={3}
-                                        fillOpacity={1}
-                                        fill="url(#primaryGradient)"
-                                        isAnimationActive={!isMobileViewport}
-                                        animationDuration={isMobileViewport ? 0 : 2000}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : null}
+                        {enableDeferredUI && !isMobileViewport ? (
+                            <HomeDashboardChart chartData={chartData} />
+                        ) : (
+                            <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-3">
+                                <MobileInsightCard label="Revenue" value={formatCurrency(metrics.revenue)} tone="blue" />
+                                <MobileInsightCard label="Profit" value={formatCurrency(metrics.profit)} tone="emerald" />
+                                <MobileInsightCard label="Stock Alerts" value={stockAlertsCount.toString()} tone={stockAlertsCount > 0 ? "orange" : "zinc"} />
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -425,15 +451,34 @@ function PortalGridItem({ title, sub, href, icon: Icon, color }: any) {
     )
 }
 
-function ActionLink({ icon: Icon, label, sub, href, color }: any) {
+function MobileInsightCard({ label, value, tone }: { label: string; value: string; tone: "blue" | "emerald" | "orange" | "zinc" }) {
+    const toneClass = {
+        blue: "border-blue-200/70 bg-blue-50/70 text-blue-700 dark:border-blue-500/20 dark:bg-blue-950/30 dark:text-blue-300",
+        emerald: "border-emerald-200/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-300",
+        orange: "border-orange-200/70 bg-orange-50/70 text-orange-700 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-300",
+        zinc: "border-zinc-200/70 bg-zinc-50/80 text-zinc-700 dark:border-white/10 dark:bg-zinc-900/60 dark:text-zinc-200",
+    } as const
+
+    return (
+        <div className={cn("flex flex-col justify-between rounded-2xl border p-4", toneClass[tone])}>
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</span>
+            <span className="mt-3 text-2xl font-black tracking-tight">{value}</span>
+        </div>
+    )
+}
+
+function ActionLink({ icon: Icon, label, sub, onSelect, color }: any) {
     const colors: any = {
         emerald: "text-emerald-600 bg-emerald-500/10",
         blue: "text-blue-600 bg-blue-500/10",
         purple: "text-purple-600 bg-purple-500/10",
     }
     return (
-        <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-muted cursor-pointer border-none transition-colors md:transition-all md:active:scale-95">
-            <Link href={href} className="flex items-center gap-4 w-full">
+        <DropdownMenuItem
+            onSelect={onSelect}
+            className="rounded-xl p-3 focus:bg-muted cursor-pointer border-none transition-colors md:transition-all md:active:scale-95"
+        >
+            <div className="flex items-center gap-4 w-full">
                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", colors[color])}>
                     <Icon className="h-5 w-5" />
                 </div>
@@ -441,7 +486,7 @@ function ActionLink({ icon: Icon, label, sub, href, color }: any) {
                     <span className="text-sm font-bold">{label}</span>
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">{sub}</span>
                 </div>
-            </Link>
+            </div>
         </DropdownMenuItem>
     )
 }

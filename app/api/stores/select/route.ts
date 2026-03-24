@@ -7,10 +7,6 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await req.json().catch(() => ({} as any))
-  const storeId = String(body?.storeId || "").trim()
-  if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 })
-
   const orgId = user.isGuest ? "demo-org" : (await getCurrentOrgId(user.userId))
   if (!orgId) return NextResponse.json({ error: "Missing org" }, { status: 400 })
 
@@ -21,9 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   const stores = await getStoresForUser(orgId, user.userId, role)
-  if (!stores.some((s) => s.id === storeId)) {
-    return NextResponse.json({ error: "Store not allowed" }, { status: 403 })
-  }
+  const storeId = stores[0]?.id
+  if (!storeId) return NextResponse.json({ error: "No store available" }, { status: 404 })
 
   const res = NextResponse.json({ ok: true, storeId })
   res.cookies.set(ACTIVE_STORE_COOKIE, storeId, {

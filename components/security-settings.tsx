@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone, Sparkles } from "lucide-react"
+import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -40,7 +40,6 @@ export function SecuritySettings({
     const [sessions, setSessions] = useState(initialSessions)
     const [isUpdating, setIsUpdating] = useState(false)
     const [isRevoking, setIsRevoking] = useState<string | null>(null)
-    const [showPasskeyPanel, setShowPasskeyPanel] = useState(false)
     const [isAddingPasskey, setIsAddingPasskey] = useState(false)
     const governanceRows = useMemo(
         () =>
@@ -244,61 +243,20 @@ export function SecuritySettings({
                                 Add this device as a passkey for OTP-less sign in.
                             </p>
                         </div>
-                        <Button type="button" onClick={() => setShowPasskeyPanel((v) => !v)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-                            <Key className="h-4 w-4 mr-2" /> Add Passkey
+                        <Button
+                            type="button"
+                            onClick={addPasskey}
+                            disabled={isAddingPasskey}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                        >
+                            {isAddingPasskey ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Key className="h-4 w-4 mr-2" />
+                            )}
+                            {isAddingPasskey ? "Adding..." : "Add Passkey"}
                         </Button>
                     </div>
-
-                    {showPasskeyPanel && (
-                        <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-900/40 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:from-emerald-950/20 dark:to-cyan-950/20 p-4">
-                            <div className="flex items-start gap-3">
-                                <span className="mt-0.5 h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-                                    <Sparkles className="h-4 w-4" />
-                                </span>
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Set up quick login on this device</p>
-                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
-                                        Your device will ask for Windows Hello, Face ID, or Touch ID.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                                <Button
-                                    type="button"
-                                    className="sm:col-span-1 bg-zinc-950 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold"
-                                    onClick={addPasskey}
-                                    disabled={isAddingPasskey}
-                                >
-                                    {isAddingPasskey ? (
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                        <Key className="h-4 w-4 mr-2" />
-                                    )}
-                                    {isAddingPasskey ? "Adding..." : "Add Passkey"}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="sm:col-span-1 border-zinc-300 dark:border-zinc-700"
-                                    onClick={() => setShowPasskeyPanel(false)}
-                                >
-                                    Not now
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="sm:col-span-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40 font-semibold"
-                                    onClick={() => {
-                                        setShowPasskeyPanel(false)
-                                        goToLoginForPasskeySetup()
-                                    }}
-                                >
-                                    Use Login Flow
-                                </Button>
-                            </div>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
 

@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
   }
 
   const stores = await getStoresForUser(orgId, user.userId, role)
-  const activeStoreId = await resolveActiveStoreId(orgId, user.userId, role, { allowAll: true })
+  const activeStoreId = await resolveActiveStoreId(orgId, user.userId, role)
   return NextResponse.json({ stores, activeStoreId })
 }

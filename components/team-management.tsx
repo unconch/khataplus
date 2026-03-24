@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
 import { Users, UserPlus, Copy, Check, Trash2, Loader2, Sparkles, ShieldCheck, UserCog, AlertTriangle, ArrowUpRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -206,11 +205,6 @@ export function TeamManagement({ orgId, orgName }: TeamPageProps) {
               <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Expansion & Collaboration</p>
             </div>
           </div>
-          <Link href="/dashboard/invite-members" className="hidden sm:block">
-            <Button variant="outline" size="sm" className="h-8 rounded-xl text-[9px] font-black uppercase tracking-widest">
-              Open Invite Page
-            </Button>
-          </Link>
         </div>
 
         <div className="relative group overflow-hidden p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 lg:transition-all lg:duration-300">

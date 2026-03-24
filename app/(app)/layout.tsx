@@ -62,6 +62,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
       }
 
       const demoSettings = await getSystemSettings(demoTenant.id)
+      const guestPathPrefix = ""
 
       return (
         <TenantProvider tenant={demoTenant}>
@@ -73,7 +74,7 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             orgName={demoTenant.name}
             orgSlug={demoTenant.slug}
             orgPlanType="business"
-            pathPrefix={pathPrefix}
+            pathPrefix={guestPathPrefix}
           >
             {children}
           </AppShell>

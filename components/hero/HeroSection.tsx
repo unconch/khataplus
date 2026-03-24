@@ -10,7 +10,7 @@ type HeroSectionProps = {
 
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   const primaryHref = isAuthenticated ? "/dashboard" : "/auth/sign-up"
-  const secondaryHref = "/demo/dashboard"
+  const secondaryHref = "/demo"
 
   return (
     <section className="relative min-h-[78svh] flex items-center bg-white text-zinc-900 overflow-hidden">

@@ -104,7 +104,10 @@ export default function RoadmapPage() {
             />
 
             <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
-                <DialogContent className="overflow-hidden border-white/80 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.985),rgba(248,252,255,0.97))] p-0 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] sm:max-w-[620px]">
+                <DialogContent
+                    hideClose
+                    className="overflow-hidden border-white/80 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.985),rgba(248,252,255,0.97))] p-0 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] sm:max-w-[620px]"
+                >
                     <div className="border-b border-emerald-100 bg-[radial-gradient(circle_at_top_left,rgba(110,231,183,0.22),transparent_36%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.92))] px-8 py-7">
                         <div className="flex items-start justify-between gap-4">
                             <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">

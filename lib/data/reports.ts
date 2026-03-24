@@ -364,11 +364,14 @@ export async function addDailyReport(report: Omit<DailyReport, "id" | "created_a
     return result[0] as any;
 }
 
-export async function deleteDailyReport(id: string): Promise<void> {
+export async function deleteDailyReport(id: string, callerOrgId?: string): Promise<void> {
     const report = await sql`SELECT * FROM daily_reports WHERE id = ${id}`;
     if (report.length === 0) return;
 
     const orgId = report[0].org_id;
+    if (callerOrgId && String(report[0].org_id) !== String(callerOrgId)) {
+        throw new Error("Report not found in this organization");
+    }
     await authorize("Delete Daily Report", "admin", orgId);
 
     await sql`DELETE FROM daily_reports WHERE id = ${id}`;

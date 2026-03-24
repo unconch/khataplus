@@ -1,0 +1,5 @@
+.codex-chrome-monitor
+.codex-chrome-monitor-9223
+.tmp-lh-*.json
+puppeteer-signup-live.log
+puppeteer-signup-live-state.json

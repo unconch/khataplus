@@ -17,6 +17,15 @@ async function resolveDemoDashboardUrl() {
     const hostValue = hostRaw.split(",")[0].trim()
     const protoValue = protoRaw.split(",")[0].trim()
     const hostNoPort = hostValue.split(":")[0].toLowerCase()
+    const isLocalHost =
+        hostNoPort === "localhost" ||
+        hostNoPort.endsWith(".localhost") ||
+        /^\d{1,3}(\.\d{1,3}){3}$/.test(hostNoPort)
+
+    if (isLocalHost) {
+        return `${protoValue}://${hostValue}/dashboard`
+    }
+
     const portPart = hostValue.includes(":") ? `:${hostValue.split(":")[1]}` : ""
     const baseHost = hostNoPort.startsWith("demo.") ? hostNoPort.slice(5) : hostNoPort
     return `${protoValue}://demo.${baseHost}${portPart}/dashboard`

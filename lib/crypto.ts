@@ -192,20 +192,7 @@ export async function decrypt(encryptedJson: string, aadContext?: string, keyOve
 }
 
 /**
- * Constant-time comparison for secrets to prevent timing attacks.
+ * Re-export secureCompare from the canonical source to avoid duplication.
  */
-export function secureCompare(a: string, b: string): boolean {
-    const bufA = Buffer.from(a);
-    const bufB = Buffer.from(b);
+export { secureCompare } from './security';
 
-    if (bufA.length !== bufB.length) {
-        return false;
-    }
-
-    // Constant-time comparison
-    let result = 0;
-    for (let i = 0; i < bufA.length; i++) {
-        result |= bufA[i] ^ bufB[i];
-    }
-    return result === 0;
-}

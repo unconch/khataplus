@@ -3,6 +3,7 @@ export const maxDuration = 10
 
 import { NextResponse } from "next/server"
 import { requestLoginOtp, verifyLoginOtp } from "@/lib/data/auth"
+import { rateLimit, getIP, RateLimitError } from "@/lib/rate-limit"
 
 function toSafePath(next: unknown): string {
   if (typeof next !== "string") return "/app/dashboard"
@@ -29,7 +30,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email is required." }, { status: 400 })
     }
 
+    const ip = getIP(request.headers)
+
     if (!code) {
+      // Send-OTP bucket: 5 requests per minute per IP
+      await rateLimit(`auth-login-send:${ip}`, 5, 60_000)
       const otp = await requestLoginOtp({ email, next })
       if (!otp.ok) {
         return NextResponse.json({ error: otp.error || "Failed to send verification code email." }, { status: otp.status || 400 })
@@ -37,6 +42,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, phase: "verify", maskedEmail: otp.maskedEmail || email, next })
     }
 
+    // Verify-OTP bucket: 8 requests per minute per IP (allows mistyped codes)
+    await rateLimit(`auth-login-verify:${ip}`, 8, 60_000)
     const result = await withTimeout(verifyLoginOtp({ email, token: code, next }), 7000, "OTP_VERIFY")
     if (!result.ok) {
       return NextResponse.json({ error: result.error || "Invalid verification code." }, { status: result.status || 401 })
@@ -67,6 +74,9 @@ export async function POST(request: Request) {
     }
     return response
   } catch (error: any) {
+    if (error?.name === "RateLimitError") {
+      return NextResponse.json({ error: "Too many attempts. Please wait a minute and try again." }, { status: 429 })
+    }
     const message = String(error?.message || "")
     if (message.includes("OTP_VERIFY_TIMEOUT")) {
       return NextResponse.json({ error: "Verification timed out. Please try again." }, { status: 504 })

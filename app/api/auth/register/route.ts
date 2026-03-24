@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requestRegistrationOtp, verifyRegistrationOtp } from "@/lib/data/auth"
+import { rateLimit, getIP } from "@/lib/rate-limit"
 
 function toSafePath(next: unknown): string {
   if (typeof next !== "string") return "/app/dashboard"
@@ -19,7 +20,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name and email are required." }, { status: 400 })
     }
 
+    const ip = getIP(request.headers)
+
     if (!code) {
+      // Send-OTP bucket: 3 requests per minute per IP
+      await rateLimit(`auth-register-send:${ip}`, 3, 60_000)
       const otp = await requestRegistrationOtp({ name, email, next })
       if (!otp.ok) {
         return NextResponse.json({ error: otp.error || "Failed to send verification code email." }, { status: otp.status || 400 })
@@ -32,6 +37,8 @@ export async function POST(request: Request) {
       })
     }
 
+    // Verify-OTP bucket: 6 requests per minute per IP (allows mistyped codes)
+    await rateLimit(`auth-register-verify:${ip}`, 6, 60_000)
     const result = await verifyRegistrationOtp({ name, email, token: code, next })
     if (!result.ok) {
       return NextResponse.json({ error: result.error || "Invalid verification code." }, { status: result.status || 400 })
@@ -54,6 +61,9 @@ export async function POST(request: Request) {
     }
     return response
   } catch (error: any) {
+    if (error?.name === "RateLimitError") {
+      return NextResponse.json({ error: "Too many attempts. Please wait a minute and try again." }, { status: 429 })
+    }
     console.error("[Auth Register] Failed:", error)
     return NextResponse.json({ error: error?.message || "Registration failed." }, { status: 500 })
   }

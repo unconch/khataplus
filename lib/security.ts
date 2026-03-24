@@ -55,8 +55,9 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
         throw new Error(`Unauthorized: Invalid user role ${user.role || "unknown"}`);
     }
 
-    // If orgId is provided, check organization-specific role
-    if (orgId && user.role !== "owner") {
+    // If orgId is provided, ALWAYS check organization membership — even for owners.
+    // This prevents owner-of-org-A from acting on org-B by posting org-B's orgId.
+    if (orgId) {
         const membership = await sql`
             SELECT role FROM organization_members 
             WHERE org_id = ${orgId} AND user_id = ${user.id}
@@ -67,14 +68,17 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
         }
 
         const orgRole = membership[0].role;
-        // Owners and Admins satisfy the "admin" requirement
-        const isOrgAdmin = orgRole === "admin" || orgRole === "owner";
+        const isOrgOwnerOrAdmin = orgRole === "admin" || orgRole === "owner";
 
-        if (requiredRole === "admin" && !isOrgAdmin) {
+        if (requiredRole === "owner" && orgRole !== "owner") {
+            throw new Error(`Forbidden: Organization owner privileges required`);
+        }
+
+        if (requiredRole === "admin" && !isOrgOwnerOrAdmin) {
             throw new Error(`Forbidden: Organization admin privileges required`);
         }
 
-        if (requiredRole && requiredRole !== "admin" && !secureCompare(orgRole, requiredRole)) {
+        if (requiredRole && requiredRole !== "admin" && requiredRole !== "owner" && !secureCompare(orgRole, requiredRole)) {
             throw new Error(`Forbidden: Required organization role ${requiredRole}`);
         }
 
@@ -147,19 +151,21 @@ export async function generateDiff(oldData: any, newData: any) {
 
 /**
  * Constant-time comparison for secrets to prevent timing attacks.
+ * Uses Node.js crypto.timingSafeEqual. When lengths differ, hashes both
+ * to a fixed-length digest to avoid leaking length information.
  */
 export function secureCompare(a: string, b: string): boolean {
+    const nodeCrypto = require('crypto');
     const bufA = Buffer.from(a);
     const bufB = Buffer.from(b);
 
     if (bufA.length !== bufB.length) {
+        // Hash both to constant length to avoid leaking length info via early return
+        const hashA = nodeCrypto.createHash('sha256').update(bufA).digest();
+        const hashB = nodeCrypto.createHash('sha256').update(bufB).digest();
+        nodeCrypto.timingSafeEqual(hashA, hashB); // consume constant time
         return false;
     }
 
-    // Constant-time comparison to prevent timing attacks
-    let result = 0;
-    for (let i = 0; i < bufA.length; i++) {
-        result |= bufA[i] ^ bufB[i];
-    }
-    return result === 0;
+    return nodeCrypto.timingSafeEqual(bufA, bufB);
 }

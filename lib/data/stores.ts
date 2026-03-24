@@ -67,29 +67,14 @@ export async function ensureDefaultStore(orgId: string): Promise<Store> {
 }
 
 export async function getStoresForOrg(orgId: string): Promise<Store[]> {
-  await ensureDefaultStore(orgId)
-  const rows = await sql`SELECT * FROM stores WHERE org_id = ${orgId} AND is_active = true ORDER BY is_default DESC, created_at ASC`
-  return rows as Store[]
+  const defaultStore = await ensureDefaultStore(orgId)
+  return [defaultStore]
 }
 
 export async function getStoresForUser(orgId: string, userId: string, role: string): Promise<Store[]> {
-  if (role === "owner" || role === "manager" || role === "admin" || role === "main admin") {
-    return getStoresForOrg(orgId)
-  }
-
-  await ensureDefaultStore(orgId)
-  const rows = await sql`
-    SELECT s.*
-    FROM member_store_scopes mss
-    JOIN stores s ON s.id = mss.store_id
-    WHERE mss.org_id = ${orgId}
-      AND mss.user_id = ${userId}
-      AND s.is_active = true
-    ORDER BY s.is_default DESC, s.created_at ASC
-  `
-
-  if ((rows as Store[]).length > 0) return rows as Store[]
-  return (await getStoresForOrg(orgId)).slice(0, 1)
+  void userId
+  void role
+  return getStoresForOrg(orgId)
 }
 
 export async function resolveActiveStoreId(
@@ -100,20 +85,6 @@ export async function resolveActiveStoreId(
 ): Promise<string | null> {
   const stores = await getStoresForUser(orgId, userId, role)
   if (stores.length === 0) return null
-
-  const canAll = Boolean(options?.allowAll && (role === "owner" || role === "manager" || role === "admin" || role === "main admin"))
-  const fromCookie = (await cookies()).get(ACTIVE_STORE_COOKIE)?.value
-  const fromHeader = (await headers()).get("x-store-id") || undefined
-  const selected = fromHeader || fromCookie
-
-  if (selected) {
-    if (canAll) {
-      const found = (await getStoresForOrg(orgId)).find((s) => s.id === selected)
-      if (found) return found.id
-    } else if (stores.some((s) => s.id === selected)) {
-      return selected
-    }
-  }
 
   return stores[0]?.id || null
 }

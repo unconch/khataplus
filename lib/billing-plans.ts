@@ -78,10 +78,10 @@ export function getPlanAmountInr(planKey: BillingPlanKey, cycle: BillingCycle): 
 
 const PLAN_LIMITS: Record<OrganizationPlanType, { staffSeats: number | null; inventoryItems: number | null; storeLocations: number | null; invoiceLimit: number | null }> = {
   free: { staffSeats: 1, inventoryItems: 50, storeLocations: 1, invoiceLimit: 25 },
-  starter: { staffSeats: 3, inventoryItems: 500, storeLocations: 2, invoiceLimit: null },
-  pro: { staffSeats: 10, inventoryItems: null, storeLocations: null, invoiceLimit: null },
-  business: { staffSeats: null, inventoryItems: null, storeLocations: null, invoiceLimit: null },
-  legacy: { staffSeats: null, inventoryItems: null, storeLocations: null, invoiceLimit: null },
+  starter: { staffSeats: 3, inventoryItems: 500, storeLocations: 1, invoiceLimit: null },
+  pro: { staffSeats: 10, inventoryItems: null, storeLocations: 1, invoiceLimit: null },
+  business: { staffSeats: null, inventoryItems: null, storeLocations: 1, invoiceLimit: null },
+  legacy: { staffSeats: null, inventoryItems: null, storeLocations: 1, invoiceLimit: null },
 };
 
 export function normalizeOrganizationPlanType(value?: string | null): OrganizationPlanType {

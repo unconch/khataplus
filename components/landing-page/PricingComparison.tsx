@@ -3,12 +3,11 @@
 const comparisonRows = [
   { feature: "Invoice Limit", keep: "25/mo", starter: "Unlimited" },
   { feature: "Staff Seats", keep: "1", starter: "3" },
-  { feature: "Store Locations", keep: "1", starter: "2" },
+  { feature: "Store Locations", keep: "1", starter: "1" },
   { feature: "Inventory Items", keep: "50", starter: "500" },
   { feature: "Basic Billing Reports", keep: "Yes", starter: "Yes" },
   { feature: "GST Billing", keep: "No", starter: "Yes" },
-  { feature: "WhatsApp Sharing", keep: "No", starter: "Yes" },
-  { feature: "Analytics", keep: "No", starter: "Basic" },
+  { feature: "Analytics", keep: "Basic", starter: "Basic" },
   { feature: "CSV Import", keep: "Yes", starter: "Yes" },
 ]
 

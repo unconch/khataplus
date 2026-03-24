@@ -5,7 +5,7 @@ import { Package, ArrowRight, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 interface InventoryListProps {
   items: InventoryItem[]
@@ -13,8 +13,10 @@ interface InventoryListProps {
 }
 
 export function InventoryList({ items, orgId }: InventoryListProps) {
+  const pathname = usePathname()
   const router = useRouter()
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const inventoryDetailBasePath = pathname?.replace(/\/+$/, "") || "/dashboard/inventory"
 
   const archiveItem = async (id: string, name: string) => {
     const confirmed = window.confirm(`Archive "${name}"? It will be hidden from inventory list.`)
@@ -176,7 +178,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                   </span>
                 </button>
                 <Link
-                  href={`/dashboard/inventory/${item.id}`}
+                  href={`${inventoryDetailBasePath}/${item.id}`}
                   className="h-10 w-10 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 flex items-center justify-center shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0"
                 >
                   <ArrowRight size={18} />

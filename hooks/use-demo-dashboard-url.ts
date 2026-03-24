@@ -11,6 +11,17 @@ export function useDemoDashboardUrl() {
     if (typeof window === "undefined") return
 
     const { protocol, hostname, port } = window.location
+    const isLocalHost =
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+
+    if (isLocalHost) {
+      const hostWithPort = port ? `${hostname}:${port}` : hostname
+      setDemoUrl(`${protocol}//${hostWithPort}/demo`)
+      return
+    }
+
     const baseHostname = hostname.startsWith("demo.") ? hostname.slice(5) : hostname
     const demoHostname = `demo.${baseHostname}`
     const hostWithPort = port ? `${demoHostname}:${port}` : demoHostname
