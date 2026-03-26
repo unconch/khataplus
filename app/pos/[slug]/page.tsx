@@ -44,7 +44,7 @@ async function DedicatedPosContent({ slug }: { slug: string }) {
     const membership = orgs.find((row: any) => row?.organization?.id === org.id || row?.org_id === org.id)
 
     if (!membership) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
     }
 
     const settings = await getSystemSettings(org.id)

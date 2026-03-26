@@ -12,7 +12,7 @@ const PUBLIC_ROUTES = new Set([
 ])
 
 const STATIC_PREFIXES = ["/_next", "/favicon.ico", "/logo", "/api/", "/manifest.json", "/robots.txt", "/sitemap.xml", "/sw.js"]
-const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding"])
+const CRITICAL_SYSTEM_ROUTES = new Set(["auth", "api", "_next", "favicon.ico", "logo", "onboarding", "setup-organization"])
 const INVALID_SLUGS = new Set(["", "undefined", "null"])
 
 const APP_SECTION_PREFIXES = [

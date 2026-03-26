@@ -26,7 +26,7 @@ export default async function PosSalesPage() {
   const memberships = await getUserOrganizationsResolved(user.userId)
   const membership = memberships.find((row: any) => row?.org_id === tenant.id || row?.organization?.id === tenant.id)
   if (!membership) {
-    redirect("/setup-organization")
+    redirect("/onboarding")
   }
 
   const settings = await getSystemSettings(tenant.id)

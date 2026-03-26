@@ -57,7 +57,7 @@ export async function GET(request: Request) {
             const redirectPath = await resolveSlugDashboardPath(userId, next)
             const res = redirectPath.startsWith("/")
                 ? NextResponse.redirect(`${origin}${redirectPath}`)
-                : NextResponse.redirect(`${origin}/setup-organization`)
+                : NextResponse.redirect(`${origin}/onboarding`)
             res.cookies.delete("kp_auth_next")
             return res
         }

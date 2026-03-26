@@ -1,4 +1,4 @@
-﻿import { notFound, redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import type { InventoryItem } from "@/lib/types"
@@ -44,7 +44,7 @@ async function DedicatedPosSalesContent({ slug }: { slug: string }) {
   const orgs = await getUserOrganizationsResolved(user.userId)
   const membership = orgs.find((row: any) => row?.organization?.id === org.id || row?.org_id === org.id)
   if (!membership) {
-    redirect("/setup-organization")
+    redirect("/onboarding")
     return null
   }
 

@@ -14,8 +14,8 @@ export default function SignUpPage() {
 
   const next = useMemo(() => {
     const raw = searchParams.get("next")
-    if (!raw) return "/setup-organization"
-    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/setup-organization"
+    if (!raw) return "/onboarding"
+    if (!raw.startsWith("/") || raw.startsWith("/auth/")) return "/onboarding"
     return raw
   }, [searchParams])
 

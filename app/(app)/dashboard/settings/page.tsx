@@ -48,7 +48,7 @@ export default async function SettingsPage() {
     }
 
     if (!orgId) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
         return null
     }
 

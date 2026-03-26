@@ -65,7 +65,7 @@ async function LedgerContent({ supplierId }: { supplierId: string }) {
     }
 
     if (!orgId) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
         return null
     }
 

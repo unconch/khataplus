@@ -47,7 +47,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   if (!isGuest && !orgId) {
     const orgs = await getUserOrganizationsResolved(userId)
     if (orgs.length === 0) {
-      redirect("/setup-organization")
+      redirect("/onboarding")
       return null
     }
     orgId = orgs[0].org_id

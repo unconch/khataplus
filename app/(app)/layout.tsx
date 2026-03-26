@@ -181,9 +181,9 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
             organization: org
           }] as any
         }
-      } else if (!pathPrefix || pathPrefix === "/setup-organization") {
-        console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Setup ---")
-        redirect("/setup-organization")
+      } else if (!pathPrefix || pathPrefix === "/onboarding") {
+        console.log("--- [DEBUG] AppLayout: No Orgs and no path prefix -> Redirecting to Onboarding ---")
+        redirect("/onboarding")
       } else {
         console.log("--- [DEBUG] AppLayout: Stale cache detected (No Orgs but path prefix exists). Waiting for revalidation... ---")
       }
@@ -202,8 +202,8 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     }
 
     if (!currentOrgMembership) {
-      console.log("--- [DEBUG] AppLayout: No organization membership found. Redirecting to setup. ---")
-      redirect("/setup-organization")
+      console.log("--- [DEBUG] AppLayout: No organization membership found. Redirecting to onboarding. ---")
+      redirect("/onboarding")
       return null // Ensure execution stops
     }
 

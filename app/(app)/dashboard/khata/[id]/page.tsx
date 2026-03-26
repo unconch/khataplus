@@ -66,7 +66,7 @@ async function KhataContent({ customerId }: { customerId: string }) {
     }
 
     if (!orgId) {
-        redirect("/setup-organization")
+        redirect("/onboarding")
         return null
     }
 
