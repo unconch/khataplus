@@ -192,17 +192,6 @@ function normalizeAuthErrorMessage(message: string, mode: AuthFlowMode) {
   return message
 }
 
-async function findProfileByEmail(email: string) {
-  const rows = await sql`
-    SELECT id
-    FROM public.profiles
-    WHERE lower(email) = lower(${email})
-    LIMIT 1
-  `
-
-  return rows[0]?.id ? String(rows[0].id) : null
-}
-
 async function getPrimaryOrganizationForUser(userId: string): Promise<AuthOrganization | null> {
   try {
     const rows = await sql`
@@ -287,17 +276,9 @@ async function sendOtp(input: AuthSendOtpInput): Promise<AuthSendOtpResult> {
     return { ok: false, status: 400, phase: "error", error: "Enter a valid email address." }
   }
 
-  if (input.mode === "register") {
-    const existingProfileId = await findProfileByEmail(email)
-    if (existingProfileId) {
-      return {
-        ok: false,
-        status: 409,
-        phase: "error",
-        error: "An account with this email already exists. Please sign in instead.",
-      }
-    }
-  }
+  // Do not use `profiles` as the source of truth for account existence.
+  // Legacy/migrated profile rows may exist before or without a matching Auth user,
+  // and `ensureProfile()` already reconciles same-email/different-id cases after verification.
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
