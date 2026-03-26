@@ -207,6 +207,7 @@ export function SettingsForm({
   const isPinStateMismatch = pinStateValidation.kind === "mismatch"
   const hasAddressValidationError = pinStateValidation.kind === "mismatch" || pinStateValidation.kind === "invalid"
   const hasSlugValidationError = isAdmin && showOrganizationSections && !isProfileView && (slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error")
+  const readableDisabledFieldClass = "disabled:opacity-100 disabled:text-zinc-900 dark:disabled:text-zinc-100"
 
   useEffect(() => {
     if (!isAdmin || isProfileView || !showOrganizationSections) {
@@ -427,11 +428,11 @@ export function SettingsForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SettingField label="Organization ID" icon={<Hash size={14} />} disabled>
                 <div className="relative">
-                  <Input
-                    value={org.id || ""}
-                    disabled
-                    className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold opacity-70 pr-11"
-                  />
+                <Input
+                  value={org.id || ""}
+                  disabled
+                  className={cn("bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold opacity-70 pr-11", readableDisabledFieldClass)}
+                />
                   <button
                     type="button"
                     onClick={async () => {
@@ -461,7 +462,7 @@ export function SettingsForm({
                   autoCorrect="off"
                   spellCheck={false}
                   disabled={!isAdmin}
-                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-black text-emerald-600 dark:text-emerald-400 text-xs normal-case"
+                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-black text-emerald-600 dark:text-emerald-400 text-xs normal-case", readableDisabledFieldClass)}
                 />
               </SettingField>
 
@@ -473,6 +474,7 @@ export function SettingsForm({
                     disabled={!isAdmin}
                     className={cn(
                       "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold pl-14 text-xs",
+                      readableDisabledFieldClass,
                       slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error"
                         ? "border-rose-300 dark:border-rose-500/40"
                         : slugStatus === "available"
@@ -514,7 +516,7 @@ export function SettingsForm({
                   value={org.gstin || ""}
                   onChange={(e) => setOrg({ ...org, gstin: e.target.value })}
                   disabled={!isAdmin}
-                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold"
+                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold", readableDisabledFieldClass)}
                   placeholder="22AAAAA0000A1Z5"
                 />
               </SettingField>
@@ -524,7 +526,7 @@ export function SettingsForm({
                   value={org.phone || ""}
                   onChange={(e) => setOrg({ ...org, phone: e.target.value })}
                   disabled={!isAdmin}
-                  className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs", readableDisabledFieldClass)}
                 />
               </SettingField>
 
@@ -550,7 +552,7 @@ export function SettingsForm({
                           setOrg({ ...org, address: combineAddress(next) })
                         }}
                         disabled={!isAdmin}
-                        className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium text-xs"
+                        className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium text-xs", readableDisabledFieldClass)}
                       />
                     </SettingField>
                   </div>
@@ -579,6 +581,7 @@ export function SettingsForm({
                       <SelectTrigger
                         className={cn(
                           "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs w-full",
+                          readableDisabledFieldClass,
                           pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
                         )}
                       >
@@ -605,6 +608,7 @@ export function SettingsForm({
                       maxLength={6}
                       className={cn(
                         "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono font-bold text-xs tracking-widest",
+                        readableDisabledFieldClass,
                         pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
                       )}
                     />

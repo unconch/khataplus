@@ -282,8 +282,8 @@ function SettingsCard({ icon, title, description, children, color = "zinc" }: { 
     }
 
     return (
-        <Card className="glass-card border-0 shadow-xl overflow-hidden rounded-2xl transition-all">
-            <CardHeader className="border-b border-zinc-100/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/40 p-6 relative overflow-hidden group">
+        <Card className="border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden rounded-2xl transition-all">
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-900 p-6 relative overflow-hidden group">
                 {/* Header Pattern */}
                 <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
@@ -299,7 +299,7 @@ function SettingsCard({ icon, title, description, children, color = "zinc" }: { 
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-6 bg-white/5 dark:bg-zinc-950/5">
+            <CardContent className="p-6 bg-white dark:bg-zinc-950">
                 {children}
             </CardContent>
         </Card>
