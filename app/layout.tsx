@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Suspense } from "react"
+import { cookies } from "next/headers"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -63,7 +64,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Toaster } from "sonner"
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
@@ -85,14 +86,19 @@ export default function RootLayout({
     screenshot: "https://khataplus.online/og-image.png",
   }
 
+  const themeCookie = (await cookies()).get("kp_theme")?.value
+  const isDarkTheme = themeCookie === "dark"
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
+      className={isDarkTheme ? "dark" : ""}
       style={
         {
           "--font-geist-sans": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
           "--font-geist-mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+          colorScheme: isDarkTheme ? "dark" : "light",
         } as React.CSSProperties
       }
     >

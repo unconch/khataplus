@@ -131,6 +131,11 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
     window.location.href = "/api/auth/logout?returnTo=/auth/login"
   }
 
+  useEffect(() => {
+    if (!theme || typeof document === "undefined") return
+    document.cookie = `kp_theme=${theme}; path=/; max-age=31536000; samesite=lax`
+  }, [theme])
+
   return (
     <header className="sticky top-0 z-40 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-100 dark:border-white/5">
       <div className="flex h-[var(--topbar-height)] items-center justify-between px-4 sm:px-6 lg:px-10">
