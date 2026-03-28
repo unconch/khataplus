@@ -3,6 +3,16 @@ import { getSession } from '@/lib/session';
 import { verifyWebAuthnRegistration } from '@/lib/webauthn';
 import { cookies } from 'next/headers';
 
+function resolveWebAuthnContext(request: NextRequest) {
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.trim()
+    const forwardedHost = request.headers.get("x-forwarded-host")?.trim()
+    const rawHost = forwardedHost || request.headers.get("host") || "localhost:3000"
+    const host = rawHost.split(",")[0].trim()
+    const rpID = host.replace(/:\d+$/, "")
+    const protocol = forwardedProto || (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https")
+    return { origin: `${protocol}://${host}`, rpID }
+}
+
 export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session?.userId) {
@@ -18,7 +28,8 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const verification = await verifyWebAuthnRegistration(session.userId, body, expectedChallenge);
+        const { origin, rpID } = resolveWebAuthnContext(request)
+        const verification = await verifyWebAuthnRegistration(session.userId, body, expectedChallenge, origin, rpID);
 
         if (verification.verified) {
             // Clean up challenge cookie
