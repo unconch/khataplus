@@ -41,21 +41,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing passkey verification data." }, { status: 400 })
   }
 
-  const credentialCheck = await sql`
-    SELECT 1 FROM webauthn_credentials WHERE user_id = ${userId} LIMIT 1
+  const response = body?.response ?? body
+  const credentialId = String(response?.id || body?.id || "").trim()
+  if (!credentialId) {
+    return NextResponse.json({ error: "Missing passkey credential id." }, { status: 400 })
+  }
+
+  const credentialRows = await sql`
+    SELECT credential_id, user_id FROM webauthn_credentials
+    WHERE credential_id = ${credentialId}
+    LIMIT 1
   `
-  if (credentialCheck.length === 0) {
+  if (credentialRows.length === 0) {
     return NextResponse.json({ error: "No passkey found for this account." }, { status: 404 })
   }
 
+  const credentialOwnerId = String(credentialRows[0].user_id || "").trim()
+  if (!credentialOwnerId) {
+    return NextResponse.json({ error: "Passkey credential owner could not be resolved." }, { status: 400 })
+  }
+
+  const ownerProfile = await sql`
+    SELECT email FROM profiles WHERE id = ${credentialOwnerId} LIMIT 1
+  `
+  const ownerEmail = String(ownerProfile[0]?.email || email).trim().toLowerCase()
+
   try {
     const { origin, rpID } = resolveWebAuthnContext(request)
-    const verification = await verifyWebAuthnAuthentication(userId, body?.response ?? body, challenge, origin, rpID)
+    const verification = await verifyWebAuthnAuthentication(credentialOwnerId, response, challenge, origin, rpID)
     if (!verification.verified) {
       return NextResponse.json({ error: "Passkey verification failed." }, { status: 400 })
     }
 
-    const sessionCookie = await buildPasskeySessionCookieValue(userId, email)
+    const sessionCookie = await buildPasskeySessionCookieValue(credentialOwnerId, ownerEmail)
     cookieStore.set("kp_passkey_session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
