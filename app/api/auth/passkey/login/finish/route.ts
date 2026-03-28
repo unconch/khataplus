@@ -4,6 +4,16 @@ import { verifyWebAuthnAuthentication } from "@/lib/webauthn"
 import { buildPasskeySessionCookieValue } from "@/lib/data/auth"
 import { sql } from "@/lib/db"
 
+function resolveWebAuthnContext(request: NextRequest) {
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.trim()
+  const forwardedHost = request.headers.get("x-forwarded-host")?.trim()
+  const rawHost = forwardedHost || request.headers.get("host") || "localhost:3000"
+  const host = rawHost.split(",")[0].trim()
+  const rpID = host.replace(/:\d+$/, "")
+  const protocol = forwardedProto || (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https")
+  return { origin: `${protocol}://${host}`, rpID }
+}
+
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
   const loginStateRaw = cookieStore.get("kp_passkey_login")?.value
@@ -39,12 +49,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const verification = await verifyWebAuthnAuthentication(userId, body?.response ?? body, challenge)
+    const { origin, rpID } = resolveWebAuthnContext(request)
+    const verification = await verifyWebAuthnAuthentication(userId, body?.response ?? body, challenge, origin, rpID)
     if (!verification.verified) {
       return NextResponse.json({ error: "Passkey verification failed." }, { status: 400 })
     }
 
-    const sessionCookie = buildPasskeySessionCookieValue(userId, email)
+    const sessionCookie = await buildPasskeySessionCookieValue(userId, email)
     cookieStore.set("kp_passkey_session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

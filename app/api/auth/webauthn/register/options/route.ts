@@ -20,11 +20,19 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const { rpID } = resolveWebAuthnContext(request)
+        const { origin, rpID } = resolveWebAuthnContext(request)
         const options = await getWebAuthnRegistrationOptions(session.userId, session.email || "", rpID);
 
         // Store challenge for verification
-        (await cookies()).set('reg_challenge', options.challenge, {
+        const cookieStore = await cookies()
+        cookieStore.set('reg_challenge', options.challenge, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: 'lax',
+            path: "/",
+            maxAge: 60 * 10
+        });
+        cookieStore.set('reg_context', JSON.stringify({ origin, rpID }), {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: 'lax',

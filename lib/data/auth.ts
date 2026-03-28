@@ -1,6 +1,5 @@
 import "server-only"
 
-import crypto from "node:crypto"
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 
@@ -108,30 +107,35 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
-function signPasskeySession(payload: string) {
-  return crypto.createHmac("sha256", PASSKEY_SESSION_SECRET).update(payload).digest("base64url")
+async function signPasskeySession(payload: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(PASSKEY_SESSION_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))
+  return Buffer.from(signature).toString("base64url")
 }
 
-function encodePasskeySession(userId: string, email: string) {
+async function encodePasskeySession(userId: string, email: string) {
   const payload = JSON.stringify({
     userId,
     email,
     issuedAt: Date.now(),
   })
   const data = Buffer.from(payload).toString("base64url")
-  const sig = signPasskeySession(data)
+  const sig = await signPasskeySession(data)
   return `${data}.${sig}`
 }
 
-function decodePasskeySession(value: string | undefined | null): { userId: string; email: string } | null {
+async function decodePasskeySession(value: string | undefined | null): Promise<{ userId: string; email: string } | null> {
   if (!value) return null
   const [data, sig] = String(value).split(".")
   if (!data || !sig) return null
-  const expected = signPasskeySession(data)
-  const sigBuf = Buffer.from(sig)
-  const expectedBuf = Buffer.from(expected)
-  if (sigBuf.length !== expectedBuf.length) return null
-  if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null
+  const expected = await signPasskeySession(data)
+  if (sig !== expected) return null
   try {
     const parsed = JSON.parse(Buffer.from(data, "base64url").toString("utf8")) as {
       userId?: string
@@ -146,7 +150,7 @@ function decodePasskeySession(value: string | undefined | null): { userId: strin
   }
 }
 
-export function buildPasskeySessionCookieValue(userId: string, email: string) {
+export async function buildPasskeySessionCookieValue(userId: string, email: string) {
   return encodePasskeySession(userId, email)
 }
 
@@ -560,7 +564,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   const cookieStore = await cookies()
-  const passkeySession = decodePasskeySession(cookieStore.get(PASSKEY_SESSION_COOKIE)?.value)
+  const passkeySession = await decodePasskeySession(cookieStore.get(PASSKEY_SESSION_COOKIE)?.value)
   if (passkeySession) {
     return {
       userId: passkeySession.userId,

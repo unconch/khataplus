@@ -21,6 +21,20 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = await cookies();
     const expectedChallenge = cookieStore.get('reg_challenge')?.value;
+    const contextRaw = cookieStore.get('reg_context')?.value;
+    let expectedOrigin: string | undefined
+    let expectedRPID: string | undefined
+    if (contextRaw) {
+        try {
+            const parsed = JSON.parse(contextRaw)
+            if (parsed && typeof parsed === "object") {
+                if (typeof parsed.origin === "string") expectedOrigin = parsed.origin
+                if (typeof parsed.rpID === "string") expectedRPID = parsed.rpID
+            }
+        } catch {
+            // fall back to request context
+        }
+    }
 
     if (!expectedChallenge) {
         return NextResponse.json({ error: 'Missing challenge' }, { status: 400 });
@@ -28,12 +42,19 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { origin, rpID } = resolveWebAuthnContext(request)
-        const verification = await verifyWebAuthnRegistration(session.userId, body, expectedChallenge, origin, rpID);
+        const fallback = resolveWebAuthnContext(request)
+        const verification = await verifyWebAuthnRegistration(
+            session.userId,
+            body,
+            expectedChallenge,
+            expectedOrigin || fallback.origin,
+            expectedRPID || fallback.rpID
+        );
 
         if (verification.verified) {
             // Clean up challenge cookie
             cookieStore.delete('reg_challenge');
+            cookieStore.delete('reg_context');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: 'Verification failed' }, { status: 400 });
