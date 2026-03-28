@@ -32,6 +32,8 @@ async function handleLogout(request: Request) {
     "biometric_verified",
     "kp_auth_next",
     "kp_org_slug",
+    "kp_passkey_session",
+    "kp_passkey_login",
   ]
 
   for (const name of cookieNames) {

@@ -1,6 +1,7 @@
 import "server-only"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCurrentUser } from "@/lib/data/auth"
 
 export interface SessionStepUpClaims {
   authTime: number | null
@@ -71,6 +72,24 @@ function extractStepUpClaimsFromToken(token: string | null): SessionStepUpClaims
 
 export async function getSession() {
   try {
+    const cookieStore = await cookies()
+    const currentUser = await getCurrentUser()
+    if (currentUser?.authMethod === "passkey") {
+      const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
+      return {
+        user: {
+          id: currentUser.userId,
+          email: currentUser.email || undefined,
+          name: null,
+        },
+        userId: currentUser.userId,
+        email: currentUser.email || undefined,
+        role: null,
+        isBiometricVerified,
+        stepUp: { authTime: null, methods: ["passkey"], acr: null },
+      }
+    }
+
     const supabase = await createClient()
 
     // Serialize these calls to avoid race conditions in Turbopack/Next.js 16
@@ -80,7 +99,6 @@ export async function getSession() {
     const user = userData?.user || sessionData?.session?.user
     if (!user?.id) return null
 
-    const cookieStore = await cookies()
     const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
     const accessToken = sessionData?.session?.access_token || null
     const stepUp = extractStepUpClaimsFromToken(accessToken)

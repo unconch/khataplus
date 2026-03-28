@@ -118,7 +118,7 @@ export default function SignUpPage() {
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl"
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:bg-white disabled:opacity-100"
                     placeholder="Your name"
                     disabled={phase === "verify"}
                     required
@@ -134,7 +134,7 @@ export default function SignUpPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl"
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:bg-white disabled:opacity-100"
                     placeholder="you@shop.com"
                     disabled={phase === "verify"}
                     required
@@ -148,7 +148,7 @@ export default function SignUpPage() {
                   <Input
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
-                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl"
+                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:bg-white disabled:opacity-100"
                     placeholder="Enter 6-digit code"
                     required
                   />

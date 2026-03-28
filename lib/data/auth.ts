@@ -1,6 +1,7 @@
 import "server-only"
 
-import { headers } from "next/headers"
+import crypto from "node:crypto"
+import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { sql } from "@/lib/db"
@@ -8,6 +9,12 @@ import { getProfile } from "@/lib/data/profiles"
 import { createClient } from "@/lib/supabase/server"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PASSKEY_SESSION_COOKIE = "kp_passkey_session"
+const PASSKEY_SESSION_SECRET =
+  process.env.AUTH_SESSION_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  process.env.SUPABASE_JWT_SECRET ||
+  "khataplus-passkey-session"
 
 export const AUTH_STATE_COOKIE_NAMES = ["guest_mode", "biometric_verified", "kp_auth_next"] as const
 
@@ -17,6 +24,7 @@ export type CurrentUser = {
   userId: string
   email: string
   isGuest: boolean
+  authMethod?: "supabase" | "passkey"
 }
 
 export type AuthOrganization = {
@@ -98,6 +106,57 @@ export type AuthContextResult = {
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
+}
+
+function signPasskeySession(payload: string) {
+  return crypto.createHmac("sha256", PASSKEY_SESSION_SECRET).update(payload).digest("base64url")
+}
+
+function encodePasskeySession(userId: string, email: string) {
+  const payload = JSON.stringify({
+    userId,
+    email,
+    issuedAt: Date.now(),
+  })
+  const data = Buffer.from(payload).toString("base64url")
+  const sig = signPasskeySession(data)
+  return `${data}.${sig}`
+}
+
+function decodePasskeySession(value: string | undefined | null): { userId: string; email: string } | null {
+  if (!value) return null
+  const [data, sig] = String(value).split(".")
+  if (!data || !sig) return null
+  const expected = signPasskeySession(data)
+  const sigBuf = Buffer.from(sig)
+  const expectedBuf = Buffer.from(expected)
+  if (sigBuf.length !== expectedBuf.length) return null
+  if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(data, "base64url").toString("utf8")) as {
+      userId?: string
+      email?: string
+    }
+    const userId = String(parsed?.userId || "").trim()
+    const email = String(parsed?.email || "").trim()
+    if (!userId || !email) return null
+    return { userId, email }
+  } catch {
+    return null
+  }
+}
+
+export function buildPasskeySessionCookieValue(userId: string, email: string) {
+  return encodePasskeySession(userId, email)
+}
+
+export function clearPasskeySessionCookie(response: NextResponse) {
+  response.cookies.set(PASSKEY_SESSION_COOKIE, "", {
+    expires: new Date(0),
+    maxAge: 0,
+    path: "/",
+  })
+  return response
 }
 
 function isValidEmail(email: string) {
@@ -497,7 +556,18 @@ export async function isGuestMode() {
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (await isGuestMode()) {
-    return { userId: "guest-user", email: "guest@khataplus.demo", isGuest: true }
+    return { userId: "guest-user", email: "guest@khataplus.demo", isGuest: true, authMethod: "passkey" }
+  }
+
+  const cookieStore = await cookies()
+  const passkeySession = decodePasskeySession(cookieStore.get(PASSKEY_SESSION_COOKIE)?.value)
+  if (passkeySession) {
+    return {
+      userId: passkeySession.userId,
+      email: passkeySession.email,
+      isGuest: false,
+      authMethod: "passkey",
+    }
   }
 
   const supabase = await createClient()
@@ -514,6 +584,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     userId: user.id,
     email: user.email || `supabase_${user.id}@local.invalid`,
     isGuest: false,
+    authMethod: "supabase",
   }
 }
 
