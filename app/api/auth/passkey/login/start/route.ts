@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 5,
     })
 
-    return NextResponse.json({ transactionId, options })
+    return NextResponse.json({ transactionId, options, email })
   } catch (error: any) {
     console.error("[PasskeyLoginStart] Error:", error?.message || error)
-    return NextResponse.json({ error: "Failed to start passkey login." }, { status: 500 })
+    return NextResponse.json({ error: error?.message || "Failed to start passkey login." }, { status: 500 })
   }
 }
