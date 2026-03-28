@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   const credentialRows = await sql`
     SELECT credential_id, user_id FROM webauthn_credentials
-    WHERE credential_id = ${credentialId}
+    WHERE credential_id = ${credentialId} OR credential_id = ${response?.rawId || body?.rawId || ""}
     LIMIT 1
   `
   if (credentialRows.length === 0) {

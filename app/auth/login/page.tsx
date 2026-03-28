@@ -119,6 +119,7 @@ export default function LoginPage() {
     setError("")
     setInfo("")
     setPasskeyLoading(true)
+    let reachedPasskeyPrompt = false
     try {
       const startRes = await fetch("/api/auth/passkey/login/start", {
         method: "POST",
@@ -151,6 +152,7 @@ export default function LoginPage() {
         (typeof authOptionsRaw === "string" ? JSON.parse(authOptionsRaw) : authOptionsRaw?.publicKey || authOptionsRaw) as any
 
       const passkeyResponse = await startAuthentication({ optionsJSON: authOptions })
+      reachedPasskeyPrompt = true
 
       const finishRes = await fetch("/api/auth/passkey/login/finish", {
         method: "POST",
@@ -170,6 +172,11 @@ export default function LoginPage() {
       clearPendingLogin()
       router.replace(target)
     } catch (err: any) {
+      if (reachedPasskeyPrompt) {
+        setError(err?.message || "Passkey verification failed.")
+        return
+      }
+
       const fallbackEmail = loginId
       try {
         const otpRes = await fetch("/api/auth/login", {
