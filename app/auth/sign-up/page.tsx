@@ -118,7 +118,8 @@ export default function SignUpPage() {
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:bg-white disabled:opacity-100"
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
+                    style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined}
                     placeholder="Your name"
                     disabled={phase === "verify"}
                     required
@@ -134,7 +135,8 @@ export default function SignUpPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:bg-white disabled:opacity-100"
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
+                    style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined}
                     placeholder="you@shop.com"
                     disabled={phase === "verify"}
                     required
@@ -148,7 +150,8 @@ export default function SignUpPage() {
                   <Input
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
-                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:bg-white disabled:opacity-100"
+                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
+                    style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }}
                     placeholder="Enter 6-digit code"
                     required
                   />

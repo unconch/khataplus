@@ -410,14 +410,14 @@ export default function LoginPage() {
                 <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Email</label>
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:bg-white disabled:opacity-100" placeholder="you@shop.com" disabled={phase === "verify"} required />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined} placeholder="you@shop.com" disabled={phase === "verify"} required />
                 </div>
               </div>
 
               {phase === "verify" && (
                 <div className="space-y-1.5">
                   <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Verification Code</label>
-                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:bg-white disabled:opacity-100" placeholder="Enter 6-digit code" required />
+                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }} placeholder="Enter 6-digit code" required />
                   <div className="flex items-center justify-between text-[11px]">
                     <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
                     <span className="text-zinc-400">{resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "Ready"}</span>
