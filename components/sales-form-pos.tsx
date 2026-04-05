@@ -78,7 +78,6 @@ export function SalesFormPos(props: SalesFormProps) {
   const [gstin, setGstin] = useState("")
   const [barcode, setBarcode] = useState("")
   const [isCompact, setIsCompact] = useState(false)
-  const [now, setNow] = useState(() => new Date())
 
   const t = isDark ? THEMES.dark : THEMES.light
   const formatINR = (value: number) =>
@@ -101,11 +100,6 @@ export function SalesFormPos(props: SalesFormProps) {
     onResize()
     window.addEventListener("resize", onResize, { passive: true })
     return () => window.removeEventListener("resize", onResize)
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000)
-    return () => window.clearInterval(timer)
   }, [])
 
   const products = useMemo<Product[]>(() => {
@@ -454,14 +448,7 @@ export function SalesFormPos(props: SalesFormProps) {
         >
           <div style={{ fontSize: 34 / 2, fontWeight: 800 }}>Order Summary</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.textSub }}>
-                {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </div>
-              <div style={{ fontSize: 12, color: t.textMuted }}>
-                {now.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
-              </div>
-            </div>
+            <PosClock textSub={t.textSub} textMuted={t.textMuted} />
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 13, color: t.textSub }}>Dark</span>
               <button
@@ -575,6 +562,26 @@ export function SalesFormPos(props: SalesFormProps) {
           </div>
         </div>
       </aside>
+    </div>
+  )
+}
+
+function PosClock({ textSub, textMuted }: { textSub: string; textMuted: string }) {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  return (
+    <div style={{ textAlign: "right" }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: textSub }}>
+        {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+      </div>
+      <div style={{ fontSize: 12, color: textMuted }}>
+        {now.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+      </div>
     </div>
   )
 }

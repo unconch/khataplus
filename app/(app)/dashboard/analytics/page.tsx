@@ -1,9 +1,10 @@
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function AnalyticsPage() {
-  const { getCurrentUser, getCurrentOrgId, getDailyReports } = await import("@/lib/data")
+  const { getCurrentUser, getDailyReports } = await import("@/lib/data")
   const { requirePlanFeature, PlanFeatureError } = await import("@/lib/plan-feature-guard")
   const user = await getCurrentUser()
 
@@ -12,20 +13,7 @@ export default async function AnalyticsPage() {
     redirect("/auth/login")
     return null;
   }
-  const { userId, isGuest } = user
-
-  let orgId: string | null = null
-  if (isGuest) {
-    orgId = "demo-org"
-  } else {
-    orgId = await getCurrentOrgId(userId)
-  }
-
-  if (!orgId) {
-    const { redirect } = await import("next/navigation")
-    redirect("/onboarding")
-    return null;
-  }
+  const { orgId } = await resolvePageOrgContext()
 
   try {
     await requirePlanFeature(orgId as string, "analytics_dashboard")

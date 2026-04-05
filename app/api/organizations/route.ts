@@ -66,8 +66,18 @@ export async function POST(request: Request) {
             address: address?.trim() || undefined,
             phone: phone?.trim() || undefined
         })
+        const response = NextResponse.json(org)
+        if (org?.slug) {
+            response.cookies.set("kp_org_slug", org.slug, {
+                path: "/",
+                sameSite: "lax",
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 60 * 60 * 24 * 30,
+            })
+        }
 
-        return NextResponse.json(org)
+        return response
     } catch (e: any) {
         console.error("Create org error:", e)
         return NextResponse.json({ error: e.message || "Failed to create organization" }, { status: 500 })

@@ -1,35 +1,24 @@
 import { Suspense } from "react"
 import { getSuppliers } from "@/lib/data/suppliers"
-import { getCurrentOrgId } from "@/lib/data/auth"
 import { SupplierList } from "@/components/supplier-list"
 import { Loader2 } from "lucide-react"
 import { redirect } from "next/navigation"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export const metadata = {
     title: "Supplier Management | KhataPlus",
 }
 
 export default async function SuppliersPage() {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const user = await getCurrentUser()
 
     if (!user) {
         redirect("/auth/login")
         return null
     }
-    const { userId, isGuest } = user
-
-    let orgId: string | null = null
-    if (isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(userId)
-    }
-
-    if (!orgId) {
-        redirect("/onboarding")
-        return null
-    }
+    const { userId } = user
+    const { orgId } = await resolvePageOrgContext()
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 pb-24">

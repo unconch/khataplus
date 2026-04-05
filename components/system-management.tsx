@@ -11,9 +11,10 @@ import { toast } from "sonner"
 
 interface SystemManagementProps {
     initialSettings: SystemSettings
+    orgId: string
 }
 
-export function SystemManagement({ initialSettings }: SystemManagementProps) {
+export function SystemManagement({ initialSettings, orgId }: SystemManagementProps) {
     const [settings, setSettings] = useState(initialSettings)
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
@@ -23,7 +24,7 @@ export function SystemManagement({ initialSettings }: SystemManagementProps) {
         const newValue = !settings[key]
 
         try {
-            await updateSystemSettings({ [key]: newValue })
+            await updateSystemSettings({ [key]: newValue }, orgId)
             setSettings(prev => ({ ...prev, [key]: newValue }))
             toast.success("Settings updated successfully")
             router.refresh()

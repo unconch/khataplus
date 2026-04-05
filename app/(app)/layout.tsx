@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell"
 import { BiometricGate } from "@/components/biometric-gate"
 import type { Profile, Organization } from "@/lib/types"
 import { Suspense } from "react"
-import { LoadingScreen } from "@/components/loading-screen"
+import { AppShellSkeleton } from "@/components/skeletons"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -13,7 +13,11 @@ export const revalidate = 0
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<LoadingScreen message="Initializing KhataPlus..." />}>
+    <Suspense
+      fallback={
+        <AppShellSkeleton />
+      }
+    >
       <AppLayoutLogic>
         {children}
       </AppLayoutLogic>
@@ -195,6 +199,16 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     if (subdomainTenant) {
       currentOrgMembership = userOrgs.find((o: any) => o.org_id === subdomainTenant.id)
       if (!currentOrgMembership) {
+        const { logAccessBlockedAttempt } = await import("@/lib/monitoring")
+        await logAccessBlockedAttempt({
+          userId,
+          userEmail: email,
+          tenantId: subdomainTenant.id,
+          tenantName: subdomainTenant.name,
+          tenantSlug: subdomainTenant.slug,
+          requestPath: xInvokePath,
+          pathPrefix,
+        })
         throw new Error(`Forbidden: You are not a member of ${subdomainTenant.name}`)
       }
     } else {
@@ -209,7 +223,19 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
 
     const orgRole = currentOrgMembership.role
     const orgId = currentOrgMembership.org_id
-    const tenant = currentOrgMembership.organization
+    let tenant = currentOrgMembership.organization || null
+
+    if (!tenant && orgId) {
+      const { getOrganization } = await import("@/lib/data/organizations")
+      tenant = await getOrganization(orgId)
+    }
+
+    if (!tenant) {
+      console.log("--- [DEBUG] AppLayout: Organization membership found but organization record was missing. Redirecting to onboarding. ---")
+      redirect("/onboarding")
+      return null
+    }
+
     const settings = await getSystemSettings(orgId)
     const resolvedPathPrefix = pathPrefix || (tenant?.slug ? `/app/${tenant.slug}` : "")
 
@@ -268,14 +294,27 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     if (error.digest?.startsWith("NEXT_REDIRECT")) throw error
     console.error("Critical Data Fetch Error in AppLayout:", error)
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
-        <h2 className="text-2xl font-bold mb-2">Connection Error</h2>
-        <p className="text-muted-foreground mb-4 max-w-md">
-          {String(error)}
-        </p>
-        <p className="text-sm text-muted-foreground italic">
-          Please refresh the page to retry.
-        </p>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-8 text-center shadow-[0_36px_120px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(10,10,12,0.98))] dark:shadow-[0_36px_120px_rgba(0,0,0,0.56)] sm:p-10">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_28%)] dark:bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_28%)]" />
+          <div className="relative">
+            <div className="mx-auto mb-6 flex h-18 w-18 items-center justify-center rounded-[1.75rem] bg-[linear-gradient(180deg,#111827,#1f2937)] text-white shadow-[0_20px_50px_rgba(15,23,42,0.24)] dark:bg-[linear-gradient(180deg,rgba(244,63,94,0.2),rgba(127,29,29,0.28))]">
+              <span className="text-4xl font-black leading-none">!</span>
+            </div>
+            <div className="mx-auto mb-4 inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.28em] text-rose-700 dark:bg-rose-500/12 dark:text-rose-300">
+              Access Blocked
+            </div>
+            <h2 className="mx-auto max-w-lg text-balance text-4xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
+              Connection Error
+            </h2>
+            <p className="mx-auto mt-6 max-w-xl rounded-[1.5rem] bg-black/[0.03] px-5 py-4 text-lg font-semibold leading-8 text-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-white/[0.06] dark:text-zinc-100">
+              {String(error)}
+            </p>
+            <p className="mx-auto mt-5 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Refresh to retry.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }

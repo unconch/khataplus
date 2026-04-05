@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { IndianRupee, ArrowUpRight, ArrowDownLeft, Loader2, Users, Receipt } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export const metadata = {
     title: "Khata Dashboard | KhataPlus",
@@ -23,7 +24,7 @@ export default async function KhataDashboardPage() {
 }
 
 async function KhataDashboardContent() {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getKhataTransactions, getCustomers } = await import("@/lib/data/customers")
     const user = await getCurrentUser()
 
@@ -31,12 +32,7 @@ async function KhataDashboardContent() {
         return null
     }
 
-    const { userId, isGuest } = user
-    const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
-
-    if (!orgId) {
-        return null
-    }
+    const { orgId } = await resolvePageOrgContext()
 
     const [transactions, customers] = await Promise.all([
         getKhataTransactions(orgId),

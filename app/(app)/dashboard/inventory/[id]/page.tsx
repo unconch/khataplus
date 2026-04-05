@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { ArrowLeft, Package, AlertCircle, TrendingUp, CalendarDays } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { getInventoryItem } from "@/lib/data/inventory"
+import { resolvePageOrgContext, resolveRequestOrgContext } from "@/lib/server/org-context"
 
 type SaleRow = {
     id: string
@@ -14,13 +15,17 @@ type SaleRow = {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getInventoryItem } = await import("@/lib/data/inventory")
     const user = await getCurrentUser()
 
     if (!user) return { title: "Inventory Asset" }
-    const orgId = user.isGuest ? "demo-org" : await getCurrentOrgId(user.userId)
-    if (!orgId) return { title: "Inventory Asset" }
+    let orgId: string | null = null
+    try {
+        orgId = (await resolveRequestOrgContext()).orgId
+    } catch {
+        return { title: "Inventory Asset" }
+    }
 
     const item = await getInventoryItem(id, orgId)
     return { title: item ? `${item.name} | Inventory` : "Inventory Asset" }
@@ -39,7 +44,7 @@ export default async function InventoryAssetPage({ params }: { params: Promise<{
 }
 
 async function InventoryAssetContent({ itemId }: { itemId: string }) {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getDemoSql, getProductionSql } = await import("@/lib/db")
     const user = await getCurrentUser()
 
@@ -48,11 +53,7 @@ async function InventoryAssetContent({ itemId }: { itemId: string }) {
         return null
     }
 
-    const orgId = user.isGuest ? "demo-org" : await getCurrentOrgId(user.userId)
-    if (!orgId) {
-        redirect("/onboarding")
-        return null
-    }
+    const { orgId } = await resolvePageOrgContext()
 
     const item = await getInventoryItem(itemId, orgId)
     if (!item) {

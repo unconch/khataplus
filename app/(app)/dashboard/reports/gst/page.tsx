@@ -11,15 +11,18 @@ import { Download, FileText, IndianRupee, BadgeIndianRupee } from "lucide-react"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { StateCard } from "@/components/ui/state-card"
 import { startOfMonth, endOfMonth, format } from "date-fns"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function GstReportPage() {
     const user = await getCurrentUser()
     if (!user) redirect("/auth/login")
 
     const profile = await getProfile(user.userId)
-    if (!profile || !profile.organization_id || (profile.role !== "owner" && profile.role !== "main admin")) {
+    if (!profile || (profile.role !== "owner" && profile.role !== "main admin")) {
         redirect("/dashboard")
     }
+
+    const { orgId } = await resolvePageOrgContext()
 
     return (
         <div className="space-y-8 animate-slide-up">
@@ -31,11 +34,11 @@ export default async function GstReportPage() {
                     </div>
                     <h1 className="text-4xl font-black tracking-tighter">GST Intelligence</h1>
                 </div>
-                <GstrExportButton orgId={profile.organization_id!} />
+                <GstrExportButton orgId={orgId} />
             </div>
 
             <Suspense fallback={<div>Loading GST Data...</div>}>
-                <GstContent orgId={profile.organization_id!} />
+                <GstContent orgId={orgId} />
             </Suspense>
         </div>
     )

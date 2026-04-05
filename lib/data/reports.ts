@@ -5,7 +5,7 @@ import type { DailyReport } from "../types";
 import { revalidatePath, revalidateTag, unstable_cache as nextCache } from "next/cache";
 import { authorize, audit } from "../security";
 import { triggerSync } from "../sync-notifier";
-import { isGuestMode, getCurrentOrgId } from "./auth";
+import { isGuestMode } from "./auth";
 
 async function getSalesColumnNamesProd(): Promise<string[]> {
     const db = getProductionSql();
@@ -383,8 +383,8 @@ export async function deleteDailyReport(id: string, callerOrgId?: string): Promi
     await triggerSync(orgId, "report");
 }
 
-export async function syncDailyReport(date: string, orgId?: string): Promise<void> {
-    const actualOrgId = orgId || await getCurrentOrgId();
+export async function syncDailyReport(date: string, orgId: string): Promise<void> {
+    const actualOrgId = orgId;
     if (!actualOrgId) throw new Error("Organization ID required");
 
     // 1. Check if there are any sales for this date

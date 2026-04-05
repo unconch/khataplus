@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { HomeDashboard } from "@/components/home-dashboard"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function DashboardPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const { getCurrentUser, getUserOrganizationsResolved } = await import("@/lib/data/auth")
-  const { getProfile } = await import("@/lib/data/profiles")
+  const { getCurrentUser } = await import("@/lib/data/auth")
   const { getSystemSettings, getOrganization } = await import("@/lib/data/organizations")
   const { getInventoryStats } = await import("@/lib/data/inventory")
   const { getDailyReports } = await import("@/lib/data/reports")
@@ -41,17 +41,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
     return null
   }
 
-  let orgId = profile.organization_id || ""
-
-  // Resolve org from memberships if profile org_id is missing
-  if (!isGuest && !orgId) {
-    const orgs = await getUserOrganizationsResolved(userId)
-    if (orgs.length === 0) {
-      redirect("/onboarding")
-      return null
-    }
-    orgId = orgs[0].org_id
-  }
+  const orgId = isGuest ? "demo-org" : (await resolvePageOrgContext()).orgId
 
   const settings = await getSystemSettings(orgId)
 

@@ -14,6 +14,39 @@ import { randomHex } from './universal-crypto';
 // Initialization
 // --------------------------------------------------------------------------
 
+async function createWrappedTenantDEK(orgId: string): Promise<string> {
+    const rawDekHex = randomHex(32);
+    return encrypt(rawDekHex, `dek-wrap-${orgId}`);
+}
+
+/**
+ * Ensures a specific organization has a DEK. Safe to call repeatedly.
+ */
+export async function initializeTenantDEKForOrg(orgId: string): Promise<void> {
+    const existing = await sql`
+        SELECT encrypted_dek
+        FROM organizations
+        WHERE id = ${orgId}
+        LIMIT 1
+    `;
+
+    if (existing.length === 0) {
+        throw new Error(`Organization ${orgId} not found while initializing DEK`);
+    }
+
+    if (existing[0].encrypted_dek) {
+        return;
+    }
+
+    const wrappedDek = await createWrappedTenantDEK(orgId);
+    await sql`
+        UPDATE organizations
+        SET encrypted_dek = ${wrappedDek}
+        WHERE id = ${orgId}
+          AND encrypted_dek IS NULL
+    `;
+}
+
 /**
  * Ensures all organizations have a unique DEK.
  */
@@ -29,19 +62,7 @@ export async function initializeTenantDEKs() {
     console.log(`[KeyMgmt] Found ${orgs.length} organizations needing DEKs.`);
 
     for (const org of orgs) {
-        // 1. Generate a strong 256-bit random DEK (in hex for storage)
-        const rawDekHex = randomHex(32);
-
-        // 2. Wrap the DEK with the current Master Key
-        // Use AAD to bind the DEK to the organization context
-        const wrappedDek = await encrypt(rawDekHex, `dek-wrap-${org.id}`);
-
-        // 3. Store in DB
-        await sql`
-            UPDATE organizations 
-            SET encrypted_dek = ${wrappedDek} 
-            WHERE id = ${org.id}
-        `;
+        await initializeTenantDEKForOrg(String(org.id));
         console.log(`  [KeyMgmt] Initialized DEK for Org: ${org.id}`);
     }
     console.log("[KeyMgmt] Initialization complete.");
@@ -55,11 +76,17 @@ export async function initializeTenantDEKs() {
  * Retrieves and unwraps the DEK for a specific organization.
  */
 export async function getTenantDEK(orgId: string): Promise<string> {
-    const res = await sql`SELECT encrypted_dek FROM organizations WHERE id = ${orgId}`;
-    if (res.length === 0 || !res[0].encrypted_dek) {
-        // Fallback or lazy init? For high security, we should throw.
-        // But for migration period, we might return the master key? 
-        // No, better to enforce.
+    let res = await sql`SELECT encrypted_dek FROM organizations WHERE id = ${orgId}`;
+    if (res.length === 0) {
+        throw new Error(`Critical: No DEK found for organization ${orgId}`);
+    }
+
+    if (!res[0].encrypted_dek) {
+        await initializeTenantDEKForOrg(orgId);
+        res = await sql`SELECT encrypted_dek FROM organizations WHERE id = ${orgId}`;
+    }
+
+    if (!res[0]?.encrypted_dek) {
         throw new Error(`Critical: No DEK found for organization ${orgId}`);
     }
 

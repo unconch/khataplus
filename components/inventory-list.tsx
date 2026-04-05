@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useMotion } from "@/components/motion-provider"
 
 interface InventoryListProps {
   items: InventoryItem[]
@@ -15,6 +16,7 @@ interface InventoryListProps {
 export function InventoryList({ items, orgId }: InventoryListProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { enableMotion } = useMotion()
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const inventoryDetailBasePath = pathname?.replace(/\/+$/, "") || "/dashboard/inventory"
 
@@ -94,6 +96,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
       return !(looksPlaceholder && hasLiveForKey.has(key))
     })
   }, [items])
+  const shouldAnimateRows = enableMotion && visibleItems.length <= 24
 
   if (visibleItems.length === 0) {
     return (
@@ -117,10 +120,17 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
         return (
           <div
             key={item.id}
-            className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-white/5 hover:bg-white dark:hover:bg-zinc-900 hover:border-zinc-200 dark:hover:border-emerald-500/20 transition-all group cursor-default gap-4 animate-in fade-in slide-up duration-500"
-            style={{ animationDelay: `${Math.min(idx, 10) * 50}ms` }}
+            className={cn(
+              "group flex flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 transition-all duration-300 hover:bg-white hover:border-zinc-200 dark:border-white/8 dark:bg-[rgba(15,23,42,0.66)] dark:hover:border-white/12 dark:hover:bg-[rgba(30,41,59,0.78)] sm:flex-row",
+              shouldAnimateRows && "animate-in fade-in slide-up"
+            )}
+            style={{
+              contentVisibility: "auto",
+              containIntrinsicSize: "96px",
+              ...(shouldAnimateRows ? { animationDelay: `${Math.min(idx, 8) * 35}ms` } : {}),
+            }}
           >
-            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="flex w-full items-center gap-4 sm:w-auto">
               <div className={cn(
                 "h-12 w-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm",
                 isOutOfStock ? "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" :
@@ -141,27 +151,27 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                     <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest">Low Stock</span>
                   )}
                 </div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+                <p className="text-[10px] font-medium uppercase tracking-widest leading-none text-muted-foreground dark:text-zinc-400">
                   {item.sku || 'N/A SKU'} • {item.hsn_code ? `HSN ${item.hsn_code}` : 'NO HSN'}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-6 sm:gap-10 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex w-full items-center justify-between gap-6 sm:w-auto sm:justify-end sm:gap-10">
               <div className="text-right">
-                <p className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] leading-none mb-1">Buy Price</p>
+                <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] leading-none text-muted-foreground/60 dark:text-zinc-500">Buy Price</p>
                 <div className="flex items-center justify-end gap-1">
                   <p className="text-sm font-bold tracking-tight">₹{item.buy_price.toLocaleString()}</p>
                 </div>
               </div>
 
-              <div className="text-right min-w-[100px] sm:px-6 sm:border-x border-zinc-100 dark:border-white/5">
-                <p className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] leading-none mb-1">Availability</p>
+              <div className="min-w-[100px] border-zinc-100 text-right dark:border-white/8 sm:border-x sm:px-6">
+                <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] leading-none text-muted-foreground/60 dark:text-zinc-500">Availability</p>
                 <p className={cn(
                   "text-sm font-bold tracking-tight",
-                  isOutOfStock ? "text-rose-600" : isLowStock ? "text-amber-600" : "text-emerald-600"
+                  isOutOfStock ? "text-rose-600 dark:text-rose-400" : isLowStock ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
                 )}>
-                  {item.stock} <span className="text-[10px] uppercase opacity-50">Units</span>
+                  {item.stock} <span className="text-[10px] uppercase opacity-50 dark:opacity-70">Units</span>
                 </p>
               </div>
 
@@ -170,7 +180,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                   type="button"
                   onClick={() => archiveItem(item.id, displayName)}
                   disabled={archivingId === item.id}
-                  className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-200 hover:border-zinc-400 dark:hover:border-zinc-500 disabled:opacity-50"
+                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 disabled:opacity-50 dark:border-white/10 dark:bg-[rgba(30,41,59,0.7)] dark:text-zinc-100 dark:hover:border-white/20"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <Archive size={14} />
@@ -179,7 +189,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                 </button>
                 <Link
                   href={`${inventoryDetailBasePath}/${item.id}`}
-                  className="h-10 w-10 rounded-xl bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-950 flex items-center justify-center shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0 dark:bg-[rgba(30,41,59,0.92)] dark:text-zinc-100 dark:shadow-[0_10px_24px_rgba(0,0,0,0.26)] dark:hover:bg-emerald-500 dark:hover:text-slate-950"
                 >
                   <ArrowRight size={18} />
                 </Link>

@@ -4,7 +4,6 @@ import { sql } from "../db";
 import type { Supplier, SupplierTransaction } from "../types";
 import { authorize, audit } from "../security";
 import { unstable_cache as nextCache } from "next/cache";
-import { getCurrentOrgId } from "./auth";
 
 export async function getSuppliers(orgId: string) {
     const { isGuestMode } = await import("./auth");
@@ -97,9 +96,9 @@ export async function getSupplierTransactions(orgId: string, supplierId?: string
 
 export async function addSupplierTransaction(
     transaction: Omit<SupplierTransaction, "id" | "created_at" | "created_by_name">,
-    orgId?: string
+    orgId: string
 ): Promise<SupplierTransaction> {
-    const actualOrgId = orgId || await getCurrentOrgId();
+    const actualOrgId = orgId;
     if (!actualOrgId) throw new Error("Organization ID required");
 
     const user = await authorize("Add Supplier Transaction", "admin", actualOrgId);

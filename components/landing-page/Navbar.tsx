@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
     Menu, X, ArrowRight
 } from "lucide-react"
+import { useLocale } from "@/components/locale-provider"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 import { useMainAuthUrls } from "@/hooks/use-main-auth-urls"
@@ -19,6 +20,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ isAuthenticated, isLight = false, lightMode = false, orgSlug, isGuest = false, forcePublicActions = false }: NavbarProps) {
+    const { dictionary } = useLocale()
     const [scrolled, setScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const scrolledRef = useRef(false)
@@ -74,14 +76,14 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
         ? signUpUrl
         : (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard")
     const primaryLabel = isPublicVisitor
-        ? "Start Free Trial"
-        : "Go to Dashboard"
+        ? dictionary.navbar.startFreeTrial
+        : dictionary.navbar.goToDashboard
     const secondaryHref = isPublicVisitor
         ? signInUrl
         : (orgSlug ? `/${orgSlug}/settings/profile` : "/settings/profile")
     const secondaryLabel = isPublicVisitor
-        ? "Sign In"
-        : "Settings"
+        ? dictionary.navbar.signIn
+        : dictionary.navbar.settings
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50">
@@ -103,10 +105,10 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         </Link>
 
                         <nav className="hidden flex-1 items-center justify-center gap-10 px-8 md:flex">
-                            <DesktopNavLink href="/features" label="Features" solid={useSolidPalette} />
-                            <DesktopNavLink href="/roadmap" label="Roadmap" solid={useSolidPalette} />
-                            <DesktopNavLink href="/pricing" label="Pricing" solid={useSolidPalette} />
-                            <DesktopNavLink href="/docs" label="Merchant Academy" solid={useSolidPalette} />
+                            <DesktopNavLink href="/features" label={dictionary.navbar.features} solid={useSolidPalette} />
+                            <DesktopNavLink href="/roadmap" label={dictionary.navbar.roadmap} solid={useSolidPalette} />
+                            <DesktopNavLink href="/pricing" label={dictionary.navbar.pricing} solid={useSolidPalette} />
+                            <DesktopNavLink href="/docs" label={dictionary.navbar.merchantAcademy} solid={useSolidPalette} />
                         </nav>
 
                         <div className="hidden shrink-0 items-center gap-5 md:flex">
@@ -132,7 +134,7 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                         <button
                             className="p-2 -mr-2 text-slate-900 transition-colors md:hidden"
                             onClick={() => setMobileMenuOpen((prev) => !prev)}
-                            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                            aria-label={mobileMenuOpen ? dictionary.navbar.closeMenu : dictionary.navbar.openMenu}
                             aria-expanded={mobileMenuOpen}
                         >
                             {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
@@ -149,10 +151,10 @@ export function Navbar({ isAuthenticated, isLight = false, lightMode = false, or
                 )}
             >
                 <div className="mx-auto max-w-7xl space-y-4 px-6 py-8">
-                    <MobileNavLink href="/features" label="Features" onClick={() => setMobileMenuOpen(false)} />
-                    <MobileNavLink href="/roadmap" label="Roadmap" onClick={() => setMobileMenuOpen(false)} />
-                    <MobileNavLink href="/pricing" label="Pricing" onClick={() => setMobileMenuOpen(false)} />
-                    <MobileNavLink href="/docs" label="Academy" onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/features" label={dictionary.navbar.features} onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/roadmap" label={dictionary.navbar.roadmap} onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/pricing" label={dictionary.navbar.pricing} onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink href="/docs" label={dictionary.navbar.academy} onClick={() => setMobileMenuOpen(false)} />
 
                     <div className="pt-8 space-y-4">
                         <Link

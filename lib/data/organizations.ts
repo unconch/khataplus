@@ -8,11 +8,12 @@ import { authorize, audit } from "../security";
 import { cache } from "react";
 import { unstable_cache as nextCache, revalidatePath, revalidateTag } from "next/cache";
 import { sendWelcomeEmail, sendOrgDeletionRequestEmail, sendOrgDeletionRejectedEmail } from "../mail";
-import { getProfile } from "./profiles";
+import { getProfile, ensureUserProfile } from "./profiles";
 import { initializeOrganizationSchema } from "./schema-init";
 import { assertRecentOtpStepUp } from "../step-up";
 import { getStaffSeatLimit } from "../billing-plans";
 import { isValidSlug, isReserved } from "../system-routes";
+import { initializeTenantDEKForOrg } from "../key-management";
 
 async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
     await sql`
@@ -36,6 +37,20 @@ async function generateShortOrganizationId(): Promise<string> {
     }
     // Safe fallback if repeated collisions happen.
     return `org_${randomHex(12).toLowerCase()}`;
+}
+
+async function ensureOrganizationMemberProfile(userId: string, fallbackEmail?: string | null) {
+    const existingProfile = await getProfile(userId);
+    if (existingProfile) return existingProfile;
+
+    const ensuredProfile = await ensureUserProfile({
+        id: userId,
+        email: fallbackEmail ?? null,
+    });
+
+    if (ensuredProfile) return ensuredProfile;
+
+    throw new Error("Could not create the required user profile for organization membership.");
 }
 
 export async function getUserOrgSlug(userId: string): Promise<string | null> {
@@ -90,6 +105,9 @@ export async function createOrganization(name: string, userId: string, details?:
     console.log("[DB/Orgs] Generated/Validated slug:", slug);
 
     try {
+        // Self-heal auth/profile drift before inserting membership rows.
+        await ensureOrganizationMemberProfile(userId);
+
         const orgId = await generateShortOrganizationId();
 
         // 2026 Monetization: Check for Pioneer Partner eligibility (first 1000 signups)
@@ -153,6 +171,13 @@ export async function createOrganization(name: string, userId: string, details?:
             updated_at: orgRaw.updated_at instanceof Date ? orgRaw.updated_at.toISOString() : String(orgRaw.updated_at),
         } as Organization;
 
+        try {
+            await initializeTenantDEKForOrg(org.id);
+            console.log(`[DB/Orgs] DEK initialized for ${org.id}`);
+        } catch (dekErr) {
+            console.error("[DB/Orgs] DEK initialization failed", dekErr);
+        }
+
         // Create Isolated Schema & Tables
         try {
             await initializeOrganizationSchema(org.id);
@@ -172,23 +197,31 @@ export async function createOrganization(name: string, userId: string, details?:
             `;
         } catch (memberInsertErr: any) {
             const message = String(memberInsertErr?.message || "");
+            if (message.includes("organization_members_user_id_fkey")) {
+                console.warn("[DB/Orgs] Missing profile row detected during org membership insert. Repairing and retrying.");
+                await ensureOrganizationMemberProfile(userId);
+                await sql`
+                    INSERT INTO organization_members(org_id, user_id, role)
+                    VALUES(${org.id}, ${userId}, 'owner')
+                `;
+            } else
             if (!message.includes("organization_members_role_check")) {
                 throw memberInsertErr;
-            }
+            } else {
+                console.warn("[DB/Orgs] organization_members role constraint is outdated. Applying hotfix and retrying insert.");
+                try {
+                    await ensureOrganizationMembersRoleConstraintAllowsOwner();
+                } catch (constraintErr: any) {
+                    throw new Error(
+                        `Database schema is outdated for organization roles. Please run the role-constraint migration (organization_members_role_check): ${constraintErr?.message || "unknown error"}`
+                    );
+                }
 
-            console.warn("[DB/Orgs] organization_members role constraint is outdated. Applying hotfix and retrying insert.");
-            try {
-                await ensureOrganizationMembersRoleConstraintAllowsOwner();
-            } catch (constraintErr: any) {
-                throw new Error(
-                    `Database schema is outdated for organization roles. Please run the role-constraint migration (organization_members_role_check): ${constraintErr?.message || "unknown error"}`
-                );
+                await sql`
+                    INSERT INTO organization_members(org_id, user_id, role)
+                    VALUES(${org.id}, ${userId}, 'owner')
+                `;
             }
-
-            await sql`
-                INSERT INTO organization_members(org_id, user_id, role)
-                VALUES(${org.id}, ${userId}, 'owner')
-            `;
         }
 
 
@@ -403,6 +436,11 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
     const invite = await getInviteByToken(token);
     if (!invite) return false;
 
+    await ensureOrganizationMemberProfile(
+        userId,
+        invite.email === OPEN_INVITE_PLACEHOLDER ? null : invite.email
+    );
+
     // SECURITY HARDENING: Prevent Invitation Hijacking
     // Verify that the accepting user's email matches the invited email (skip for open invites)
     const isOpenInvite = invite.email === OPEN_INVITE_PLACEHOLDER;
@@ -436,11 +474,29 @@ export async function acceptInvite(token: string, userId: string): Promise<boole
         }
     }
 
-    await sql`
-        INSERT INTO organization_members(org_id, user_id, role)
-        VALUES(${invite.org_id}, ${userId}, ${invite.role})
-        ON CONFLICT (org_id, user_id) DO NOTHING
-    `;
+    try {
+        await sql`
+            INSERT INTO organization_members(org_id, user_id, role)
+            VALUES(${invite.org_id}, ${userId}, ${invite.role})
+            ON CONFLICT (org_id, user_id) DO NOTHING
+        `;
+    } catch (membershipErr: any) {
+        const message = String(membershipErr?.message || "");
+        if (!message.includes("organization_members_user_id_fkey")) {
+            throw membershipErr;
+        }
+
+        console.warn("[AcceptInvite] Missing profile row detected during membership insert. Repairing and retrying.");
+        await ensureOrganizationMemberProfile(
+            userId,
+            invite.email === OPEN_INVITE_PLACEHOLDER ? null : invite.email
+        );
+        await sql`
+            INSERT INTO organization_members(org_id, user_id, role)
+            VALUES(${invite.org_id}, ${userId}, ${invite.role})
+            ON CONFLICT (org_id, user_id) DO NOTHING
+        `;
+    }
 
     // Mark invite as accepted (one-time use for all invites)
     await sql`UPDATE organization_invites SET accepted_at = NOW() WHERE id = ${invite.id}`;
@@ -533,9 +589,8 @@ export async function getSystemSettings(orgId?: string) {
     )();
 }
 
-export async function updateSystemSettings(updates: Partial<SystemSettings>, orgId?: string): Promise<void> {
-    const { getCurrentOrgId } = await import("./auth");
-    const actualOrgId = orgId || await getCurrentOrgId();
+export async function updateSystemSettings(updates: Partial<SystemSettings>, orgId: string): Promise<void> {
+    const actualOrgId = orgId;
     if (!actualOrgId) throw new Error("Organization ID required");
 
     await authorize("Update Settings", "owner", actualOrgId);

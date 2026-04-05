@@ -38,6 +38,14 @@ export function ReturnDialog({ sale }: ReturnDialogProps) {
             toast.error("Invalid quantity")
             return
         }
+        if (!sale.inventory_id) {
+            toast.error("This sale is missing its inventory reference")
+            return
+        }
+        if (!sale.org_id) {
+            toast.error("This sale is missing its organization reference")
+            return
+        }
 
         setLoading(true)
         try {

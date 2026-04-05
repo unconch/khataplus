@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch"
 import { Save, Loader2, User, Building2, Globe, Shield, Receipt, MapPin, Phone, Mail, Zap, CheckCircle2, Hash, Copy, Rocket } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import { useLocale } from "@/components/locale-provider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const INDIAN_STATES = [
@@ -138,6 +140,7 @@ export function SettingsForm({
   viewMode = "full",
   billingNudge: _billingNudge,
 }: SettingsFormProps) {
+  const { dictionary } = useLocale()
   const [org, setOrg] = useState(initialOrg)
   const [profile, setProfile] = useState(initialProfile)
   const [loading, setLoading] = useState(false)
@@ -187,27 +190,31 @@ export function SettingsForm({
     const state = (address.state || "").trim()
 
     if (!pin) return { kind: "idle" as const, message: "" }
-    if (pin.length < 6) return { kind: "invalid" as const, message: "PIN code must be 6 digits." }
+    if (pin.length < 6) return { kind: "invalid" as const, message: dictionary.settings.pinMustBeSixDigits }
 
     const inferredState = inferIndianStateFromPin(pin)
     if (!inferredState) {
-      return { kind: "unknown" as const, message: "PIN region not deterministically mapped. State check skipped." }
+      return { kind: "unknown" as const, message: dictionary.settings.pinRegionUnknown }
     }
 
-    if (!state) return { kind: "warn" as const, message: `PIN ${pin} maps to ${inferredState}. Enter state to verify.` }
+    if (!state) return { kind: "warn" as const, message: dictionary.settings.enterStateToVerify(pin, inferredState) }
 
     const same = normalizeStateName(state) === normalizeStateName(inferredState)
     if (!same) {
-      return { kind: "mismatch" as const, message: `PIN ${pin} maps to ${inferredState}, but state entered is ${state}.` }
+      return { kind: "mismatch" as const, message: dictionary.settings.pinStateMismatch(pin, inferredState, state) }
     }
 
-    return { kind: "ok" as const, message: `PIN ${pin} matches state ${inferredState}.` }
-  }, [address.pin, address.state])
+    return { kind: "ok" as const, message: dictionary.settings.pinMatchesState(pin, inferredState) }
+  }, [address.pin, address.state, dictionary.settings])
 
   const isPinStateMismatch = pinStateValidation.kind === "mismatch"
   const hasAddressValidationError = pinStateValidation.kind === "mismatch" || pinStateValidation.kind === "invalid"
   const hasSlugValidationError = isAdmin && showOrganizationSections && !isProfileView && (slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error")
   const readableDisabledFieldClass = "disabled:opacity-100 disabled:text-zinc-900 dark:disabled:text-zinc-100"
+  const fieldSurfaceClass = "bg-white border-zinc-100 dark:bg-[rgba(30,41,59,0.72)] dark:border-white/10"
+  const mutedFieldSurfaceClass = "bg-zinc-50 border-zinc-100 dark:bg-[rgba(15,23,42,0.72)] dark:border-white/8"
+  const surfaceInputClass = "bg-white/95 border-zinc-100 dark:bg-[rgba(30,41,59,0.72)] dark:border-white/10 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+  const mutedSurfaceClass = "bg-zinc-50/90 border-zinc-100 dark:bg-[rgba(15,23,42,0.72)] dark:border-white/10"
 
   useEffect(() => {
     if (!isAdmin || isProfileView || !showOrganizationSections) {
@@ -219,21 +226,21 @@ export function SettingsForm({
 
     if (!normalizedSlug) {
       setSlugStatus("idle")
-      setSlugMessage("Use lowercase letters, numbers, and hyphens.")
+      setSlugMessage(dictionary.settings.slugHint)
       setSlugSuggestions([])
       return
     }
 
     if (normalizedSlug.length < 3) {
       setSlugStatus("invalid")
-      setSlugMessage("Slug must be at least 3 characters.")
+      setSlugMessage(dictionary.settings.slugTooShort)
       setSlugSuggestions([])
       return
     }
 
     if (normalizedSlug === initialNormalizedSlug) {
       setSlugStatus("available")
-      setSlugMessage("Current slug in use.")
+      setSlugMessage(dictionary.settings.currentSlugInUse)
       setSlugSuggestions([])
       return
     }
@@ -241,7 +248,7 @@ export function SettingsForm({
     const ctrl = new AbortController()
     const timer = window.setTimeout(async () => {
       setSlugStatus("checking")
-      setSlugMessage("Checking slug availability...")
+      setSlugMessage(dictionary.settings.checkingSlugAvailability)
       setSlugSuggestions([])
       try {
         const params = new URLSearchParams({
@@ -258,17 +265,17 @@ export function SettingsForm({
         if (!res.ok) throw new Error(data?.error || "Could not verify slug")
         if (data?.available) {
           setSlugStatus("available")
-          setSlugMessage("Slug is available.")
+          setSlugMessage(dictionary.settings.slugAvailable)
           setSlugSuggestions([])
         } else {
           setSlugStatus("taken")
-          setSlugMessage("Slug is already taken. Try one of these:")
+          setSlugMessage(dictionary.settings.slugTaken)
           setSlugSuggestions(Array.isArray(data?.suggestions) ? data.suggestions.slice(0, 4) : [])
         }
       } catch (error: any) {
         if (error?.name === "AbortError") return
         setSlugStatus("error")
-        setSlugMessage("Could not check slug right now. Retry in a moment.")
+        setSlugMessage(dictionary.settings.slugCheckFailed)
         setSlugSuggestions([])
       }
     }, 350)
@@ -277,19 +284,19 @@ export function SettingsForm({
       ctrl.abort()
       window.clearTimeout(timer)
     }
-  }, [initialNormalizedSlug, isAdmin, isProfileView, normalizedSlug, org.id, showOrganizationSections])
+  }, [dictionary.settings.checkingSlugAvailability, dictionary.settings.currentSlugInUse, dictionary.settings.slugAvailable, dictionary.settings.slugCheckFailed, dictionary.settings.slugHint, dictionary.settings.slugTaken, dictionary.settings.slugTooShort, initialNormalizedSlug, isAdmin, isProfileView, normalizedSlug, org.id, showOrganizationSections])
 
   const handleSave = async () => {
     if (!canSave) {
-      toast.error("You don't have permission to update settings")
+      toast.error(dictionary.settings.noPermission)
       return
     }
     if (hasAddressValidationError) {
-      toast.error("Address validation failed. Fix PIN/State before saving.")
+      toast.error(dictionary.settings.addressValidationFailed)
       return
     }
     if (hasSlugValidationError) {
-      toast.error("Fix slug validation before saving.")
+      toast.error(dictionary.settings.slugValidationFailed)
       return
     }
 
@@ -310,12 +317,12 @@ export function SettingsForm({
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Settings update failed")
+      if (!res.ok) throw new Error(data?.error || dictionary.settings.settingsUpdateFailed)
 
-      toast.success("Identity and settings updated!")
+      toast.success(dictionary.settings.settingsUpdated)
 
       if (slugChanged && nextSlug) {
-        toast.info(`Access URL updated to ${nextSlug}. Redirecting...`, { duration: 4000 })
+        toast.info(dictionary.settings.redirectingToUpdatedUrl(nextSlug), { duration: 4000 })
         setTimeout(() => {
           window.location.href = `/${nextSlug}/dashboard/settings`
         }, 700)
@@ -324,7 +331,7 @@ export function SettingsForm({
       }
     } catch (error: any) {
       console.error("Settings update failed:", error)
-      toast.error(error?.message || "Update failed")
+      toast.error(error?.message || dictionary.settings.updateFailed)
     } finally {
       setLoading(false)
     }
@@ -339,42 +346,55 @@ export function SettingsForm({
               <User size={16} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Personal Data</h3>
-              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Your Private Account Identity</p>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">{dictionary.settings.personalData}</h3>
+              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">{dictionary.settings.privateAccountIdentity}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SettingField label="Full Name" icon={<User size={14} />}>
+            <SettingField label={dictionary.settings.fullName} icon={<User size={14} />}>
               <Input
                 value={profile.name || ""}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                className={cn("h-10 rounded-xl font-bold text-xs", surfaceInputClass)}
               />
             </SettingField>
 
-            <SettingField label="Email Address" icon={<Mail size={14} />} disabled>
+            <SettingField label={dictionary.settings.emailAddress} icon={<Mail size={14} />} disabled>
               <Input
                 value={profile.email}
                 disabled
-                className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium italic opacity-60 text-xs"
+                className={cn("h-10 rounded-xl font-medium italic opacity-60 text-xs", mutedSurfaceClass)}
               />
             </SettingField>
 
-            <SettingField label="Direct Contact" icon={<Phone size={14} />}>
+            <SettingField label={dictionary.settings.directContact} icon={<Phone size={14} />}>
               <Input
                 value={profile.phone || ""}
                 onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
-                placeholder="+91 ..."
+                className={cn("h-10 rounded-xl font-bold text-xs", surfaceInputClass)}
+                placeholder={dictionary.settings.phonePlaceholder}
               />
             </SettingField>
 
-            <SettingField label="System Permissions" icon={<Shield size={14} />} disabled>
-              <div className="h-10 flex items-center px-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+            <SettingField label={dictionary.settings.systemPermissions} icon={<Shield size={14} />} disabled>
+              <div className={cn("h-10 flex items-center px-4 rounded-xl border", mutedSurfaceClass)}>
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{profile.role}</span>
               </div>
             </SettingField>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-[rgba(15,23,42,0.74)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+            <div className="flex items-center gap-3 px-1">
+              <div className="h-8 w-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                <Globe size={16} strokeWidth={2.5} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Language</h3>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Choose your interface language</p>
+              </div>
+              <LanguageSwitcher compact className="shrink-0" />
+            </div>
           </div>
         </div>
       )}
@@ -384,7 +404,7 @@ export function SettingsForm({
           <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-900/40 bg-gradient-to-r from-emerald-50/90 to-cyan-50/60 dark:from-emerald-950/20 dark:to-cyan-950/20 p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div className="space-y-1">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Current Plan</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{dictionary.settings.currentPlan}</div>
                 <div className="flex items-center gap-2.5">
                   <span className="text-lg font-black tracking-tight text-zinc-900 dark:text-zinc-100">{planLabel}</span>
                   <span
@@ -431,7 +451,7 @@ export function SettingsForm({
                 <Input
                   value={org.id || ""}
                   disabled
-                  className={cn("bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold opacity-70 pr-11", readableDisabledFieldClass)}
+                  className={cn("h-10 rounded-xl font-mono text-[10px] font-bold opacity-70 pr-11", mutedSurfaceClass, readableDisabledFieldClass)}
                 />
                   <button
                     type="button"
@@ -445,7 +465,7 @@ export function SettingsForm({
                       }
                     }}
                     disabled={!org.id}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-[rgba(15,23,42,0.92)] dark:text-zinc-300 dark:hover:text-zinc-100"
                     aria-label="Copy organization ID"
                     title="Copy organization ID"
                   >
@@ -462,7 +482,7 @@ export function SettingsForm({
                   autoCorrect="off"
                   spellCheck={false}
                   disabled={!isAdmin}
-                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-black text-emerald-600 dark:text-emerald-400 text-xs normal-case", readableDisabledFieldClass)}
+                  className={cn("h-10 rounded-xl font-black text-emerald-600 text-xs normal-case dark:text-emerald-300", surfaceInputClass, readableDisabledFieldClass)}
                 />
               </SettingField>
 
@@ -473,7 +493,8 @@ export function SettingsForm({
                     onChange={(e) => setOrg({ ...org, slug: normalizeSlug(e.target.value) })}
                     disabled={!isAdmin}
                     className={cn(
-                      "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold pl-14 text-xs",
+                      "h-10 rounded-xl font-bold pl-14 text-xs",
+                      surfaceInputClass,
                       readableDisabledFieldClass,
                       slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "error"
                         ? "border-rose-300 dark:border-rose-500/40"
@@ -516,7 +537,7 @@ export function SettingsForm({
                   value={org.gstin || ""}
                   onChange={(e) => setOrg({ ...org, gstin: e.target.value })}
                   disabled={!isAdmin}
-                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono text-[10px] font-bold", readableDisabledFieldClass)}
+                  className={cn("h-10 rounded-xl font-mono text-[10px] font-bold", surfaceInputClass, readableDisabledFieldClass)}
                   placeholder="22AAAAA0000A1Z5"
                 />
               </SettingField>
@@ -526,7 +547,7 @@ export function SettingsForm({
                   value={org.phone || ""}
                   onChange={(e) => setOrg({ ...org, phone: e.target.value })}
                   disabled={!isAdmin}
-                  className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs", readableDisabledFieldClass)}
+                  className={cn("h-10 rounded-xl font-bold text-xs", surfaceInputClass, readableDisabledFieldClass)}
                 />
               </SettingField>
 
@@ -541,7 +562,7 @@ export function SettingsForm({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl border border-dashed border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+                <div className="grid grid-cols-1 gap-4 rounded-2xl border border-dashed border-zinc-100 bg-zinc-50/60 p-4 dark:border-white/10 dark:bg-[rgba(15,23,42,0.55)] md:grid-cols-2">
                   <div className="md:col-span-2">
                     <SettingField label="Building / Street" icon={<Building2 size={14} />}>
                       <Input
@@ -552,7 +573,7 @@ export function SettingsForm({
                           setOrg({ ...org, address: combineAddress(next) })
                         }}
                         disabled={!isAdmin}
-                        className={cn("bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-medium text-xs", readableDisabledFieldClass)}
+                        className={cn("h-10 rounded-xl font-medium text-xs", surfaceInputClass, readableDisabledFieldClass)}
                       />
                     </SettingField>
                   </div>
@@ -565,7 +586,7 @@ export function SettingsForm({
                         setOrg({ ...org, address: combineAddress(next) })
                       }}
                       disabled={!isAdmin}
-                      className="bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs"
+                      className={cn("h-10 rounded-xl font-bold text-xs", surfaceInputClass)}
                     />
                   </SettingField>
                   <SettingField label="State" icon={<Shield size={14} />}>
@@ -580,7 +601,8 @@ export function SettingsForm({
                     >
                       <SelectTrigger
                         className={cn(
-                          "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-bold text-xs w-full",
+                          "h-10 w-full rounded-xl font-bold text-xs",
+                          surfaceInputClass,
                           readableDisabledFieldClass,
                           pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
                         )}
@@ -607,7 +629,8 @@ export function SettingsForm({
                       disabled={!isAdmin}
                       maxLength={6}
                       className={cn(
-                        "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-10 rounded-xl font-mono font-bold text-xs tracking-widest",
+                        "h-10 rounded-xl font-mono font-bold text-xs tracking-widest",
+                        surfaceInputClass,
                         readableDisabledFieldClass,
                         pinStateValidation.kind === "mismatch" && "border-red-400 focus-visible:ring-red-300"
                       )}
@@ -647,7 +670,7 @@ export function SettingsForm({
           )}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-2" />}
-          Save
+          {loading ? dictionary.settings.saving : dictionary.settings.saveChanges}
         </Button>
       </div>
     </div>

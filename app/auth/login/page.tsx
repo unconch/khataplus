@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { startAuthentication } from "@simplewebauthn/browser"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useLocale } from "@/components/locale-provider"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import { AlertCircle, ArrowRight, Loader2, Mail, KeyRound } from "lucide-react"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { dictionary } = useLocale()
 
   const next = useMemo(() => {
     const raw = searchParams.get("next")
@@ -37,9 +39,6 @@ export default function LoginPage() {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [otpSendPending, setOtpSendPending] = useState(false)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
   const maskForUi = (raw: string) => {
     const value = String(raw || "").trim().toLowerCase()
     const [local, domain] = value.split("@")
@@ -112,7 +111,7 @@ export default function LoginPage() {
   const openPasskeyFlow = async () => {
     const loginId = email.trim().toLowerCase()
     if (!loginId) {
-      setError("Enter your email first, then use passkey.")
+      setError(dictionary.login.enterEmailFirst)
       return
     }
 
@@ -128,7 +127,7 @@ export default function LoginPage() {
       })
       const startData = await startRes.json().catch(() => ({} as any))
       if (!startRes.ok) {
-        throw new Error(startData?.error || "Could not start passkey login")
+        throw new Error(startData?.error || dictionary.login.couldNotStartPasskeyLogin)
       }
 
       const authOptionsRaw =
@@ -146,7 +145,7 @@ export default function LoginPage() {
             ""
         ).trim()
       if (!authOptionsRaw || !transactionId) {
-        throw new Error("Passkey login response is invalid")
+        throw new Error(dictionary.login.passkeyLoginResponseInvalid)
       }
       const authOptions =
         (typeof authOptionsRaw === "string" ? JSON.parse(authOptionsRaw) : authOptionsRaw?.publicKey || authOptionsRaw) as any
@@ -166,7 +165,7 @@ export default function LoginPage() {
       })
       const finishData = await finishRes.json().catch(() => ({} as any))
       if (!finishRes.ok) {
-        throw new Error(finishData?.error || "Passkey verification failed")
+        throw new Error(finishData?.error || dictionary.login.passkeyVerificationFailed)
       }
       const target = finishData?.next || next || "/app/dashboard"
       clearPendingLogin()
@@ -190,7 +189,7 @@ export default function LoginPage() {
           setMaskedEmail(otpData?.maskedEmail || fallbackEmail)
           setVerifyLoginId(fallbackEmail)
           setResendCooldown(resendCooldownSeconds)
-          setInfo("No passkey found or passkey is unavailable. We sent you a login code instead.")
+          setInfo(dictionary.login.fallbackOtpInfo)
           return
         }
       } catch {
@@ -198,9 +197,9 @@ export default function LoginPage() {
       }
 
       if (err?.name === "NotAllowedError") {
-        setError("Passkey login was cancelled.")
+        setError(dictionary.login.passkeyCancelled)
       } else {
-        setError(err?.message || "Passkey login failed.")
+        setError(err?.message || dictionary.login.passkeyFailed)
       }
     } finally {
       setPasskeyLoading(false)
@@ -218,64 +217,31 @@ export default function LoginPage() {
       setVerifyLoginId(loginId)
       setMaskedEmail(maskForUi(loginId))
       setResendCooldown(resendCooldownSeconds)
-      setInfo("Sending verification code...")
+      setInfo(dictionary.login.sendingVerificationCode)
       setOtpSendPending(true)
       try {
-        let sent = false
-        let lastError = "Could not send verification code."
-
-        if (supabaseUrl && supabaseAnonKey) {
-          try {
-            const directOtp = await fetchWithTimeout(
-              `${supabaseUrl}/auth/v1/otp`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  apikey: supabaseAnonKey,
-                },
-                body: JSON.stringify({ email: loginId, create_user: false }),
-              },
-              28000
-            )
-            const payload = await directOtp.json().catch(() => ({} as any))
-            if (directOtp.ok) {
-              sent = true
-            } else {
-              lastError = payload?.error_description || payload?.msg || payload?.error || lastError
-            }
-          } catch (err: any) {
-            lastError = err?.name === "AbortError" ? "OTP request timed out. Retrying..." : err?.message || lastError
-          }
+        const res = await fetchWithTimeout(
+          "/api/auth/login",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginId, code: "", next }),
+          },
+          28000
+        )
+        const data = await res.json().catch(() => ({} as any))
+        if (!res.ok) {
+          throw new Error(data?.error || "Could not send verification code.")
         }
 
-        if (!sent) {
-          const res = await fetchWithTimeout(
-            "/api/auth/login",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: loginId, code: "", next }),
-            },
-            28000
-          )
-          const data = await res.json().catch(() => ({} as any))
-          if (!res.ok) {
-            throw new Error(data?.error || lastError)
-          }
-          sent = true
-        }
-
-        if (sent) {
-          setMaskedEmail(maskForUi(loginId))
-          savePendingLogin(loginId, maskForUi(loginId))
-          setInfo("Code sent. Check your email.")
-        }
+        setMaskedEmail(data?.maskedEmail || maskForUi(loginId))
+        savePendingLogin(loginId, data?.maskedEmail || maskForUi(loginId))
+        setInfo(dictionary.login.codeSent)
       } catch (err: any) {
         setPhase("email")
         setCode("")
         setResendCooldown(0)
-        setError(err?.name === "AbortError" ? "OTP request timed out. Please tap continue again." : err?.message || "Could not sign in.")
+        setError(err?.name === "AbortError" ? dictionary.login.otpTimedOut : err?.message || dictionary.login.couldNotSignIn)
       } finally {
         setOtpSendPending(false)
       }
@@ -293,14 +259,14 @@ export default function LoginPage() {
         }),
       })
       const data = await res.json().catch(() => ({} as any))
-      if (!res.ok) throw new Error(data?.error || "Login failed")
+      if (!res.ok) throw new Error(data?.error || dictionary.login.loginFailed)
       if (data?.phase === "verify") {
         setPhase("verify")
         setMaskedEmail(data?.maskedEmail || email)
         setVerifyLoginId(loginId)
         savePendingLogin(loginId, data?.maskedEmail || loginId)
         if (requestingOtp) setResendCooldown(resendCooldownSeconds)
-        setInfo("Code sent. Check your email.")
+        setInfo(dictionary.login.codeSent)
         return
       }
       const target = data?.next || next || "/app/dashboard"
@@ -313,7 +279,7 @@ export default function LoginPage() {
         setCode("")
         setResendCooldown(0)
       }
-      setError(err?.message || "Could not sign in.")
+      setError(err?.message || dictionary.login.couldNotSignIn)
     } finally {
       setLoading(false)
     }
@@ -327,55 +293,25 @@ export default function LoginPage() {
     setInfo("")
     setResendLoading(true)
     try {
-      let resent = false
-      let lastError = "Could not resend code"
+      const res = await fetchWithTimeout(
+        "/api/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginId, code: "", next }),
+        },
+        28000
+      )
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.error || dictionary.login.couldNotResendCode)
 
-      if (supabaseUrl && supabaseAnonKey) {
-        try {
-          const res = await fetchWithTimeout(
-            `${supabaseUrl}/auth/v1/otp`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: supabaseAnonKey,
-              },
-              body: JSON.stringify({ email: loginId, create_user: false }),
-              },
-            28000
-          )
-          const data = await res.json().catch(() => ({} as any))
-          if (res.ok) {
-            resent = true
-          } else {
-            lastError = data?.error_description || data?.msg || data?.error || lastError
-          }
-        } catch (err: any) {
-          lastError = err?.name === "AbortError" ? "Resend timed out. Please try again." : err?.message || lastError
-        }
-      }
-
-      if (!resent) {
-        const res = await fetchWithTimeout(
-          "/api/auth/login",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: loginId, code: "", next }),
-          },
-          28000
-        )
-        const data = await res.json().catch(() => ({} as any))
-        if (!res.ok) throw new Error(data?.error || lastError)
-      }
-
-      setMaskedEmail(maskForUi(loginId))
-      savePendingLogin(loginId, maskForUi(loginId))
-      setInfo("A new code was sent.")
+      setMaskedEmail(data?.maskedEmail || maskForUi(loginId))
+      savePendingLogin(loginId, data?.maskedEmail || maskForUi(loginId))
+      setInfo(dictionary.login.newCodeSent)
       setResendCooldown(resendCooldownSeconds)
       setOtpSendPending(false)
     } catch (err: any) {
-      setError(err?.message || "Could not resend code.")
+      setError(err?.message || dictionary.login.couldNotResendCode)
     } finally {
       setResendLoading(false)
     }
@@ -390,10 +326,10 @@ export default function LoginPage() {
             <span className="text-4xl font-black italic">KhataPlus</span>
           </div>
           <div>
-            <h2 className="text-6xl leading-[1.02] font-semibold tracking-tight">Welcome back to your business command center.</h2>
-            <p className="mt-5 text-3xl text-zinc-300">Fast, secure, and built for daily operations.</p>
+            <h2 className="text-6xl leading-[1.02] font-semibold tracking-tight">{dictionary.login.welcomeBack}</h2>
+            <p className="mt-5 text-3xl text-zinc-300">{dictionary.login.welcomeSubtitle}</p>
           </div>
-          <p className="text-sm text-zinc-500">Ledger, Billing, Inventory. One place.</p>
+          <p className="text-sm text-zinc-500">{dictionary.login.onePlace}</p>
         </section>
 
         <section className="relative flex items-center justify-center p-6 sm:p-8 lg:p-10 min-h-svh lg:min-h-0 bg-[radial-gradient(90%_80%_at_20%_15%,#5b50d7_0%,transparent_58%),radial-gradient(90%_85%_at_80%_85%,#5b50d7_0%,transparent_60%),linear-gradient(180deg,#f2efea,#f6eee8)]">
@@ -401,33 +337,33 @@ export default function LoginPage() {
             <Logo size={24} className="text-emerald-500" />
             <div>
               <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-500">Secure Login</p>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-500">{dictionary.login.secureLogin}</p>
             </div>
           </Link>
 
           <div className="w-full max-w-md rounded-3xl border border-zinc-300 bg-white/90 shadow-[0_20px_60px_rgba(16,24,40,0.20)] p-6 sm:p-8">
             <div className="mb-6">
-              <p className="text-center text-[11px] uppercase tracking-[0.2em] text-indigo-600 font-black">Secure Login</p>
-              <h3 className="text-center text-5xl font-semibold tracking-tight mt-3">Sign in</h3>
-              <p className="text-center text-zinc-500 mt-2">Continue to your dashboard</p>
+              <p className="text-center text-[11px] uppercase tracking-[0.2em] text-indigo-600 font-black">{dictionary.login.secureLogin}</p>
+              <h3 className="text-center text-5xl font-semibold tracking-tight mt-3">{dictionary.login.signIn}</h3>
+              <p className="text-center text-zinc-500 mt-2">{dictionary.login.continueToDashboard}</p>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Email</label>
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{dictionary.login.email}</label>
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined} placeholder="you@shop.com" disabled={phase === "verify"} required />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined} placeholder={dictionary.login.emailPlaceholder} disabled={phase === "verify"} required />
                 </div>
               </div>
 
               {phase === "verify" && (
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Verification Code</label>
-                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }} placeholder="Enter 6-digit code" required />
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{dictionary.login.verificationCode}</label>
+                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }} placeholder={dictionary.login.verificationPlaceholder} required />
                   <div className="flex items-center justify-between text-[11px]">
-                    <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? "Sending..." : "Resend Code"}</button>
-                    <span className="text-zinc-400">{resendCooldown > 0 ? `Retry in ${resendCooldown}s` : "Ready"}</span>
+                    <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? dictionary.login.sending : dictionary.login.resendCode}</button>
+                    <span className="text-zinc-400">{resendCooldown > 0 ? dictionary.login.retryIn(resendCooldown) : dictionary.login.ready}</span>
                   </div>
                 </div>
               )}
@@ -435,24 +371,24 @@ export default function LoginPage() {
               {error && <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
               {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-800">{info}</div>}
 
-              <Button type="submit" disabled={loading || otpSendPending} className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white">{loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? "Verify & Sign In" : "Continue"} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
+              <Button type="submit" disabled={loading || otpSendPending} className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white">{loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? dictionary.login.verifyAndSignIn : dictionary.login.continue} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
 
               {phase === "email" && (
                 <Button type="button" variant="outline" className="w-full h-12 rounded-lg text-base border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 disabled:opacity-60" onClick={openPasskeyFlow} disabled={passkeyLoading}>
                   {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                  {passkeyLoading ? "Verifying Passkey..." : "Use Passkey"}
+                  {passkeyLoading ? dictionary.login.verifyingPasskey : dictionary.login.usePasskey}
                 </Button>
               )}
             </form>
 
             <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-500">{phase === "verify" ? "Wrong email?" : "New here?"}</span>
+              <span className="text-zinc-500">{phase === "verify" ? dictionary.login.wrongEmail : dictionary.login.newHere}</span>
               {phase === "verify" ? (
                 <button type="button" className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700" onClick={() => { setPhase("email"); setCode(""); setError(""); setInfo(""); setVerifyLoginId(""); setMaskedEmail(""); setResendCooldown(0); clearPendingLogin() }}>
-                  Change Email
+                  {dictionary.login.changeEmail}
                 </button>
               ) : (
-                <Link href={signUpHref} className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700">Create Account</Link>
+                <Link href={signUpHref} className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700">{dictionary.login.createAccount}</Link>
               )}
             </div>
           </div>

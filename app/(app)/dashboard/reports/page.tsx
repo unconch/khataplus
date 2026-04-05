@@ -2,9 +2,10 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ReportsView } from "@/components/reports-view"
 import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function ReportsPage() {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getOrganization } = await import("@/lib/data/organizations")
 
     const user = await getCurrentUser()
@@ -12,12 +13,7 @@ export default async function ReportsPage() {
         redirect("/auth/login")
     }
 
-    const { userId, isGuest } = user
-    const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
-
-    if (!orgId) {
-        redirect("/onboarding")
-    }
+    const { orgId } = await resolvePageOrgContext()
 
     try {
         await requirePlanFeature(orgId, "reports")
@@ -29,7 +25,7 @@ export default async function ReportsPage() {
     }
 
     const org = await getOrganization(orgId)
-    const orgSlug = isGuest ? "demo" : (org?.slug || "")
+    const orgSlug = org?.slug || ""
 
     return (
         <div className="min-h-full space-y-10 pb-20">

@@ -8,6 +8,7 @@ import { BusinessPulse } from "@/components/business-pulse"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function AdminPage({
   searchParams,
@@ -36,7 +37,7 @@ export default async function AdminPage({
 }
 
 async function AdminContent({ tab = "users" }: { tab?: string }) {
-  const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+  const { getCurrentUser } = await import("@/lib/data/auth")
   const { getProfiles, getProfile } = await import("@/lib/data/profiles")
   const { getSystemSettings } = await import("@/lib/data/organizations")
   const { getAuditLogs } = await import("@/lib/data/audit")
@@ -68,7 +69,7 @@ async function AdminContent({ tab = "users" }: { tab?: string }) {
   if (isGuest) {
     orgId = "demo-org"
   } else {
-    orgId = await getCurrentOrgId(userId)
+    orgId = (await resolvePageOrgContext()).orgId
   }
 
   // Get all users, settings, audit logs and daily pulse
@@ -94,7 +95,7 @@ async function AdminContent({ tab = "users" }: { tab?: string }) {
           <UserManagement users={(users as Profile[]) || []} currentUserId={userId} />
         </TabsContent>
         <TabsContent value="management" className="mt-4">
-          <SystemManagement initialSettings={systemSettings} />
+          <SystemManagement initialSettings={systemSettings} orgId={orgId || ""} />
         </TabsContent>
         <TabsContent value="activity" className="mt-4">
           <ActivityLogs logs={auditLogs} />

@@ -3,6 +3,7 @@
 import NextError from "next/error";
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { DEFAULT_LOCALE, getDictionary } from "@/lib/i18n";
 
 export default function GlobalError({
   error,
@@ -14,8 +15,10 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
+  const dictionary = getDictionary(DEFAULT_LOCALE)
+
   return (
-    <html lang="en">
+    <html lang={dictionary.htmlLang}>
       <body>
         {/* `NextError` is the default Next.js error page component. Its type
         definition requires a `statusCode` prop. However, since the App Router

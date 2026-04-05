@@ -41,9 +41,10 @@ interface ReportsClientProps {
     settings: SystemSettings
     profile: Profile | null
     userId: string
+    orgId: string
 }
 
-export function ReportsClient({ initialReports, settings, profile, userId }: ReportsClientProps) {
+export function ReportsClient({ initialReports, settings, profile, userId, orgId }: ReportsClientProps) {
     const [reports, setReports] = useState<DailyReport[]>(initialReports)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null)
@@ -61,7 +62,7 @@ export function ReportsClient({ initialReports, settings, profile, userId }: Rep
         setIsDrawerOpen(true)
         setLoadingSales(true)
         try {
-            const sales = await getSalesByDate(report.report_date)
+            const sales = await getSalesByDate(report.report_date, orgId)
             setDailySales(sales)
         } catch (err) {
             console.error(err)

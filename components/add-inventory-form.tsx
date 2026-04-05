@@ -23,7 +23,7 @@ import {
 import { addInventoryItem } from "@/lib/data/inventory"
 import { cn } from "@/lib/utils"
 
-export function AddInventoryForm() {
+export function AddInventoryForm({ orgId }: { orgId: string }) {
   const [sku, setSku] = useState("")
   const [name, setName] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
@@ -48,7 +48,7 @@ export function AddInventoryForm() {
         sell_price: sellPrice.trim() ? Number.parseFloat(sellPrice) : undefined,
         gst_percentage: Number.parseFloat(gstPercentage),
         stock: Number.parseInt(stock),
-      })
+      }, orgId)
 
       setSuccess(true)
       setSku("")
@@ -72,9 +72,9 @@ export function AddInventoryForm() {
   // Design Tokens
   const sectionHeaderClasses = "flex items-center gap-2 mb-3"
   const sectionTitleClasses = "text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/50"
-  const inputContainerClasses = "group relative flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/5 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/5 focus-within:border-primary/20"
-  const labelClasses = "text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 group-focus-within:text-primary transition-colors"
-  const inputClasses = "h-8 bg-transparent border-none text-sm font-bold focus:outline-none p-0 placeholder:text-zinc-200 dark:placeholder:text-white/10 font-mono tracking-tight"
+  const inputContainerClasses = "group relative flex flex-col gap-1 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 transition-all duration-300 focus-within:border-primary/20 focus-within:ring-2 focus-within:ring-primary/5 dark:border-white/10 dark:bg-[rgba(15,23,42,0.72)]"
+  const labelClasses = "text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 group-focus-within:text-primary transition-colors"
+  const inputClasses = "h-8 border-none bg-transparent p-0 text-sm font-bold font-mono tracking-tight text-zinc-900 focus:outline-none placeholder:text-zinc-300 dark:text-zinc-100 dark:placeholder:text-zinc-500"
 
   if (success) {
     return (
@@ -217,7 +217,7 @@ export function AddInventoryForm() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-11 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 hover:opacity-90 transition-all font-black text-[11px] uppercase tracking-[0.2em] shadow-xl group"
+          className="group h-11 w-full rounded-xl bg-zinc-950 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:opacity-90 dark:bg-emerald-400 dark:text-slate-950 dark:shadow-[0_14px_30px_rgba(16,185,129,0.2)]"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -232,7 +232,7 @@ export function AddInventoryForm() {
       </div>
 
 
-      <div className="flex items-center justify-center gap-2 text-muted-foreground/30 py-4">
+      <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground/50 dark:text-zinc-500">
         <Zap className="h-3 w-3" />
         <span className="text-[8px] font-black uppercase tracking-[0.3em]">Institutional Grade Inventory Control</span>
       </div>

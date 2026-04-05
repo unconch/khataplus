@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Suspense } from "react"
 import { cookies } from "next/headers"
 import "./globals.css"
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, getDictionary, normalizeLocale } from "@/lib/i18n"
 
 export const metadata: Metadata = {
   title: "KhataPlus - Smart Billing & Inventory for NorthEast India",
@@ -60,6 +61,8 @@ export const viewport: Viewport = {
 
 import { SystemAnnouncement } from "@/components/system-announcement"
 import { ThemeProvider } from "@/components/theme-provider"
+import { LocaleProvider } from "@/components/locale-provider"
+import { MotionProvider } from "@/components/motion-provider"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Toaster } from "sonner"
@@ -86,12 +89,15 @@ export default async function RootLayout({
     screenshot: "https://khataplus.online/og-image.png",
   }
 
-  const themeCookie = (await cookies()).get("kp_theme")?.value
+  const cookieStore = await cookies()
+  const themeCookie = cookieStore.get("kp_theme")?.value
+  const locale = normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE)
+  const dictionary = getDictionary(locale)
   const isDarkTheme = themeCookie === "dark"
 
   return (
     <html
-      lang="en"
+      lang={dictionary.htmlLang}
       suppressHydrationWarning
       className={isDarkTheme ? "dark" : ""}
       style={
@@ -113,12 +119,16 @@ export default async function RootLayout({
           <div className="orbital-blob orbital-blob-1" />
           <div className="orbital-blob orbital-blob-2" />
         </div>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <Suspense fallback={null}>
-            <SystemAnnouncement />
-          </Suspense>
-          {children}
-        </ThemeProvider>
+        <LocaleProvider initialLocale={locale}>
+          <MotionProvider>
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+              <Suspense fallback={null}>
+                <SystemAnnouncement />
+              </Suspense>
+              {children}
+            </ThemeProvider>
+          </MotionProvider>
+        </LocaleProvider>
         <Analytics />
         <SpeedInsights />
         <Toaster position="top-center" richColors />

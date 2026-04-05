@@ -9,7 +9,6 @@ import { cache } from "react";
 import { authorize, audit, generateDiff } from "../security";
 import { triggerSync } from "../sync-notifier";
 import { syncDailyReport } from "./reports";
-import { getCurrentOrgId } from "./auth";
 import { recordStockMovement } from "./stock-movements";
 
 function resolveInitialPaymentStatus(
@@ -391,7 +390,7 @@ export async function processReturn(
         refund_amount: number;
         reason: string
     },
-    orgId?: string
+    orgId: string
 ): Promise<void> {
     const validation = ReturnSchema.safeParse(data);
     if (!validation.success) {
@@ -400,7 +399,7 @@ export async function processReturn(
 
     const saleId = data.original_sale_id;
     const quantity = data.quantity;
-    const actualOrgId = orgId || await getCurrentOrgId();
+    const actualOrgId = orgId;
     if (!actualOrgId) throw new Error("Organization ID required");
 
     await authorize("Process Return", undefined, actualOrgId);
@@ -532,7 +531,7 @@ quantity = COALESCE(${updates.quantity}, quantity),
 
     // Re-sync daily report only when financial values changed.
     if (!onlyPaymentStatusUpdate) {
-        await syncDailyReport(new Date(prev.sale_date).toISOString().split('T')[0]);
+        await syncDailyReport(new Date(prev.sale_date).toISOString().split('T')[0], actualOrgId);
     }
 
     await audit(onlyPaymentStatusUpdate ? "Updated Sale Payment Status" : "Updated Sale", "sale", saleId, diff, actualOrgId);
@@ -543,9 +542,8 @@ quantity = COALESCE(${updates.quantity}, quantity),
     triggerSync(actualOrgId, 'sale');
 }
 
-export const getSalesByDate = cache(async (date: string): Promise<(Sale & { inventory?: InventoryItem })[]> => {
-        const orgId = await getCurrentOrgId();
-    if (!orgId) return [];
+export const getSalesByDate = cache(async (date: string, orgId: string): Promise<(Sale & { inventory?: InventoryItem })[]> => {
+    if (!orgId) throw new Error("Organization ID required");
 
     return nextCache(
         async (date: string) => {

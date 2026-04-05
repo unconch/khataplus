@@ -14,7 +14,7 @@ export function SystemAlerts() {
     useEffect(() => {
         const loadAlerts = async () => {
             try {
-                const data = await getSystemAlerts()
+                const data = await getSystemAlerts({ includePrivate: true })
                 setAlerts(data)
             } catch (error) {
                 console.error("Failed to load alerts", error)

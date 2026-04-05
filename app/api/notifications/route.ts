@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
-import { getCurrentOrgId } from "@/lib/data/auth"
+import { requireOrgContext } from "@/lib/server/org-context"
 import { sql } from "@/lib/db"
 import { getSystemAlerts } from "@/lib/monitoring"
 
@@ -15,16 +14,12 @@ type NotificationItem = {
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session?.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const ctx = await requireOrgContext()
+    if (ctx instanceof NextResponse) return ctx
 
-    const orgId = await getCurrentOrgId(session.userId)
-    if (!orgId || orgId === "demo-org") {
-      return NextResponse.json({ notifications: [] })
-    }
+    if (ctx.isGuest) return NextResponse.json({ notifications: [] })
 
+    const { orgId } = ctx
     const now = new Date().toISOString()
     const notifications: NotificationItem[] = []
 
@@ -74,8 +69,7 @@ export async function GET() {
       WHERE org_id = ${orgId}
         AND sale_date = CURRENT_DATE
     `
-    const todaySalesCount = Number(todaySalesRows?.[0]?.count || 0)
-    if (todaySalesCount === 0) {
+    if (Number(todaySalesRows?.[0]?.count || 0) === 0) {
       notifications.push({
         id: `no-sales-today-${orgId}`,
         kind: "info",
@@ -90,8 +84,8 @@ export async function GET() {
     for (const alert of alerts.slice(0, 3)) {
       notifications.push({
         id: `alert-${String(alert.id)}`,
-        kind: alert.type === "fraud" ? "security" : "warning",
-        title: alert.type === "fraud" ? "Security Alert" : "System Alert",
+        kind: alert.type === "fraud" || alert.type === "access" ? "security" : "warning",
+        title: alert.type === "fraud" || alert.type === "access" ? "Security Alert" : "System Alert",
         message: String(alert.message || "System detected an anomaly."),
         href: "/dashboard/admin",
         timestamp: new Date(alert.timestamp || now).toISOString(),
@@ -104,4 +98,3 @@ export async function GET() {
     return NextResponse.json({ error: error?.message || "Failed to load notifications" }, { status: 500 })
   }
 }
-

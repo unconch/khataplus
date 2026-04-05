@@ -39,9 +39,9 @@ export default function AcceptInvitePage() {
 
                 setTimeout(() => {
                     if (data.orgSlug) {
-                        router.push(`/${data.orgSlug}/dashboard`)
+                        router.push(`/app/${data.orgSlug}/dashboard`)
                     } else {
-                        router.push("/dashboard")
+                        router.push("/app/dashboard")
                     }
                     router.refresh()
                 }, 2000)

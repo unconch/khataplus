@@ -74,8 +74,8 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
 
   if (sales.length === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-dashed border-zinc-200 dark:border-white/10 text-center flex flex-col items-center gap-4">
-        <div className="h-16 w-16 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300 dark:text-zinc-500">
+      <div className="flex flex-col items-center gap-4 rounded-[2.5rem] border border-dashed border-zinc-200 bg-white p-8 text-center dark:border-white/10 dark:bg-[rgba(15,23,42,0.82)]">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-50 text-zinc-300 dark:bg-[rgba(30,41,59,0.82)] dark:text-zinc-400">
           <ShoppingCartIcon className="h-8 w-8" />
         </div>
         <div className="space-y-1">
@@ -98,7 +98,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
           <div
             key={sale.id}
             className={cn(
-              "group relative flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-white dark:bg-zinc-900/50 border border-zinc-100 dark:border-white/5 shadow-sm transition-all duration-500 hover:shadow-xl hover:border-emerald-500/20 animate-in fade-in slide-in-from-bottom-2",
+              "group relative flex flex-col items-center justify-between gap-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm transition-all duration-500 hover:border-emerald-500/20 hover:shadow-xl animate-in fade-in slide-in-from-bottom-2 dark:border-white/8 dark:bg-[rgba(30,41,59,0.58)] sm:flex-row",
               isEditing && "ring-2 ring-emerald-500 ring-offset-2 ring-offset-background"
             )}
             style={{ animationDelay: `${idx * 40}ms` }}
@@ -157,7 +157,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
                       type="number"
                       value={editQty}
                       onChange={(e) => setEditQty(e.target.value)}
-                      className="h-10 w-24 rounded-xl border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/10 text-sm font-black focus-visible:ring-emerald-500"
+                      className="h-10 w-24 rounded-xl border-emerald-100 bg-emerald-50/10 text-sm font-black focus-visible:ring-emerald-500 dark:border-emerald-400/20 dark:bg-[rgba(16,185,129,0.08)]"
                       autoFocus
                     />
                     <div className="flex gap-1">
@@ -168,7 +168,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
                       >
                         {isSaving ? <Loader2Icon className="h-3 w-3 animate-spin" /> : "Commit"}
                       </Button>
-                      <Button variant="outline" size="sm" className="h-10 rounded-xl px-5 border-zinc-100 dark:border-white/5 text-zinc-400 font-black text-[10px] uppercase tracking-widest" onClick={() => setEditingId(null)}>
+                      <Button variant="outline" size="sm" className="h-10 rounded-xl px-5 border-zinc-100 text-zinc-400 font-black text-[10px] uppercase tracking-widest dark:border-white/8 dark:text-zinc-300" onClick={() => setEditingId(null)}>
                         Cancel
                       </Button>
                     </div>
@@ -220,7 +220,7 @@ export function RecentSales({ sales, userId }: RecentSalesProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-xl border border-zinc-100 dark:border-white/5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+                      className="h-9 w-9 rounded-xl border border-zinc-100 text-zinc-400 transition-all hover:bg-zinc-50 hover:text-zinc-950 dark:border-white/8 dark:text-zinc-300 dark:hover:bg-[rgba(30,41,59,0.8)] dark:hover:text-white"
                     onClick={() => {
                       setEditingId(sale.id)
                       setEditQty(sale.quantity.toString())

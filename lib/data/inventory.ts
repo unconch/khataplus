@@ -139,9 +139,8 @@ export async function archiveInventoryItem(id: string, orgId: string): Promise<v
     triggerSync(orgId, 'inventory');
 }
 
-export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created_at" | "updated_at">, orgId?: string): Promise<InventoryItem> {
-    const { getCurrentOrgId } = await import("./auth");
-    const actualOrgId = orgId || await getCurrentOrgId();
+export async function addInventoryItem(item: Omit<InventoryItem, "id" | "created_at" | "updated_at">, orgId: string): Promise<InventoryItem> {
+    const actualOrgId = orgId;
     if (!actualOrgId) throw new Error("Organization ID required");
 
     await authorize("Add Inventory", "admin", actualOrgId);

@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react"
 import { MigrationView } from "../../../../components/migration-view"
 import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
 import { redirect } from "next/navigation"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default function MigrationPage() {
     return (
@@ -41,16 +42,15 @@ export default function MigrationPage() {
 }
 
 async function MigrationContent() {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getSystemSettings } = await import("@/lib/data/organizations")
     const { getProfile } = await import("@/lib/data/profiles")
 
     const user = await getCurrentUser()
     if (!user) return null
 
-    const { userId, isGuest } = user
-    let orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
-    if (!orgId) return null
+    const { userId } = user
+    const { orgId } = await resolvePageOrgContext()
 
     try {
         await requirePlanFeature(orgId, "migration_import")

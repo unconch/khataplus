@@ -105,14 +105,14 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all active:scale-95">
+          <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm transition-all active:scale-95 hover:bg-zinc-50 dark:border-white/10 dark:bg-[rgba(15,23,42,0.78)] dark:hover:bg-[rgba(30,41,59,0.9)]">
             <Pencil className="h-3.5 w-3.5" />
             <span className="text-[11px] font-black uppercase tracking-widest">Edit Stock</span>
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] p-0 border-none bg-transparent shadow-2xl">
-        <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 space-y-6 relative overflow-hidden border border-zinc-100 dark:border-white/5">
+      <DialogContent className="border-none bg-transparent p-0 shadow-2xl sm:max-w-[600px]">
+        <div className="relative space-y-6 overflow-hidden rounded-2xl border border-zinc-100 bg-white p-6 dark:border-white/10 dark:bg-[rgba(15,23,42,0.95)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
 
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 opacity-30" />
 
@@ -133,7 +133,7 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or SKU..."
-                className="bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-9 rounded-xl font-bold text-xs"
+                className="h-9 rounded-xl border-zinc-100 bg-zinc-50/90 font-bold text-xs dark:border-white/10 dark:bg-[rgba(30,41,59,0.72)] dark:text-zinc-100 dark:placeholder:text-zinc-500"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && filteredItems.length > 0) {
                     e.preventDefault()
@@ -141,16 +141,16 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
                   }
                 }}
               />
-              <div className="max-h-40 overflow-y-auto rounded-xl border border-dashed border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30">
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-dashed border-zinc-100 bg-zinc-50/40 dark:border-white/10 dark:bg-[rgba(15,23,42,0.56)]">
                 {filteredItems.length === 0 ? (
-                  <p className="px-3 py-4 text-[10px] text-center font-bold uppercase tracking-widest text-zinc-300">No matching assets</p>
+                  <p className="px-3 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-300 dark:text-zinc-500">No matching assets</p>
                 ) : (
                   filteredItems.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => handleSelect(item.id)}
-                      className={`w-full text-left px-3 py-2 transition-all group border-b border-zinc-100 dark:border-zinc-800/50 last:border-b-0 hover:bg-white dark:hover:bg-zinc-800 ${selectedId === item.id ? "bg-white dark:bg-zinc-800 ring-1 ring-inset ring-amber-500/20" : ""
+                      className={`group w-full border-b border-zinc-100 px-3 py-2 text-left transition-all last:border-b-0 hover:bg-white dark:border-white/6 dark:hover:bg-[rgba(30,41,59,0.82)] ${selectedId === item.id ? "bg-white ring-1 ring-inset ring-amber-500/20 dark:bg-[rgba(30,41,59,0.88)]" : ""
                         }`}
                     >
                       <div className="flex justify-between items-center">
@@ -162,7 +162,7 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-black text-amber-600 dark:text-amber-500">{item.stock}</span>
-                          <p className="text-[7px] font-black uppercase text-zinc-300 dark:text-zinc-600">Current</p>
+                          <p className="text-[7px] font-black uppercase text-zinc-300 dark:text-zinc-500">Current</p>
                         </div>
                       </div>
                     </button>
@@ -180,14 +180,14 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
                   placeholder="0"
-                  className="bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 h-11 rounded-xl font-black text-xl text-amber-600 dark:text-amber-500 pl-4"
+                className="h-11 rounded-xl border-zinc-100 bg-zinc-50/90 pl-4 text-xl font-black text-amber-600 dark:border-white/10 dark:bg-[rgba(30,41,59,0.72)] dark:text-amber-400"
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-300 uppercase tracking-widest pointer-events-none">Units</div>
               </div>
               {selectedItem && (
                 <div className="flex items-center gap-2 px-1">
                   <div className="h-1 w-1 rounded-full bg-amber-500 animate-pulse" />
-                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-300">
                     Modifying <span className="text-zinc-900 dark:text-zinc-100">{selectedItem.name}</span>
                   </p>
                 </div>
@@ -198,11 +198,11 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
               <Button
                 onClick={handleSave}
                 disabled={saving || !selectedId}
-                className="h-11 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-black text-[11px] uppercase tracking-widest transition-all hover:opacity-90 active:scale-95 shadow-xl"
+                className="h-11 rounded-xl bg-zinc-950 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all hover:opacity-90 active:scale-95 dark:bg-emerald-400 dark:text-slate-950 dark:shadow-[0_14px_30px_rgba(16,185,129,0.18)]"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
               </Button>
-              <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving} className="h-9 rounded-lg font-black text-[9px] uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
+              <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving} className="h-9 rounded-lg text-[9px] font-black uppercase tracking-widest text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-200">
                 Cancel
               </Button>
             </div>

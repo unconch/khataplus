@@ -18,7 +18,10 @@ export default async function OnboardingPage() {
     const [userOrgs, profile] = await Promise.all([getUserOrganizationsResolved(userId), getProfile(userId)])
 
     if (userOrgs.length > 0) {
-        const slug = userOrgs[0]?.organization?.slug
+        const directSlug = userOrgs[0]?.organization?.slug
+        const fallbackOrgId = userOrgs[0]?.org_id
+        const fallbackOrg = !directSlug && fallbackOrgId ? await getOrganization(fallbackOrgId) : null
+        const slug = directSlug || fallbackOrg?.slug
         if (slug) {
             redirect(`/app/${slug}/dashboard`)
         }

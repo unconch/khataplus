@@ -154,7 +154,8 @@ export default async function proxy(request: NextRequest) {
   const hasGuestAccess = request.cookies.has("guest_mode") || isDemoHost
 
   // Best known slug — prefer metadata over cookie
-  const bestSlug = activeOrgSlug || cookieOrgSlug || slug
+  // Route slug always wins; metadata/cookie are UX fallbacks only.
+  const bestSlug = slug || activeOrgSlug || cookieOrgSlug
 
   // 6. Public auth routes
   if (PUBLIC_ROUTES.has(pathname)) {
@@ -181,17 +182,14 @@ export default async function proxy(request: NextRequest) {
 
   // 8. Authenticated — canonical dashboard redirect
   if (user && isCanonicalAppDashboard && bestSlug && bestSlug !== "dashboard") {
-    const redirectTo = new URL(`/app/${bestSlug}/dashboard${search}`, request.url)
+    const dashboardSuffix =
+      pathname === "/app/dashboard" ? "" : pathname.replace(/^\/app\/dashboard/, "")
+    const redirectTo = new URL(`/app/${bestSlug}/dashboard${dashboardSuffix}${search}`, request.url)
     return finalizeResponse(sessionResponse, NextResponse.redirect(redirectTo, 307))
   }
 
   // 9. Slug realignment — only inside /app/* routes
-  if (user && pathname.startsWith("/app/") && slug && activeOrgSlug && slug !== activeOrgSlug) {
-    const rest = pathname.replace(/^\/app\/[^/]+/, "")
-    const redirectTo = new URL(`/app/${activeOrgSlug}${rest}${search}`, request.url)
-    return finalizeResponse(sessionResponse, NextResponse.redirect(redirectTo, 307))
-  }
-
+  // 9. Demo host normalization
   if (isDemoHost && pathname === "/app/demo") {
     return finalizeResponse(sessionResponse, NextResponse.redirect(new URL(`/dashboard${search}`, request.url), 307))
   }
@@ -223,6 +221,9 @@ export default async function proxy(request: NextRequest) {
     const rewritePath = `${pathPrefix}${pathname}`
 
     const requestHeaders = new Headers(request.headers)
+    requestHeaders.delete("x-org-id")
+    requestHeaders.delete("x-org-role")
+    requestHeaders.delete("x-membership-id")
     requestHeaders.set("x-tenant-slug", bestSlug)
     requestHeaders.set("x-path-prefix", pathPrefix)
     requestHeaders.set("x-invoke-path", rewritePath)
@@ -246,6 +247,9 @@ export default async function proxy(request: NextRequest) {
   // For canonical app routes, inject tenant headers into the downstream request.
   if ((user || hasGuestAccess) && slug && pathname.startsWith("/app/")) {
     const requestHeaders = new Headers(request.headers)
+    requestHeaders.delete("x-org-id")
+    requestHeaders.delete("x-org-role")
+    requestHeaders.delete("x-membership-id")
     requestHeaders.set("x-tenant-slug", slug)
     requestHeaders.set("x-path-prefix", `/app/${slug}`)
     requestHeaders.set("x-invoke-path", pathname)

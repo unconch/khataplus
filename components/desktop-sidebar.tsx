@@ -18,11 +18,13 @@ interface DesktopSidebarProps {
     pathPrefix?: string
     orgName?: string
     orgPlanType?: string
+    onNavigateStart?: (href: string) => void
 }
 
-export function DesktopSidebar({ role, settings, className, pathPrefix = "", orgName, orgPlanType = "free" }: DesktopSidebarProps) {
+export function DesktopSidebar({ role, settings, className, pathPrefix = "", orgName, orgPlanType = "free", onNavigateStart }: DesktopSidebarProps) {
     const pathname = usePathname()
     const isAdmin = role === "admin" || role === "main admin" || role === "owner"
+    const displayOrgName = String(orgName || "").trim()
     const normalizedPath = (() => {
         if (pathPrefix && pathname.startsWith(pathPrefix)) {
             const stripped = pathname.slice(pathPrefix.length)
@@ -63,7 +65,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
         ]
 
     return (
-        <aside className={cn("hidden lg:flex flex-col w-[260px] border-r border-zinc-100 dark:border-white/10 bg-white dark:bg-zinc-950 h-svh sticky top-0 transition-all duration-500 z-50", className)}>
+        <aside className={cn("app-sidebar-shell sticky top-0 z-50 hidden h-svh w-[260px] flex-col border-r border-zinc-100 bg-white transition-all duration-500 dark:border-white/8 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)] lg:flex", className)}>
             <div className="p-8 pb-10">
                 <div
                     className="flex flex-col gap-6 group cursor-pointer"
@@ -77,6 +79,11 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                             <h1 className="text-2xl font-black text-zinc-950 dark:text-zinc-100 leading-none tracking-tight transition-all duration-300 group-hover:tracking-tighter">
                                 KhataPlus
                             </h1>
+                            {displayOrgName ? (
+                                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400 dark:text-zinc-400">
+                                    {displayOrgName}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -104,10 +111,10 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                         return (
                             <div
                                 key={itemKey}
-                                className="flex items-center justify-between px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
+                                className="cursor-not-allowed rounded-2xl border border-dashed border-zinc-200 px-6 py-3.5 text-[11px] font-black uppercase tracking-widest text-zinc-400 dark:border-white/8 dark:text-zinc-500 flex items-center justify-between"
                             >
                                 <div className="flex items-center gap-4">
-                                    <item.icon className="h-4 w-4 text-zinc-400 dark:text-zinc-600" />
+                                    <item.icon className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
                                     <span>{item.label}</span>
                                 </div>
                                 <span className="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
@@ -122,11 +129,12 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                         <Link
                             key={itemKey}
                             href={item.href}
+                            onClick={() => onNavigateStart?.(item.href)}
                             className={cn(
                                 "flex items-center justify-between px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all group relative border border-transparent animate-in fade-in slide-up",
                                 isActive
-                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 shadow-sm"
-                                    : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-950 dark:hover:text-zinc-100",
+                                    ? "border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm dark:border-emerald-400/20 dark:bg-[linear-gradient(180deg,rgba(16,185,129,0.18)_0%,rgba(16,185,129,0.08)_100%)] dark:text-emerald-300 dark:shadow-[0_12px_30px_rgba(16,185,129,0.08)]"
+                                    : "text-zinc-400 dark:text-zinc-400 hover:bg-zinc-50 hover:text-zinc-950 dark:hover:bg-white/5 dark:hover:text-zinc-100",
                                 idx === 0 ? "stagger-1" :
                                     idx === 1 ? "stagger-2" :
                                         idx === 2 ? "stagger-3" :
@@ -134,7 +142,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                             )}
                         >
                             <div className="flex items-center gap-4">
-                                <item.icon className={cn("h-4 w-4 transition-transform", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-950 dark:group-hover:text-zinc-100")} />
+                                <item.icon className={cn("h-4 w-4 transition-transform", isActive ? "text-emerald-600 dark:text-emerald-300" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-950 dark:group-hover:text-zinc-100")} />
                                 <span>{item.label}</span>
                             </div>
 
@@ -143,7 +151,7 @@ export function DesktopSidebar({ role, settings, className, pathPrefix = "", org
                             )}
 
                             {!isActive && (
-                                <ArrowRight className="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-zinc-300 dark:text-zinc-600" />
+                                <ArrowRight className="h-3 w-3 -translate-x-2 opacity-0 text-zinc-300 transition-all group-hover:translate-x-0 group-hover:opacity-100 dark:text-zinc-500" />
                             )}
                         </Link>
                     )

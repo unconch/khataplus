@@ -24,9 +24,10 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface AddInventoryDialogProps {
     trigger?: React.ReactNode
+    orgId: string
 }
 
-export function AddInventoryDialog({ trigger }: AddInventoryDialogProps) {
+export function AddInventoryDialog({ trigger, orgId }: AddInventoryDialogProps) {
     const [open, setOpen] = React.useState(false)
     const isDesktop = useMediaQuery("(min-width: 768px)")
 
@@ -59,7 +60,7 @@ export function AddInventoryDialog({ trigger }: AddInventoryDialogProps) {
                             </div>
                         </div>
                         <div className="p-5">
-                            <AddInventoryForm />
+                            <AddInventoryForm orgId={orgId} />
                         </div>
                     </div>
                 </DialogContent>
@@ -85,7 +86,7 @@ export function AddInventoryDialog({ trigger }: AddInventoryDialogProps) {
                     </DrawerDescription>
                 </DrawerHeader>
                 <div className="px-4 pb-8 overflow-y-auto">
-                    <AddInventoryForm />
+                    <AddInventoryForm orgId={orgId} />
                 </div>
             </DrawerContent>
         </Drawer>

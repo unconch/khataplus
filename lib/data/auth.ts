@@ -202,8 +202,18 @@ export function sanitizeNextPath(next: unknown, fallback = "/app/dashboard") {
 
 async function persistActiveOrgSlug(slug: string | null) {
   if (!slug) return
-  // Placeholder persistence; intentionally fire-and-forget in verifyOtp
-  return
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user?.id) return
+    await supabase.auth.updateUser({
+      data: { active_org_slug: slug },
+    })
+  } catch {
+    // Non-critical - swallow silently
+  }
 }
 
 async function resolveAppOrigin() {
@@ -436,37 +446,33 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
   })()
   const cookieSlug: string | null = null
 
-  // Fire all post-auth tasks without waiting
-  Promise.allSettled([
-    (async () => {
-      try {
-        const { ensureProfile } = await import("@/lib/data/profiles")
-        await ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata)
-      } catch (e) {
-        console.warn("[AUTH] ensureProfile failed", e)
-      }
-    })(),
-    persistActiveOrgSlug(metadataSlug || cookieSlug || null).catch(() => {}),
-  ])
+  try {
+    const { ensureProfile } = await import("@/lib/data/profiles")
+    await withTimeout(
+      ensureProfile(user.id, user.email || email, nameFromInput || nameFromMetadata),
+      3000,
+      "ENSURE_PROFILE"
+    )
+  } catch (e) {
+    console.warn("[AUTH] ensureProfile failed or timed out - continuing", e)
+  }
 
-  // Return immediately — don't wait for DB calls
-  let resolvedSlug = metadataSlug || cookieSlug
+  persistActiveOrgSlug(metadataSlug || cookieSlug || null).catch(() => {})
 
-  // If no slug in metadata/cookie, try Neon as fallback
-  if (!resolvedSlug) {
-    try {
-      const org = await withTimeout(
-        getPrimaryOrganizationForUser(user.id),
-        1500,
-        "ORG_LOOKUP"
-      )
-      resolvedSlug = org?.slug || null
-      if (resolvedSlug) {
-        persistActiveOrgSlug(resolvedSlug).catch(() => {})
-      }
-    } catch {
-      // ignore, fall back to /app/dashboard
+  let resolvedSlug: string | null = null
+
+  try {
+    const org = await withTimeout(
+      getPrimaryOrganizationForUser(user.id),
+      2000,
+      "ORG_LOOKUP"
+    )
+    resolvedSlug = org?.slug || null
+    if (resolvedSlug) {
+      persistActiveOrgSlug(resolvedSlug).catch(() => {})
     }
+  } catch {
+    resolvedSlug = metadataSlug
   }
 
   const redirectTo = resolvedSlug

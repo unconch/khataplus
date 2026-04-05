@@ -1,13 +1,13 @@
 import { Suspense } from "react"
 import { getCustomer, getKhataTransactions } from "@/lib/data/customers"
-import { getCurrentOrgId } from "@/lib/data/auth"
 import { KhataLedger } from "@/components/khata-ledger"
 import { Loader2 } from "lucide-react"
 import { notFound, redirect } from "next/navigation"
+import { resolvePageOrgContext, resolveRequestOrgContext } from "@/lib/server/org-context"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getCustomer } = await import("@/lib/data/customers")
     const user = await getCurrentUser()
     if (!user) {
@@ -15,13 +15,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
 
     let orgId: string | null = null
-    if (user.isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(user.userId)
-    }
-
-    if (!orgId) {
+    try {
+        orgId = (await resolveRequestOrgContext()).orgId
+    } catch {
         return { title: "Khata" }
     }
 
@@ -47,7 +43,7 @@ export default async function CustomerKhataPage({ params }: { params: Promise<{ 
 }
 
 async function KhataContent({ customerId }: { customerId: string }) {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const { getCustomer, getKhataTransactions } = await import("@/lib/data/customers")
     const { getOrganization } = await import("@/lib/data/organizations")
     const user = await getCurrentUser()
@@ -57,18 +53,7 @@ async function KhataContent({ customerId }: { customerId: string }) {
         return null
     }
     const { userId, isGuest } = user
-
-    let orgId: string | null = null
-    if (isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(userId)
-    }
-
-    if (!orgId) {
-        redirect("/onboarding")
-        return null
-    }
+    const { orgId } = await resolvePageOrgContext()
 
     const customer = await getCustomer(customerId, orgId)
     if (!customer) {

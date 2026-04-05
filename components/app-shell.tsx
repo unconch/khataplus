@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { SystemSettings, Profile } from "@/lib/types"
@@ -9,6 +9,8 @@ import { BottomNav } from "@/components/bottom-nav"
 import { AppHeader } from "@/components/app-header"
 import { PWAProvider } from "@/components/pwa-provider"
 import { PWABadgeManager } from "@/components/pwa-badge-manager"
+import { useMotion } from "@/components/motion-provider"
+import { DashboardSkeleton, SalesPageSkeleton } from "@/components/skeletons"
 
 type OrgRole = "admin" | "manager" | "staff"
 
@@ -31,7 +33,55 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
   const isDemoShell = orgId === "demo-org"
   const router = useRouter()
   const pathname = usePathname()
+  const { enableMotion } = useMotion()
+  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null)
   const isPosRoute = Boolean(pathname && pathname.includes("/pos"))
+
+  const handleNavigationStart = useCallback((href: string) => {
+    if (!href || href === pathname) return
+    setPendingNavigationHref(href)
+  }, [pathname])
+
+  useEffect(() => {
+    setPendingNavigationHref(null)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!pendingNavigationHref) return
+    const timeoutId = window.setTimeout(() => setPendingNavigationHref(null), 4000)
+    return () => window.clearTimeout(timeoutId)
+  }, [pendingNavigationHref])
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+      const target = event.target
+      if (!(target instanceof Element)) return
+
+      const anchor = target.closest("a[href]")
+      if (!(anchor instanceof HTMLAnchorElement)) return
+      if (anchor.target && anchor.target !== "_self") return
+      if (anchor.hasAttribute("download")) return
+
+      const rawHref = anchor.getAttribute("href")
+      if (!rawHref || rawHref.startsWith("#")) return
+
+      const resolvedHref = new URL(rawHref, window.location.href)
+      if (resolvedHref.origin !== window.location.origin) return
+
+      const nextPath = `${resolvedHref.pathname}${resolvedHref.search}`
+      const currentPath = `${window.location.pathname}${window.location.search}`
+      if (nextPath === currentPath) return
+
+      handleNavigationStart(nextPath)
+    }
+
+    document.addEventListener("click", handleDocumentClick, true)
+    return () => document.removeEventListener("click", handleDocumentClick, true)
+  }, [handleNavigationStart])
 
   useEffect(() => {
     if (isDemoShell) return
@@ -64,14 +114,29 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
       <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
 
         {/* Desktop Sidebar: Visible only on lg+ */}
-        <DesktopSidebar role={role} settings={settings} pathPrefix={pathPrefix} orgName={orgName} orgPlanType={orgPlanType} />
+        <DesktopSidebar
+          role={role}
+          settings={settings}
+          pathPrefix={pathPrefix}
+          orgName={orgName}
+          orgPlanType={orgPlanType}
+          onNavigateStart={handleNavigationStart}
+        />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
           <AppHeader profile={profile} orgName={orgName} role={role} pathPrefix={pathPrefix} />
 
-          <main className="flex-1 pb-24 lg:pb-12 px-3 sm:px-4 lg:px-6 xl:px-8 2xl:px-10 pt-0 overflow-auto gpu-layer relative scroll-smooth" style={{ contentVisibility: "auto" }}>
-            <div className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <main
+            className={`app-main-shell flex-1 pb-24 lg:pb-12 px-3 sm:px-4 lg:px-6 xl:px-8 2xl:px-10 pt-0 overflow-y-auto overflow-x-hidden relative ${enableMotion ? "scroll-smooth" : ""}`}
+            style={{ contentVisibility: "auto" }}
+          >
+            {pendingNavigationHref && (
+              <div className="absolute inset-0 z-20 overflow-auto bg-background/96 backdrop-blur-[2px]">
+                {pendingNavigationHref.includes("/sales") ? <SalesPageSkeleton /> : <DashboardSkeleton />}
+              </div>
+            )}
+            <div className={`${enableMotion ? "page-enter " : ""}mx-auto w-full max-w-7xl`}>
               {children}
             </div>
           </main>
@@ -79,7 +144,13 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
 
         {/* Bottom Nav: Visible only on mobile */}
         <div className="lg:hidden">
-          <BottomNav role={role} settings={settings} pathPrefix={pathPrefix} orgPlanType={orgPlanType} />
+          <BottomNav
+            role={role}
+            settings={settings}
+            pathPrefix={pathPrefix}
+            orgPlanType={orgPlanType}
+            onNavigateStart={handleNavigationStart}
+          />
         </div>
       </div>
 

@@ -53,12 +53,23 @@ export async function POST(
         }
 
         const org = await getOrganization(invite.org_id)
-
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             orgName: org?.name,
             orgSlug: org?.slug
         })
+
+        if (org?.slug) {
+            response.cookies.set("kp_org_slug", org.slug, {
+                path: "/",
+                sameSite: "lax",
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 60 * 60 * 24 * 30,
+            })
+        }
+
+        return response
     } catch (e: any) {
         const message = String(e?.message || "Failed to accept invite")
         const isLimitError = /seat limit|seat capacity|limit reached|upgrade/i.test(message)

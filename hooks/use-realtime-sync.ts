@@ -14,16 +14,15 @@ import { useRouter } from "next/navigation"
 export function useRealtimeSync(orgId?: string) {
     const router = useRouter()
     const lastSyncRef = useRef<number>(Date.now())
+    const hiddenAtRef = useRef<number | null>(null)
 
     const pullSync = useCallback(() => {
-        // Spec 7: Actual data sync happens via router.refresh() 
-        // Throttle: Don't sync more than once every 5 seconds
+        // Spec 7: Actual data sync happens via router.refresh().
+        // Throttle to keep resume/focus transitions from feeling heavy.
         if (Date.now() - lastSyncRef.current < 5000) {
-            console.log("[Sync] Skipping pullSync (throttled)")
             return
         }
 
-        console.log("[Sync] Triggering pullSync (refresh)...")
         router.refresh()
         lastSyncRef.current = Date.now()
     }, [router])
@@ -35,30 +34,26 @@ export function useRealtimeSync(orgId?: string) {
 
         let eventSource: EventSource | null = null
         let pollingInterval: NodeJS.Timeout | null = null
+        const resumeSyncThresholdMs = 45_000
 
         const setupSSE = () => {
             if (!navigator.onLine) {
                 startPolling()
                 return
             }
-            console.log("[Sync] Connecting to SSE stream...")
             eventSource = new EventSource(`/api/sync/stream?orgId=${orgId}`)
 
             // 5.1 sync_required
-            eventSource.addEventListener("sync_required", (event) => {
-                const payload = JSON.parse(event.data)
-                console.log("[Sync] sync_required received for:", payload.entity)
+            eventSource.addEventListener("sync_required", () => {
                 pullSync()
             })
 
             // 5.2 force_resync
             eventSource.addEventListener("force_resync", () => {
-                console.log("[Sync] force_resync received")
                 window.location.reload() // Full resync as per spec
             })
 
             eventSource.onerror = () => {
-                console.warn("[Sync] SSE Connection failed. Falling back to polling.")
                 if (eventSource) {
                     eventSource.close()
                     eventSource = null
@@ -76,10 +71,9 @@ export function useRealtimeSync(orgId?: string) {
             }
 
             // 8. Fallback Strategy: Smart Polling (30s as per spec fallback)
-            console.log("[Sync] Starting fallback polling (30s)")
             pollingInterval = setInterval(() => {
-                // Only poll if tab is active and we haven't synced very recently
-                if (document.hasFocus() && Date.now() - lastSyncRef.current > 25000) {
+                const pageIsVisible = document.visibilityState === "visible"
+                if (pageIsVisible && Date.now() - lastSyncRef.current > 25000) {
                     pullSync()
                 }
             }, 30000)
@@ -98,6 +92,9 @@ export function useRealtimeSync(orgId?: string) {
         const handleOnline = () => {
             stopPolling()
             if (!eventSource) setupSSE()
+            if (Date.now() - lastSyncRef.current > 15_000) {
+                pullSync()
+            }
         }
         const handleOffline = () => {
             if (eventSource) {
@@ -107,12 +104,25 @@ export function useRealtimeSync(orgId?: string) {
             stopPolling()
         }
 
-        // also refresh on window focus as per spec 8
-        const handleFocus = () => {
-            console.log("[Sync] Window focused, immediate sync")
-            pullSync()
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                hiddenAtRef.current = Date.now()
+                return
+            }
+
+            const hiddenAt = hiddenAtRef.current
+            hiddenAtRef.current = null
+
+            if (!navigator.onLine || !hiddenAt) {
+                return
+            }
+
+            if (Date.now() - hiddenAt >= resumeSyncThresholdMs) {
+                pullSync()
+            }
         }
-        window.addEventListener("focus", handleFocus)
+
+        document.addEventListener("visibilitychange", handleVisibilityChange)
         window.addEventListener("online", handleOnline)
         window.addEventListener("offline", handleOffline)
 
@@ -121,7 +131,7 @@ export function useRealtimeSync(orgId?: string) {
                 eventSource.close()
             }
             stopPolling()
-            window.removeEventListener("focus", handleFocus)
+            document.removeEventListener("visibilitychange", handleVisibilityChange)
             window.removeEventListener("online", handleOnline)
             window.removeEventListener("offline", handleOffline)
         }

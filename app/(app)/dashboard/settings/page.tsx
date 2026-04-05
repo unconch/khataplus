@@ -11,6 +11,7 @@ import { getUserSessions } from "@/lib/session-governance"
 import { cn } from "@/lib/utils"
 import { cookies } from "next/headers"
 import { BILLING_PLANS } from "@/lib/billing-plans"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 const TeamManagement = dynamic(
     () => import("@/components/team-management").then((m) => m.TeamManagement),
@@ -31,26 +32,15 @@ const SecuritySettings = dynamic(
 )
 
 export default async function SettingsPage() {
-    const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+    const { getCurrentUser } = await import("@/lib/data/auth")
     const user = await getCurrentUser()
 
     if (!user) {
         redirect("/auth/login")
         return null
     }
-    const { userId, isGuest } = user
-
-    let orgId: string | null = null
-    if (isGuest) {
-        orgId = "demo-org"
-    } else {
-        orgId = await getCurrentOrgId(userId)
-    }
-
-    if (!orgId) {
-        redirect("/onboarding")
-        return null
-    }
+    const { userId } = user
+    const { orgId } = await resolvePageOrgContext()
 
     return (
         <div className="relative min-h-full space-y-8 pb-12 overflow-hidden">

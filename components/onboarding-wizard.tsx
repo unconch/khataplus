@@ -367,7 +367,7 @@ export function OnboardingWizard({ userId, profile }: { userId: string, profile?
             if (!ready) {
                 toast.message("Finalizing workspace. Redirecting now...")
             }
-            router.replace(`/app/${org.slug}/dashboard`)
+            window.location.replace(`/app/${org.slug}/dashboard`)
         } catch (error: any) {
             const message = error?.message || "Failed to create organization"
             const isNetworkError =

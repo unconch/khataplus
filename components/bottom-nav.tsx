@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
-import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings, Lock, Monitor } from "lucide-react"
+import { LayoutDashboard, BadgeIndianRupee, Package, Users, Settings } from "lucide-react"
 import { SystemSettings, Profile } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { hasPlanFeature, type PlanFeature } from "@/lib/plan-features"
 
 type OrgRole = "admin" | "manager" | "staff"
@@ -14,52 +13,45 @@ interface BottomNavProps {
   settings: SystemSettings
   pathPrefix?: string
   orgPlanType?: string
+  onNavigateStart?: (href: string) => void
 }
 
-export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free" }: BottomNavProps) {
+export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free", onNavigateStart }: BottomNavProps) {
   const pathname = usePathname()
-
-  const posHref = pathPrefix ? `${pathPrefix}/pos/sales` : "/dashboard/sales"
+  const router = useRouter()
 
   const navItems: Array<{ href: string; label: string; icon: any; feature?: PlanFeature }> = [
-    { href: `${pathPrefix}/dashboard`, label: "CORE", icon: LayoutDashboard },
-    { href: posHref, label: "POS", icon: Monitor },
+    { href: `${pathPrefix}/dashboard`, label: "HOME", icon: LayoutDashboard },
     { href: `${pathPrefix}/dashboard/sales`, label: "SALES", icon: BadgeIndianRupee },
     { href: `${pathPrefix}/dashboard/inventory`, label: "ITEMS", icon: Package },
-    { href: `${pathPrefix}/dashboard/customers`, label: "LEDGER", icon: Users },
+    { href: `${pathPrefix}/dashboard/customers`, label: "KHATA", icon: Users },
+    { href: `${pathPrefix}/dashboard/settings`, label: "SETTINGS", icon: Settings },
   ]
 
+  const visibleNavItems = navItems.filter((item) => {
+    const isAdmin = role === "admin" || role === "owner"
+    const isStaff = role === "staff"
+
+    if (item.href.includes("/sales") && isStaff && !settings.allow_staff_sales) return false
+    if (item.href.includes("/inventory") && isStaff && !settings.allow_staff_inventory) return false
+    if (item.href.includes("/settings") && !isAdmin) return false
+    if (item.feature && !hasPlanFeature(orgPlanType, item.feature)) return false
+
+    return true
+  })
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-3 sm:px-6 pb-[env(safe-area-inset-bottom)] sm:pb-4">
-      <div className="max-w-md mx-auto relative group">
+    <div className="app-bottom-nav-shell fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] sm:px-6 sm:pb-4">
+      <div className="max-w-md mx-auto relative group pointer-events-none">
         {/* Shadow Glow */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-zinc-200 via-zinc-400 to-zinc-200 rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+        <div className="app-bottom-nav-glow pointer-events-none absolute inset-x-4 -top-2 bottom-1 rounded-full bg-gradient-to-r from-zinc-200/70 via-zinc-300 to-zinc-200/70 opacity-60 blur-2xl transition-opacity group-hover:opacity-80 dark:from-emerald-500/10 dark:via-cyan-400/12 dark:to-transparent dark:opacity-100" />
 
-        <nav className="relative flex items-center justify-between bg-white border border-zinc-100 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-2">
-          {navItems.map((item) => {
+        <nav
+          className="app-bottom-nav pointer-events-auto relative grid items-stretch rounded-[1.75rem] border border-zinc-200/80 bg-white/96 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/8 dark:bg-[rgba(15,23,42,0.92)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
+          style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
+        >
+          {visibleNavItems.map((item) => {
             const itemKey = `${item.label}-${item.href}`
-            const isAdmin = role === "admin" || role === "owner"
-            const isStaff = role === "staff"
-
-            // Filtering logic
-            if (item.href.includes("/sales") && isStaff && !settings.allow_staff_sales) return null
-            if (item.href.includes("/inventory") && isStaff && !settings.allow_staff_inventory) return null
-            if (item.href.includes("/settings") && !isAdmin) return null
-            if (item.feature && !hasPlanFeature(orgPlanType, item.feature)) {
-              return (
-                <div
-                  key={itemKey}
-                  className="flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl text-zinc-300 dark:text-zinc-700"
-                >
-                  <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900">
-                    <Lock size={16} />
-                  </div>
-                  <span className="h-3 text-[8px] leading-none font-black uppercase tracking-[0.08em] opacity-100">
-                    {item.label}
-                  </span>
-                </div>
-              )
-            }
 
             const href = item.href
             const isHome = href === (pathPrefix ? `${pathPrefix}/dashboard` : "/dashboard")
@@ -67,30 +59,48 @@ export function BottomNav({ role, settings, pathPrefix = "", orgPlanType = "free
               ? (pathname === href || pathname === (pathPrefix || "/"))
               : pathname.startsWith(href)
             const Icon = item.icon
+            const isSalesTab = item.label === "SALES"
 
             return (
-              <Link
-                key={itemKey}
-                href={href}
+                <button
+                  key={itemKey}
+                  type="button"
+                  onClick={() => {
+                    onNavigateStart?.(href)
+                    router.push(href)
+                  }}
+                aria-label={item.label}
                 className={cn(
-                  "flex-1 min-w-0 flex flex-col items-center gap-1.5 px-2 py-2 rounded-2xl transition-all duration-500 relative",
-                  isActive ? "text-zinc-950 scale-105" : "text-zinc-400 hover:text-zinc-600"
+                  "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[1.2rem] px-1 py-2.5 transition-all duration-200 cursor-pointer touch-manipulation",
+                  isActive
+                    ? cn(
+                        "text-zinc-950 dark:text-white",
+                        isSalesTab && "dark:text-amber-200"
+                      )
+                    : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 )}
               >
                 <div className={cn(
-                  "p-2 rounded-xl transition-all duration-500",
-                  isActive ? "bg-zinc-950 text-white shadow-lg shadow-zinc-200" : "bg-transparent"
+                  "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200",
+                  isActive
+                    ? cn(
+                        "bg-zinc-950 text-white dark:bg-emerald-400 dark:text-slate-950",
+                        isSalesTab && "dark:bg-amber-400/90 dark:text-slate-950"
+                      )
+                    : "bg-transparent"
                 )}>
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
 
                 <span className={cn(
-                  "h-3 text-[8px] leading-none font-black uppercase tracking-[0.08em] whitespace-nowrap transition-all duration-500",
-                  isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0"
+                  "min-h-[10px] text-[7px] leading-none font-black uppercase tracking-[0.12em] whitespace-nowrap transition-colors duration-200",
+                  isActive
+                    ? cn("text-zinc-950 dark:text-white", isSalesTab && "dark:text-amber-200")
+                    : "text-zinc-500 dark:text-zinc-400"
                 )}>
                   {item.label}
                 </span>
-              </Link>
+              </button>
             )
           })}
         </nav>

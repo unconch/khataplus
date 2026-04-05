@@ -1,14 +1,21 @@
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
-import { getCurrentUser, getUserOrganizationsResolved } from "@/lib/data/auth"
+import { buildAuthContext, getCurrentUser } from "@/lib/data/auth"
 
 export default async function DashboardFallback() {
   const user = await getCurrentUser()
-  if (!user || user.isGuest) {
+  if (!user) {
     redirect("/auth/login?next=%2Fapp%2Fdashboard")
   }
-  const orgs = await getUserOrganizationsResolved(user.userId)
-  const slug = String(orgs?.[0]?.organization?.slug || "").trim()
+  if (user.isGuest) {
+    redirect("/app/demo/dashboard")
+  }
+
+  const cookieStore = await cookies()
+  const hintedSlug = String(cookieStore.get("kp_org_slug")?.value || "").trim()
+  const slug = hintedSlug || String((await buildAuthContext()).orgSlug || "").trim()
+
   if (slug) {
     redirect(`/app/${slug}/dashboard`)
   }

@@ -4,7 +4,7 @@ import { sql } from "./db";
 
 export interface SystemAlert {
   id: string;
-  type?: "performance" | "fraud";
+  type?: "performance" | "fraud" | "access";
   severity?: "low" | "medium" | "high";
   message: string;
   timestamp: Date;
@@ -52,15 +52,32 @@ async function getAlertSchema(db?: any): Promise<AlertSchema> {
 }
 
 async function insertSystemAlert(
-  kind: "performance" | "fraud",
+  kind: "performance" | "fraud" | "access",
   severity: "low" | "medium" | "high",
   message: string,
   metadata: any,
-  db?: any
+  db?: any,
+  options?: { dedupeWindowMinutes?: number }
 ) {
   try {
     const schema = await getAlertSchema(db);
     const metadataJson = JSON.stringify(metadata ?? {});
+    const dedupeWindowMinutes = Number(options?.dedupeWindowMinutes || 0);
+    const timeColumn = schema.hasTimestamp ? "timestamp" : (schema.hasCreatedAt ? "created_at" : null);
+
+    if (dedupeWindowMinutes > 0 && timeColumn) {
+      const dedupeQuery = `
+        SELECT id
+        FROM system_alerts
+        WHERE message = $1
+          AND ${timeColumn} >= NOW() - ($2 * INTERVAL '1 minute')
+        LIMIT 1
+      `;
+      const existing = await runQuery(db, dedupeQuery, [message, dedupeWindowMinutes]);
+      if (existing.length > 0) {
+        return;
+      }
+    }
 
     if (schema.hasType && schema.hasSeverity) {
       const query = `
@@ -100,17 +117,55 @@ export async function checkForFraud(amount: number, userId: string, operation: s
   return false;
 }
 
-export async function getSystemAlerts() {
+export async function logAccessBlockedAttempt(input: {
+  userId?: string | null;
+  userEmail?: string | null;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantSlug?: string | null;
+  requestPath?: string | null;
+  pathPrefix?: string | null;
+}) {
+  const actor = String(input.userEmail || input.userId || "unknown user").trim();
+  const tenantLabel = String(input.tenantName || input.tenantSlug || input.tenantId || "unknown organization").trim();
+  const message = `Access blocked: ${actor} is not a member of ${tenantLabel}`;
+
+  await insertSystemAlert(
+    "access",
+    "medium",
+    message,
+    {
+      event: "membership_access_blocked",
+      visibility: "main_admin_only",
+      userId: input.userId || null,
+      userEmail: input.userEmail || null,
+      tenantId: input.tenantId || null,
+      tenantName: input.tenantName || null,
+      tenantSlug: input.tenantSlug || null,
+      requestPath: input.requestPath || null,
+      pathPrefix: input.pathPrefix || null,
+    },
+    undefined,
+    { dedupeWindowMinutes: 10 }
+  );
+}
+
+export async function getSystemAlerts(options?: { includePrivate?: boolean }) {
   try {
     const schema = await getAlertSchema();
     const orderColumn = schema.hasTimestamp ? "timestamp" : (schema.hasCreatedAt ? "created_at" : "id");
     const query = `SELECT * FROM system_alerts ORDER BY ${orderColumn} DESC LIMIT 50`;
     const result = await runQuery(undefined, query, []);
 
-    return result.map((row: any) => ({
-      ...row,
-      timestamp: row.timestamp || row.created_at || new Date().toISOString(),
-    })) as SystemAlert[];
+    return result
+      .map((row: any) => ({
+        ...row,
+        timestamp: row.timestamp || row.created_at || new Date().toISOString(),
+      }))
+      .filter((alert: any) => {
+        if (options?.includePrivate) return true;
+        return alert?.metadata?.visibility !== "main_admin_only";
+      }) as SystemAlert[];
   } catch (error) {
     console.warn("[Monitoring] Failed to fetch alerts:", error);
     return [];

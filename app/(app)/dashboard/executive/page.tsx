@@ -9,6 +9,7 @@ import { TrendingUp, Users, Package, DollarSign } from "lucide-react"
 import { StockHealthTable } from "@/components/analytics/StockHealthTable"
 import { ReorderList } from "@/components/analytics/ReorderList"
 import { PlainEnglishInsights } from "@/components/analytics/PlainEnglishInsights"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function ExecutiveDashboard() {
     const { getCurrentUser } = await import("@/lib/data/auth")
@@ -30,12 +31,7 @@ export default async function ExecutiveDashboard() {
         return null
     }
 
-    const { getCurrentOrgId } = await import("@/lib/data/auth")
-    const orgId = await getCurrentOrgId(userId)
-    if (!orgId) {
-        redirect("/dashboard")
-        return null
-    }
+    const { orgId } = await resolvePageOrgContext()
 
     const data = await getExecutiveAnalytics(orgId)
 

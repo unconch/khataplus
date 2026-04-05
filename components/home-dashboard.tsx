@@ -9,6 +9,8 @@ import {
     Users,
     Box,
     TrendingUp,
+    FileText,
+    RefreshCcw,
     Plus,
     Search,
     IndianRupee,
@@ -206,9 +208,9 @@ export function HomeDashboard({
     const [timeRange, setTimeRange] = useState<"today" | "week" | "month">("month")
     const greetingClassName = useMemo(() => {
         const len = greeting.length
-        if (len > 95) return "text-[1.85rem] sm:text-[2.25rem] md:text-[2.75rem] leading-[1.22] tracking-[-0.015em]"
-        if (len > 72) return "text-[2.1rem] sm:text-[2.7rem] md:text-[3.2rem] leading-[1.18] tracking-[-0.02em]"
-        return "text-[2.4rem] sm:text-[3.2rem] md:text-[4rem] leading-[1.14] tracking-[-0.025em]"
+        if (len > 95) return "text-[1.15rem] sm:text-[1.35rem] md:text-[1.75rem] leading-tight tracking-[-0.02em]"
+        if (len > 72) return "text-[1.25rem] sm:text-[1.5rem] md:text-[1.95rem] leading-tight tracking-[-0.022em]"
+        return "text-[1.4rem] sm:text-[1.7rem] md:text-[2.15rem] leading-tight tracking-[-0.025em]"
     }, [greeting])
 
     const metrics = useMemo(() => {
@@ -258,10 +260,11 @@ export function HomeDashboard({
                     <h1
                         key={greeting}
                         className={cn(
-                            "font-black max-w-5xl whitespace-normal text-pretty break-words pb-2 transition-colors md:transition-all md:duration-500",
+                            "hidden max-w-full overflow-hidden text-ellipsis whitespace-nowrap pb-1 font-black transition-colors md:block md:transition-all md:duration-500",
                             greetingClassName,
                             greetingToneClass
                         )}
+                        title={greeting}
                     >
                         {greeting}
                     </h1>
@@ -351,11 +354,11 @@ export function HomeDashboard({
                         </div>
                     </div>
 
-                    <div className="h-[240px] md:h-[340px] w-full mt-6 md:mt-10">
+                    <div className="mt-6 w-full md:mt-10 md:h-[340px]">
                         {enableDeferredUI && !isMobileViewport ? (
                             <HomeDashboardChart chartData={chartData} />
                         ) : (
-                            <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-3 sm:h-full sm:grid-cols-3">
                                 <MobileInsightCard label="Revenue" value={formatCurrency(metrics.revenue)} tone="blue" />
                                 <MobileInsightCard label="Profit" value={formatCurrency(metrics.profit)} tone="emerald" />
                                 <MobileInsightCard label="Stock Alerts" value={stockAlertsCount.toString()} tone={stockAlertsCount > 0 ? "orange" : "zinc"} />
@@ -384,11 +387,10 @@ export function HomeDashboard({
                 </div>
             </div>
 
-            <div className="grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <PortalGridItem title="Khata Rail" sub="Manage Ledger" href={`/dashboard/customers`} icon={Users} color="emerald" />
-                <PortalGridItem title="Inventory" sub="Product Hub" href={`/dashboard/inventory`} icon={Box} color="blue" />
-                <PortalGridItem title="Core Analytics" sub="Financial Pulse" href={`/dashboard/analytics`} icon={TrendingUp} color="purple" />
-                <PortalGridItem title="System Config" sub="Meta Profiles" href={`/dashboard/settings`} icon={Zap} color="amber" />
+            <div className="grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <PortalGridItem title="Analytics" sub="Financial Pulse" href={`/dashboard/analytics`} icon={TrendingUp} color="purple" />
+                <PortalGridItem title="Reports" sub="Business Files" href={`/dashboard/reports`} icon={FileText} color="blue" />
+                <PortalGridItem title="Migration" sub="Import Hub" href={`/dashboard/migration`} icon={RefreshCcw} color="amber" />
             </div>
         </div>
     )

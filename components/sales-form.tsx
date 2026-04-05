@@ -420,7 +420,7 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
   return (
     <div className="w-full">
       <div>
-        <div className="sticky top-0 z-20 px-4 md:px-7 pt-2 md:pt-2.5 pb-2 bg-zinc-50/95 dark:bg-zinc-950/95 border-b border-zinc-200/80 dark:border-zinc-800/80 backdrop-blur supports-[backdrop-filter]:bg-zinc-50/75">
+        <div className="sticky top-0 z-20 px-4 pb-2 pt-2 md:px-7 md:pt-2.5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-md overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-200/80 dark:bg-slate-800/70">
             {stepMeta.map(({ id: stepNo, label, icon: Icon }) => {
               const locked = stepNo > 1 && !canContinue
@@ -587,8 +587,8 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
                 </div>
               </div>
 
-              <div className="sticky bottom-0 pt-3 flex justify-end bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-                <Button type="button" onClick={() => setStep(2)} disabled={!canContinue} className="rounded-xl font-black uppercase tracking-wide">
+              <div className="sticky bottom-0 flex justify-end px-3 py-3 bg-transparent border-0 backdrop-blur-0 supports-[backdrop-filter]:bg-transparent dark:bg-transparent">
+                <Button type="button" onClick={() => setStep(2)} disabled={!canContinue} className="rounded-xl bg-emerald-600 font-black uppercase tracking-wide text-white hover:bg-emerald-500 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300">
                   Continue
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -649,11 +649,11 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
                 </div>
               </div>
 
-              <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-xl">
+              <div className="sticky bottom-0 flex items-center justify-between px-3 py-3 bg-transparent border-0 backdrop-blur-0 supports-[backdrop-filter]:bg-transparent dark:bg-transparent">
+                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-xl dark:border-white/10 dark:bg-[rgba(30,41,59,0.7)] dark:text-zinc-100 dark:hover:bg-[rgba(51,65,85,0.86)]">
                   Back
                 </Button>
-                <Button type="button" onClick={() => setStep(3)} className="rounded-xl font-black uppercase tracking-wide">
+                <Button type="button" onClick={() => setStep(3)} className="rounded-xl bg-emerald-600 font-black uppercase tracking-wide text-white hover:bg-emerald-500 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300">
                   Continue
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -734,11 +734,11 @@ export function SalesForm({ inventory, userId, gstInclusive, gstEnabled, showBuy
                 </div>
               )}
 
-              <div className="sticky bottom-0 pt-3 flex items-center justify-between bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-xl">
+              <div className="sticky bottom-0 flex items-center justify-between px-3 py-3 bg-transparent border-0 backdrop-blur-0 supports-[backdrop-filter]:bg-transparent dark:bg-transparent">
+                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-xl dark:border-white/10 dark:bg-[rgba(30,41,59,0.7)] dark:text-zinc-100 dark:hover:bg-[rgba(51,65,85,0.86)]">
                   Back
                 </Button>
-                <Button type="button" onClick={() => setStep(4)} className="rounded-xl font-black uppercase tracking-wide">
+                <Button type="button" onClick={() => setStep(4)} className="rounded-xl bg-emerald-600 font-black uppercase tracking-wide text-white hover:bg-emerald-500 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300">
                   Continue
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>

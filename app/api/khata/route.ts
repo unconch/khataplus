@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
 import { addKhataTransaction, deleteKhataTransaction, updateKhataTransaction } from "@/lib/data/customers"
-import { getCurrentOrgId } from "@/lib/data/auth"
+import { requireOrgContext } from "@/lib/server/org-context"
 
 export async function POST(request: Request) {
     try {
-        const sessionRes = await getSession()
-        const userId = sessionRes?.userId
+        const ctx = await requireOrgContext()
+        if (ctx instanceof NextResponse) return ctx
 
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { customerId, type, amount, note, sale_id, orgId: providedOrgId } = await request.json()
+        const { customerId, type, amount, note, sale_id } = await request.json()
         const numericAmount = Number(amount)
 
         if (!customerId || !type || !amount) {
@@ -25,15 +20,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 })
         }
 
-        const orgId = providedOrgId || await getCurrentOrgId(userId)
-
-        if (!orgId) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 400 })
-        }
-
         const transaction = await addKhataTransaction(
             { customer_id: customerId, type, amount: numericAmount, note, sale_id },
-            orgId
+            ctx.orgId
         )
 
         return NextResponse.json(transaction)
@@ -45,21 +34,12 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
     try {
-        const sessionRes = await getSession()
-        const userId = sessionRes?.userId
+        const ctx = await requireOrgContext()
+        if (ctx instanceof NextResponse) return ctx
 
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { txId, amount, note, type, orgId: providedOrgId } = await request.json()
+        const { txId, amount, note, type } = await request.json()
         if (!txId) {
             return NextResponse.json({ error: "Missing txId" }, { status: 400 })
-        }
-
-        const orgId = providedOrgId || await getCurrentOrgId(userId)
-        if (!orgId) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 400 })
         }
 
         const updates: { amount?: number; note?: string; type?: "credit" | "payment" } = {}
@@ -80,7 +60,7 @@ export async function PATCH(request: Request) {
             updates.type = type
         }
 
-        const transaction = await updateKhataTransaction(txId, updates, orgId)
+        const transaction = await updateKhataTransaction(txId, updates, ctx.orgId)
         return NextResponse.json(transaction)
     } catch (e: any) {
         console.error("Update khata tx error:", e)
@@ -90,27 +70,17 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
-        const sessionRes = await getSession()
-        const userId = sessionRes?.userId
-
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
+        const ctx = await requireOrgContext()
+        if (ctx instanceof NextResponse) return ctx
 
         const { searchParams } = new URL(request.url)
         const txId = searchParams.get("txId")
-        const providedOrgId = searchParams.get("orgId")
 
         if (!txId) {
             return NextResponse.json({ error: "Missing txId" }, { status: 400 })
         }
 
-        const orgId = providedOrgId || await getCurrentOrgId(userId)
-        if (!orgId) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 400 })
-        }
-
-        await deleteKhataTransaction(txId, orgId)
+        await deleteKhataTransaction(txId, ctx.orgId)
         return NextResponse.json({ success: true })
     } catch (e: any) {
         console.error("Delete khata tx error:", e)

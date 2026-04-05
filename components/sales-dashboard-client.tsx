@@ -29,20 +29,14 @@ export function SalesDashboardClient({
   orgId,
   autoOpen,
 }: SalesDashboardClientProps) {
-  const [isMounted, setIsMounted] = useState(false)
   const [showBillArchive, setShowBillArchive] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 100)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
     if (!autoOpen) return
-    const t = setTimeout(() => {
+    const frameId = window.requestAnimationFrame(() => {
       document.getElementById("sales-terminal")?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }, 120)
-    return () => clearTimeout(t)
+    })
+    return () => window.cancelAnimationFrame(frameId)
   }, [autoOpen])
 
   const todayStr = new Date().toISOString().split("T")[0]
@@ -51,8 +45,6 @@ export function SalesDashboardClient({
     () => allSales.filter((s) => (s.sale_date || "").toString().split("T")[0] === todayStr),
     [allSales, todayStr]
   )
-
-  if (!isMounted) return null
 
   return (
     <div className="min-h-full space-y-6 pb-6 bg-background/50">
@@ -71,7 +63,7 @@ export function SalesDashboardClient({
               variant="outline"
               size="sm"
               onClick={() => setShowBillArchive((v) => !v)}
-              className="h-10 px-4 rounded-xl border-zinc-300/70 bg-white text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm"
+              className="h-10 rounded-xl border-zinc-300/70 bg-white px-4 text-[10px] font-black uppercase tracking-widest text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 dark:border-white/10 dark:bg-[rgba(30,41,59,0.72)] dark:text-zinc-100 dark:hover:bg-[rgba(51,65,85,0.86)]"
             >
               <Receipt className="mr-2 h-4 w-4" />
               {showBillArchive ? "Sales Terminal" : "Bill Archive"}
@@ -82,8 +74,8 @@ export function SalesDashboardClient({
       </div>
 
       {settings.gst_enabled && showBillArchive ? (
-        <section className="rounded-[2rem] border border-zinc-100 dark:border-white/5 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm shadow-sm overflow-hidden">
-          <div className="px-5 sm:px-6 py-2.5 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/80 dark:bg-zinc-900/40">
+        <section className="overflow-hidden rounded-[2rem] border border-zinc-100 bg-white/70 shadow-sm backdrop-blur-sm dark:border-white/8 dark:bg-[rgba(30,41,59,0.52)]">
+          <div className="border-b border-zinc-100 bg-zinc-50/80 px-5 py-2.5 dark:border-white/8 dark:bg-[rgba(15,23,42,0.52)] sm:px-6">
             <h3 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-900 dark:text-zinc-100">Bill Archive</h3>
             <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mt-0.5">Invoice history and records</p>
           </div>
@@ -92,11 +84,7 @@ export function SalesDashboardClient({
           </div>
         </section>
       ) : (
-        <section id="sales-terminal" className="rounded-[2rem] border border-zinc-100 dark:border-white/5 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm shadow-sm overflow-hidden">
-          <div className="px-5 sm:px-6 py-2.5 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/80 dark:bg-zinc-900/40">
-            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-900 dark:text-zinc-100">Sales Terminal</h3>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mt-0.5">Fast checkout workspace</p>
-          </div>
+        <section id="sales-terminal" className="overflow-visible">
           <SalesForm
             inventory={inventory}
             userId={userId}

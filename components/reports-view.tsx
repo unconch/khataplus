@@ -122,18 +122,18 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                 <StatCard icon={TrendingUp} label="Net Profit" value={INR.format(summary.profit)} />
             </div>
 
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-white/10 shadow-sm">
+            <div className="flex flex-col items-stretch justify-between gap-4 rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[rgba(30,41,59,0.72)] lg:flex-row lg:items-center">
                 <div className="relative w-full lg:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                     <Input
                         placeholder="Search by date or amount..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-white/10 rounded-xl font-semibold text-sm"
+                        className="h-11 rounded-xl border-zinc-100 bg-zinc-50 pl-10 font-semibold text-sm dark:border-white/10 dark:bg-[rgba(15,23,42,0.82)]"
                     />
                 </div>
 
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl w-full lg:w-auto">
+                <div className="flex w-full rounded-xl bg-zinc-100 p-1 dark:bg-[rgba(15,23,42,0.9)] lg:w-auto">
                     {[
                         { key: "today", label: "Today" },
                         { key: "week", label: "7 Days" },
@@ -145,7 +145,7 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                             onClick={() => setRange(item.key as ReportRange)}
                             className={
                                 "flex-1 lg:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all " +
-                                (range === item.key ? "bg-white dark:bg-zinc-900 text-[#2563eb] shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200")
+                                (range === item.key ? "bg-white text-[#2563eb] shadow-sm dark:bg-[rgba(30,41,59,0.92)] dark:text-sky-300" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200")
                             }
                         >
                             {item.label}
@@ -154,16 +154,16 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-white/10 shadow-sm overflow-hidden overflow-x-auto">
+            <div className="overflow-hidden overflow-x-auto rounded-2xl border border-zinc-100 bg-white shadow-sm dark:border-white/10 dark:bg-[rgba(15,23,42,0.88)]">
                 <table className="w-full min-w-[900px]">
                     <thead>
-                        <tr className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-100 dark:border-white/10">
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Date</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Gross Sales</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Cash</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Online</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Expenses</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Net Profit</th>
+                        <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-white/10 dark:bg-[rgba(30,41,59,0.78)]">
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Date</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Gross Sales</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Cash</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Online</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Expenses</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Net Profit</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-white/10">
@@ -183,7 +183,7 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                             filteredReports.map((report) => {
                                 const profit = (report.total_sale_gross || 0) - (report.total_cost || 0) - (report.expenses || 0)
                                 return (
-                                    <tr key={report.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/60 transition-colors">
+                                    <tr key={report.id} className="transition-colors hover:bg-zinc-50/60 dark:hover:bg-[rgba(30,41,59,0.4)]">
                                         <td className="px-6 py-4 text-left">
                                             <div className="text-sm font-bold text-zinc-950 dark:text-zinc-100">
                                                 {format(parseISO(report.report_date), "dd MMM yyyy")}
@@ -215,8 +215,8 @@ function StatCard({
     value: string
 }) {
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-white/10 p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500 mb-3">
+        <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[rgba(30,41,59,0.72)]">
+            <div className="mb-3 flex items-center gap-2 text-zinc-400 dark:text-zinc-300">
                 <Icon className="h-4 w-4" />
                 <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
             </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
+import { useLocale } from "@/components/locale-provider"
 import { Navbar } from "./Navbar"
 
 interface HeroSectionProps {
@@ -11,6 +12,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionProps) {
+    const { dictionary } = useLocale()
     const signUpUrl = "/auth/sign-up"
     const demoDashboardUrl = "/demo"
     const primaryHref = isAuthenticated ? (orgSlug ? `/${orgSlug}/dashboard` : "/dashboard") : signUpUrl
@@ -39,7 +41,7 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
                         </h1>
 
                         <p className="text-zinc-600 text-lg md:text-2xl max-w-2xl mx-auto mb-16 font-medium leading-relaxed tracking-tight">
-                            Smart ledger management, <span className="text-zinc-950 font-bold">automated GST</span>, real-time inventory, and <span className="text-emerald-700">Credit Intelligence</span>.
+                            {dictionary.hero.tagline}
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
@@ -47,7 +49,7 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
                                 <div className="relative group">
                                     <div className="absolute -inset-1 bg-gradient-to-r from-emerald-300 to-cyan-300 rounded-full blur opacity-40 group-hover:opacity-80 transition duration-1000 group-hover:duration-200" />
                                     <button className="relative w-full sm:w-auto h-18 px-12 bg-zinc-950 text-white rounded-full text-xl font-black shadow-[0_18px_35px_-22px_rgba(15,23,42,0.45)] flex items-center justify-center gap-3 uppercase tracking-tighter hover:scale-[1.02] transition-all active:scale-95">
-                                        {isAuthenticated ? "Go to Dashboard" : "Sign Up"}
+                                        {isAuthenticated ? dictionary.hero.goToDashboard : dictionary.hero.signUp}
                                         <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
@@ -55,7 +57,7 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
 
                             <Link href={demoDashboardUrl} className="w-full sm:w-auto mt-4 px-4">
                                 <button className="w-full sm:w-auto h-18 px-10 bg-white/88 backdrop-blur-md text-zinc-950 text-xl border border-white/80 hover:bg-white rounded-full transition-all font-black uppercase tracking-tighter hover:border-zinc-200 shadow-[0_18px_35px_-24px_rgba(15,23,42,0.22)]">
-                                    Instant Demo
+                                    {dictionary.hero.instantDemo}
                                 </button>
                             </Link>
                         </div>

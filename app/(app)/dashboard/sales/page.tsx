@@ -1,8 +1,9 @@
 import type { InventoryItem, Sale } from "@/lib/types"
 import { SalesDashboardClient } from "@/components/sales-dashboard-client"
 import { Suspense } from "react"
-import { Loader2 } from "lucide-react"
+import { SalesPageSkeleton } from "@/components/skeletons"
 import { redirect } from "next/navigation"
+import { resolvePageOrgContext } from "@/lib/server/org-context"
 
 export default async function SalesPage(props: { searchParams: Promise<{ action?: string }> }) {
   const searchParams = await props.searchParams
@@ -10,11 +11,7 @@ export default async function SalesPage(props: { searchParams: Promise<{ action?
 
   return (
     <div className="min-h-full space-y-10 pb-20 bg-background/50">
-      <Suspense fallback={
-        <div className="h-[600px] w-full flex items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-zinc-300" />
-        </div>
-      }>
+      <Suspense fallback={<SalesPageSkeleton />}>
         <SalesPageContent autoOpen={shouldOpenNewSale} />
       </Suspense>
     </div>
@@ -22,7 +19,7 @@ export default async function SalesPage(props: { searchParams: Promise<{ action?
 }
 
 async function SalesPageContent({ autoOpen }: { autoOpen: boolean }) {
-  const { getCurrentUser, getCurrentOrgId } = await import("@/lib/data/auth")
+  const { getCurrentUser } = await import("@/lib/data/auth")
   const { getSales } = await import("@/lib/data/sales")
   const { getInventory } = await import("@/lib/data/inventory")
   const { getSystemSettings, getOrganization } = await import("@/lib/data/organizations")
@@ -34,9 +31,8 @@ async function SalesPageContent({ autoOpen }: { autoOpen: boolean }) {
     return null
   }
 
-  const { userId, isGuest } = user
-  const orgId = isGuest ? "demo-org" : await getCurrentOrgId(userId)
-  if (!orgId) return null
+  const { userId } = user
+  const { orgId } = await resolvePageOrgContext()
 
   const [allSales, inventory, settings, org, reports] = await Promise.all([
     getSales(orgId, { limit: 300 }),

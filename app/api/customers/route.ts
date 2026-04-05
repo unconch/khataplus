@@ -1,35 +1,21 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/session"
 import { addCustomer } from "@/lib/data/customers"
-import { getCurrentOrgId } from "@/lib/data/auth"
+import { requireOrgContext } from "@/lib/server/org-context"
 
 export async function POST(request: Request) {
-    try {
-        const sessionRes = await getSession()
-        const userId = sessionRes?.userId
+  try {
+    const ctx = await requireOrgContext()
+    if (ctx instanceof NextResponse) return ctx
 
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { name, phone, address, orgId: providedOrgId } = await request.json()
-
-        if (!name || !phone) {
-            return NextResponse.json({ error: "Name and phone are required" }, { status: 400 })
-        }
-
-        // Verify user belongs to org if orgId is provided, otherwise get their primary org
-        const orgId = providedOrgId || await getCurrentOrgId(userId)
-
-        if (!orgId) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 400 })
-        }
-
-        const customer = await addCustomer({ name, phone, address }, orgId)
-
-        return NextResponse.json(customer)
-    } catch (e: any) {
-        console.error("Add customer error:", e)
-        return NextResponse.json({ error: e.message || "Failed to add customer" }, { status: 500 })
+    const { name, phone, address } = await request.json()
+    if (!name || !phone) {
+      return NextResponse.json({ error: "Name and phone are required" }, { status: 400 })
     }
+
+    const customer = await addCustomer({ name, phone, address }, ctx.orgId)
+    return NextResponse.json(customer)
+  } catch (e: any) {
+    console.error("Add customer error:", e)
+    return NextResponse.json({ error: e.message || "Failed to add customer" }, { status: 500 })
+  }
 }

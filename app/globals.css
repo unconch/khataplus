@@ -41,38 +41,38 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.19 0.01 260);
+  --foreground: oklch(0.965 0.01 260);
+  --card: oklch(0.235 0.012 260);
+  --card-foreground: oklch(0.965 0.01 260);
+  --popover: oklch(0.225 0.012 260);
+  --popover-foreground: oklch(0.965 0.01 260);
+  --primary: oklch(0.72 0.16 160);
+  --primary-foreground: oklch(0.16 0.01 260);
+  --secondary: oklch(0.285 0.014 260);
+  --secondary-foreground: oklch(0.94 0.01 260);
+  --muted: oklch(0.27 0.012 260);
+  --muted-foreground: oklch(0.76 0.012 260);
+  --accent: oklch(0.31 0.018 260);
+  --accent-foreground: oklch(0.965 0.01 260);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --border: oklch(0.33 0.014 260);
+  --input: oklch(0.31 0.012 260);
+  --ring: oklch(0.62 0.09 185);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar: oklch(0.215 0.012 260);
+  --sidebar-foreground: oklch(0.95 0.01 260);
+  --sidebar-primary: oklch(0.72 0.16 160);
+  --sidebar-primary-foreground: oklch(0.16 0.01 260);
+  --sidebar-accent: oklch(0.29 0.014 260);
+  --sidebar-accent-foreground: oklch(0.95 0.01 260);
+  --sidebar-border: oklch(0.31 0.014 260);
+  --sidebar-ring: oklch(0.62 0.09 185);
 }
 
 @theme inline {
@@ -126,6 +126,15 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
     -webkit-touch-callout: none;
+    background-image:
+      radial-gradient(circle at top, color-mix(in oklab, var(--primary) 16%, transparent) 0%, transparent 34%),
+      radial-gradient(circle at bottom right, color-mix(in oklab, var(--chart-2) 14%, transparent) 0%, transparent 30%);
+    background-attachment: fixed;
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
   }
 
   /* Prevent text selection on nav items and buttons for better "app" feel */
@@ -775,6 +784,23 @@
     transform: none !important;
   }
 
+  html.static-motion .premium-glass,
+  html.static-motion .glass,
+  html.static-motion .glass-sharp,
+  html.static-motion .glass-panel,
+  html.static-motion .glass-sheet,
+  html.static-motion .glass-control,
+  html.static-motion .premium-glass-strong,
+  html.static-motion .liquid-glass {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  html.static-motion body {
+    background-attachment: scroll;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .greet-anim-fade,
     .greet-anim-slide-up,
@@ -863,6 +889,46 @@
     .orbital-blob {
       filter: none !important;
       animation: none !important;
+    }
+  }
+
+  @media (update: slow), (pointer: coarse), (hover: none) and (max-width: 1024px) {
+    body {
+      background-attachment: scroll;
+    }
+
+    .app-topbar,
+    .app-bottom-nav,
+    .app-sidebar-shell {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    .app-topbar {
+      background: color-mix(in srgb, var(--background) 96%, transparent) !important;
+    }
+
+    .app-bottom-nav {
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14) !important;
+    }
+
+    .app-bottom-nav-glow {
+      display: none;
+    }
+
+    .app-main-shell {
+      scroll-behavior: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .page-enter {
+      animation-duration: 120ms;
+    }
+  }
+
+  @media (pointer: coarse), (hover: none), (max-width: 1024px) {
+    body {
+      background-attachment: scroll;
     }
   }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react"
 
 type MotionPreference = "auto" | "on" | "off"
 
@@ -96,7 +96,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     return autoState
   }, [preference, autoState])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyHtmlClass(enableMotion)
   }, [enableMotion])
 
