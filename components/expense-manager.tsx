@@ -43,7 +43,7 @@ import type { Expense, ExpenseCategory } from "@/lib/types"
 
 const DEFAULT_CATEGORIES = ["Rent", "Electricity", "Staff Wages", "Tea & Snacks", "Maintenance", "Transport", "Internet", "Water", "Cleaning", "Other"]
 
-export function ExpenseManager({ userId }: { userId: string }) {
+export function ExpenseManager({ orgId }: { orgId: string }) {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -63,13 +63,13 @@ export function ExpenseManager({ userId }: { userId: string }) {
             const end = new Date()
             const start = new Date()
             start.setDate(start.getDate() - 30)
-            const data = await getExpenses(start.toISOString(), end.toISOString())
+            const data = await getExpenses(orgId, start.toISOString(), end.toISOString())
             setExpenses(data)
         } catch (error) {
             console.error(error)
             toast.error("Failed to load expenses")
         }
-    }, [])
+    }, [orgId])
 
     useEffect(() => {
         fetchExpenses()
@@ -90,7 +90,7 @@ export function ExpenseManager({ userId }: { userId: string }) {
                 amount: parseFloat(amount),
                 description: description,
                 expense_date: format(expenseDate, "yyyy-MM-dd"),
-            }, userId)
+            }, orgId)
 
             toast.success("Expense added")
             setIsDialogOpen(false)
@@ -112,7 +112,7 @@ export function ExpenseManager({ userId }: { userId: string }) {
             return;
         }
         try {
-            await deleteExpense(id, userId)
+            await deleteExpense(id, orgId)
             toast.success("Expense deleted")
             fetchExpenses()
         } catch (error) {
@@ -177,11 +177,11 @@ export function ExpenseManager({ userId }: { userId: string }) {
                                 <PlusIcon className="mr-2 h-4 w-4" /> Add Expense
                             </Button>
                         </DrawerTrigger>
-                        <DrawerContent>
-                            <DrawerHeaderComponent className="text-left">
+                        <DrawerContent className="max-h-[90dvh] overflow-hidden">
+                            <DrawerHeaderComponent className="shrink-0 text-left">
                                 <DrawerTitleComponent>Add New Expense</DrawerTitleComponent>
                             </DrawerHeaderComponent>
-                            <div className="px-4 pb-8">
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
                                 {renderForm()}
                             </div>
                         </DrawerContent>

@@ -11,10 +11,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import { Pencil, Loader2 } from "lucide-react"
 import type { InventoryItem } from "@/lib/types"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface EditStockDialogProps {
   items: InventoryItem[]
@@ -29,6 +37,7 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
   const [stock, setStock] = useState("")
   const [saving, setSaving] = useState(false)
   const router = useRouter()
+  const isDesktop = useMediaQuery("(min-width: 768px)")
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => a.name.localeCompare(b.name))
@@ -101,18 +110,15 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
     }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm transition-all active:scale-95 hover:bg-zinc-50 dark:border-white/10 dark:bg-[rgba(15,23,42,0.78)] dark:hover:bg-[rgba(30,41,59,0.9)]">
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="text-[11px] font-black uppercase tracking-widest">Edit Stock</span>
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="border-none bg-transparent p-0 shadow-2xl sm:max-w-[600px]">
-        <div className="relative space-y-6 overflow-hidden rounded-2xl border border-zinc-100 bg-white p-6 dark:border-white/10 dark:bg-[rgba(15,23,42,0.95)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
+  const triggerElement = trigger || (
+    <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm transition-all active:scale-95 hover:bg-zinc-50 dark:border-white/10 dark:bg-[rgba(15,23,42,0.78)] dark:hover:bg-[rgba(30,41,59,0.9)]">
+      <Pencil className="h-3.5 w-3.5" />
+      <span className="text-[11px] font-black uppercase tracking-widest">Edit Stock</span>
+    </Button>
+  )
+
+  const content = (
+    <div className="relative space-y-6 overflow-hidden rounded-2xl border border-zinc-100 bg-white p-6 dark:border-white/10 dark:bg-[rgba(15,23,42,0.95)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
 
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 opacity-30" />
 
@@ -208,7 +214,32 @@ export function EditStockDialog({ items, orgId, trigger }: EditStockDialogProps)
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+  )
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>{triggerElement}</DialogTrigger>
+        <DialogContent className="border-none bg-transparent p-0 shadow-2xl sm:max-w-[600px] max-h-[90dvh] overflow-hidden">
+          <div className="max-h-[90dvh] overflow-y-auto overscroll-contain">
+            {content}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={handleOpenChange}>
+      <DrawerTrigger asChild>{triggerElement}</DrawerTrigger>
+      <DrawerContent className="max-h-[92dvh] overflow-hidden border-none bg-white dark:bg-zinc-950">
+        <DrawerHeader className="shrink-0 text-left">
+          <DrawerTitle className="text-lg font-black uppercase tracking-tight">Adjust Stock</DrawerTitle>
+        </DrawerHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
+          {content}
+        </div>
+      </DrawerContent>
+    </Drawer>
   )
 }

@@ -25,9 +25,10 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 interface AddInventoryDialogProps {
     trigger?: React.ReactNode
     orgId: string
+    gstEnabled?: boolean
 }
 
-export function AddInventoryDialog({ trigger, orgId }: AddInventoryDialogProps) {
+export function AddInventoryDialog({ trigger, orgId, gstEnabled = true }: AddInventoryDialogProps) {
     const [open, setOpen] = React.useState(false)
     const isDesktop = useMediaQuery("(min-width: 768px)")
 
@@ -42,11 +43,11 @@ export function AddInventoryDialog({ trigger, orgId }: AddInventoryDialogProps) 
                         </Button>
                     )}
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] p-0 border-none bg-transparent shadow-2xl overflow-hidden">
+                <DialogContent className="sm:max-w-[600px] max-h-[90dvh] p-0 border-none bg-transparent shadow-2xl overflow-hidden">
                     <div className="bg-white dark:bg-zinc-950 rounded-2xl relative overflow-hidden border border-zinc-100 dark:border-white/5">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 opacity-30" />
 
-                        <div className="p-5 border-b border-zinc-100 dark:border-white/5">
+                        <div className="shrink-0 p-5 border-b border-zinc-100 dark:border-white/5">
                             <div className="flex items-center gap-2.5">
                                 <div className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
                                     <PlusIcon className="h-4 w-4 text-zinc-900 dark:text-zinc-50" />
@@ -59,8 +60,8 @@ export function AddInventoryDialog({ trigger, orgId }: AddInventoryDialogProps) 
                                 </div>
                             </div>
                         </div>
-                        <div className="p-5">
-                            <AddInventoryForm orgId={orgId} />
+                        <div className="max-h-[calc(90dvh-96px)] overflow-y-auto overscroll-contain p-5">
+                            <AddInventoryForm orgId={orgId} gstEnabled={gstEnabled} onSuccess={() => setOpen(false)} />
                         </div>
                     </div>
                 </DialogContent>
@@ -78,15 +79,15 @@ export function AddInventoryDialog({ trigger, orgId }: AddInventoryDialogProps) 
                     </Button>
                 )}
             </DrawerTrigger>
-            <DrawerContent className="max-h-[85vh]">
-                <DrawerHeader className="text-left py-4">
+            <DrawerContent className="max-h-[90dvh] overflow-hidden">
+                <DrawerHeader className="shrink-0 text-left py-4">
                     <DrawerTitle className="text-lg font-black uppercase tracking-tight">Register New SKU</DrawerTitle>
                     <DrawerDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                         Central Catalog Injection
                     </DrawerDescription>
                 </DrawerHeader>
-                <div className="px-4 pb-8 overflow-y-auto">
-                    <AddInventoryForm orgId={orgId} />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
+                    <AddInventoryForm orgId={orgId} gstEnabled={gstEnabled} onSuccess={() => setOpen(false)} />
                 </div>
             </DrawerContent>
         </Drawer>

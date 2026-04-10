@@ -143,6 +143,7 @@ async function InventoryContent() {
                     items={(inventory as InventoryItem[]) || []}
                     orgId={orgId}
                     canAdd={Boolean(canAdd)}
+                    gstEnabled={Boolean(settings?.gst_enabled)}
                 />
             </div>
         </div>

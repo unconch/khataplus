@@ -9,10 +9,19 @@ import {
     DialogTitle,
     DialogTrigger
 } from "@/components/ui/dialog"
+import {
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+} from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Upload, FileDown, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface ImportDialogProps {
     type: "inventory" | "customer" | "supplier" | "sales" | "expense"
@@ -25,6 +34,7 @@ export function ImportDialog({ type, orgId, trigger }: ImportDialogProps) {
     const [isUploading, setIsUploading] = useState(false)
     const [result, setResult] = useState<{ success: boolean; count: number } | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const isDesktop = useMediaQuery("(min-width: 768px)")
 
     const label =
         type === "inventory" ? "Inventory Items" :
@@ -97,18 +107,15 @@ export function ImportDialog({ type, orgId, trigger }: ImportDialogProps) {
         }
     }
 
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                {trigger || (
-                    <Button variant="outline" className="gap-2 rounded-xl border-zinc-200 font-bold text-xs hover:bg-zinc-50 transition-all">
-                        <Upload className="h-4 w-4" />
-                        Bulk Import
-                    </Button>
-                )}
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px] p-0 border-none bg-transparent shadow-2xl">
-                <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 space-y-6 relative overflow-hidden border border-zinc-100 dark:border-white/5">
+    const triggerElement = trigger || (
+        <Button variant="outline" className="gap-2 rounded-xl border-zinc-200 font-bold text-xs hover:bg-zinc-50 transition-all">
+            <Upload className="h-4 w-4" />
+            Bulk Import
+        </Button>
+    )
+
+    const content = (
+        <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 space-y-6 relative overflow-hidden border border-zinc-100 dark:border-white/5">
 
                     {/* Decorative Background Elements */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 opacity-30" />
@@ -230,8 +237,36 @@ export function ImportDialog({ type, orgId, trigger }: ImportDialogProps) {
                             </p>
                         </div>
                     </div>
+        </div>
+    )
+
+    if (isDesktop) {
+        return (
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogTrigger asChild>{triggerElement}</DialogTrigger>
+                <DialogContent className="sm:max-w-[480px] max-h-[90dvh] overflow-hidden p-0 border-none bg-transparent shadow-2xl">
+                    <div className="max-h-[90dvh] overflow-y-auto overscroll-contain">
+                        {content}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        )
+    }
+
+    return (
+        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+            <DrawerTrigger asChild>{triggerElement}</DrawerTrigger>
+            <DrawerContent className="max-h-[92dvh] overflow-hidden">
+                <DrawerHeader className="shrink-0 text-left">
+                    <DrawerTitle className="text-lg font-black uppercase tracking-tight">Import {label}</DrawerTitle>
+                    <DrawerDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                        Data injection protocol
+                    </DrawerDescription>
+                </DrawerHeader>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
+                    {content}
                 </div>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     )
 }

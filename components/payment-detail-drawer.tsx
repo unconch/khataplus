@@ -79,7 +79,7 @@ export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: Pay
     // IMPORTANT: Always render the Drawer root. Do not return null.
     return (
         <Drawer open={isOpen} onOpenChange={onOpenChange}>
-            <DrawerContent className="max-h-[90vh] glass-card bg-zinc-950/95 border-t border-white/10 text-foreground">
+            <DrawerContent className="max-h-[90dvh] overflow-hidden glass-card bg-zinc-950/95 border-t border-white/10 text-foreground">
                 <VisuallyHidden>
                     <DrawerTitle>{type ? `${type} Collection Details` : "Collection Details"}</DrawerTitle>
                     <DrawerDescription>Detailed breakdown of daily and weekly collections.</DrawerDescription>
@@ -102,7 +102,7 @@ export function PaymentDetailDrawer({ isOpen, onOpenChange, type, reports }: Pay
                             </div>
                         </DrawerHeader>
 
-                        <div className="p-6 overflow-y-auto space-y-8 pb-20">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-8 pb-20">
 
                             {/* Weekly Chart */}
                             <div className="space-y-4">

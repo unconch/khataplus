@@ -15,15 +15,17 @@ interface InventoryBrowserProps {
   items: InventoryItem[]
   orgId: string
   canAdd: boolean
+  gstEnabled?: boolean
 }
 
-export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps) {
+export function InventoryBrowser({ items, orgId, canAdd, gstEnabled = true }: InventoryBrowserProps) {
   const PAGE_SIZE = 20
   const { enableMotion } = useMotion()
   const [query, setQuery] = useState("")
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const previousItemCountRef = useRef(items.length)
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -48,7 +50,17 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
     setIsLoadingMore(false)
-  }, [query, items.length])
+  }, [query])
+
+  useEffect(() => {
+    const previousCount = previousItemCountRef.current
+    if (items.length > previousCount && !isSearching) {
+      setVisibleCount((current) => Math.max(current, Math.min(items.length, previousCount + PAGE_SIZE)))
+    } else if (items.length < previousCount && !isSearching) {
+      setVisibleCount((current) => Math.min(Math.max(PAGE_SIZE, current), items.length || PAGE_SIZE))
+    }
+    previousItemCountRef.current = items.length
+  }, [items.length, isSearching])
 
   useEffect(() => {
     if (!hasMore || !loadMoreRef.current || isLoadingMore) return
@@ -82,9 +94,9 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
 
   return (
     <div className="space-y-5 md:space-y-8">
-      <div className={`flex flex-col justify-between gap-4 border-b border-zinc-100 pb-4 md:gap-6 md:pb-6 dark:border-white/8 lg:flex-row lg:items-center ${enableMotion ? "page-enter" : ""}`}>
+      <div className={`flex flex-col justify-between gap-4 border-b border-zinc-100 pb-4 md:gap-6 md:pb-6 dark:border-zinc-800 lg:flex-row lg:items-center ${enableMotion ? "page-enter" : ""}`}>
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-100 text-zinc-900 dark:border-white/8 dark:bg-[rgba(30,41,59,0.72)] dark:text-zinc-100 md:h-12 md:w-12">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-100 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 md:h-12 md:w-12">
             <ListIcon className="h-5 w-5 md:h-6 md:w-6" />
           </div>
           <div className="space-y-0.5">
@@ -98,7 +110,7 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
             <SearchIcon className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-emerald-500 transition-colors" />
             <Input
               placeholder="Search inventory SKU or name..."
-              className="h-10 rounded-xl border-zinc-200 bg-zinc-50 pl-10 focus-visible:ring-1 focus-visible:ring-emerald-500/50 dark:border-white/8 dark:bg-[rgba(15,23,42,0.82)] md:h-11 md:pl-11"
+              className="h-10 rounded-xl border-zinc-200 bg-zinc-50 pl-10 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-1 focus-visible:ring-emerald-500/50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 md:h-11 md:pl-11"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -108,7 +120,7 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
               type="inventory"
               orgId={orgId}
               trigger={
-                <Button variant="outline" size="sm" className="h-10 rounded-xl border-zinc-200 px-3 text-[10px] font-bold uppercase tracking-wider transition-all hover-scale hover:bg-zinc-50 dark:border-white/8 dark:bg-[rgba(30,41,59,0.66)] dark:hover:bg-[rgba(51,65,85,0.86)] md:h-11 md:px-4 md:text-[11px]">
+                <Button variant="outline" size="sm" className="h-10 rounded-xl border-zinc-200 px-3 text-[10px] font-bold uppercase tracking-wider transition-all hover-scale hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 md:h-11 md:px-4 md:text-[11px]">
                   Import
                 </Button>
               }
@@ -119,13 +131,14 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
                   items={items}
                   orgId={orgId}
                   trigger={
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-zinc-200 px-3 text-[10px] font-bold uppercase tracking-wider transition-all hover-scale hover:bg-zinc-50 dark:border-white/8 dark:bg-[rgba(30,41,59,0.66)] dark:hover:bg-[rgba(51,65,85,0.86)] md:h-11 md:px-4 md:text-[11px]">
+                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-zinc-200 px-3 text-[10px] font-bold uppercase tracking-wider transition-all hover-scale hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 md:h-11 md:px-4 md:text-[11px]">
                       Adjust
                     </Button>
                   }
                 />
                 <AddInventoryDialog
                   orgId={orgId}
+                  gstEnabled={gstEnabled}
                   trigger={
                     <Button size="sm" className="h-10 md:h-11 px-4 md:px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400 text-[10px] md:text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/10 transition-all active:scale-95">
                       New SKU
@@ -144,8 +157,8 @@ export function InventoryBrowser({ items, orgId, canAdd }: InventoryBrowserProps
         <div ref={loadMoreRef} className="mx-auto w-full max-w-[980px] flex flex-col items-center gap-3 py-2">
           {isLoadingMore && (
             <div className="w-full space-y-3">
-              <div className="h-20 animate-pulse rounded-2xl border border-zinc-100 bg-zinc-50 dark:border-white/8 dark:bg-[rgba(30,41,59,0.5)]" />
-              <div className="h-20 animate-pulse rounded-2xl border border-zinc-100 bg-zinc-50 dark:border-white/8 dark:bg-[rgba(30,41,59,0.5)]" style={{ animationDelay: "120ms" }} />
+              <div className="h-20 animate-pulse rounded-2xl border border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900" />
+              <div className="h-20 animate-pulse rounded-2xl border border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900" style={{ animationDelay: "120ms" }} />
             </div>
           )}
           {hasMore && (

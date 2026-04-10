@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   CheckCircle2,
@@ -20,20 +19,32 @@ import {
   Target,
   Zap
 } from "lucide-react"
-import { addInventoryItem } from "@/lib/data/inventory"
 import { cn } from "@/lib/utils"
 
-export function AddInventoryForm({ orgId }: { orgId: string }) {
+interface AddInventoryFormProps {
+  orgId: string
+  gstEnabled?: boolean
+  onSuccess?: () => void
+}
+
+export function AddInventoryForm({ orgId, gstEnabled = true, onSuccess }: AddInventoryFormProps) {
   const [sku, setSku] = useState("")
   const [name, setName] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
   const [sellPrice, setSellPrice] = useState("")
-  const [gstPercentage, setGstPercentage] = useState("18")
+  const [gstPercentage, setGstPercentage] = useState(gstEnabled ? "18" : "0")
   const [stock, setStock] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    setGstPercentage((current) => {
+      if (!gstEnabled) return "0"
+      return current === "0" ? "18" : current
+    })
+  }, [gstEnabled])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,25 +52,37 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
     setError(null)
 
     try {
-      await addInventoryItem({
-        sku: sku.toUpperCase(),
-        name,
+      const payload = {
+        orgId,
+        sku: sku.toUpperCase().trim(),
+        name: name.trim(),
         buy_price: Number.parseFloat(buyPrice),
-        sell_price: sellPrice.trim() ? Number.parseFloat(sellPrice) : undefined,
-        gst_percentage: Number.parseFloat(gstPercentage),
-        stock: Number.parseInt(stock),
-      }, orgId)
+        sell_price: sellPrice.trim() ? Number.parseFloat(sellPrice) : null,
+        gst_percentage: gstEnabled ? Number.parseFloat(gstPercentage || "0") : 0,
+        stock: Number.parseInt(stock, 10),
+      }
+
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || "Unable to add item. Please try again.")
+      }
 
       setSuccess(true)
       setSku("")
       setName("")
       setBuyPrice("")
       setSellPrice("")
-      setGstPercentage("18")
+      setGstPercentage(gstEnabled ? "18" : "0")
       setStock("")
 
       setTimeout(() => {
         setSuccess(false)
+        onSuccess?.()
         router.refresh()
       }, 2000)
     } catch (err: any) {
@@ -89,7 +112,7 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-6 animate-slide-up">
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-6 animate-slide-up pb-2">
       {/* 1. Identification */}
       <section>
         <div className={sectionHeaderClasses}>
@@ -111,7 +134,7 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className={inputContainerClasses}>
               <Label htmlFor="sku" className={labelClasses}>Unique SKU Code</Label>
               <div className="flex items-center gap-3">
@@ -153,7 +176,7 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
           <Target className="h-3 w-3 text-primary/60" />
           <h3 className={sectionTitleClasses}>Commercial Valuations</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={cn("grid gap-4", gstEnabled ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
           <div className={inputContainerClasses}>
             <Label htmlFor="buyPrice" className={labelClasses}>Inventory Cost (Per Unit)</Label>
             <div className="flex items-center gap-3">
@@ -189,25 +212,41 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
               />
             </div>
           </div>
-          <div className={inputContainerClasses}>
-            <Label htmlFor="gst" className={labelClasses}>Standard GST Rate (%)</Label>
-            <div className="flex items-center gap-3">
-              <Percent className="h-4 w-4 text-primary/30" />
-              <input
-                id="gst"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                max="100"
-                value={gstPercentage}
-                onChange={(e) => setGstPercentage(e.target.value)}
-                placeholder="18"
-                required
-                className={cn(inputClasses, "w-full")}
-              />
+          {gstEnabled ? (
+            <div className={inputContainerClasses}>
+              <Label htmlFor="gst" className={labelClasses}>Standard GST Rate (%)</Label>
+              <div className="flex items-center gap-3">
+                <Percent className="h-4 w-4 text-primary/30" />
+                <input
+                  id="gst"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={gstPercentage}
+                  onChange={(e) => setGstPercentage(e.target.value)}
+                  placeholder="18"
+                  required
+                  className={cn(inputClasses, "w-full")}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/30">
+              <div className="flex items-start gap-3">
+                <Zap className="mt-0.5 h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-200">
+                    GST Engine Off
+                  </p>
+                  <p className="text-sm font-medium text-emerald-900/80 dark:text-emerald-100/85">
+                    This SKU will be created with 0% GST until GST is enabled for this organization.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -232,9 +271,9 @@ export function AddInventoryForm({ orgId }: { orgId: string }) {
       </div>
 
 
-      <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground/50 dark:text-zinc-500">
+      <div className="flex flex-wrap items-center justify-center gap-2 py-4 text-center text-muted-foreground/50 dark:text-zinc-500">
         <Zap className="h-3 w-3" />
-        <span className="text-[8px] font-black uppercase tracking-[0.3em]">Institutional Grade Inventory Control</span>
+        <span className="text-[8px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em]">Institutional Grade Inventory Control</span>
       </div>
     </form>
   )

@@ -150,7 +150,7 @@ export function ReportsClient({ initialReports, settings, profile, userId, orgId
                         </div>
                         <div className="max-h-[80vh] overflow-y-auto px-8 py-6 custom-scrollbar">
                             <DailyReportForm
-                                profileId={userId}
+                                orgId={orgId}
                                 onSuccess={() => {
                                     setIsFormOpen(false)
                                     // Soft refresh (we could fetch reports again here or just rely on router refresh from parent)
@@ -165,7 +165,7 @@ export function ReportsClient({ initialReports, settings, profile, userId, orgId
             {/* Expense Manager Section */}
             {!isRestrictedStaff && (
                 <div className="animate-slide-up stagger-2">
-                    <ExpenseManager userId={userId} />
+                    <ExpenseManager orgId={orgId} />
                 </div>
             )}
 
@@ -428,7 +428,7 @@ export function ReportsClient({ initialReports, settings, profile, userId, orgId
             </div>
 
             <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                <DrawerContent className="max-h-[85vh] border-white/10 glass-card bg-zinc-950/90 text-foreground">
+                <DrawerContent className="max-h-[90dvh] overflow-hidden border-white/10 glass-card bg-zinc-950/90 text-foreground">
                     <DrawerHeader className="border-b border-white/5 pb-6">
                         <div className="flex items-center justify-between mb-2">
                             <DrawerTitle className="text-2xl font-black tracking-tighter">
@@ -454,7 +454,7 @@ export function ReportsClient({ initialReports, settings, profile, userId, orgId
                         </div>
                     </DrawerHeader>
 
-                    <div className="p-6 overflow-y-auto min-h-[40vh]">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
                         {loadingSales ? (
                             <div className="flex flex-col items-center justify-center py-20 gap-4">
                                 <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />

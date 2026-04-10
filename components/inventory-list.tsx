@@ -113,15 +113,29 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
   return (
     <div className="space-y-3">
       {visibleItems.map((item, idx) => {
-        const isLowStock = item.stock > 0 && item.stock < 10
+        const stockThreshold = Math.max(1, Number(item.min_stock || 5))
         const isOutOfStock = item.stock <= 0
+        const isLowStock = !isOutOfStock && item.stock <= stockThreshold
+        const stockRatio = isOutOfStock
+          ? 0
+          : Math.min(100, Math.max(8, Math.round((item.stock / stockThreshold) * 100)))
+        const availabilityToneClass = isOutOfStock
+          ? "text-rose-600 dark:text-rose-400"
+          : isLowStock
+            ? "text-amber-600 dark:text-amber-400"
+            : "text-emerald-600 dark:text-emerald-400"
+        const stockBarClass = isOutOfStock
+          ? "bg-[repeating-linear-gradient(135deg,rgba(244,63,94,0.95)_0px,rgba(244,63,94,0.95)_8px,rgba(251,113,133,0.8)_8px,rgba(251,113,133,0.8)_16px)]"
+          : isLowStock
+            ? "bg-[linear-gradient(90deg,rgba(245,158,11,0.95),rgba(251,191,36,0.85))]"
+            : "bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(52,211,153,0.82))]"
         const displayName = deriveDisplayName(item, idx)
 
         return (
           <div
             key={item.id}
             className={cn(
-              "group flex flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 transition-all duration-300 hover:bg-white hover:border-zinc-200 dark:border-white/8 dark:bg-[rgba(15,23,42,0.66)] dark:hover:border-white/12 dark:hover:bg-[rgba(30,41,59,0.78)] sm:flex-row",
+              "group flex flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 transition-all duration-300 hover:bg-white hover:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] dark:hover:border-zinc-700 dark:hover:bg-zinc-900 sm:flex-row",
               shouldAnimateRows && "animate-in fade-in slide-up"
             )}
             style={{
@@ -130,18 +144,18 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
               ...(shouldAnimateRows ? { animationDelay: `${Math.min(idx, 8) * 35}ms` } : {}),
             }}
           >
-              <div className="flex w-full items-center gap-4 sm:w-auto">
+              <div className="flex w-full min-w-0 items-center gap-4 sm:w-auto">
               <div className={cn(
                 "h-12 w-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm",
-                isOutOfStock ? "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" :
-                  isLowStock ? "bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" :
-                    "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                isOutOfStock ? "bg-rose-100 text-rose-600 dark:bg-rose-950/70 dark:text-rose-300 dark:ring-1 dark:ring-rose-500/20" :
+                  isLowStock ? "bg-amber-100 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300 dark:ring-1 dark:ring-amber-500/20" :
+                    "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/20"
               )}>
                 <Package size={20} strokeWidth={2.5} />
               </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold truncate group-hover:text-emerald-500 transition-colors uppercase tracking-tight">
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold truncate text-zinc-900 transition-colors group-hover:text-emerald-600 dark:text-zinc-100 dark:group-hover:text-emerald-300 uppercase tracking-tight">
                     {displayName}
                   </p>
                   {isOutOfStock && (
@@ -151,7 +165,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                     <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest">Low Stock</span>
                   )}
                 </div>
-                <p className="text-[10px] font-medium uppercase tracking-widest leading-none text-muted-foreground dark:text-zinc-400">
+                <p className="truncate text-[10px] font-medium uppercase tracking-widest leading-none text-muted-foreground dark:text-zinc-500">
                   {item.sku || 'N/A SKU'} • {item.hsn_code ? `HSN ${item.hsn_code}` : 'NO HSN'}
                 </p>
               </div>
@@ -165,13 +179,24 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                 </div>
               </div>
 
-              <div className="min-w-[100px] border-zinc-100 text-right dark:border-white/8 sm:border-x sm:px-6">
+              <div className="min-w-[100px] border-zinc-100 text-right dark:border-zinc-800 sm:border-x sm:px-6">
                 <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] leading-none text-muted-foreground/60 dark:text-zinc-500">Availability</p>
-                <p className={cn(
-                  "text-sm font-bold tracking-tight",
-                  isOutOfStock ? "text-rose-600 dark:text-rose-400" : isLowStock ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
-                )}>
+                <p className={cn("text-sm font-bold tracking-tight", availabilityToneClass)}>
                   {item.stock} <span className="text-[10px] uppercase opacity-50 dark:opacity-70">Units</span>
+                </p>
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <div className="h-2.5 w-20 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-zinc-800">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500", stockBarClass)}
+                      style={{ width: `${stockRatio}%` }}
+                    />
+                  </div>
+                  <span className={cn("text-[9px] font-black uppercase tracking-widest", availabilityToneClass)}>
+                    {isOutOfStock ? "No Stock" : isLowStock ? "Low" : "Healthy"}
+                  </span>
+                </div>
+                <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/45 dark:text-zinc-600">
+                  Alert at {stockThreshold}
                 </p>
               </div>
 
@@ -180,7 +205,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                   type="button"
                   onClick={() => archiveItem(item.id, displayName)}
                   disabled={archivingId === item.id}
-                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 disabled:opacity-50 dark:border-white/10 dark:bg-[rgba(30,41,59,0.7)] dark:text-zinc-100 dark:hover:border-white/20"
+                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <Archive size={14} />
@@ -189,7 +214,7 @@ export function InventoryList({ items, orgId }: InventoryListProps) {
                 </button>
                 <Link
                   href={`${inventoryDetailBasePath}/${item.id}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0 dark:bg-[rgba(30,41,59,0.92)] dark:text-zinc-100 dark:shadow-[0_10px_24px_rgba(0,0,0,0.26)] dark:hover:bg-emerald-500 dark:hover:text-slate-950"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-lg transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 group-hover:translate-x-0 dark:bg-zinc-800 dark:text-zinc-100 dark:shadow-none dark:hover:bg-emerald-500 dark:hover:text-zinc-950"
                 >
                   <ArrowRight size={18} />
                 </Link>
