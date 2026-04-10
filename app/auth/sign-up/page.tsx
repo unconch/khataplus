@@ -3,6 +3,8 @@
 import { FormEvent, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useLocale } from "@/components/locale-provider"
+import { getLocaleCopy } from "@/lib/locale-copy"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -11,6 +13,8 @@ import { AlertCircle, ArrowRight, Loader2, Mail, UserRound } from "lucide-react"
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { locale } = useLocale()
+  const copy = getLocaleCopy(locale)
 
   const next = useMemo(() => {
     const raw = searchParams.get("next")
@@ -45,7 +49,7 @@ export default function SignUpPage() {
         }),
       })
       const data = await res.json().catch(() => ({} as any))
-      if (!res.ok) throw new Error(data?.error || "Registration failed")
+      if (!res.ok) throw new Error(data?.error || copy.signUp.registrationFailed)
       if (data?.phase === "verify") {
         setPhase("verify")
         setVerifyLoginId(email.trim().toLowerCase())
@@ -70,7 +74,7 @@ export default function SignUpPage() {
       router.replace(target)
       router.refresh()
     } catch (err: any) {
-      setError(err?.message || "Could not create account.")
+      setError(err?.message || copy.signUp.couldNotCreateAccount)
     } finally {
       setLoading(false)
     }
@@ -85,10 +89,10 @@ export default function SignUpPage() {
             <span className="text-4xl font-black italic">KhataPlus</span>
           </div>
           <div>
-            <h2 className="text-6xl leading-[1.02] font-semibold tracking-tight">Create your workspace.</h2>
-            <p className="mt-5 text-3xl text-zinc-300">Verify once, land in your dashboard.</p>
+            <h2 className="text-6xl leading-[1.02] font-semibold tracking-tight">{copy.signUp.heroTitle}</h2>
+            <p className="mt-5 text-3xl text-zinc-300">{copy.signUp.heroSubtitle}</p>
           </div>
-          <p className="text-sm text-zinc-500">Accounts, teams, billing — set up in minutes.</p>
+          <p className="text-sm text-zinc-500">{copy.signUp.heroFootnote}</p>
         </section>
 
         <section className="relative flex items-center justify-center p-6 sm:p-8 lg:p-10 min-h-svh lg:min-h-0 bg-[radial-gradient(90%_80%_at_20%_15%,#5b50d7_0%,transparent_58%),radial-gradient(90%_85%_at_80%_85%,#5b50d7_0%,transparent_60%),linear-gradient(180deg,#f2efea,#f6eee8)]">
@@ -99,46 +103,46 @@ export default function SignUpPage() {
             <Logo size={24} className="text-emerald-500" />
             <div>
               <h1 className="text-xl font-black italic leading-none">KhataPlus</h1>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-500">Create Account</p>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-zinc-500">{copy.signUp.createAccount}</p>
             </div>
           </Link>
 
           <div className="w-full max-w-md rounded-3xl border border-zinc-300 bg-white/90 shadow-[0_20px_60px_rgba(16,24,40,0.20)] p-6 sm:p-8">
             <div className="mb-6">
-              <p className="text-center text-[11px] uppercase tracking-[0.2em] text-indigo-600 font-black">Create Account</p>
-              <h3 className="text-center text-5xl font-semibold tracking-tight mt-3">Sign up</h3>
-              <p className="text-center text-zinc-500 mt-2">Verify your email to continue</p>
+              <p className="text-center text-[11px] uppercase tracking-[0.2em] text-indigo-600 font-black">{copy.signUp.createAccount}</p>
+              <h3 className="text-center text-5xl font-semibold tracking-tight mt-3">{copy.signUp.signUp}</h3>
+              <p className="text-center text-zinc-500 mt-2">{copy.signUp.verifyEmailContinue}</p>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Full Name</label>
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{copy.signUp.fullName}</label>
                 <div className="relative">
                   <UserRound className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
-                    style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined}
-                    placeholder="Your name"
-                    disabled={phase === "verify"}
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
+                    placeholder={copy.signUp.yourName}
+                    readOnly={phase === "verify"}
+                    aria-readonly={phase === "verify"}
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Email</label>
+                <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{copy.signUp.email}</label>
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
-                    style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined}
-                    placeholder="you@shop.com"
-                    disabled={phase === "verify"}
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
+                    placeholder={copy.signUp.emailPlaceholder}
+                    readOnly={phase === "verify"}
+                    aria-readonly={phase === "verify"}
                     required
                   />
                 </div>
@@ -146,13 +150,12 @@ export default function SignUpPage() {
 
               {phase === "verify" && (
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Verification Code</label>
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{copy.signUp.verificationCode}</label>
                   <Input
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
-                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900"
-                    style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }}
-                    placeholder="Enter 6-digit code"
+                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl"
+                    placeholder={copy.signUp.verificationPlaceholder}
                     required
                   />
                 </div>
@@ -168,13 +171,13 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:!opacity-100 disabled:!bg-indigo-600 disabled:!text-white"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    {phase === "verify" ? "Verify & Create Account" : "Continue"}
+                    {phase === "verify" ? copy.signUp.verifyAndCreateAccount : copy.signUp.continue}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </>
                 )}
@@ -182,7 +185,7 @@ export default function SignUpPage() {
             </form>
 
             <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-500">{phase === "verify" ? "Wrong email?" : "Already have an account?"}</span>
+              <span className="text-zinc-500">{phase === "verify" ? copy.signUp.wrongEmail : copy.signUp.alreadyHaveAccount}</span>
               {phase === "verify" ? (
                 <button
                   type="button"
@@ -194,11 +197,11 @@ export default function SignUpPage() {
                     setVerifyLoginId("")
                   }}
                 >
-                  Change Email
+                  {copy.signUp.changeEmail}
                 </button>
               ) : (
                 <Link href={loginHref} className="text-emerald-600 font-black uppercase tracking-widest hover:text-emerald-700">
-                  Sign In
+                  {copy.signUp.signIn}
                 </Link>
               )}
             </div>

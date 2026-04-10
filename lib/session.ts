@@ -2,6 +2,7 @@ import "server-only"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { getCurrentUser } from "@/lib/data/auth"
+import { createSessionFingerprint } from "@/lib/session-identity"
 
 export interface SessionStepUpClaims {
   authTime: number | null
@@ -75,6 +76,7 @@ export async function getSession() {
     const cookieStore = await cookies()
     const currentUser = await getCurrentUser()
     if (currentUser?.authMethod === "passkey") {
+      const passkeySessionCookie = cookieStore.get("kp_passkey_session")?.value || null
       const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
       return {
         user: {
@@ -86,6 +88,7 @@ export async function getSession() {
         email: currentUser.email || undefined,
         role: null,
         isBiometricVerified,
+        sessionId: createSessionFingerprint(passkeySessionCookie),
         stepUp: { authTime: null, methods: ["passkey"], acr: null },
       }
     }
@@ -122,6 +125,7 @@ export async function getSession() {
       email: user.email || undefined,
       role,
       isBiometricVerified,
+      sessionId: createSessionFingerprint(accessToken),
       stepUp,
     }
   } catch (e) {

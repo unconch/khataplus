@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDailyReports } from "@/lib/data/reports"
 import { requirePlanFeature, PlanFeatureError } from "@/lib/plan-feature-guard"
+import { authorize } from "@/lib/security"
 
 export async function GET(req: NextRequest) {
     try {
@@ -12,9 +13,10 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Missing orgId" }, { status: 400 })
         }
 
+        await authorize("View Reports", undefined, orgId)
         await requirePlanFeature(orgId, "reports")
 
-        const reports = await getDailyReports(orgId, range, { strictWindow: true })
+        const reports = await getDailyReports(orgId, range)
         return NextResponse.json({ reports })
     } catch (error: any) {
         if (error instanceof PlanFeatureError) {

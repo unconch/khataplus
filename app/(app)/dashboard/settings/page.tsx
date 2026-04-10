@@ -7,11 +7,12 @@ import { Suspense } from "react"
 import { Loader2, Shield, User, Building2, Users, Zap, Cpu } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from "next/dynamic"
-import { getUserSessions } from "@/lib/session-governance"
+import { describeSession, getUserSessions, registerSession } from "@/lib/session-governance"
 import { cn } from "@/lib/utils"
-import { cookies } from "next/headers"
 import { BILLING_PLANS } from "@/lib/billing-plans"
 import { resolvePageOrgContext } from "@/lib/server/org-context"
+import { getSession } from "@/lib/session"
+import { headers } from "next/headers"
 
 const TeamManagement = dynamic(
     () => import("@/components/team-management").then((m) => m.TeamManagement),
@@ -24,6 +25,15 @@ const TeamManagement = dynamic(
 
 const SecuritySettings = dynamic(
     () => import("@/components/security-settings").then((m) => m.SecuritySettings),
+    {
+        loading: () => (
+            <div className="h-32 w-full rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20 motion-safe:animate-pulse" />
+        ),
+    }
+)
+
+const StoreManagement = dynamic(
+    () => import("@/components/store-management").then((m) => m.StoreManagement),
     {
         loading: () => (
             <div className="h-32 w-full rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20 motion-safe:animate-pulse" />
@@ -61,22 +71,27 @@ export default async function SettingsPage() {
 }
 
 async function SettingsContent({ orgId, userId }: { orgId: string, userId: string }) {
-    const cookieStore = await cookies()
-    const sessionJwt =
-        cookieStore.get("DS")?.value ||
-        cookieStore.get("__Secure-DS")?.value ||
-        ""
-    const currentSessionId = sessionJwt ? sessionJwt.slice(-24) : ""
+    const authSession = await getSession()
+    const currentSessionId = authSession?.sessionId || ""
+
+    if (currentSessionId) {
+        const headerStore = await headers()
+        const details = describeSession(headerStore)
+        await registerSession({
+            userId,
+            sessionId: currentSessionId,
+            userAgent: details.userAgent,
+            ipAddress: details.ipAddress,
+        })
+    }
 
     const [org, settings, profile, userOrgs, sessions] = await Promise.all([
         getOrganization(orgId),
         getSystemSettings(orgId),
         getProfile(userId),
         getUserOrganizations(userId),
-        getUserSessions(userId)
+        getUserSessions(userId, currentSessionId)
     ])
-
-    const mergedSessions = Array.from(new Set([...(currentSessionId ? [currentSessionId] : []), ...sessions]))
 
     const { isGuestMode } = await import("@/lib/data/auth")
     const isGuest = await isGuestMode()
@@ -228,6 +243,9 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                             viewMode="organization"
                             billingNudge={billingNudge}
                         />
+                        <div className="mt-8 border-t border-zinc-100 pt-8 dark:border-zinc-800">
+                            <StoreManagement orgId={orgId} />
+                        </div>
                     </SettingsCard>
                 </TabsContent>
 
@@ -249,13 +267,13 @@ async function SettingsContent({ orgId, userId }: { orgId: string, userId: strin
                         description="Administer biometric access and session streams."
                         color="zinc"
                     >
-                        <SecuritySettings
-                            profile={profile}
-                            isAdmin={isAdmin}
-                            orgId={orgId}
-                            initialSessions={mergedSessions}
-                            initialSettings={settings}
-                        />
+                                <SecuritySettings
+                                    profile={profile}
+                                    isAdmin={isAdmin}
+                                    initialSessions={sessions}
+                                    currentSessionId={currentSessionId}
+                                    initialSettings={settings}
+                                />
                     </SettingsCard>
                 </TabsContent>
             </div>

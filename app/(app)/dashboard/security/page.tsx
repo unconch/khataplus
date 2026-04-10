@@ -1,12 +1,14 @@
 import { getOrganization, getUserOrganizations } from "@/lib/data/organizations"
 import { getProfile } from "@/lib/data/profiles"
-import { getUserSessions } from "@/lib/session-governance"
+import { describeSession, getUserSessions, registerSession } from "@/lib/session-governance"
 import { redirect } from "next/navigation"
 import { SecuritySettings } from "@/components/security-settings"
 import { ChevronLeft, Cpu, Shield, Zap } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { resolvePageOrgContext } from "@/lib/server/org-context"
+import { getSession } from "@/lib/session"
+import { headers } from "next/headers"
 
 export default async function SecurityPage() {
     const { getCurrentUser } = await import("@/lib/data/auth")
@@ -69,11 +71,25 @@ export default async function SecurityPage() {
         )
     }
 
+    const authSession = await getSession()
+    const currentSessionId = authSession?.sessionId || ""
+
+    if (currentSessionId) {
+        const headerStore = await headers()
+        const details = describeSession(headerStore)
+        await registerSession({
+            userId,
+            sessionId: currentSessionId,
+            userAgent: details.userAgent,
+            ipAddress: details.ipAddress,
+        })
+    }
+
     const [org, profile, userOrgs, sessions] = await Promise.all([
         getOrganization(orgId),
         getProfile(userId),
         getUserOrganizations(userId),
-        getUserSessions(userId),
+        getUserSessions(userId, currentSessionId),
     ])
 
     if (!org || !profile) {
@@ -113,8 +129,8 @@ export default async function SecurityPage() {
             <SecuritySettings
                 profile={profile}
                 isAdmin={isAdmin}
-                orgId={orgId}
                 initialSessions={sessions}
+                currentSessionId={currentSessionId}
                 initialSettings={{
                     id: org.id,
                     allow_staff_inventory: Boolean(org.settings?.allow_staff_inventory ?? true),

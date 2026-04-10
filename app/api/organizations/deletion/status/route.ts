@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server"
 import { getDeletionRequestStatus } from "@/lib/data/organizations"
+import { authorize } from "@/lib/security"
 
 export async function GET(request: Request) {
     try {
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
         if (!orgId) {
             return NextResponse.json({ error: "Missing orgId" }, { status: 400 })
         }
+        await authorize("View Organization Deletion Status", "owner", orgId)
         const status = await getDeletionRequestStatus(orgId)
         return NextResponse.json(status)
     } catch (error: any) {

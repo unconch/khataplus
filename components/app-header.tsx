@@ -10,8 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOutIcon, Building2, Bell, HardDrive, Sun, Moon, AlertTriangle, ShieldAlert, Info, CheckCircle2, RefreshCw } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { LogOutIcon, Building2, Bell, HardDrive, Sun, Moon, AlertTriangle, ShieldAlert, Info, CheckCircle2, RefreshCw, ChevronsUpDown, Check, Store } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useTenant } from "@/components/tenant-provider"
 import { useLocale } from "@/components/locale-provider"
@@ -33,19 +33,48 @@ type HeaderNotification = {
   timestamp: string
 }
 
+type UserOrganization = {
+  id: string
+  org_id: string
+  role: string
+  organization?: {
+    id?: string
+    name?: string | null
+    slug?: string | null
+  } | null
+}
+
+type HeaderStore = {
+  id: string
+  name: string
+  code: string
+  is_default: boolean
+}
+
 export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = "" }: AppHeaderProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { tenant } = useTenant()
   const { theme, setTheme } = useTheme()
   const { dictionary } = useLocale()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [notifications, setNotifications] = useState<HeaderNotification[]>([])
   const [readMap, setReadMap] = useState<Record<string, boolean>>({})
+  const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([])
+  const [orgsLoading, setOrgsLoading] = useState(false)
+  const [switchingOrgSlug, setSwitchingOrgSlug] = useState<string | null>(null)
+  const [storeMenuOpen, setStoreMenuOpen] = useState(false)
+  const [storesLoading, setStoresLoading] = useState(false)
+  const [stores, setStores] = useState<HeaderStore[]>([])
+  const [activeStoreId, setActiveStoreId] = useState<string | null>(null)
+  const [switchingStoreId, setSwitchingStoreId] = useState<string | null>(null)
 
   const currentOrgName = tenant?.name || orgName || dictionary.appHeader.defaultOrgName
   const orgId = String(tenant?.id || "global")
+  const currentOrgSlug = String(tenant?.slug || "").trim().toLowerCase()
   const readStoreKey = `kp-notif-read:${orgId}`
 
   const displayName = profile?.name ||
@@ -139,6 +168,144 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
     window.location.href = "/api/auth/logout?returnTo=/auth/login"
   }
 
+  const loadOrganizations = useCallback(async () => {
+    if (!profile || tenant?.id === "demo-org") {
+      setUserOrganizations([])
+      return
+    }
+
+    setOrgsLoading(true)
+    try {
+      const res = await fetch("/api/organizations", { cache: "no-store" })
+      const data = await res.json().catch(() => [])
+      if (!res.ok) throw new Error("Failed to load organizations")
+      setUserOrganizations(Array.isArray(data) ? data : [])
+    } catch {
+      setUserOrganizations([])
+    } finally {
+      setOrgsLoading(false)
+    }
+  }, [profile, tenant?.id])
+
+  useEffect(() => {
+    void loadOrganizations()
+  }, [loadOrganizations])
+
+  const loadStores = useCallback(async () => {
+    if (!profile || tenant?.id === "demo-org" || !currentOrgSlug) {
+      setStores([])
+      setActiveStoreId(null)
+      return
+    }
+
+    setStoresLoading(true)
+    try {
+      const res = await fetch("/api/stores", { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to load stores")
+
+      setStores(Array.isArray(data?.stores) ? data.stores : [])
+      setActiveStoreId(String(data?.activeStoreId || "").trim() || null)
+    } catch {
+      setStores([])
+      setActiveStoreId(null)
+    } finally {
+      setStoresLoading(false)
+    }
+  }, [profile, tenant?.id, currentOrgSlug])
+
+  useEffect(() => {
+    void loadStores()
+  }, [loadStores])
+
+  const handleOrgSwitch = useCallback((targetSlug: string | null | undefined) => {
+    const slug = String(targetSlug || "").trim().toLowerCase()
+    if (!slug || slug === currentOrgSlug) {
+      setOrgMenuOpen(false)
+      return
+    }
+
+    setSwitchingOrgSlug(slug)
+    setOrgMenuOpen(false)
+
+    const search = typeof window !== "undefined" ? window.location.search : ""
+    const currentPath = pathname || ""
+    let targetPath = `/app/${slug}/dashboard`
+
+    if (pathPrefix && currentPath.startsWith(pathPrefix)) {
+      const suffix = currentPath.slice(pathPrefix.length) || "/dashboard"
+      targetPath = `/app/${slug}${suffix}`
+    } else if (/^\/app\/[^/]+(?:\/.*)?$/.test(currentPath)) {
+      targetPath = currentPath.replace(/^\/app\/[^/]+/, `/app/${slug}`)
+    } else if (currentPath.startsWith("/dashboard")) {
+      targetPath = `/app/${slug}${currentPath}`
+    }
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/organizations/select", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        })
+        if (!res.ok) {
+          throw new Error("Failed to persist active organization")
+        }
+      } catch {
+        document.cookie = `kp_org_slug=${slug}; path=/; max-age=2592000; samesite=lax`
+      } finally {
+        router.push(`${targetPath}${search}`)
+        router.refresh()
+      }
+    })()
+  }, [currentOrgSlug, pathPrefix, pathname, router])
+
+  const switchableOrganizations = useMemo(() => {
+    return userOrganizations
+      .map((membership) => ({
+        membershipId: membership.id,
+        orgId: membership.org_id,
+        role: membership.role,
+        name: String(membership.organization?.name || "").trim(),
+        slug: String(membership.organization?.slug || "").trim().toLowerCase(),
+      }))
+      .filter((org) => org.name && org.slug)
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [userOrganizations])
+
+  const activeStore = useMemo(
+    () => stores.find((store) => store.id === activeStoreId) || stores.find((store) => store.is_default) || stores[0] || null,
+    [stores, activeStoreId]
+  )
+
+  const handleStoreSwitch = useCallback((targetStoreId: string | null | undefined) => {
+    const storeId = String(targetStoreId || "").trim()
+    if (!storeId || storeId === activeStoreId) {
+      setStoreMenuOpen(false)
+      return
+    }
+
+    setSwitchingStoreId(storeId)
+    setStoreMenuOpen(false)
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/stores/select", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storeId }),
+        })
+        if (!res.ok) throw new Error("Failed to persist active store")
+        setActiveStoreId(storeId)
+      } catch {
+        document.cookie = `kp_active_store=${storeId}; path=/; max-age=2592000; samesite=lax`
+      } finally {
+        router.refresh()
+        setSwitchingStoreId(null)
+      }
+    })()
+  }, [activeStoreId, router])
+
   useEffect(() => {
     if (!theme || typeof document === "undefined") return
     document.cookie = `kp_theme=${theme}; path=/; max-age=31536000; samesite=lax`
@@ -147,19 +314,131 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
   return (
     <header className="app-topbar sticky top-0 z-40 border-b border-zinc-100 bg-zinc-50/80 backdrop-blur-xl dark:border-white/8 dark:bg-[rgba(17,24,39,0.72)]">
       <div className="flex h-[var(--topbar-height)] items-center justify-between px-4 sm:px-6 lg:px-10">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-2 shadow-sm dark:border-white/10 dark:bg-[rgba(30,41,59,0.88)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
-            <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:bg-white/8 dark:text-zinc-200">
-              <Building2 className="h-3 w-3 shrink-0" />
-              Org
-            </span>
-            <span className="block truncate max-w-[40vw] sm:max-w-[34vw] lg:max-w-[24vw] text-[12px] sm:text-[13px] font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
-              {currentOrgName}
-            </span>
-          </div>
+        <div className="min-w-0 flex flex-1 items-center gap-2 overflow-hidden">
+          <DropdownMenu open={orgMenuOpen} onOpenChange={setOrgMenuOpen}>
+            <DropdownMenuTrigger asChild disabled={switchableOrganizations.length <= 1}>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex min-w-0 max-w-[52vw] items-center gap-2 rounded-xl border border-zinc-200/90 bg-white/95 px-2.5 py-2 shadow-sm dark:border-white/10 dark:bg-[rgba(30,41,59,0.88)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.28)] sm:max-w-[44vw] lg:max-w-[30vw]",
+                  switchableOrganizations.length > 1 && "transition-all hover:border-emerald-300 hover:bg-white dark:hover:border-emerald-400/30"
+                )}
+              >
+                <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:bg-white/8 dark:text-zinc-200">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  Org
+                </span>
+                <span className="block min-w-0 truncate text-[12px] sm:text-[13px] font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  {currentOrgName}
+                </span>
+                {switchableOrganizations.length > 1 ? (
+                  <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-300" />
+                ) : null}
+              </button>
+            </DropdownMenuTrigger>
+            {switchableOrganizations.length > 1 && (
+              <DropdownMenuContent align="start" className="w-72 rounded-2xl border-zinc-100 p-2 shadow-2xl dark:border-white/10 dark:bg-[rgba(15,23,42,0.96)]">
+                <div className="px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400">Switch Organization</p>
+                </div>
+                <DropdownMenuSeparator className="bg-zinc-100 dark:bg-white/5" />
+                {orgsLoading ? (
+                  <div className="px-3 py-6 text-center text-[11px] font-semibold text-zinc-500">Loading organizations...</div>
+                ) : (
+                  switchableOrganizations.map((org) => {
+                    const isActive = org.slug === currentOrgSlug
+                    const isSwitching = switchingOrgSlug === org.slug
+                    return (
+                      <DropdownMenuItem
+                        key={org.membershipId}
+                        onSelect={() => {
+                          void handleOrgSwitch(org.slug)
+                        }}
+                        className="mt-1 rounded-xl px-3 py-3 focus:bg-zinc-50 dark:focus:bg-[rgba(30,41,59,0.88)]"
+                      >
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-zinc-900 dark:text-zinc-100">{org.name}</p>
+                            <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">{org.role}</p>
+                          </div>
+                          {isSwitching ? (
+                            <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-500" />
+                          ) : isActive ? (
+                            <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+                          ) : null}
+                        </div>
+                      </DropdownMenuItem>
+                    )
+                  })
+                )}
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
+
+          <DropdownMenu open={storeMenuOpen} onOpenChange={setStoreMenuOpen}>
+            <DropdownMenuTrigger asChild disabled={stores.length <= 1}>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex min-w-0 max-w-[36vw] items-center gap-2 rounded-xl border border-zinc-200/90 bg-white/95 px-2.5 py-2 shadow-sm dark:border-white/10 dark:bg-[rgba(30,41,59,0.88)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.28)] sm:max-w-[28vw] lg:max-w-[18vw]",
+                  stores.length > 1 && "transition-all hover:border-sky-300 hover:bg-white dark:hover:border-sky-400/30"
+                )}
+              >
+                <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:bg-white/8 dark:text-zinc-200">
+                  <Store className="h-3 w-3 shrink-0" />
+                  Store
+                </span>
+                <span className="block min-w-0 truncate text-[12px] sm:text-[13px] font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  {activeStore?.name || "Main Branch"}
+                </span>
+                {stores.length > 1 ? (
+                  <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-300" />
+                ) : null}
+              </button>
+            </DropdownMenuTrigger>
+            {stores.length > 1 && (
+              <DropdownMenuContent align="start" className="w-72 rounded-2xl border-zinc-100 p-2 shadow-2xl dark:border-white/10 dark:bg-[rgba(15,23,42,0.96)]">
+                <div className="px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400">Switch Store</p>
+                </div>
+                <DropdownMenuSeparator className="bg-zinc-100 dark:bg-white/5" />
+                {storesLoading ? (
+                  <div className="px-3 py-6 text-center text-[11px] font-semibold text-zinc-500">Loading stores...</div>
+                ) : (
+                  stores.map((store) => {
+                    const isActive = store.id === activeStoreId
+                    const isSwitching = switchingStoreId === store.id
+                    return (
+                      <DropdownMenuItem
+                        key={store.id}
+                        onSelect={() => {
+                          void handleStoreSwitch(store.id)
+                        }}
+                        className="mt-1 rounded-xl px-3 py-3 focus:bg-zinc-50 dark:focus:bg-[rgba(30,41,59,0.88)]"
+                      >
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-zinc-900 dark:text-zinc-100">{store.name}</p>
+                            <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+                              {store.code}{store.is_default ? " • Default" : ""}
+                            </p>
+                          </div>
+                          {isSwitching ? (
+                            <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-500" />
+                          ) : isActive ? (
+                            <Check className="h-4 w-4 shrink-0 text-sky-500" />
+                          ) : null}
+                        </div>
+                      </DropdownMenuItem>
+                    )
+                  })
+                )}
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-2 flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="hidden sm:block text-right">
             <span className="block text-sm font-black tracking-tight text-zinc-950 dark:text-zinc-50 leading-none">{displayName}</span>
             <span className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1 leading-none opacity-60">{formattedRole}</span>

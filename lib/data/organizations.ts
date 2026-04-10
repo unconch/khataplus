@@ -14,6 +14,7 @@ import { assertRecentOtpStepUp } from "../step-up";
 import { getStaffSeatLimit } from "../billing-plans";
 import { isValidSlug, isReserved } from "../system-routes";
 import { initializeTenantDEKForOrg } from "../key-management";
+import { ensureDefaultStore } from "./stores";
 
 async function ensureOrganizationMembersRoleConstraintAllowsOwner(): Promise<void> {
     await sql`
@@ -229,6 +230,13 @@ export async function createOrganization(name: string, userId: string, details?:
         await sql`
             UPDATE profiles SET role = 'owner' WHERE id = ${userId}
         `;
+
+        try {
+            await ensureDefaultStore(org.id);
+            console.log(`[DB/Orgs] Default store ensured for ${org.id}`);
+        } catch (storeErr) {
+            console.error("[DB/Orgs] Default store initialization failed", storeErr);
+        }
 
         // Revalidate paths to ensure layout and dashboard reflect new organization
         revalidatePath("/", "layout");

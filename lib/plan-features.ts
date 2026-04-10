@@ -26,7 +26,7 @@ export function formatPlanLabel(planType?: string | null): string {
   if (p === "free") return "Keep";
   if (p === "starter") return "Starter";
   if (p === "pro") return "Pro";
-  if (p === "business") return "Business";
+  if (p === "business") return "Business (Beta Plan)";
   return "Legacy";
 }
 

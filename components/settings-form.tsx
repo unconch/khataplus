@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLocale } from "@/components/locale-provider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getLocaleCopy } from "@/lib/locale-copy"
+import { formatDate } from "@/lib/locale-format"
 
 const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
@@ -140,7 +142,8 @@ export function SettingsForm({
   viewMode = "full",
   billingNudge: _billingNudge,
 }: SettingsFormProps) {
-  const { dictionary } = useLocale()
+  const { locale, dictionary } = useLocale()
+  const copy = getLocaleCopy(locale)
   const [org, setOrg] = useState(initialOrg)
   const [profile, setProfile] = useState(initialProfile)
   const [loading, setLoading] = useState(false)
@@ -165,7 +168,7 @@ export function SettingsForm({
     const raw = String(org.plan_type || "free").toLowerCase()
     if (raw === "pro") return "Pro"
     if (raw === "starter") return "Starter"
-    if (raw === "business") return "Business"
+    if (raw === "business") return "Business (Beta Plan)"
     if (raw === "legacy") return "Legacy"
     return "Keep"
   }, [org.plan_type])
@@ -182,8 +185,8 @@ export function SettingsForm({
     if (!org.trial_ends_at) return ""
     const date = new Date(org.trial_ends_at)
     if (Number.isNaN(date.getTime())) return ""
-    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-  }, [org.trial_ends_at])
+    return formatDate(date, locale, { day: "2-digit", month: "short", year: "numeric" })
+  }, [locale, org.trial_ends_at])
 
   const pinStateValidation = useMemo(() => {
     const pin = (address.pin || "").replace(/\D/g, "")
@@ -390,8 +393,8 @@ export function SettingsForm({
                 <Globe size={16} strokeWidth={2.5} />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">Language</h3>
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Choose your interface language</p>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-zinc-100">{copy.shared.language}</h3>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">{copy.shared.chooseInterfaceLanguage}</p>
               </div>
               <LanguageSwitcher compact className="shrink-0" />
             </div>

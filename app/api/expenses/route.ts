@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getExpenses } from "@/lib/data/expenses"
+import { authorize } from "@/lib/security"
 
 export async function GET(req: NextRequest) {
     try {
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        await authorize("View Expenses", undefined, orgId)
         const expenses = await getExpenses(orgId, start || undefined, end || undefined)
         return NextResponse.json({ expenses })
     } catch (error: any) {

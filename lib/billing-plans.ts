@@ -47,7 +47,7 @@ export const BILLING_PLANS: Record<BillingPlanKey, BillingPlanConfig> = {
   },
   business: {
     key: "business",
-    displayName: "Business",
+    displayName: "Business (Beta Plan)",
     orgPlanType: "business",
     durationMonths: { monthly: 1, yearly: 12 },
     amountInr: { monthly: 899, yearly: 7999 },

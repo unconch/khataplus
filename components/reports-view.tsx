@@ -13,6 +13,7 @@ import { ImportDialog } from "@/components/import-dialog"
 interface ReportsViewProps {
     orgId: string
     orgSlug: string
+    initialReports?: DailyReport[]
 }
 
 type ReportRange = "today" | "week" | "month" | "year"
@@ -23,9 +24,9 @@ const INR = new Intl.NumberFormat("en-IN", {
     maximumFractionDigits: 0,
 })
 
-export function ReportsView({ orgId }: ReportsViewProps) {
-    const [reports, setReports] = useState<DailyReport[]>([])
-    const [loading, setLoading] = useState(true)
+export function ReportsView({ orgId, initialReports = [] }: ReportsViewProps) {
+    const [reports, setReports] = useState<DailyReport[]>(initialReports)
+    const [loading, setLoading] = useState(initialReports.length === 0)
     const [searchQuery, setSearchQuery] = useState("")
     const [range, setRange] = useState<ReportRange>("month")
 
@@ -117,7 +118,7 @@ export function ReportsView({ orgId }: ReportsViewProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard icon={CalendarDays} label="Report Days" value={String(summary.days)} />
-                <StatCard icon={Wallet} label="Gross Sales" value={INR.format(summary.gross)} />
+                <StatCard icon={Wallet} label="Sum Total Price" value={INR.format(summary.gross)} />
                 <StatCard icon={Receipt} label="Expenses" value={INR.format(summary.expenses)} />
                 <StatCard icon={TrendingUp} label="Net Profit" value={INR.format(summary.profit)} />
             </div>
@@ -159,7 +160,8 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                     <thead>
                         <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-white/10 dark:bg-[rgba(30,41,59,0.78)]">
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Date</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Gross Sales</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Total Price</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Sales</th>
                             <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Cash</th>
                             <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Online</th>
                             <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-300">Expenses</th>
@@ -169,18 +171,19 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                     <tbody className="divide-y divide-zinc-100 dark:divide-white/10">
                         {loading ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-400 dark:text-zinc-500 font-bold">
+                                <td colSpan={7} className="px-6 py-12 text-center text-sm text-zinc-400 dark:text-zinc-500 font-bold">
                                     Loading daily sales reports...
                                 </td>
                             </tr>
                         ) : filteredReports.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-400 dark:text-zinc-500 font-bold">
+                                <td colSpan={7} className="px-6 py-12 text-center text-sm text-zinc-400 dark:text-zinc-500 font-bold">
                                     No daily sales data found for this range.
                                 </td>
                             </tr>
                         ) : (
-                            filteredReports.map((report) => {
+                            <>
+                                {filteredReports.map((report) => {
                                 const profit = (report.total_sale_gross || 0) - (report.total_cost || 0) - (report.expenses || 0)
                                 return (
                                     <tr key={report.id} className="transition-colors hover:bg-zinc-50/60 dark:hover:bg-[rgba(30,41,59,0.4)]">
@@ -190,13 +193,38 @@ export function ReportsView({ orgId }: ReportsViewProps) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right text-sm font-black text-zinc-900 dark:text-zinc-100">{INR.format(report.total_sale_gross || 0)}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">{INR.format(report.total_sale_gross || 0)}</td>
                                         <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">{INR.format(report.cash_sale || 0)}</td>
                                         <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">{INR.format(report.online_sale || 0)}</td>
                                         <td className="px-6 py-4 text-right text-sm font-bold text-rose-600">{INR.format(report.expenses || 0)}</td>
                                         <td className="px-6 py-4 text-right text-sm font-black text-emerald-600">{INR.format(profit)}</td>
                                     </tr>
                                 )
-                            })
+                                })}
+                                <tr className="border-t-2 border-zinc-200 bg-zinc-50/70 dark:border-white/10 dark:bg-[rgba(30,41,59,0.6)]">
+                                    <td className="px-6 py-4 text-left text-sm font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+                                        Sum Total
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-black text-zinc-950 dark:text-zinc-100">
+                                        {INR.format(summary.gross)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                                        {INR.format(summary.gross)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                                        {INR.format(filteredReports.reduce((acc, report) => acc + (report.cash_sale || 0), 0))}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                                        {INR.format(filteredReports.reduce((acc, report) => acc + (report.online_sale || 0), 0))}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-bold text-rose-600">
+                                        {INR.format(summary.expenses)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-sm font-black text-emerald-600">
+                                        {INR.format(summary.profit)}
+                                    </td>
+                                </tr>
+                            </>
                         )}
                     </tbody>
                 </table>

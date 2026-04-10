@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSKEY_SESSION_COOKIE = "kp_passkey_session"
+export const ACTIVE_ORG_COOKIE = "kp_org_slug"
 const PASSKEY_SESSION_SECRET =
   process.env.AUTH_SESSION_SECRET ||
   process.env.NEXTAUTH_SECRET ||
@@ -200,7 +201,13 @@ export function sanitizeNextPath(next: unknown, fallback = "/app/dashboard") {
   return candidate || fallback
 }
 
-async function persistActiveOrgSlug(slug: string | null) {
+function normalizeActiveOrgSlug(slug: string | null | undefined) {
+  const value = String(slug || "").trim().toLowerCase()
+  if (!value || value === "undefined" || value === "null" || value.includes(".")) return null
+  return value
+}
+
+export async function persistActiveOrgSlug(slug: string | null) {
   if (!slug) return
   try {
     const supabase = await createClient()
@@ -213,6 +220,61 @@ async function persistActiveOrgSlug(slug: string | null) {
     })
   } catch {
     // Non-critical - swallow silently
+  }
+}
+
+export async function getPreferredOrganizationForUser(
+  userId: string,
+  preferredSlug?: string | null
+): Promise<AuthOrganization | null> {
+  const normalizedPreferredSlug = normalizeActiveOrgSlug(preferredSlug)
+
+  try {
+    const orgs = await getUserOrganizationsResolved(userId)
+    const memberships = orgs
+      .map((membership: any) => {
+        const organization = membership?.organization || null
+        return {
+          id: String(membership?.org_id || organization?.id || ""),
+          name: organization?.name ? String(organization.name) : null,
+          role: membership?.role ? String(membership.role) : null,
+          slug: normalizeActiveOrgSlug(organization?.slug),
+        }
+      })
+      .filter((org) => org.id && org.slug)
+
+    if (normalizedPreferredSlug) {
+      const preferredOrg = memberships.find((org) => org.slug === normalizedPreferredSlug)
+      if (preferredOrg) {
+        return preferredOrg
+      }
+    }
+
+    if (memberships[0]) {
+      return memberships[0]
+    }
+  } catch {
+    // Fall through to direct lookup.
+  }
+
+  return getPrimaryOrganizationForUser(userId)
+}
+
+async function getActiveOrgSlugHint() {
+  const cookieStore = await cookies()
+  const cookieSlug = normalizeActiveOrgSlug(cookieStore.get(ACTIVE_ORG_COOKIE)?.value)
+  if (cookieSlug) return cookieSlug
+
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    return normalizeActiveOrgSlug(
+      String(user?.user_metadata?.active_org_slug || user?.user_metadata?.activeOrgSlug || "")
+    )
+  } catch {
+    return null
   }
 }
 
@@ -312,7 +374,7 @@ async function getPrimaryOrganizationForUser(userId: string): Promise<AuthOrgani
 
 export async function resolvePostAuthRedirect(userId: string, requestedNext?: string) {
   const safeNext = sanitizeNextPath(requestedNext, "")
-  const org = await getPrimaryOrganizationForUser(userId)
+  const org = await getPreferredOrganizationForUser(userId, await getActiveOrgSlugHint())
   const slug = String(org?.slug || "").trim()
   const hasValidSlug = slug && slug !== "undefined" && slug !== "null"
 
@@ -609,8 +671,8 @@ export async function getCurrentOrgId(explicitUserId?: string): Promise<string |
   if (await isGuestMode() || !userId || userId === "guest-user") return "demo-org"
 
   try {
-    const orgs = await getUserOrganizationsResolved(userId)
-    return orgs[0]?.org_id || null
+    const org = await getPreferredOrganizationForUser(userId, await getActiveOrgSlugHint())
+    return org?.id || null
   } catch (error: unknown) {
     const message = String((error as Error)?.message || error || "").toLowerCase()
     const dbConnectivityIssue =
@@ -708,10 +770,24 @@ export async function buildAuthContext(): Promise<AuthContextResult> {
     }
   }
 
-  const [profile, org] = await Promise.all([
+  const [profile, cookieStore, headerStore, supabase] = await Promise.all([
     getProfile(currentUser.userId),
-    getPrimaryOrganizationForUser(currentUser.userId),
+    cookies(),
+    headers(),
+    createClient(),
   ])
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const preferredSlug =
+    normalizeActiveOrgSlug(headerStore.get("x-tenant-slug")) ||
+    normalizeActiveOrgSlug(cookieStore.get(ACTIVE_ORG_COOKIE)?.value) ||
+    normalizeActiveOrgSlug((user as any)?.user_metadata?.active_org_slug) ||
+    normalizeActiveOrgSlug((user as any)?.user_metadata?.activeOrgSlug)
+
+  const org = await getPreferredOrganizationForUser(currentUser.userId, preferredSlug)
 
   const redirectTo = await resolvePostAuthRedirect(currentUser.userId)
   const userName = profile?.name || profile?.email || currentUser.email || null

@@ -1,8 +1,20 @@
 "use client"
 
-import { motion, useScroll, useTransform, useSpring } from "framer-motion"
-import { useRef } from "react"
-import { Store, Truck, Briefcase, HandCoins, ArrowRight, ShieldCheck, Stethoscope, Utensils, Cpu, Shirt } from "lucide-react"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import {
+    ArrowRight,
+    Briefcase,
+    CalendarRange,
+    Cpu,
+    HandCoins,
+    ShieldCheck,
+    Shirt,
+    Stethoscope,
+    Store,
+    Truck,
+    Utensils,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const SOLUTIONS = [
@@ -13,9 +25,10 @@ const SOLUTIONS = [
         tagline: "High-Volume Ready",
         description: "Process bills instantly with barcode support. Keep queues moving and automate stock management without breaking a sweat.",
         iconColor: "text-emerald-600",
-        borderColor: "border-emerald-100",
-        bgLight: "bg-emerald-50/50",
-        accent: "bg-emerald-500"
+        bgLight: "bg-emerald-50/80",
+        accent: "bg-emerald-500",
+        className: "lg:col-span-7",
+        chips: ["Barcode Ready", "Fast Billing"],
     },
     {
         id: "wholesale",
@@ -24,9 +37,10 @@ const SOLUTIONS = [
         tagline: "Enterprise Control",
         description: "Track supplier payouts, manage B2B customer ledgers, and handle customized volume pricing with confidence.",
         iconColor: "text-blue-600",
-        borderColor: "border-blue-100",
-        bgLight: "bg-blue-50/50",
-        accent: "bg-blue-500"
+        bgLight: "bg-blue-50/80",
+        accent: "bg-blue-500",
+        className: "lg:col-span-5",
+        chips: ["Bulk Pricing", "Supplier Sync"],
     },
     {
         id: "pharmacy",
@@ -35,238 +49,245 @@ const SOLUTIONS = [
         tagline: "Precision Tracking",
         description: "Manage batch numbers, expiry dates, and automated low-stock clinical alerts with unparalleled accuracy.",
         iconColor: "text-teal-600",
-        borderColor: "border-teal-100",
-        bgLight: "bg-teal-50/50",
-        accent: "bg-teal-500"
+        bgLight: "bg-teal-50/80",
+        accent: "bg-teal-500",
+        className: "lg:col-span-4",
+        chips: ["Expiry Alerts", "Batch Tracking"],
     },
     {
         id: "apparel",
         icon: Shirt,
         title: "Apparel & Fashion",
         tagline: "Matrix Inventory",
-        description: "Effortlessly handle variants like sizes, colors, and seasonal drops with intuitive visual inventory dashboards.",
+        description: "Handle sizes, colors, and seasonal drops with intuitive visual inventory dashboards built for variant-heavy catalogs.",
         iconColor: "text-rose-600",
-        borderColor: "border-rose-100",
-        bgLight: "bg-rose-50/50",
-        accent: "bg-rose-500"
+        bgLight: "bg-rose-50/80",
+        accent: "bg-rose-500",
+        className: "lg:col-span-4",
+        chips: ["Size Matrix", "Color Variants"],
     },
     {
         id: "restaurants",
         icon: Utensils,
         title: "Restaurants & Cafes",
         tagline: "Rapid Service",
-        description: "Manage tables, digital menus, and kitchen order tickets (KOT) seamlessly during peak dining hours.",
+        description: "Manage tables, digital menus, and kitchen order tickets while keeping service smooth during peak dining hours.",
         iconColor: "text-amber-600",
-        borderColor: "border-amber-100",
-        bgLight: "bg-amber-50/50",
-        accent: "bg-amber-500"
+        bgLight: "bg-amber-50/80",
+        accent: "bg-amber-500",
+        className: "lg:col-span-4",
+        chips: ["Table Flow", "KOT Ready"],
     },
     {
         id: "electronics",
         icon: Cpu,
         title: "Electronics & Mobile",
         tagline: "Serial Management",
-        description: "Track unique IMEI numbers, manage serial warranties, and handle high-value bundle promotions securely.",
+        description: "Track IMEI numbers, manage serial warranties, and handle high-value product movement with more control.",
         iconColor: "text-indigo-600",
-        borderColor: "border-indigo-100",
-        bgLight: "bg-indigo-50/50",
-        accent: "bg-indigo-500"
+        bgLight: "bg-indigo-50/80",
+        accent: "bg-indigo-500",
+        className: "lg:col-span-5",
+        chips: ["IMEI Tracking", "Warranty Notes"],
     },
     {
         id: "services",
         icon: Briefcase,
         title: "Service Agencies",
         tagline: "Professional Billing",
-        description: "Generate compliant tax invoices for your clients. Track project-based expenses and maintain clear P&L documentation.",
+        description: "Generate compliant invoices for clients, track project expenses, and maintain clean reporting for service-led businesses.",
         iconColor: "text-fuchsia-600",
-        borderColor: "border-fuchsia-100",
-        bgLight: "bg-fuchsia-50/50",
-        accent: "bg-fuchsia-500"
+        bgLight: "bg-fuchsia-50/80",
+        accent: "bg-fuchsia-500",
+        className: "lg:col-span-4",
+        chips: ["Tax Invoices", "Project Costs"],
     },
     {
         id: "credit",
         icon: HandCoins,
         title: "Finance & Credit",
         tagline: "Digital Ledger",
-        description: "Replace physical registers. Experience transparent, secure credit tracking with automated SMS reminders.",
+        description: "Replace physical registers with transparent credit tracking and automated reminder workflows for customer follow-up.",
         iconColor: "text-orange-600",
-        borderColor: "border-orange-100",
-        bgLight: "bg-orange-50/50",
-        accent: "bg-orange-500"
-    }
+        bgLight: "bg-orange-50/80",
+        accent: "bg-orange-500",
+        className: "lg:col-span-3",
+        chips: ["Credit Ledger", "Auto Reminders"],
+    },
 ]
 
 export function SolutionsSection({ isFullPage = false }: { isFullPage?: boolean }) {
-    if (isFullPage) {
-        return (
-            <section className="py-16 px-6 bg-transparent relative z-10 w-full">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-                    {SOLUTIONS.map((solution, i) => (
+    return (
+        <section
+            id="solutions"
+            className={cn(
+                "relative overflow-hidden px-6",
+                isFullPage ? "py-16" : "py-20 md:py-24"
+            )}
+        >
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.09),transparent_34%)]" />
+                <div className="absolute inset-0 opacity-[0.03] [background-image:radial-gradient(circle_at_center,_#0f172a_1px,_transparent_1px)] [background-size:28px_28px]" />
+            </div>
+
+            <div className="relative z-10 mx-auto max-w-7xl">
+                <div className="mb-12 flex flex-col gap-8 lg:mb-16 lg:flex-row lg:items-end lg:justify-between">
+                    <motion.div
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.55 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        className="space-y-5"
+                    >
+                        <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-1.5">
+                            <ShieldCheck size={14} className="text-emerald-600" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                                Industry Intelligence
+                            </span>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h2 className="text-5xl font-bold tracking-tighter text-zinc-950 md:text-7xl lg:text-8xl leading-[0.95]">
+                                Built for the way
+                                <br />
+                                <span className="text-zinc-400">your industry works.</span>
+                            </h2>
+                            <p className="max-w-2xl text-lg font-light leading-relaxed text-zinc-500 md:text-2xl">
+                                Purpose-built workflows for retail, distribution, pharmacy, apparel, food service, and more without forcing every business into the same template.
+                            </p>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.55, delay: 0.08 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        className="grid grid-cols-2 gap-3 self-stretch sm:w-[360px]"
+                    >
+                        <InfoCard icon={Store} label="Industries" value="8+" />
+                        <InfoCard icon={CalendarRange} label="Use Cases" value="Daily" />
+                    </motion.div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-12">
+                    {SOLUTIONS.map((solution, index) => (
                         <motion.div
                             key={solution.id}
-                            initial={{ opacity: 0, y: 30 }}
+                            initial={{ opacity: 0, y: 24 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: i * 0.1 }}
-                            viewport={{ once: true, margin: "-100px" }}
+                            transition={{ duration: 0.45, delay: index * 0.04 }}
+                            viewport={{ once: true, margin: "-80px" }}
+                            className={solution.className}
                         >
                             <IndustryCard solution={solution} />
                         </motion.div>
                     ))}
                 </div>
-            </section>
-        )
-    }
 
-    return <SolutionsAnimatedSection />
-}
-
-function SolutionsAnimatedSection() {
-    const ref = useRef(null)
-
-    const { scrollYProgress } = useScroll({
-        target: ref,
-        offset: ["start start", "end end"],
-    })
-
-    // Smooth out the progress for the background atmospheric elements
-    const smoothProgress = useSpring(scrollYProgress, {
-        stiffness: 100,
-        damping: 30,
-        restDelta: 0.001
-    })
-
-    const displaySolutions = SOLUTIONS.slice(0, 4);
-
-    return (
-        <section ref={ref} id="solutions" className="relative h-[400vh] bg-transparent">
-            <div className="sticky top-0 h-screen flex items-center overflow-hidden">
-
-                {/* SARVAM-STYLE RADIANCE - CENTERPIECE */}
-                <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden"
-                    style={{ maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)" }}
-                >
+                {!isFullPage && (
                     <motion.div
-                        style={{
-                            scale: useTransform(smoothProgress, [0, 1], [0.9, 1.3]),
-                            opacity: useTransform(smoothProgress, [0, 0.5, 1], [0.45, 0.65, 0.45]),
-                            x: useTransform(smoothProgress, [0, 1], ["-12%", "12%"])
-                        }}
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-[radial-gradient(circle,rgba(16,185,129,0.28)_0%,rgba(59,130,246,0.15)_45%,transparent_70%)] blur-[160px] rounded-full"
-                    />
-
-                    {/* Noise texture for depth */}
-                    <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }} />
-                </div>
-
-                <div className="grid md:grid-cols-2 max-w-7xl mx-auto w-full px-6 gap-12 lg:gap-24 items-center">
-
-                    {/* Left: Sticky Static Narrative */}
-                    <div className="flex flex-col justify-center space-y-8">
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8 }}
-                            viewport={{ once: true }}
-                        >
-                            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 mb-6">
-                                <ShieldCheck size={14} className="text-emerald-600" />
-                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Specialized Intelligence</span>
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        className="mt-12"
+                    >
+                        <div className="relative overflow-hidden rounded-[2.5rem] border border-zinc-200/70 bg-white/80 p-8 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.35)] backdrop-blur-sm lg:p-10">
+                            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(16,185,129,0.10),transparent_45%,rgba(59,130,246,0.10))]" />
+                            <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                                <div className="space-y-2">
+                                    <h3 className="text-3xl font-black tracking-tight text-zinc-950 md:text-4xl">
+                                        Need a workflow that fits your shop exactly?
+                                    </h3>
+                                    <p className="max-w-2xl text-sm font-medium leading-relaxed text-zinc-500 md:text-base">
+                                        KhataPlus can be shaped around how your counter, team, and customers actually operate.
+                                    </p>
+                                </div>
+                                <Link
+                                    href="/auth/sign-up"
+                                    className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-6 text-[11px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-emerald-600"
+                                >
+                                    Start Free Demo
+                                </Link>
                             </div>
-                            <h2 className="text-6xl md:text-8xl font-bold tracking-tighter text-zinc-900 leading-[1.05]">
-                                Tailored for <br />
-                                <span className="text-zinc-400">your industry.</span>
-                            </h2>
-                            <p className="max-w-md text-zinc-500 text-xl md:text-2xl font-light tracking-tight mt-8 leading-relaxed">
-                                One unified platform that intuitively adapts to the unique pulse of your specific business.
-                            </p>
-                        </motion.div>
-                    </div>
-
-                    {/* Right: Cross-fading Animated Stack */}
-                    <div className="relative h-[500px] flex items-center justify-center">
-                        {displaySolutions.map((solution, i) => (
-                            <AnimatedSolutionCard
-                                key={solution.id}
-                                solution={solution}
-                                index={i}
-                                scrollYProgress={scrollYProgress}
-                            />
-                        ))}
-                    </div>
-
-                </div>
+                        </div>
+                    </motion.div>
+                )}
             </div>
         </section>
     )
 }
 
-function AnimatedSolutionCard({ solution, index, scrollYProgress }: { solution: any, index: number, scrollYProgress: any }) {
-    const start = index * 0.25
-    const end = start + 0.25
-
-    const opacity = useTransform(
-        scrollYProgress,
-        [start, start + 0.05, end - 0.05, end],
-        [0, 1, 1, 0]
-    )
-
-    const scale = useTransform(
-        scrollYProgress,
-        [start, start + 0.15, end],
-        [0.9, 1, 0.95]
-    )
-
-    const y = useTransform(
-        scrollYProgress,
-        [start, start + 0.25],
-        [20, -20]
-    )
-
+function IndustryCard({
+    solution,
+}: {
+    solution: (typeof SOLUTIONS)[number]
+}) {
     return (
-        <motion.div
-            style={{ opacity, scale, y }}
-            className="absolute inset-0 flex items-center"
+        <div
+            className={cn(
+                "group relative flex h-full min-h-[260px] flex-col justify-between overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white/85 p-6 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.38)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_40px_100px_-45px_rgba(15,23,42,0.45)] md:p-8",
+                solution.bgLight
+            )}
         >
-            <IndustryCard solution={solution} />
-        </motion.div>
+            <div className={cn("absolute right-0 top-0 h-36 w-36 translate-x-1/3 -translate-y-1/3 rounded-full opacity-20 blur-3xl transition-opacity duration-500 group-hover:opacity-35", solution.accent)} />
+
+            <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className={cn("flex h-16 w-16 items-center justify-center rounded-3xl border border-white/80 bg-white shadow-sm transition-transform duration-500 group-hover:scale-110", solution.iconColor)}>
+                    <solution.icon size={30} strokeWidth={1.6} />
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-2">
+                    {solution.chips.map((chip) => (
+                        <div
+                            key={chip}
+                            className="rounded-full border border-zinc-200/70 bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500"
+                        >
+                            {chip}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="relative z-10 mt-8 space-y-4">
+                <div>
+                    <div className={cn("mb-3 text-[10px] font-black uppercase tracking-[0.24em]", solution.iconColor)}>
+                        {solution.tagline}
+                    </div>
+                    <h3 className="text-3xl font-black tracking-tight text-zinc-950">
+                        {solution.title}
+                    </h3>
+                </div>
+                <p className="max-w-xl text-sm font-medium leading-relaxed text-zinc-500 md:text-[15px]">
+                    {solution.description}
+                </p>
+            </div>
+
+            <div className="relative z-10 mt-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                <span className="text-zinc-900">Explore solution</span>
+                <ArrowRight size={14} className={cn("transition-transform duration-500 group-hover:translate-x-1", solution.iconColor)} />
+            </div>
+        </div>
     )
 }
 
-function IndustryCard({ solution }: { solution: any }) {
+function InfoCard({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: typeof Store
+    label: string
+    value: string
+}) {
     return (
-        <div className={cn(
-            "w-full bg-white rounded-[2.5rem] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.1)] p-10 md:p-14 border border-zinc-100 flex flex-col justify-between group overflow-hidden relative",
-            solution.bgLight
-        )}>
-            <div className={cn("absolute top-0 right-0 w-32 h-32 blur-3xl rounded-full opacity-10 group-hover:opacity-20 transition-opacity", solution.accent)} />
-
-            <div className="relative z-10 space-y-10">
-                <div className="flex justify-between items-start">
-                    <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center border border-zinc-100 bg-white shadow-sm transition-transform duration-500 group-hover:scale-110", solution.iconColor)}>
-                        <solution.icon size={36} strokeWidth={1.5} />
-                    </div>
-                    <div className="w-12 h-12 rounded-full border border-zinc-100 flex items-center justify-center text-zinc-300 bg-white">
-                        <ArrowRight size={20} />
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className={cn("text-[11px] font-bold uppercase tracking-[0.25em] mb-4", solution.iconColor)}>
-                        {solution.tagline}
-                    </div>
-                    <h3 className="text-4xl font-bold tracking-tight text-zinc-900 leading-tight">
-                        {solution.title}
-                    </h3>
-                    <p className="text-zinc-500 text-lg font-light leading-relaxed max-w-sm">
-                        {solution.description}
-                    </p>
-                </div>
-
-                <div className="pt-6 flex items-center gap-3">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", solution.accent)} />
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Integrated Intelligence</div>
-                </div>
+        <div className="rounded-[1.5rem] border border-zinc-200/70 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-zinc-500">
+                <Icon size={16} />
+                <span className="text-[10px] font-black uppercase tracking-[0.18em]">{label}</span>
             </div>
+            <div className="mt-3 text-2xl font-black tracking-tight text-zinc-950">{value}</div>
         </div>
     )
 }

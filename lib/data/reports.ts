@@ -46,7 +46,7 @@ export async function getDailyReports(
 ) {
     const isGuest = await isGuestMode();
     const flavor = isGuest ? "demo" : "prod";
-    const cacheVersion = "v4-today-strict-fix";
+    const cacheVersion = "v5-manual-import-cache-bust";
 
     let days = 30;
     if (range === "today") days = 0;

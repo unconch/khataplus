@@ -7,6 +7,7 @@ import { resolvePageOrgContext } from "@/lib/server/org-context"
 export default async function ReportsPage() {
     const { getCurrentUser } = await import("@/lib/data/auth")
     const { getOrganization } = await import("@/lib/data/organizations")
+    const { getDailyReports } = await import("@/lib/data/reports")
 
     const user = await getCurrentUser()
     if (!user) {
@@ -26,11 +27,12 @@ export default async function ReportsPage() {
 
     const org = await getOrganization(orgId)
     const orgSlug = org?.slug || ""
+    const initialReports = await getDailyReports(orgId)
 
     return (
         <div className="min-h-full space-y-10 pb-20">
             <Suspense fallback={<ReportsLoadingSkeleton />}>
-                <ReportsView orgId={orgId} orgSlug={orgSlug} />
+                <ReportsView orgId={orgId} orgSlug={orgSlug} initialReports={initialReports} />
             </Suspense>
         </div>
     )

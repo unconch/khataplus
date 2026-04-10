@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { resolveSlugDashboardPath } from "@/lib/auth-redirect"
+import { describeSession } from "@/lib/session-governance"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -48,8 +49,15 @@ export async function GET(request: Request) {
 
             try {
                 const { registerSession } = await import("@/lib/session-governance")
-                const tokenTail = userId.slice(-16)
-                await registerSession(userId, tokenTail)
+                if (authSession?.sessionId) {
+                    const details = describeSession(request.headers)
+                    await registerSession({
+                        userId,
+                        sessionId: authSession.sessionId,
+                        userAgent: details.userAgent,
+                        ipAddress: details.ipAddress,
+                    })
+                }
             } catch (err) {
                 console.warn("[AuthCallback] Session governance registration skipped:", err)
             }

@@ -353,14 +353,29 @@ export default function LoginPage() {
                 <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{dictionary.login.email}</label>
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={phase === "verify" ? { backgroundColor: "#fff", opacity: 1, color: "#18181b" } : undefined} placeholder={dictionary.login.emailPlaceholder} disabled={phase === "verify"} required />
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
+                    placeholder={dictionary.login.emailPlaceholder}
+                    readOnly={phase === "verify"}
+                    aria-readonly={phase === "verify"}
+                    required
+                  />
                 </div>
               </div>
 
               {phase === "verify" && (
                 <div className="space-y-1.5">
                   <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{dictionary.login.verificationCode}</label>
-                  <Input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))} className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl disabled:!bg-white disabled:!opacity-100 disabled:!text-zinc-900" style={{ backgroundColor: "#fff", opacity: 1, color: "#18181b" }} placeholder={dictionary.login.verificationPlaceholder} required />
+                  <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
+                    className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl"
+                    placeholder={dictionary.login.verificationPlaceholder}
+                    required
+                  />
                   <div className="flex items-center justify-between text-[11px]">
                     <button type="button" onClick={onResendCode} disabled={resendLoading || resendCooldown > 0} className="font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500 disabled:cursor-not-allowed">{resendLoading ? dictionary.login.sending : dictionary.login.resendCode}</button>
                     <span className="text-zinc-400">{resendCooldown > 0 ? dictionary.login.retryIn(resendCooldown) : dictionary.login.ready}</span>
@@ -371,10 +386,22 @@ export default function LoginPage() {
               {error && <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{error}</span></div>}
               {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-800">{info}</div>}
 
-              <Button type="submit" disabled={loading || otpSendPending} className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white">{loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? dictionary.login.verifyAndSignIn : dictionary.login.continue} <ArrowRight className="h-4 w-4 ml-2" /></>}</Button>
+              <Button
+                type="submit"
+                disabled={loading || otpSendPending}
+                className="w-full h-12 rounded-lg text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:!opacity-100 disabled:!bg-indigo-600 disabled:!text-white"
+              >
+                {loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? dictionary.login.verifyAndSignIn : dictionary.login.continue} <ArrowRight className="h-4 w-4 ml-2" /></>}
+              </Button>
 
               {phase === "email" && (
-                <Button type="button" variant="outline" className="w-full h-12 rounded-lg text-base border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 disabled:opacity-60" onClick={openPasskeyFlow} disabled={passkeyLoading}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 rounded-lg text-base border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 disabled:!opacity-100 disabled:!bg-white disabled:!text-zinc-800"
+                  onClick={openPasskeyFlow}
+                  disabled={passkeyLoading}
+                >
                   {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
                   {passkeyLoading ? dictionary.login.verifyingPasskey : dictionary.login.usePasskey}
                 </Button>

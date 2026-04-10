@@ -55,6 +55,19 @@ interface HomeDashboardProps {
     inventoryCount: number
 }
 
+function parseReportDate(value: string) {
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, (month || 1) - 1, day || 1)
+}
+
+function isSameLocalDay(a: Date, b: Date) {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    )
+}
+
 export function HomeDashboard({
     profile,
     org,
@@ -217,11 +230,15 @@ export function HomeDashboard({
         const now = new Date()
         let filtered = reports
         if (timeRange === "today") {
-            const todayStr = now.toISOString().split("T")[0]
-            filtered = reports.filter((r) => r.report_date === todayStr)
+            filtered = reports.filter((r) => isSameLocalDay(parseReportDate(r.report_date), now))
         } else if (timeRange === "week") {
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            filtered = reports.filter((r) => new Date(r.report_date) >= weekAgo)
+            filtered = reports.filter((r) => parseReportDate(r.report_date) >= weekAgo)
+        } else if (timeRange === "month") {
+            filtered = reports.filter((r) => {
+                const reportDate = parseReportDate(r.report_date)
+                return reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()
+            })
         }
 
         const revenue = filtered.reduce((sum, r) => sum + (r.total_sale_gross || 0), 0)
@@ -232,12 +249,22 @@ export function HomeDashboard({
     }, [reports, timeRange])
 
     const chartData = useMemo(() => {
-        return reports
+        const now = new Date()
+        const filteredReports = reports.filter((r) => {
+            const reportDate = parseReportDate(r.report_date)
+            if (timeRange === "today") return isSameLocalDay(reportDate, now)
+            if (timeRange === "week") {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+                return reportDate >= weekAgo
+            }
+            return reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()
+        })
+
+        return filteredReports
             .slice()
-            .reverse()
-            .slice(timeRange === "month" ? -30 : timeRange === "week" ? -7 : -1)
+            .sort((a, b) => parseReportDate(a.report_date).getTime() - parseReportDate(b.report_date).getTime())
             .map((r) => ({
-                date: new Date(r.report_date).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+                date: parseReportDate(r.report_date).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
                 revenue: r.total_sale_gross ?? 0,
                 profit: (r.total_sale_gross ?? 0) - (r.total_cost ?? 0),
             }))
@@ -314,7 +341,8 @@ export function HomeDashboard({
                 </div>
             </div>
 
-            <div className="rounded-2xl border bg-card shadow-sm overflow-hidden p-2 md:p-0 grid grid-cols-2 gap-2 md:gap-0 md:flex md:flex-row md:divide-x md:transition-all md:hover:shadow-md">
+            <div className="relative overflow-hidden rounded-[2rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))] p-3 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.18)] grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-0 dark:border-white/8 dark:bg-[linear-gradient(180deg,rgba(30,34,42,0.96),rgba(24,27,34,0.96))] dark:shadow-[0_24px_60px_-34px_rgba(0,0,0,0.55)]">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.8),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.05),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_22%)]" />
                 <MetricStripItem icon={Box} label="Product Range" value={inventoryCount.toString()} color="zinc" />
                 <MetricStripItem icon={AlertCircle} label="Stock Alerts" value={stockAlertsCount.toString()} color="orange" isAlert={stockAlertsCount > 0} />
                 <MetricStripItem icon={IndianRupee} label="Receivables" value={formatCurrency(unpaidAmount)} color="emerald" />
@@ -398,22 +426,25 @@ export function HomeDashboard({
 
 function MetricStripItem({ icon: Icon, label, value, color, isAlert }: any) {
     const iconColors: any = {
-        zinc: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-        orange: "bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400",
-        emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-        blue: "bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+        zinc: "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80 dark:bg-white/6 dark:text-zinc-200 dark:ring-white/6",
+        orange: "bg-orange-100 text-orange-600 ring-1 ring-orange-200/80 dark:bg-orange-500/12 dark:text-orange-400 dark:ring-orange-400/12",
+        emerald: "bg-emerald-100 text-emerald-600 ring-1 ring-emerald-200/80 dark:bg-emerald-500/12 dark:text-emerald-400 dark:ring-emerald-400/12",
+        blue: "bg-blue-100 text-blue-600 ring-1 ring-blue-200/80 dark:bg-blue-500/12 dark:text-blue-400 dark:ring-blue-400/12",
     }
 
     return (
-        <div className="flex-1 flex items-center gap-3 p-3 md:p-6 lg:p-8 rounded-xl md:rounded-none border border-zinc-100/80 md:border-0 transition-colors md:transition-all md:hover:bg-muted/30 group cursor-default md:hover-scale md:active-scale">
-            <div className={cn("flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl transition-colors md:transition-all md:group-hover:scale-110 shadow-sm", iconColors[color])}>
-                <Icon className="h-5 w-5 md:h-6 md:w-6" />
-            </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground/70">{label}</span>
-                <span className={cn("text-lg md:text-2xl font-black tracking-tight", isAlert ? "text-orange-600 dark:text-orange-500" : "text-foreground")}>
-                    {value}
-                </span>
+        <div className="group relative min-w-0 overflow-hidden rounded-[1.6rem] bg-zinc-50/90 px-4 py-4 transition-all duration-300 hover:bg-white md:rounded-none md:bg-transparent md:px-6 md:py-6 lg:px-8 lg:py-7 dark:bg-white/[0.015] dark:hover:bg-white/[0.03]">
+            <div className="pointer-events-none absolute inset-y-4 right-0 hidden w-px bg-zinc-200/80 md:block group-last:hidden dark:bg-white/8" />
+            <div className="flex items-center gap-3 md:gap-4">
+                <div className={cn("flex h-11 w-11 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-[1.1rem] transition-transform duration-300 group-hover:scale-105", iconColors[color])}>
+                    <Icon className="h-5 w-5 md:h-5.5 md:w-5.5" />
+                </div>
+                <div className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-500">{label}</span>
+                    <span className={cn("mt-2 block text-[1.75rem] leading-none md:text-[1.95rem] font-black tracking-[-0.04em]", isAlert ? "text-orange-600 dark:text-orange-400" : "text-zinc-950 dark:text-zinc-50")}>
+                        {value}
+                    </span>
+                </div>
             </div>
         </div>
     )

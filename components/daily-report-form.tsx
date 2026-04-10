@@ -28,13 +28,13 @@ import { cn } from "@/lib/utils"
 interface DailyReportFormProps {
     initialData?: Partial<DailyReport>
     onSuccess?: () => void
-    profileId: string
+    orgId: string
 }
 
 import { getExpenseCategories } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export function DailyReportForm({ initialData, onSuccess, profileId }: DailyReportFormProps) {
+export function DailyReportForm({ initialData, onSuccess, orgId }: DailyReportFormProps) {
     const [categories, setCategories] = useState<{ id?: string, name: string }[]>([])
 
     // Load categories on mount
@@ -105,7 +105,7 @@ export function DailyReportForm({ initialData, onSuccess, profileId }: DailyRepo
                 cash_sale: parseFloat(formData.cash_sale) || 0,
                 online_sale: parseFloat(formData.online_sale) || 0,
                 online_cost: parseFloat(formData.online_cost) || 0,
-            }, profileId)
+            }, orgId)
 
             setSuccess(true)
             setTimeout(() => {

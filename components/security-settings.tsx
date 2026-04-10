@@ -2,26 +2,30 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone } from "lucide-react"
+import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone, Sparkles, LockKeyhole, Activity, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import type { Profile, SystemSettings } from "@/lib/types"
+import type { SessionSnapshot } from "@/lib/session-governance"
 import { startRegistration } from "@simplewebauthn/browser"
 
 interface SecuritySettingsProps {
     profile: Profile
     isAdmin: boolean
-    orgId: string
-    initialSessions?: string[]
+    initialSessions?: SessionSnapshot[]
+    currentSessionId?: string
     initialSettings: SystemSettings
 }
 
 type ToggleKey =
     | "allow_staff_inventory"
     | "allow_staff_sales"
+    | "allow_staff_reports"
+    | "allow_staff_reports_entry_only"
+    | "allow_staff_analytics"
     | "allow_staff_add_inventory"
     | "gst_enabled"
     | "gst_inclusive"
@@ -30,8 +34,8 @@ type ToggleKey =
 export function SecuritySettings({
     profile,
     isAdmin,
-    orgId,
     initialSessions = [],
+    currentSessionId = "",
     initialSettings,
 }: SecuritySettingsProps) {
     const router = useRouter()
@@ -80,9 +84,88 @@ export function SecuritySettings({
                     label: "Show buy price in sales",
                     description: "Expose buy price during sales item selection.",
                 },
+                {
+                    group: "Reporting & Insights",
+                    key: "allow_staff_reports" as ToggleKey,
+                    label: "Staff reports access",
+                    description: "Allow staff to open reports and exports.",
+                },
+                {
+                    group: "Reporting & Insights",
+                    key: "allow_staff_reports_entry_only" as ToggleKey,
+                    label: "Reports entry-only mode",
+                    description: "Let staff enter report data without full report visibility.",
+                },
+                {
+                    group: "Reporting & Insights",
+                    key: "allow_staff_analytics" as ToggleKey,
+                    label: "Staff analytics access",
+                    description: "Expose analytics dashboards to staff accounts.",
+                },
             ] as const,
         []
     )
+
+    const governanceSummary = useMemo(() => {
+        const enabled = governanceRows.filter((row) => Boolean(settings[row.key])).length
+        return {
+            enabled,
+            total: governanceRows.length,
+            sessions: sessions.length,
+            passkeyReady: biometricEnabled,
+        }
+    }, [biometricEnabled, governanceRows, sessions.length, settings])
+
+    const governanceGroups = useMemo(
+        () => ({
+            "Sales Workflow": "Control how far staff can move through inventory visibility, billing, and margin-sensitive screens.",
+            "Inventory Operations": "Keep stock-changing actions separate from stock visibility to reduce accidental edits.",
+            "Reporting & Insights": "Split report entry, report visibility, and analytics access into separate controls.",
+            "Tax & Compliance": "Keep GST behavior explicit so operators understand whether prices are tax-inclusive or not.",
+        }),
+        []
+    )
+
+    const governanceNotes = useMemo(() => {
+        const notes: string[] = []
+        if (!isAdmin) {
+            notes.push("This workspace is in read-only governance mode for your account. Owner access is required to change controls.")
+        }
+        if (!settings.gst_enabled) {
+            notes.push("GST pricing mode stays visible for context, but it has no effect until the GST engine is enabled.")
+        }
+        if (settings.allow_staff_reports && settings.allow_staff_reports_entry_only) {
+            notes.push("Reports entry-only mode is redundant while full staff reports access is enabled.")
+        }
+        return notes
+    }, [isAdmin, settings.allow_staff_reports, settings.allow_staff_reports_entry_only, settings.gst_enabled])
+
+    const currentSession = useMemo(
+        () => sessions.find((session) => session.isCurrent) || null,
+        [sessions]
+    )
+    const externalSessions = useMemo(
+        () => sessions.filter((session) => !session.isCurrent),
+        [sessions]
+    )
+
+    const formatSessionMoment = (value?: number | null) => {
+        if (!value) return "Recent activity unavailable"
+
+        const date = new Date(value)
+        const diffMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000))
+
+        if (diffMinutes < 1) return "Active just now"
+        if (diffMinutes < 60) return `Active ${diffMinutes}m ago`
+        if (diffMinutes < 24 * 60) return `Active ${Math.round(diffMinutes / 60)}h ago`
+
+        return `Active on ${date.toLocaleDateString()}`
+    }
+
+    const formatSessionDetails = (session: SessionSnapshot) => {
+        const details = [session.browser, session.os, session.ipAddress].filter(Boolean)
+        return details.length > 0 ? details.join(" . ") : `Session ID: ${session.id.slice(0, 16)}...`
+    }
 
     const goToLoginForPasskeySetup = () => {
         const nextPath = typeof window !== "undefined" ? window.location.pathname : "/dashboard/settings"
@@ -133,8 +216,8 @@ export function SecuritySettings({
         }
     }
 
-    const postSettingsUpdate = async (payload: Record<string, unknown>) => {
-        const response = await fetch("/api/settings/update", {
+    const postSecuritySettingsUpdate = async (payload: Record<string, unknown>) => {
+        const response = await fetch("/api/security/settings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -150,12 +233,9 @@ export function SecuritySettings({
         setBiometricEnabled(checked)
         setIsUpdating(true)
         try {
-            await postSettingsUpdate({
-                isProfileView: true,
-                profile: {
-                    ...profile,
-                    biometric_required: checked,
-                },
+            await postSecuritySettingsUpdate({
+                action: "biometric",
+                biometricRequired: checked,
             })
             toast.success(`Biometric protection ${checked ? "enabled" : "disabled"}`)
         } catch (err: any) {
@@ -171,10 +251,8 @@ export function SecuritySettings({
         setSettings((current) => ({ ...current, [key]: value }))
 
         try {
-            await postSettingsUpdate({
-                isProfileView: false,
-                profile,
-                org: { id: orgId },
+            await postSecuritySettingsUpdate({
+                action: "governance",
                 settings: { [key]: value },
             })
             toast.success("Governance setting updated")
@@ -187,12 +265,18 @@ export function SecuritySettings({
     const handleRevokeSession = async (sid: string) => {
         setIsRevoking(sid)
         try {
-            const { revokeSession } = await import("@/lib/session-governance")
-            await revokeSession(profile.id, sid)
-            setSessions((prev) => prev.filter((s) => s !== sid))
+            const response = await fetch("/api/security/sessions", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ sessionId: sid }),
+            })
+            const data = await response.json().catch(() => ({} as any))
+            if (!response.ok) throw new Error(data?.error || "Failed to revoke session")
+            setSessions((prev) => prev.filter((session) => session.id !== sid))
             toast.success("Session revoked")
-        } catch {
-            toast.error("Failed to revoke session")
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to revoke session")
         } finally {
             setIsRevoking(null)
         }
@@ -202,12 +286,18 @@ export function SecuritySettings({
         if (!confirm("Sign out from all other devices?")) return
         setIsUpdating(true)
         try {
-            const { revokeAllSessions } = await import("@/lib/session-governance")
-            await revokeAllSessions(profile.id)
-            setSessions([])
+            const response = await fetch("/api/security/sessions", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ revokeAll: true }),
+            })
+            const data = await response.json().catch(() => ({} as any))
+            if (!response.ok) throw new Error(data?.error || "Failed to revoke all sessions")
+            setSessions((prev) => prev.filter((session) => session.id === currentSessionId))
             toast.success("All other sessions revoked")
-        } catch {
-            toast.error("Failed to revoke all sessions")
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to revoke all sessions")
         } finally {
             setIsUpdating(false)
         }
@@ -215,6 +305,77 @@ export function SecuritySettings({
 
     return (
         <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Card className="border-zinc-200/70 dark:border-zinc-800">
+                    <CardContent className="p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Security State</p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
+                            {biometricEnabled ? "Locked" : "Open"}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Biometric gate for this account.</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-zinc-200/70 dark:border-zinc-800">
+                    <CardContent className="p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Governance Rules</p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
+                            {governanceSummary.enabled}/{governanceSummary.total}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Enabled operational controls.</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-zinc-200/70 dark:border-zinc-800">
+                    <CardContent className="p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Active Sessions</p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
+                            {governanceSummary.sessions}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Tracked devices for this account.</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-zinc-200/70 dark:border-zinc-800">
+                    <CardContent className="p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Workspace Scope</p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
+                            {isAdmin ? "Admin" : "Member"}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Permission level for governance updates.</p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="overflow-hidden border-zinc-200/70 dark:border-zinc-800 bg-[linear-gradient(135deg,rgba(24,24,27,0.04),rgba(14,165,233,0.06))] dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.96),rgba(8,47,73,0.45))]">
+                <CardContent className="grid gap-4 p-5 md:grid-cols-3">
+                    <div className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            <LockKeyhole className="h-4 w-4 text-emerald-500" />
+                            Access posture
+                        </div>
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Biometric lock and passkey access are managed here for this account.
+                        </p>
+                    </div>
+                    <div className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            <Activity className="h-4 w-4 text-cyan-500" />
+                            Session control
+                        </div>
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Review current devices and revoke stale sessions without leaving settings.
+                        </p>
+                    </div>
+                    <div className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            <Sparkles className="h-4 w-4 text-indigo-500" />
+                            Governance matrix
+                        </div>
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Staff visibility and workflow permissions are grouped by operational domain.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card className="overflow-hidden border-emerald-200/60 dark:border-emerald-900/40 bg-gradient-to-br from-emerald-50/90 via-white to-cyan-50/50 dark:from-emerald-950/20 dark:via-zinc-950 dark:to-cyan-950/20">
                 <CardHeader className="border-b border-emerald-100/70 dark:border-emerald-900/40">
                     <CardTitle className="flex items-center gap-2 text-lg">
@@ -226,6 +387,27 @@ export function SecuritySettings({
                     <CardDescription>Manage biometric lock and passkey-based quick sign in.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Biometric Gate</p>
+                            <p className="mt-1 text-sm font-black text-zinc-950 dark:text-zinc-50">
+                                {biometricEnabled ? "Required" : "Optional"}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Current Device</p>
+                            <p className="mt-1 text-sm font-black text-zinc-950 dark:text-zinc-50">
+                                {currentSession?.deviceLabel || "Active"}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Other Devices</p>
+                            <p className="mt-1 text-sm font-black text-zinc-950 dark:text-zinc-50">
+                                {externalSessions.length === 0 ? "None" : String(externalSessions.length)}
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-between rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                         <div>
                             <Label className="text-sm font-semibold">Biometric app lock</Label>
@@ -270,19 +452,43 @@ export function SecuritySettings({
                     </CardTitle>
                     <CardDescription>Fine-tune what staff can view and modify.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                    {(["Sales Workflow", "Inventory Operations", "Tax & Compliance"] as const).map((group) => {
+                <CardContent className="space-y-4">
+                    <div className="rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-700 dark:text-indigo-300">
+                                {isAdmin ? "Admin editing enabled" : "Read-only view"}
+                            </span>
+                            <span className="rounded-full bg-zinc-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-700 dark:text-zinc-300">
+                                {governanceSummary.enabled} of {governanceSummary.total} controls active
+                            </span>
+                        </div>
+                        {governanceNotes.length > 0 ? (
+                            <div className="mt-3 space-y-2">
+                                {governanceNotes.map((note) => (
+                                    <div key={note} className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                                        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>{note}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    {(["Sales Workflow", "Inventory Operations", "Reporting & Insights", "Tax & Compliance"] as const).map((group) => {
                         const rows = governanceRows.filter((row) => row.group === group)
                         if (!rows.length) return null
                         return (
-                            <div key={group} className="space-y-2.5">
-                                <div className="px-1 pt-2">
+                            <div key={group} className="space-y-3 rounded-2xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                                <div className="px-1">
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/80 dark:text-indigo-300/80">
                                         {group}
                                     </p>
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {governanceGroups[group]}
+                                    </p>
                                 </div>
                                 {rows.map((item) => (
-                                    <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                                    <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-indigo-100/80 dark:border-indigo-900/30 bg-white dark:bg-zinc-950/70 p-4">
                                         <div>
                                             <Label className="text-sm font-semibold">{item.label}</Label>
                                             <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
@@ -336,35 +542,57 @@ export function SecuritySettings({
                     <CardDescription>Review and revoke active sessions for your account.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    {sessions.length === 0 ? (
-                        <div className="rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4 text-sm text-muted-foreground">
-                            No external sessions found.
+                    <div className="rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p className="text-sm font-semibold">{currentSession?.deviceLabel || "This device"}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {currentSession
+                                        ? formatSessionDetails(currentSession)
+                                        : "Current login is active on this device."}
+                                </p>
+                                {currentSession ? (
+                                    <p className="mt-2 text-[11px] text-cyan-700/80 dark:text-cyan-300/80">
+                                        {formatSessionMoment(currentSession.lastSeenAt)}
+                                    </p>
+                                ) : null}
+                            </div>
+                            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400">
+                                Active now
+                            </span>
+                        </div>
+                    </div>
+
+                    {externalSessions.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-cyan-200/70 dark:border-cyan-900/40 bg-white/40 dark:bg-zinc-900/20 p-4 text-sm text-muted-foreground">
+                            No other signed-in devices found. This account is only active on the current device.
                         </div>
                     ) : (
                         <>
-                            {sessions.map((sid, idx) => (
-                                <div key={sid} className="flex items-center justify-between rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
-                                    <div>
-                                        <p className="text-sm font-semibold">{idx === 0 ? "Current session" : "Other device"}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">ID: {sid.slice(0, 16)}...</p>
+                            {externalSessions.map((session, index) => (
+                                <div key={session.id} className="flex items-center justify-between gap-4 rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold">{session.deviceLabel || `Other device ${index + 1}`}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{formatSessionDetails(session)}</p>
+                                        <p className="mt-2 text-[11px] text-cyan-700/80 dark:text-cyan-300/80">
+                                            {formatSessionMoment(session.lastSeenAt)}
+                                        </p>
                                     </div>
-                                    {idx !== 0 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => handleRevokeSession(sid)}
-                                            disabled={isRevoking === sid}
-                                        >
-                                            {isRevoking === sid ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <LogOut className="h-4 w-4 mr-2" />
-                                                    Revoke
-                                                </>
-                                            )}
-                                        </Button>
-                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleRevokeSession(session.id)}
+                                        disabled={isRevoking === session.id}
+                                    >
+                                        {isRevoking === session.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <LogOut className="h-4 w-4 mr-2" />
+                                                Revoke
+                                            </>
+                                        )}
+                                    </Button>
                                 </div>
                             ))}
                             <Button

@@ -35,7 +35,7 @@ async function SalesPageContent({ autoOpen }: { autoOpen: boolean }) {
   const { orgId } = await resolvePageOrgContext()
 
   const [allSales, inventory, settings, org, reports] = await Promise.all([
-    getSales(orgId, { limit: 300 }),
+    getSales(orgId, { limit: 1000 }),
     getInventory(orgId),
     getSystemSettings(orgId),
     getOrganization(orgId),

@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import { cookies } from "next/headers"
 import "./globals.css"
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, getDictionary, normalizeLocale } from "@/lib/i18n"
+import { getFormattingLocale } from "@/lib/locale-format"
 
 export const metadata: Metadata = {
   title: "KhataPlus - Smart Billing & Inventory for NorthEast India",
@@ -93,6 +94,7 @@ export default async function RootLayout({
   const themeCookie = cookieStore.get("kp_theme")?.value
   const locale = normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE)
   const dictionary = getDictionary(locale)
+  const formattingLocale = getFormattingLocale(locale)
   const isDarkTheme = themeCookie === "dark"
 
   return (
@@ -102,11 +104,12 @@ export default async function RootLayout({
       className={isDarkTheme ? "dark" : ""}
       style={
         {
-          "--font-geist-sans": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+          "--font-geist-sans": "\"Noto Sans Bengali\", \"Nirmala UI\", \"Hind Siliguri\", \"Mukta\", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
           "--font-geist-mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
           colorScheme: isDarkTheme ? "dark" : "light",
         } as React.CSSProperties
       }
+      data-format-locale={formattingLocale}
     >
       <body className="font-sans antialiased relative overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <script
