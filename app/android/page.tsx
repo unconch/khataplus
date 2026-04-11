@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 }
 
 const apkUrl = "https://github.com/unconch/khataplus/releases/download/android-latest/khataplus-native-debug.apk"
-const releaseUrl = "https://github.com/unconch/khataplus/releases/tag/android-latest"
+const releaseUrl = "/android/release-notes"
 
 export default function AndroidDownloadPage() {
   return (
