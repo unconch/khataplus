@@ -3,6 +3,7 @@ package online.khataplus.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import online.khataplus.app.data.AndroidUpdateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,11 +33,17 @@ data class AuthUiState(
     val signupMessage: String? = null,
     val signupError: String? = null,
     val orgName: String? = null,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val latestReleaseVersion: String? = null,
+    val latestReleaseDate: String? = null,
+    val latestReleaseNotes: List<String> = emptyList(),
+    val latestReleaseUrl: String? = null,
+    val updatePromptDismissed: Boolean = false
 )
 
 class AuthViewModel(
-    private val repository: AuthRepository
+    private val repository: AuthRepository,
+    private val updateRepository: AndroidUpdateRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
@@ -73,6 +80,10 @@ class AuthViewModel(
         viewModelScope.launch {
             syncSession()
         }
+    }
+
+    fun dismissUpdatePrompt() = _uiState.update {
+        it.copy(updatePromptDismissed = true)
     }
 
     fun signOut() {
@@ -342,11 +353,14 @@ class AuthViewModel(
     }
 
     companion object {
-        fun factory(repository: AuthRepository): ViewModelProvider.Factory =
+        fun factory(
+            repository: AuthRepository,
+            updateRepository: AndroidUpdateRepository
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return AuthViewModel(repository) as T
+                    return AuthViewModel(repository, updateRepository) as T
                 }
             }
     }

@@ -1,5 +1,7 @@
 package online.khataplus.app.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,14 +31,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,18 +55,125 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import online.khataplus.app.data.AppContainer
+import online.khataplus.app.data.push.AndroidPushStore
 
 @Composable
 fun KhataPlusNativeApp(appContainer: AppContainer) {
-    val viewModel: AuthViewModel = viewModel(factory = AuthViewModel.factory(appContainer.authRepository))
+    val viewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.factory(
+            appContainer.authRepository,
+            appContainer.androidUpdateRepository
+        )
+    )
     val state by viewModel.uiState.collectAsState()
+    val pushState by AndroidPushStore.state.collectAsState()
+    val context = LocalContext.current
+    var notificationCenterOpen by rememberSaveable { mutableStateOf(false) }
+    val activeNotification = pushState.activeNotification
+    val hasUpdateNotification = activeNotification != null
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            appContainer.androidPushRepository.registerInstall()
+        }
+    }
+
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when {
             state.checkingSession -> LoadingScreen()
-            state.isAuthenticated -> NativeShell(state, viewModel::signOut)
-            else -> AuthScreen(state, viewModel)
+            state.isAuthenticated -> NativeShell(
+                state = state,
+                onSignOut = viewModel::signOut,
+                hasUpdateNotification = hasUpdateNotification,
+                onOpenNotifications = { notificationCenterOpen = true }
+            )
+            else -> AuthScreen(
+                state = state,
+                viewModel = viewModel,
+                hasUpdateNotification = hasUpdateNotification,
+                onOpenNotifications = { notificationCenterOpen = true }
+            )
         }
+    }
+
+    if (notificationCenterOpen && activeNotification != null) {
+        UpdateAvailableDialog(
+            version = activeNotification.version,
+            date = activeNotification.date,
+            title = activeNotification.title,
+            summary = activeNotification.summary,
+            notes = activeNotification.highlights,
+            onLater = {
+                AndroidPushStore.dismissActiveNotification()
+                notificationCenterOpen = false
+            },
+            onUpdateNow = {
+                val url = activeNotification.downloadUrl
+                if (!url.isNullOrBlank()) {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    )
+                }
+                AndroidPushStore.dismissActiveNotification()
+                notificationCenterOpen = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun UpdateAvailableDialog(
+    version: String,
+    date: String,
+    title: String,
+    summary: String,
+    notes: List<String>,
+    onLater: () -> Unit,
+    onUpdateNow: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onLater,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title)
+                Text(
+                    text = "Version $version${if (date.isBlank()) "" else " - $date"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF64748B)
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(summary)
+                if (notes.isNotEmpty()) {
+                    notes.take(3).forEach { note ->
+                        Text("- $note", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onUpdateNow) {
+                Text("Install")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onLater) {
+                Text("Later")
+            }
+        }
+    )
+}
+
+@Composable
+private fun NotificationCenterButton(
+    hasUpdateNotification: Boolean,
+    onOpenNotifications: () -> Unit
+) {
+    OutlinedButton(onClick = onOpenNotifications) {
+        Text(if (hasUpdateNotification) "Notifications (1)" else "Notifications")
     }
 }
 
@@ -77,7 +193,12 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
+private fun AuthScreen(
+    state: AuthUiState,
+    viewModel: AuthViewModel,
+    hasUpdateNotification: Boolean,
+    onOpenNotifications: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -107,6 +228,15 @@ private fun AuthScreen(state: AuthUiState, viewModel: AuthViewModel) {
                         modifier = Modifier.padding(horizontal = 22.dp, vertical = 28.dp),
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            NotificationCenterButton(
+                                hasUpdateNotification = hasUpdateNotification,
+                                onOpenNotifications = onOpenNotifications
+                            )
+                        }
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -359,68 +489,46 @@ private fun BrandBadge(size: androidx.compose.ui.unit.Dp = 40.dp) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9)))
-            )
+            .clip(RoundedCornerShape(size * 0.14f))
+            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF059669))))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(size * 0.10f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color.White.copy(alpha = 0.92f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(Color.Transparent)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.16f, top = size * 0.15f, end = size * 0.58f, bottom = size * 0.15f)
-                    .clip(RoundedCornerShape(0.dp))
-                    .background(Color(0xFF0F172A).copy(alpha = 0.14f))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.40f, top = size * 0.15f, end = size * 0.12f, bottom = size * 0.15f)
-                    .background(Color.White)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.38f, top = size * 0.28f, end = size * 0.20f, bottom = size * 0.52f)
-                    .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.38f, top = size * 0.46f, end = size * 0.31f, bottom = size * 0.34f)
-                    .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.38f, top = size * 0.64f, end = size * 0.24f, bottom = size * 0.16f)
-                    .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.44f, top = size * 0.44f, end = size * 0.20f, bottom = size * 0.36f)
-                    .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = size * 0.58f, top = size * 0.29f, end = size * 0.30f, bottom = size * 0.49f)
-                    .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
-            )
-        }
+                .padding(size * 0.11f)
+                .clip(RoundedCornerShape(size * 0.08f))
+                .background(Color(0xFFF1F5F9))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.44f, top = size * 0.26f, end = size * 0.08f, bottom = size * 0.05f)
+                .background(Color(0xFFE2E8F0))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.32f, top = size * 0.14f, end = size * 0.05f, bottom = size * 0.10f)
+                .background(Color(0xFFF8FAFC))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.08f, top = size * 0.16f, end = size * 0.68f, bottom = size * 0.12f)
+                .background(Color(0xFF059669))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.18f, top = size * 0.47f, end = size * 0.20f, bottom = size * 0.43f)
+                .background(Color.White, RoundedCornerShape(size * 0.06f))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.38f, top = size * 0.20f, end = size * 0.40f, bottom = size * 0.22f)
+                .background(Color.White, RoundedCornerShape(size * 0.06f))
+        )
     }
 }
 

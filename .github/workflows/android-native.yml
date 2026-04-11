@@ -47,6 +47,22 @@ jobs:
           mkdir -p ../android-release
           cp app/build/outputs/apk/debug/app-debug.apk ../android-release/khataplus-native-debug.apk
 
+      - name: Prepare release manifest
+        if: github.event_name == 'push'
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
+          RELEASE_DATE=$(date +'%B %-d, %Y')
+          cat > ../android-release/android-release.json <<EOF
+          {
+            "version": "$VERSION_NAME",
+            "versionCode": $VERSION_CODE,
+            "date": "$RELEASE_DATE",
+            "downloadUrl": "https://github.com/unconch/khataplus/releases/download/android-latest/khataplus-native-debug.apk",
+            "releaseUrl": "https://github.com/unconch/khataplus/releases/tag/android-latest"
+          }
+          EOF
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -63,4 +79,6 @@ jobs:
           draft: false
           prerelease: true
           make_latest: true
-          files: android-release/khataplus-native-debug.apk
+          files: |
+            android-release/khataplus-native-debug.apk
+            android-release/android-release.json

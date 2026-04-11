@@ -2,6 +2,7 @@
 
 import android.content.Context
 import android.widget.Toast
+import online.khataplus.app.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,7 +79,9 @@ private data class ActivityItem(
 @Composable
 fun NativeShell(
     state: AuthUiState,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    hasUpdateNotification: Boolean,
+    onOpenNotifications: () -> Unit
 ) {
     val context = LocalContext.current
     var fastLoadEnabled by rememberSaveable { mutableStateOf(isFastLoadEnabled(context)) }
@@ -106,7 +109,13 @@ fun NativeShell(
                 Box(modifier = Modifier.fillMaxSize().background(backgroundOrbs()))
                 if (isTablet) {
                     Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                        ShellTopBar(state = state, selectedTab = selectedTab, onSignOut = onSignOut)
+                        ShellTopBar(
+                            state = state,
+                            selectedTab = selectedTab,
+                            onSignOut = onSignOut,
+                            hasUpdateNotification = hasUpdateNotification,
+                            onOpenNotifications = onOpenNotifications
+                        )
                         Row(modifier = Modifier.fillMaxSize()) {
                             TabletRailNav(
                                 selectedTab = selectedTab,
@@ -136,7 +145,13 @@ fun NativeShell(
                     }
                 } else {
                     Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                        ShellTopBar(state = state, selectedTab = selectedTab, onSignOut = onSignOut)
+                        ShellTopBar(
+                            state = state,
+                            selectedTab = selectedTab,
+                            onSignOut = onSignOut,
+                            hasUpdateNotification = hasUpdateNotification,
+                            onOpenNotifications = onOpenNotifications
+                        )
                         Box(modifier = Modifier.fillMaxWidth().height(contentHeight)) {
                             when (selectedTab) {
                                 ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
@@ -162,7 +177,9 @@ fun NativeShell(
 private fun ShellTopBar(
     state: AuthUiState,
     selectedTab: ShellTab,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    hasUpdateNotification: Boolean,
+    onOpenNotifications: () -> Unit
 ) {
     val context = LocalContext.current
     val toast: (String) -> Unit = { message ->
@@ -193,6 +210,9 @@ private fun ShellTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+                OutlinedButton(onClick = onOpenNotifications) {
+                    Text(if (hasUpdateNotification) "Notifications (1)" else "Notifications")
                 }
                 OutlinedButton(onClick = onSignOut) { Text("Logout") }
             }
@@ -267,57 +287,45 @@ private fun BrandBadge(size: androidx.compose.ui.unit.Dp = 40.dp) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(26.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
+            .clip(RoundedCornerShape(size * 0.14f))
+            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF059669))))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(size * 0.10f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color.White.copy(alpha = 0.92f))
+                .padding(size * 0.11f)
+                .clip(RoundedCornerShape(size * 0.08f))
+                .background(Color(0xFFF1F5F9))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = size * 0.16f, top = size * 0.15f, end = size * 0.58f, bottom = size * 0.15f)
-                .background(Color(0xFF0F172A).copy(alpha = 0.14f))
+                .padding(start = size * 0.44f, top = size * 0.26f, end = size * 0.08f, bottom = size * 0.05f)
+                .background(Color(0xFFE2E8F0))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = size * 0.40f, top = size * 0.15f, end = size * 0.12f, bottom = size * 0.15f)
-                .background(Color.White)
+                .padding(start = size * 0.32f, top = size * 0.14f, end = size * 0.05f, bottom = size * 0.10f)
+                .background(Color(0xFFF8FAFC))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = size * 0.38f, top = size * 0.28f, end = size * 0.20f, bottom = size * 0.52f)
-                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+                .padding(start = size * 0.08f, top = size * 0.16f, end = size * 0.68f, bottom = size * 0.12f)
+                .background(Color(0xFF059669))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = size * 0.38f, top = size * 0.46f, end = size * 0.31f, bottom = size * 0.34f)
-                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+                .padding(start = size * 0.18f, top = size * 0.47f, end = size * 0.20f, bottom = size * 0.43f)
+                .background(Color.White, RoundedCornerShape(size * 0.06f))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = size * 0.38f, top = size * 0.64f, end = size * 0.24f, bottom = size * 0.16f)
-                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.44f, top = size * 0.44f, end = size * 0.20f, bottom = size * 0.36f)
-                .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.58f, top = size * 0.29f, end = size * 0.30f, bottom = size * 0.49f)
-                .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
+                .padding(start = size * 0.38f, top = size * 0.20f, end = size * 0.40f, bottom = size * 0.22f)
+                .background(Color.White, RoundedCornerShape(size * 0.06f))
         )
     }
 }
@@ -845,6 +853,13 @@ private fun MoreScreen(
                     PreferenceRow("Compact layout", "Better for small Android screens")
                     PreferenceRow("Dark accent", "Keeps the native look close to the brand")
                     PreferenceRow("Sync on launch", "Refreshes the auth context when the app opens")
+                }
+            }
+        }
+        item {
+            SectionCard("Vault & governance", "Build and policy details") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsRow("App version", BuildConfig.VERSION_NAME)
                 }
             }
         }
