@@ -3,7 +3,6 @@ package online.khataplus.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import online.khataplus.app.data.AndroidUpdateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,17 +32,11 @@ data class AuthUiState(
     val signupMessage: String? = null,
     val signupError: String? = null,
     val orgName: String? = null,
-    val orgSlug: String? = null,
-    val latestReleaseVersion: String? = null,
-    val latestReleaseDate: String? = null,
-    val latestReleaseNotes: List<String> = emptyList(),
-    val latestReleaseUrl: String? = null,
-    val updatePromptDismissed: Boolean = false
+    val orgSlug: String? = null
 )
 
 class AuthViewModel(
-    private val repository: AuthRepository,
-    private val updateRepository: AndroidUpdateRepository
+    private val repository: AuthRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
@@ -82,10 +75,6 @@ class AuthViewModel(
         }
     }
 
-    fun dismissUpdatePrompt() = _uiState.update {
-        it.copy(updatePromptDismissed = true)
-    }
-
     fun signOut() {
         viewModelScope.launch {
             repository.logout()
@@ -107,12 +96,6 @@ class AuthViewModel(
         }
     }
 
-    fun resendLoginCode() {
-        val state = uiState.value
-        if (state.loginPhase != AuthPhase.VERIFY) return
-        sendLoginCode(isResend = true)
-    }
-
     fun submitSignup() {
         val state = uiState.value
         if (state.signupPhase == AuthPhase.ENTRY) {
@@ -122,33 +105,7 @@ class AuthViewModel(
         }
     }
 
-    fun resendSignupCode() {
-        val state = uiState.value
-        if (state.signupPhase != AuthPhase.VERIFY) return
-        sendSignupCode(isResend = true)
-    }
-
-    fun changeLoginContact() = _uiState.update {
-        it.copy(
-            loginPhase = AuthPhase.ENTRY,
-            loginCode = "",
-            loginMaskedEmail = null,
-            loginMessage = null,
-            loginError = null
-        )
-    }
-
-    fun changeSignupContact() = _uiState.update {
-        it.copy(
-            signupPhase = AuthPhase.ENTRY,
-            signupCode = "",
-            signupMaskedEmail = null,
-            signupMessage = null,
-            signupError = null
-        )
-    }
-
-    private fun sendLoginCode(isResend: Boolean = false) {
+    private fun sendLoginCode() {
         val email = uiState.value.loginEmail.trim().lowercase()
         if (email.isBlank()) {
             _uiState.update { it.copy(loginError = "Enter your email to continue.") }
@@ -156,13 +113,7 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    loading = true,
-                    loginError = null,
-                    loginMessage = if (isResend) "Sending a new sign-in code..." else "Sending sign-in code..."
-                )
-            }
+            _uiState.update { it.copy(loading = true, loginError = null, loginMessage = "Sending sign-in code...") }
             repository.sendLoginCode(email)
                 .onSuccess { response ->
                     _uiState.update {
@@ -170,11 +121,7 @@ class AuthViewModel(
                             loading = false,
                             loginPhase = AuthPhase.VERIFY,
                             loginMaskedEmail = response.maskedEmail ?: email,
-                            loginMessage = if (isResend) {
-                                "New code sent to ${response.maskedEmail ?: email}"
-                            } else {
-                                "Code sent to ${response.maskedEmail ?: email}"
-                            }
+                            loginMessage = "Code sent to ${response.maskedEmail ?: email}"
                         )
                     }
                 }
@@ -233,7 +180,7 @@ class AuthViewModel(
         }
     }
 
-    private fun sendSignupCode(isResend: Boolean = false) {
+    private fun sendSignupCode() {
         val state = uiState.value
         val name = state.signupName.trim()
         val email = state.signupEmail.trim().lowercase()
@@ -243,13 +190,7 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    loading = true,
-                    signupError = null,
-                    signupMessage = if (isResend) "Sending a new signup code..." else "Sending signup code..."
-                )
-            }
+            _uiState.update { it.copy(loading = true, signupError = null, signupMessage = "Sending signup code...") }
             repository.sendSignupCode(name, email)
                 .onSuccess { response ->
                     _uiState.update {
@@ -257,11 +198,7 @@ class AuthViewModel(
                             loading = false,
                             signupPhase = AuthPhase.VERIFY,
                             signupMaskedEmail = response.maskedEmail ?: email,
-                            signupMessage = if (isResend) {
-                                "New code sent to ${response.maskedEmail ?: email}"
-                            } else {
-                                "Code sent to ${response.maskedEmail ?: email}"
-                            }
+                            signupMessage = "Code sent to ${response.maskedEmail ?: email}"
                         )
                     }
                 }
@@ -353,14 +290,11 @@ class AuthViewModel(
     }
 
     companion object {
-        fun factory(
-            repository: AuthRepository,
-            updateRepository: AndroidUpdateRepository
-        ): ViewModelProvider.Factory =
+        fun factory(repository: AuthRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return AuthViewModel(repository, updateRepository) as T
+                    return AuthViewModel(repository) as T
                 }
             }
     }

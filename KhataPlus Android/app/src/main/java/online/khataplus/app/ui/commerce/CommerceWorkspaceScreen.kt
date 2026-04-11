@@ -1,9 +1,12 @@
 package online.khataplus.app.ui.commerce
 
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,189 +16,205 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import online.khataplus.app.R
 import online.khataplus.app.ui.AuthUiState
-import online.khataplus.app.ui.theme.KhataGold
-import online.khataplus.app.ui.theme.KhataGreen
-import online.khataplus.app.ui.theme.KhataInk
-import online.khataplus.app.ui.theme.KhataPaper
-import online.khataplus.app.ui.theme.KhataSky
-import online.khataplus.app.ui.theme.KhataTeal
+
+private enum class WorkspaceTab(val label: String) {
+    Home("HOME"),
+    Sales("SALES"),
+    Items("ITEMS"),
+    Khata("KHATA"),
+    Settings("SETTINGS"),
+    Reports("REPORTS")
+}
+
+private enum class SettingsSection(val label: String) {
+    Identity("Identity"),
+    Organization("Organization"),
+    Team("Team"),
+    Governance("Vault & Governance")
+}
+
+private data class Stat(val label: String, val value: String, val note: String, val tint: Color)
+private data class Activity(val title: String, val detail: String, val amount: String, val tone: Color)
 
 @Composable
 fun CommerceWorkspaceScreen(state: AuthUiState, onSignOut: () -> Unit) {
-    var activeTab by remember { mutableStateOf(CommerceTab.SALES) }
+    var activeTab by rememberSaveable { mutableStateOf(WorkspaceTab.Home) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFFC9EFDD),
-                        Color(0xFFDEEFFF),
-                        Color(0xFFD3E7FB)
-                    )
-                )
-            )
-    ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFFF2F3F5), Color(0xFFF7F1EA), Color(0xFFEAF5EF))
+                    )
+                )
                 .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            WorkspaceHeroCard(
-                state = state,
-                activeTab = activeTab,
-                onTabSelected = { activeTab = it },
-                onSignOut = onSignOut
-            )
-            when (activeTab) {
-                CommerceTab.SALES -> SalesScreen()
-                CommerceTab.INVENTORY -> InventoryScreen()
-                CommerceTab.POS -> PosScreen()
+            WorkspaceHeader(state = state, onSignOut = onSignOut)
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (activeTab) {
+                    WorkspaceTab.Home -> HomeDashboard(
+                        onOpenReports = { activeTab = WorkspaceTab.Reports },
+                        onOpenSales = { activeTab = WorkspaceTab.Sales },
+                        onOpenItems = { activeTab = WorkspaceTab.Items },
+                        onOpenKhata = { activeTab = WorkspaceTab.Khata }
+                    )
+                    WorkspaceTab.Sales -> SalesScreen()
+                    WorkspaceTab.Items -> ItemsScreen()
+                    WorkspaceTab.Khata -> KhataScreen()
+                    WorkspaceTab.Settings -> SettingsScreen(state = state, onSignOut = onSignOut)
+                    WorkspaceTab.Reports -> ReportsScreen()
+                }
+            }
+            BottomNav(selectedTab = activeTab, onTabSelected = { activeTab = it })
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceHeader(state: AuthUiState, onSignOut: () -> Unit) {
+    var notificationsOpen by remember { mutableStateOf(false) }
+    var profileOpen by remember { mutableStateOf(false) }
+    val notifications = remember {
+        listOf("New release available", "Daily sales snapshot ready", "Khata reminder due today")
+    }
+
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("KhataPlus", fontWeight = FontWeight.Black)
+                    Text(
+                        text = state.orgName ?: "Your workspace",
+                        color = Color(0xFF64748B),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box {
+                    OutlinedButton(onClick = { notificationsOpen = true }) { Text("Notifications") }
+                    DropdownMenu(expanded = notificationsOpen, onDismissRequest = { notificationsOpen = false }) {
+                        notifications.forEach { item ->
+                            DropdownMenuItem(text = { Text(item) }, onClick = { notificationsOpen = false })
+                        }
+                    }
+                }
+                Box {
+                    OutlinedButton(onClick = { profileOpen = true }) { Text("Profile") }
+                    DropdownMenu(expanded = profileOpen, onDismissRequest = { profileOpen = false }) {
+                        DropdownMenuItem(text = { Text(state.loginEmail.ifBlank { "Account" }) }, onClick = { profileOpen = false })
+                        DropdownMenuItem(text = { Text("Logout") }, onClick = { profileOpen = false; onSignOut() })
+                    }
+                }
+            }
+        }
+
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.85f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = state.orgSlug ?: "mobile workspace",
+                    color = Color(0xFF6B7280),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("Everything is synced and ready.", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Use the tabs below to move through sales, stock, khata, and settings.",
+                    color = Color(0xFF475569)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun WorkspaceHeroCard(
-    state: AuthUiState,
-    activeTab: CommerceTab,
-    onTabSelected: (CommerceTab) -> Unit,
-    onSignOut: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(32.dp))
-            .background(Color.White.copy(alpha = 0.90f))
-            .padding(20.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+private fun BottomNav(selectedTab: WorkspaceTab, onTabSelected: (WorkspaceTab) -> Unit) {
+    val tabs = listOf(WorkspaceTab.Home, WorkspaceTab.Sales, WorkspaceTab.Items, WorkspaceTab.Khata, WorkspaceTab.Settings)
+    Surface(color = Color.White.copy(alpha = 0.98f), tonalElevation = 8.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEach { tab ->
+                val selected = tab == selectedTab
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (selected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
+                        .clickable { onTabSelected(tab) }
+                        .padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFF0F172A))
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .clip(CircleShape)
+                            .background(if (selected) Color(0xFF10B981) else Color(0xFFE5E7EB))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "KP", color = Color.White, fontWeight = FontWeight.Black)
+                        Text(tab.label.take(1), color = if (selected) Color.White else Color(0xFF0F172A), fontWeight = FontWeight.Black)
                     }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = "KhataPlus native workspace",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color(0xFF0F172A),
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = "Sales, inventory, and POS in one focused Android shell.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                OutlinedButton(onClick = onSignOut) {
-                    Text("Logout")
-                }
-            }
-
-            Card(
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = state.orgName ?: "Workspace ready",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF0F172A),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = state.orgSlug?.let { "@$it" } ?: "Connected to your current org",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SmallPill("Cashier", Color(0xFF10B981))
-                        SmallPill("Inventory", Color(0xFFF59E0B))
-                        SmallPill("Quick POS", Color(0xFF3B82F6))
-                    }
-                }
-            }
-
-            TabStrip(activeTab = activeTab, onTabSelected = onTabSelected)
-        }
-    }
-}
-
-@Composable
-private fun TabStrip(
-    activeTab: CommerceTab,
-    onTabSelected: (CommerceTab) -> Unit
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        CommerceTab.entries.forEach { tab ->
-            val selected = tab == activeTab
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onTabSelected(tab) },
-                color = if (selected) Color.White else Color(0xFFF8FAFC),
-                shape = RoundedCornerShape(18.dp),
-                tonalElevation = 0.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
                     Text(
                         text = tab.label,
-                        color = if (selected) KhataInk else Color(0xFF334155),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = when (tab) {
-                            CommerceTab.SALES -> "Invoices"
-                            CommerceTab.INVENTORY -> "Stock"
-                            CommerceTab.POS -> "Counter"
-                        },
-                        color = if (selected) KhataInk.copy(alpha = 0.7f) else Color(0xFF64748B),
+                        color = if (selected) Color(0xFF065F46) else Color(0xFF334155),
+                        fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -205,540 +224,426 @@ private fun TabStrip(
 }
 
 @Composable
-private fun SmallPill(label: String, accent: Color) {
-    Surface(
-        color = accent.copy(alpha = 0.14f),
-        contentColor = accent,
-        shape = RoundedCornerShape(999.dp)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = accent
-        )
-    }
-}
-
-@Composable
-private fun StatusPill(label: String, accent: Color, textColor: Color) {
-    Surface(
-        color = accent,
-        shape = RoundedCornerShape(999.dp)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = textColor,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun SectionTitle(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun MetricGrid(metrics: List<SummaryMetric>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        metrics.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { metric ->
-                    MetricCard(metric = metric, modifier = Modifier.weight(1f))
-                }
-                if (row.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetricCard(metric: SummaryMetric, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(
-                color = metric.accent.copy(alpha = 0.14f),
-                shape = RoundedCornerShape(999.dp)
-            ) {
-                Text(
-                    text = metric.label,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = metric.accent,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(text = metric.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            Text(
-                text = metric.note,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionRow(actions: List<WorkspaceQuickAction>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        actions.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { action ->
-                    ActionCard(action = action, modifier = Modifier.weight(1f))
-                }
-                if (row.size < 3) {
-                    repeat(3 - row.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionCard(action: WorkspaceQuickAction, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(
-                color = action.accent.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .size(width = 28.dp, height = 6.dp)
-                        .background(action.accent, RoundedCornerShape(8.dp))
-                )
-            }
-            Text(text = action.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(
-                text = action.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun SalesScreen() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SectionTitle("Sales dashboard", "Track orders, cash flow, and the latest bill activity.")
-        MetricGrid(salesMetrics)
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Fast actions", fontWeight = FontWeight.Bold)
-                        Text(
-                            "Start a sale or share the invoice in one tap.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    StatusPill(label = "Open till 9 PM", accent = KhataTeal.copy(alpha = 0.14f), textColor = KhataTeal)
-                }
-                ActionRow(salesQuickActions)
-            }
-        }
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Recent invoices", fontWeight = FontWeight.Bold)
-                    Text(
-                        "Latest activity from the counter and online payments.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                recentSales.forEach { sale ->
-                    SaleRow(sale = sale)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SaleRow(sale: SalesActivity) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = KhataPaper)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = sale.customer, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = sale.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = sale.amount, fontWeight = FontWeight.Black)
-                StatusPill(label = sale.status, accent = sale.accent.copy(alpha = 0.16f), textColor = sale.accent)
-            }
-        }
-    }
-}
-
-@Composable
-fun InventoryScreen() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SectionTitle("Inventory control", "Keep fast movers healthy and catch low stock before it blocks a sale.")
-        MetricGrid(inventoryMetrics)
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Stock health", fontWeight = FontWeight.Bold)
-                    Text(
-                        "Use these actions to receive stock or fix counts after a physical check.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                ActionRow(inventoryQuickActions)
-            }
-        }
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Items to watch", fontWeight = FontWeight.Bold)
-                    Text(
-                        "A compact list of SKU levels with reorder hints.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                inventoryItems.forEach { item ->
-                    InventoryRow(item = item)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun InventoryRow(item: InventoryItem) {
-    val coverage = (item.stock.toFloat() / item.reorderPoint.toFloat()).coerceIn(0f, 1.2f)
-    val tone = when {
-        item.stock <= item.reorderPoint / 2 -> Color(0xFFFB7185)
-        item.stock <= item.reorderPoint -> Color(0xFFF59E0B)
-        else -> item.accent
-    }
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = KhataPaper)
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(text = item.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        text = item.sku,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(text = "${item.stock} ${item.unit}", fontWeight = FontWeight.Black)
-                    StatusPill(
-                        label = if (item.stock <= item.reorderPoint) "Reorder soon" else "Healthy",
-                        accent = tone.copy(alpha = 0.16f),
-                        textColor = tone
-                    )
-                }
-            }
-            LinearProgressIndicator(
-                progress = { coverage },
-                modifier = Modifier.fillMaxWidth(),
-                color = tone,
-                trackColor = Color.White
-            )
-            Text(
-                text = "Reorder point ${item.reorderPoint} ${item.unit}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun PosScreen() {
-    var query by remember { mutableStateOf("") }
-    var paymentMethod by remember { mutableStateOf(paymentMethods.first()) }
-    val cart = remember { mutableStateListOf<CartLine>() }
-
-    val filteredProducts = remember(query) {
-        if (query.isBlank()) {
-            posProducts
-        } else {
-            posProducts.filter {
-                it.name.contains(query, ignoreCase = true) || it.category.contains(query, ignoreCase = true)
-            }
-        }
-    }
-
-    fun addToCart(product: PosProduct) {
-        val index = cart.indexOfFirst { it.name == product.name }
-        if (index >= 0) {
-            val current = cart[index]
-            cart[index] = current.copy(quantity = current.quantity + 1)
-        } else {
-            cart.add(CartLine(product.name, product.price, 1))
-        }
-    }
-
-    val subtotal = cart.sumOf { it.price * it.quantity }
-    val tax = subtotal * 0.18
-    val total = subtotal + tax
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SectionTitle("POS counter", "Search fast, build a cart, and keep checkout friction low.")
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Live counter", fontWeight = FontWeight.Bold)
-                    Text(
-                        "A lightweight cashier view for quick item selection and payment capture.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                ActionRow(posQuickActions)
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Search items or categories") },
-                    singleLine = true
-                )
-            }
-        }
-
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Quick add", fontWeight = FontWeight.Bold)
-                        Text(
-                            "Tap a product to push it into the cart.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    StatusPill(label = "3 tap checkout", accent = KhataSky.copy(alpha = 0.16f), textColor = KhataSky)
-                }
-                filteredProducts.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        row.forEach { product ->
-                            ProductCard(product = product, onAdd = { addToCart(product) }, modifier = Modifier.weight(1f))
-                        }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        }
-
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Cart summary", fontWeight = FontWeight.Bold)
-                        Text(
-                            "${cart.size} lines ready for checkout",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    StatusPill(label = paymentMethod, accent = KhataGreen.copy(alpha = 0.16f), textColor = KhataGreen)
-                }
-
-                if (cart.isEmpty()) {
-                    EmptyStateCard(
-                        title = "Add a product to start",
-                        subtitle = "The cart will appear here once you tap a quick-add item."
-                    )
-                } else {
-                    cart.forEach { line ->
-                        CartRow(line = line)
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    TotalsCard(subtotal = subtotal, tax = tax, total = total)
-                }
-
-                Text("Payment method", fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    paymentMethods.forEach { method ->
-                        val selected = paymentMethod == method
-                        Surface(
-                            color = if (selected) KhataGreen.copy(alpha = 0.12f) else KhataPaper,
-                            shape = RoundedCornerShape(999.dp),
-                            modifier = Modifier.clickable { paymentMethod = method }
-                        ) {
-                            Text(
-                                text = method,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                color = if (selected) KhataGreen else KhataInk,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(onClick = { cart.clear() }, modifier = Modifier.weight(1f)) {
-                        Text("Clear cart")
-                    }
-                    Button(onClick = { /* Native shell action placeholder */ }, modifier = Modifier.weight(1f)) {
-                        Text("Charge now")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProductCard(
-    product: PosProduct,
-    onAdd: () -> Unit,
-    modifier: Modifier = Modifier
+private fun HomeDashboard(
+    onOpenReports: () -> Unit,
+    onOpenSales: () -> Unit,
+    onOpenItems: () -> Unit,
+    onOpenKhata: () -> Unit
 ) {
-    Card(
-        modifier = modifier.clickable { onAdd() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = KhataPaper)
+    val context = LocalContext.current
+    val toast: (String) -> Unit = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    var newMenuOpen by remember { mutableStateOf(false) }
+    var range by rememberSaveable { mutableStateOf("Today") }
+
+    val stats = listOf(
+        Stat("Product Range", "184", "+7 this week", Color(0xFF10B981)),
+        Stat("Stock Alerts", "09", "Reorder now", Color(0xFFF59E0B)),
+        Stat("Receivables", "₹18,200", "14 parties waiting", Color(0xFF2563EB)),
+        Stat("Net Profit", "₹42,480", "+12% vs yesterday", Color(0xFF8B5CF6))
+    )
+    val activities = listOf(
+        Activity("Invoice #A-204", "New cash sale from counter 2", "₹2,180", Color(0xFFE8F5EE)),
+        Activity("Khata update", "Sharma Traders paid partial dues", "₹8,000", Color(0xFFFFF7E5)),
+        Activity("Stock alert", "Green tea and sugar are below min stock", "Action needed", Color(0xFFFFE4E6))
+    )
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(
-                color = product.accent.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(14.dp)
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { toast("Search is ready") }, modifier = Modifier.weight(1f)) { Text("Search") }
+                Box(modifier = Modifier.weight(1f)) {
+                    Button(onClick = { newMenuOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("New") }
+                    DropdownMenu(expanded = newMenuOpen, onDismissRequest = { newMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Record Sale") }, onClick = { newMenuOpen = false; onOpenSales() })
+                        DropdownMenuItem(text = { Text("Add Stock") }, onClick = { newMenuOpen = false; onOpenItems() })
+                        DropdownMenuItem(text = { Text("Khata Entry") }, onClick = { newMenuOpen = false; onOpenKhata() })
+                    }
+                }
+            }
+        }
+        item { StatGrid(stats) }
+        item {
+            SectionCard("Financial Velocity", "Revenue and profit generation stream") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ChipRow(listOf("Today", "This Week", "This Month"), range) { range = it }
+                    InsightGrid(
+                        listOf("Revenue" to "₹2.8L", "Profit" to "₹42,480", "Stock Alerts" to "09"),
+                        columns = 3
+                    )
+                }
+            }
+        }
+        item {
+            SectionCard("Global Activity Stream", "Latest business movement") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    activities.forEach { ActivityRow(it) { toast("Open ${it.title}") } }
+                }
+            }
+        }
+        item {
+            PortalGrid(
+                listOf(
+                    PortalItem("Analytics", "Financial Pulse", Color(0xFF8B5CF6)) { toast("Analytics opened") },
+                    PortalItem("Reports", "Business Files", Color(0xFF2563EB), onOpenReports),
+                    PortalItem("Migration", "Import Hub", Color(0xFFF59E0B)) { toast("Migration opened") }
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SalesScreen() {
+    val context = LocalContext.current
+    val toast: (String) -> Unit = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    val products = listOf("Milk", "Tea", "Rice", "Sugar", "Biscuits", "Oil", "Flour", "Soap")
+    val cart = listOf("Fresh Milk x 4" to "₹240", "Sugar 1kg x 2" to "₹110", "Basmati rice x 1" to "₹620")
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            SectionCard("Point of sale", "Fast checkout for the counter") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ChipRow(listOf("Cash ₹1,320", "Card ₹860", "UPI ₹2,440"), "Cash ₹1,320") { toast(it) }
+                    Text("Search products, tap to add, and keep the checkout flow quick for Android devices.", color = Color(0xFF475569))
+                }
+            }
+        }
+        item {
+            SectionCard("Popular items", "Tap an item to stage a sale") {
+                GridCards(products, "In stock") { toast("Added $it to the cart") }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text("Products are live placeholders for now, but each tap behaves like a real add-to-cart action.", color = Color(0xFF475569))
+            }
+        }
+        item {
+            SectionCard("Cart", "Ready to bill") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    cart.forEach { (name, price) -> Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(name); Text(price, fontWeight = FontWeight.Bold) } }
+                    Text("────────────────────────────────", color = Color(0xFFE2E8F0))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total"); Text("₹970", fontWeight = FontWeight.Black) }
+                    Button(onClick = { toast("Complete Sale is a placeholder action for now") }, modifier = Modifier.fillMaxWidth()) { Text("Complete Sale") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemsScreen() {
+    val rows = listOf("Milk" to "24 left", "Tea" to "31 left", "Rice" to "12 left", "Sugar" to "06 left", "Oil" to "15 left")
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            SectionCard("Inventory", "Stock health at a glance") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    InsightGrid(listOf("Total SKUs" to "184", "Low stock" to "09", "New items" to "17"), columns = 3)
+                    Text("Keep the stockroom tight with quick restock cues and visible thresholds for Android use.", color = Color(0xFF475569))
+                }
+            }
+        }
+        item {
+            SectionCard("Low stock list", "Needs attention") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rows.forEach { StockRow(it.first, it.second) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KhataScreen() {
+    val ledger = listOf("Sharma Traders" to "₹18,200 due", "Brahmaputra Store" to "₹4,500 due", "Gupta Mart" to "₹1,180 due")
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            SectionCard("Khata", "Balances and collections") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    InsightGrid(listOf("To collect" to "₹23,880", "To pay" to "₹7,400"), columns = 2)
+                    Text("Track receivables and keep the ledger moving from the phone.", color = Color(0xFF475569))
+                }
+            }
+        }
+        item {
+            SectionCard("Party balances", "Most active accounts") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ledger.forEach { LedgerRow(it.first, it.second) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportsScreen() {
+    var selected by rememberSaveable { mutableStateOf("Today") }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            SectionCard("Reports", "Daily, weekly, monthly") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ChipRow(listOf("Today", "7D", "30D", "FY"), selected) { selected = it }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatLine("Revenue", "₹2.8L")
+                        StatLine("Margin", "18.4%")
+                        StatLine("Returns", "3.2%")
+                        StatLine("GST ready", "Yes")
+                    }
+                }
+            }
+        }
+        item {
+            SectionCard("Trend", "Simple native summary") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ProgressRow("Sales", 0.92f, Color(0xFF10B981))
+                    ProgressRow("Collections", 0.74f, Color(0xFF2563EB))
+                    ProgressRow("Expenses", 0.51f, Color(0xFFF59E0B))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsScreen(state: AuthUiState, onSignOut: () -> Unit) {
+    var selected by rememberSaveable { mutableStateOf(SettingsSection.Identity) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item { ChipRow(SettingsSection.entries.map { it.label }, selected.label) { selected = SettingsSection.entries.first { section -> section.label == it } } }
+        item {
+            when (selected) {
+                SettingsSection.Identity -> SectionCard("Personal Identity", "Calibrate your individual profile and secure signature.") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatLine("Name", state.loginEmail.ifBlank { "Workspace member" })
+                        StatLine("Email", state.loginEmail.ifBlank { "not set" })
+                        StatLine("Role", "Admin")
+                    }
+                }
+                SettingsSection.Organization -> SectionCard("Organization", "Manage legal entity and operational boundaries.") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatLine("Workspace", state.orgName ?: "Pending")
+                        StatLine("Slug", state.orgSlug ?: "pending")
+                        StatLine("Session", "Native cookie-backed auth")
+                    }
+                }
+                SettingsSection.Team -> SectionCard("Team Management", "Govern organizational hierarchy and staff access.") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatLine("Owner", "You")
+                        StatLine("Managers", "2")
+                        StatLine("Staff", "6")
+                        Button(onClick = { }, modifier = Modifier.fillMaxWidth()) { Text("Invite teammate") }
+                    }
+                }
+                SettingsSection.Governance -> SectionCard("Vault & Governance", "Administer biometric access and session streams.") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatLine("Security", "Device session active")
+                        StatLine("Sync", "Enabled")
+                        StatLine("Last refresh", "Just now")
+                        Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Logout") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(title: String, subtitle: String, content: @Composable () -> Unit) {
+    Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text(subtitle, color = Color(0xFF475569))
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun StatGrid(stats: List<Stat>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        stats.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { stat ->
+                    Card(modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(stat.tint.copy(alpha = 0.15f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) { Text(stat.label, color = stat.tint, fontWeight = FontWeight.Bold) }
+                            Text(stat.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                            Text(stat.note, color = Color(0xFF475569))
+                        }
+                    }
+                }
+                if (row.size == 1) repeat(1) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChipRow(items: List<String>, selected: String, onSelected: (String) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { item ->
+            val active = selected == item
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(if (active) Color(0xFFE8F5EE) else Color(0xFFF1F5F9))
+                    .clickable { onSelected(item) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                Text(
-                    text = product.category,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    color = product.accent,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(item, color = if (active) Color(0xFF065F46) else Color(0xFF0F172A), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(text = product.name, fontWeight = FontWeight.Bold)
-            Text(
-                text = money(product.price),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = "Tap to add",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
 
 @Composable
-private fun CartRow(line: CartLine) {
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = KhataPaper)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+private fun InsightGrid(items: List<Pair<String, String>>, columns: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { (label, value) ->
+                    Card(modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(label, color = Color(0xFF64748B), fontWeight = FontWeight.Bold)
+                            Text(value, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortalGrid(items: List<PortalItem>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { item ->
+                    Card(
+                        modifier = Modifier.weight(1f).clickable { item.onClick() },
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(item.color.copy(alpha = 0.12f))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) { Text(item.title, color = item.color, fontWeight = FontWeight.Black) }
+                            Text(item.subtitle, color = Color(0xFF475569))
+                        }
+                    }
+                }
+                if (row.size == 1) repeat(1) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GridCards(items: List<String>, subtitle: String, onClick: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { item ->
+                    Card(
+                        modifier = Modifier.weight(1f).clickable { onClick(item) },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(item, fontWeight = FontWeight.Bold)
+                            Text(subtitle, color = Color(0xFF64748B))
+                        }
+                    }
+                }
+                if (row.size == 1) repeat(1) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+private data class PortalItem(val title: String, val subtitle: String, val color: Color, val onClick: () -> Unit)
+
+@Composable
+private fun ActivityRow(item: Activity, onClick: () -> Unit) {
+    Card(modifier = Modifier.clickable(onClick = onClick), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = item.tone)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = line.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = "${line.quantity} x ${money(line.price)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(item.title, fontWeight = FontWeight.Bold)
+                Text(item.detail, color = Color(0xFF475569))
             }
-            Text(text = money(line.price * line.quantity), fontWeight = FontWeight.Black)
+            Text(item.amount, fontWeight = FontWeight.Black)
         }
     }
 }
 
 @Composable
-private fun TotalsCard(subtotal: Double, tax: Double, total: Double) {
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AmountRow(label = "Subtotal", value = money(subtotal))
-            AmountRow(label = "Tax", value = money(tax))
-            AmountRow(label = "Total", value = money(total), bold = true)
-        }
-    }
-}
-
-@Composable
-private fun AmountRow(label: String, value: String, bold: Boolean = false) {
+private fun StockRow(name: String, count: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(text = label, fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium)
-        Text(text = value, fontWeight = if (bold) FontWeight.Black else FontWeight.SemiBold)
+        Text(name, fontWeight = FontWeight.Medium)
+        Text(count, color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun EmptyStateCard(title: String, subtitle: String) {
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = KhataPaper)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun LedgerRow(name: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(name, fontWeight = FontWeight.Medium)
+        Text(value, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun StatLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color(0xFF64748B))
+        Text(value, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ProgressRow(label: String, fraction: Float, color: Color) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, fontWeight = FontWeight.Bold)
+            Text("${(fraction * 100).toInt()}%", color = color, fontWeight = FontWeight.Black)
+        }
+        Box(modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(999.dp)).background(color.copy(alpha = 0.12f))) {
+            Box(modifier = Modifier.fillMaxWidth(fraction).height(10.dp).clip(RoundedCornerShape(999.dp)).background(color))
         }
     }
 }
 
-private fun money(value: Double): String = String.format(java.util.Locale("en", "IN"), "₹%,.0f", value)
+private fun gridItemWidth(totalWidth: Dp, columns: Int, spacing: Dp = 10.dp): Dp {
+    return if (columns <= 1) totalWidth else (totalWidth - spacing * (columns - 1)) / columns
+}
