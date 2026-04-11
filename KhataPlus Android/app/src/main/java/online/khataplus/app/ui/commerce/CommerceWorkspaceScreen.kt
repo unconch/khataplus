@@ -57,8 +57,9 @@ fun CommerceWorkspaceScreen(state: AuthUiState, onSignOut: () -> Unit) {
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFF7FAF6),
-                        Color(0xFFE9F5EF)
+                        Color(0xFFC9EFDD),
+                        Color(0xFFDEEFFF),
+                        Color(0xFFD3E7FB)
                     )
                 )
             )
@@ -96,16 +97,8 @@ private fun WorkspaceHeroCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        Color(0xFF0E3B3B),
-                        Color(0xFF0E5F57),
-                        Color(0xFF124B6A)
-                    )
-                )
-            )
+            .clip(RoundedCornerShape(32.dp))
+            .background(Color.White.copy(alpha = 0.90f))
             .padding(20.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -114,52 +107,54 @@ private fun WorkspaceHeroCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "KhataPlus native workspace",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Black
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Sales, inventory, and POS in one focused Android shell.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.86f)
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusPill(
-                        label = if (state.isAuthenticated) "Live" else "Checking",
-                        accent = Color.White.copy(alpha = 0.16f),
-                        textColor = Color.White
-                    )
-                    OutlinedButton(onClick = onSignOut) {
-                        Text("Logout")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFF0F172A))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(text = "KP", color = Color.White, fontWeight = FontWeight.Black)
                     }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "KhataPlus native workspace",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color(0xFF0F172A),
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "Sales, inventory, and POS in one focused Android shell.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                OutlinedButton(onClick = onSignOut) {
+                    Text("Logout")
                 }
             }
 
             Card(
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f))
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = state.orgName ?: "Workspace ready",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
+                        color = Color(0xFF0F172A),
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = state.orgSlug?.let { "@$it" } ?: "Connected to your current org",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.84f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SmallPill("Cashier", KhataGreen)
-                        SmallPill("Inventory", KhataGold)
-                        SmallPill("Quick POS", KhataSky)
+                        SmallPill("Cashier", Color(0xFF10B981))
+                        SmallPill("Inventory", Color(0xFFF59E0B))
+                        SmallPill("Quick POS", Color(0xFF3B82F6))
                     }
                 }
             }
@@ -181,7 +176,7 @@ private fun TabStrip(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { onTabSelected(tab) },
-                color = if (selected) Color.White else Color.White.copy(alpha = 0.10f),
+                color = if (selected) Color.White else Color(0xFFF8FAFC),
                 shape = RoundedCornerShape(18.dp),
                 tonalElevation = 0.dp
             ) {
@@ -191,7 +186,7 @@ private fun TabStrip(
                 ) {
                     Text(
                         text = tab.label,
-                        color = if (selected) KhataInk else Color.White,
+                        color = if (selected) KhataInk else Color(0xFF334155),
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
@@ -200,7 +195,7 @@ private fun TabStrip(
                             CommerceTab.INVENTORY -> "Stock"
                             CommerceTab.POS -> "Counter"
                         },
-                        color = if (selected) KhataInk.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.72f),
+                        color = if (selected) KhataInk.copy(alpha = 0.7f) else Color(0xFF64748B),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -212,8 +207,8 @@ private fun TabStrip(
 @Composable
 private fun SmallPill(label: String, accent: Color) {
     Surface(
-        color = accent.copy(alpha = 0.16f),
-        contentColor = Color.White,
+        color = accent.copy(alpha = 0.14f),
+        contentColor = accent,
         shape = RoundedCornerShape(999.dp)
     ) {
         Text(
@@ -221,7 +216,7 @@ private fun SmallPill(label: String, accent: Color) {
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            color = accent
         )
     }
 }
@@ -367,7 +362,7 @@ fun SalesScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    StatusPill(label = "Open till 9 PM", accent = KhataTeal.copy(alpha = 0.16f), textColor = KhataTeal)
+                    StatusPill(label = "Open till 9 PM", accent = KhataTeal.copy(alpha = 0.14f), textColor = KhataTeal)
                 }
                 ActionRow(salesQuickActions)
             }

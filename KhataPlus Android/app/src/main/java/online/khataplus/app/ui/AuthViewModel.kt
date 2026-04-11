@@ -96,6 +96,12 @@ class AuthViewModel(
         }
     }
 
+    fun resendLoginCode() {
+        val state = uiState.value
+        if (state.loginPhase != AuthPhase.VERIFY) return
+        sendLoginCode(isResend = true)
+    }
+
     fun submitSignup() {
         val state = uiState.value
         if (state.signupPhase == AuthPhase.ENTRY) {
@@ -105,7 +111,33 @@ class AuthViewModel(
         }
     }
 
-    private fun sendLoginCode() {
+    fun resendSignupCode() {
+        val state = uiState.value
+        if (state.signupPhase != AuthPhase.VERIFY) return
+        sendSignupCode(isResend = true)
+    }
+
+    fun changeLoginContact() = _uiState.update {
+        it.copy(
+            loginPhase = AuthPhase.ENTRY,
+            loginCode = "",
+            loginMaskedEmail = null,
+            loginMessage = null,
+            loginError = null
+        )
+    }
+
+    fun changeSignupContact() = _uiState.update {
+        it.copy(
+            signupPhase = AuthPhase.ENTRY,
+            signupCode = "",
+            signupMaskedEmail = null,
+            signupMessage = null,
+            signupError = null
+        )
+    }
+
+    private fun sendLoginCode(isResend: Boolean = false) {
         val email = uiState.value.loginEmail.trim().lowercase()
         if (email.isBlank()) {
             _uiState.update { it.copy(loginError = "Enter your email to continue.") }
@@ -113,7 +145,13 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, loginError = null, loginMessage = "Sending sign-in code...") }
+            _uiState.update {
+                it.copy(
+                    loading = true,
+                    loginError = null,
+                    loginMessage = if (isResend) "Sending a new sign-in code..." else "Sending sign-in code..."
+                )
+            }
             repository.sendLoginCode(email)
                 .onSuccess { response ->
                     _uiState.update {
@@ -121,7 +159,11 @@ class AuthViewModel(
                             loading = false,
                             loginPhase = AuthPhase.VERIFY,
                             loginMaskedEmail = response.maskedEmail ?: email,
-                            loginMessage = "Code sent to ${response.maskedEmail ?: email}"
+                            loginMessage = if (isResend) {
+                                "New code sent to ${response.maskedEmail ?: email}"
+                            } else {
+                                "Code sent to ${response.maskedEmail ?: email}"
+                            }
                         )
                     }
                 }
@@ -180,7 +222,7 @@ class AuthViewModel(
         }
     }
 
-    private fun sendSignupCode() {
+    private fun sendSignupCode(isResend: Boolean = false) {
         val state = uiState.value
         val name = state.signupName.trim()
         val email = state.signupEmail.trim().lowercase()
@@ -190,7 +232,13 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, signupError = null, signupMessage = "Sending signup code...") }
+            _uiState.update {
+                it.copy(
+                    loading = true,
+                    signupError = null,
+                    signupMessage = if (isResend) "Sending a new signup code..." else "Sending signup code..."
+                )
+            }
             repository.sendSignupCode(name, email)
                 .onSuccess { response ->
                     _uiState.update {
@@ -198,7 +246,11 @@ class AuthViewModel(
                             loading = false,
                             signupPhase = AuthPhase.VERIFY,
                             signupMaskedEmail = response.maskedEmail ?: email,
-                            signupMessage = "Code sent to ${response.maskedEmail ?: email}"
+                            signupMessage = if (isResend) {
+                                "New code sent to ${response.maskedEmail ?: email}"
+                            } else {
+                                "Code sent to ${response.maskedEmail ?: email}"
+                            }
                         )
                     }
                 }

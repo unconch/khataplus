@@ -1,5 +1,6 @@
 ﻿package online.khataplus.app.ui
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,10 +11,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -30,6 +35,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -37,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -73,30 +80,79 @@ fun NativeShell(
     state: AuthUiState,
     onSignOut: () -> Unit
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(ShellTab.Home) }
-    val shellBg = Brush.verticalGradient(listOf(Color(0xFFF4F1EB), Color(0xFFE6F4EC), Color.White))
+    val context = LocalContext.current
+    var fastLoadEnabled by rememberSaveable { mutableStateOf(isFastLoadEnabled(context)) }
+    var selectedTab by rememberSaveable { mutableStateOf(initialShellTab(context)) }
+    val shellBg = webBackdrop()
+
+    LaunchedEffect(fastLoadEnabled) {
+        if (fastLoadEnabled) {
+            selectedTab = ShellTab.Sales
+        } else if (selectedTab == ShellTab.Sales && !isFastLoadEnabled(context)) {
+            selectedTab = ShellTab.Home
+        }
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isTablet = maxWidth >= 840.dp
             val contentHeight = if (maxHeight > 270.dp) maxHeight - 270.dp else 0.dp
-            Column(
+            val tabletContentWidth = (maxWidth - 272.dp).coerceAtLeast(0.dp)
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(shellBg)
-                    .safeDrawingPadding()
             ) {
-                ShellTopBar(state = state, selectedTab = selectedTab, onSignOut = onSignOut)
-                Box(modifier = Modifier.fillMaxWidth().height(contentHeight)) {
-                    when (selectedTab) {
-                        ShellTab.Home -> HomeDashboard(state)
-                        ShellTab.Sales -> SalesScreen()
-                        ShellTab.Inventory -> InventoryScreen()
-                        ShellTab.Khata -> KhataScreen()
-                        ShellTab.Reports -> ReportsScreen()
-                        ShellTab.More -> MoreScreen(state = state, onSignOut = onSignOut)
+                Box(modifier = Modifier.fillMaxSize().background(backgroundOrbs()))
+                if (isTablet) {
+                    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                        ShellTopBar(state = state, selectedTab = selectedTab, onSignOut = onSignOut)
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            TabletRailNav(
+                                selectedTab = selectedTab,
+                                onTabSelected = { selectedTab = it },
+                                onSignOut = onSignOut,
+                                modifier = Modifier.width(240.dp)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(tabletContentWidth)
+                                    .padding(end = 16.dp, bottom = 16.dp)
+                            ) {
+                                when (selectedTab) {
+                                    ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
+                                    ShellTab.Sales -> SalesScreen()
+                                    ShellTab.Inventory -> InventoryScreen()
+                                    ShellTab.Khata -> KhataScreen()
+                                    ShellTab.Reports -> ReportsScreen()
+                                    ShellTab.More -> MoreScreen(state = state, onSignOut = onSignOut, fastLoadEnabled = fastLoadEnabled, onFastLoadChanged = { enabled ->
+                                        fastLoadEnabled = enabled
+                                        setFastLoadEnabled(context, enabled)
+                                    })
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                        ShellTopBar(state = state, selectedTab = selectedTab, onSignOut = onSignOut)
+                        Box(modifier = Modifier.fillMaxWidth().height(contentHeight)) {
+                            when (selectedTab) {
+                                ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
+                                ShellTab.Sales -> SalesScreen()
+                                ShellTab.Inventory -> InventoryScreen()
+                                ShellTab.Khata -> KhataScreen()
+                                ShellTab.Reports -> ReportsScreen()
+                                ShellTab.More -> MoreScreen(state = state, onSignOut = onSignOut, fastLoadEnabled = fastLoadEnabled, onFastLoadChanged = { enabled ->
+                                    fastLoadEnabled = enabled
+                                    setFastLoadEnabled(context, enabled)
+                                })
+                            }
+                        }
+                        BottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
                     }
                 }
-                BottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
             }
         }
     }
@@ -108,51 +164,161 @@ private fun ShellTopBar(
     selectedTab: ShellTab,
     onSignOut: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color(0xFF0F172A))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Text(text = "KP", color = Color.White, fontWeight = FontWeight.Black)
-            }
-            Column(modifier = Modifier.fillMaxWidth(0.72f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "KhataPlus Native",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${state.orgName ?: "Your workspace"} • ${selectedTab.label}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            OutlinedButton(onClick = onSignOut) { Text("Logout") }
-        }
+    val context = LocalContext.current
+    val toast: (String) -> Unit = { message ->
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+    var newMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF102A43))
-        ) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Android-first operating mode", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(
-                    "Signed in as ${state.loginEmail.ifBlank { "workspace member" }}. Use the native tabs below to manage sales, stock, khata, and reports.",
-                    color = Color(0xFFE2E8F0)
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Pill(text = "Online")
-                    Pill(text = state.orgSlug ?: "org pending")
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BrandBadge(size = 42.dp)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "KhataPlus Android",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${state.orgName ?: "Your workspace"} • ${selectedTab.label}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF475569),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                OutlinedButton(onClick = onSignOut) { Text("Logout") }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { toast("Search is ready on the web app; native search can be added next.") },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("Search")
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    Button(
+                        onClick = { newMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text("New")
+                    }
+                    DropdownMenu(
+                        expanded = newMenuExpanded,
+                        onDismissRequest = { newMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Record Sale") },
+                            onClick = {
+                                newMenuExpanded = false
+                                toast("Open the Sales tab to record a sale")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Stock In") },
+                            onClick = {
+                                newMenuExpanded = false
+                                toast("Open the Inventory tab to add stock")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Khata Entry") },
+                            onClick = {
+                                newMenuExpanded = false
+                                toast("Open the Khata tab to log ledger entries")
+                            }
+                        )
+                    }
+                }
+            }
+
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+            ) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Native app shell", color = Color(0xFF0F172A), fontWeight = FontWeight.Black)
+                    Text(
+                        "Signed in as ${state.loginEmail.ifBlank { "workspace member" }}. The mobile shell uses the same rounded cards, soft gradients, and high-contrast type as the web app.",
+                        color = Color(0xFF475569)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Pill(text = "Online")
+                        Pill(text = state.orgSlug ?: "org pending")
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BrandBadge(size: androidx.compose.ui.unit.Dp = 40.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(26.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(size * 0.10f)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color.White.copy(alpha = 0.92f))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.16f, top = size * 0.15f, end = size * 0.58f, bottom = size * 0.15f)
+                .background(Color(0xFF0F172A).copy(alpha = 0.14f))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.40f, top = size * 0.15f, end = size * 0.12f, bottom = size * 0.15f)
+                .background(Color.White)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.38f, top = size * 0.28f, end = size * 0.20f, bottom = size * 0.52f)
+                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.38f, top = size * 0.46f, end = size * 0.31f, bottom = size * 0.34f)
+                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.38f, top = size * 0.64f, end = size * 0.24f, bottom = size * 0.16f)
+                .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.44f, top = size * 0.44f, end = size * 0.20f, bottom = size * 0.36f)
+                .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = size * 0.58f, top = size * 0.29f, end = size * 0.30f, bottom = size * 0.49f)
+                .background(Color(0xFF10B981), RoundedCornerShape(999.dp))
+        )
     }
 }
 
@@ -161,12 +327,18 @@ private fun BottomNav(
     selectedTab: ShellTab,
     onTabSelected: (ShellTab) -> Unit
 ) {
-    Surface(color = Color.White, tonalElevation = 8.dp) {
+    Surface(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        color = Color.White.copy(alpha = 0.86f),
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -208,23 +380,113 @@ private fun BottomNav(
 }
 
 @Composable
-private fun HomeDashboard(state: AuthUiState) {
+private fun TabletRailNav(
+    selectedTab: ShellTab,
+    onTabSelected: (ShellTab) -> Unit,
+    onSignOut: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.padding(start = 16.dp, bottom = 16.dp, end = 8.dp),
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    BrandBadge(size = 42.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("KhataPlus", color = Color(0xFF0F172A), fontWeight = FontWeight.Black)
+                        Text("Tablet workspace", color = Color(0xFF475569))
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ShellTab.entries.forEach { tab ->
+                        val isSelected = selectedTab == tab
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(if (isSelected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
+                                .clickable { onTabSelected(tab) }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))) else Brush.linearGradient(listOf(Color(0xFFE5E7EB), Color(0xFFE5E7EB))))
+                                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = tab.label.take(1),
+                                    color = if (isSelected) Color.White else Color(0xFF0F172A),
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = tab.label,
+                                    color = if (isSelected) Color(0xFF065F46) else Color(0xFF0F172A),
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium
+                                )
+                                Text(
+                                    text = when (tab) {
+                                        ShellTab.Home -> "Dashboard"
+                                        ShellTab.Sales -> "Billing"
+                                        ShellTab.Inventory -> "Stock"
+                                        ShellTab.Khata -> "Ledger"
+                                        ShellTab.Reports -> "Insights"
+                                        ShellTab.More -> "Settings"
+                                    },
+                                    color = Color(0xFF64748B),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
+                Text("Logout")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeDashboard(state: AuthUiState, onTabSelected: (ShellTab) -> Unit) {
     val context = LocalContext.current
     val showToast: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
+    var timeRange by rememberSaveable { mutableStateOf("month") }
 
     val stats = listOf(
-        ShellStat("Today Sales", "₹42,480", "+12% vs yesterday", Color(0xFF10B981)),
-        ShellStat("Receivables", "₹18,200", "14 parties waiting", Color(0xFFF59E0B)),
-        ShellStat("Low Stock", "09 items", "Reorder today", Color(0xFFEF4444)),
-        ShellStat("Collections", "₹23,700", "8 payments logged", Color(0xFF2563EB))
+        ShellStat("Product Range", "184", "Active SKUs", Color(0xFF64748B)),
+        ShellStat("Stock Alerts", "09", "Need attention", Color(0xFFF59E0B)),
+        ShellStat("Receivables", "₹18,200", "Cash coming in", Color(0xFF10B981)),
+        ShellStat("Net Profit", "₹42,480", "+12% vs yesterday", Color(0xFF2563EB))
     )
     val activities = listOf(
         ActivityItem("Invoice #A-204", "New cash sale from counter 2", "₹2,180", Color(0xFFE8F5EE)),
         ActivityItem("Khata update", "Sharma Traders paid partial dues", "₹8,000", Color(0xFFFFF7E5)),
-        ActivityItem("Stock alert", "Green tea and sugar are below min stock", "Action needed", Color(0xFFFFE4E6))
+        ActivityItem("Stock alert", "Green tea and sugar are below min stock", "Action needed", Color(0xFFFFE4E6)),
+        ActivityItem("Purchase entry", "Oil and rice received from supplier", "₹5,420", Color(0xFFE0F2FE))
     )
+    val chartBars = when (timeRange) {
+        "today" -> listOf(18, 34, 24, 45, 58, 36, 72, 80, 66)
+        "week" -> listOf(28, 44, 38, 62, 71, 58, 83, 68, 54, 75, 65, 48)
+        else -> listOf(40, 70, 45, 90, 65, 80, 55, 95, 40, 60, 85, 30, 75, 50, 90, 60, 40, 70, 50)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -248,15 +510,46 @@ private fun HomeDashboard(state: AuthUiState) {
             }
         }
         item {
-            SectionCard(title = "Quick actions", subtitle = "Common tasks on one tap") {
-                BoxWithConstraints {
-                    val columns = if (maxWidth < 360.dp) 1 else 3
-                    AdaptiveActionGrid(
-                        labels = listOf("New Sale", "Add Stock", "Add Khata"),
-                        columns = columns,
-                        itemWidth = gridItemWidth(maxWidth, columns),
-                        onAction = { label -> showToast("$label is a placeholder action for now") }
-                    )
+            SectionCard(title = "Financial Velocity", subtitle = "Revenue and profit generation stream") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        listOf("today" to "Today", "week" to "This Week", "month" to "This Month").forEach { (key, label) ->
+                            Pill(
+                                text = label,
+                                selected = timeRange == key,
+                                modifier = Modifier.weight(1f),
+                                onClick = { timeRange = key }
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        MobileInsightCard(label = "Revenue", value = "₹2.8L", tone = "blue", modifier = Modifier.weight(1f))
+                        MobileInsightCard(label = "Profit", value = "₹42,480", tone = "emerald", modifier = Modifier.weight(1f))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFFF8FAFC))
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            chartBars.forEach { value ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height((value * 1.2f).dp)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(Brush.verticalGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +559,19 @@ private fun HomeDashboard(state: AuthUiState) {
                     activities.forEach { item ->
                         ActivityRow(item = item, onClick = { showToast("Open ${item.title}") })
                     }
+                }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                PortalGridCard("Analytics", "Financial Pulse", Color(0xFF8B5CF6), Modifier.weight(1f)) {
+                    onTabSelected(ShellTab.Reports)
+                }
+                PortalGridCard("Reports", "Business Files", Color(0xFF3B82F6), Modifier.weight(1f)) {
+                    onTabSelected(ShellTab.Reports)
+                }
+                PortalGridCard("Migration", "Import Hub", Color(0xFFF59E0B), Modifier.weight(1f)) {
+                    onTabSelected(ShellTab.More)
                 }
             }
         }
@@ -509,7 +815,12 @@ private fun ReportsScreen() {
 }
 
 @Composable
-private fun MoreScreen(state: AuthUiState, onSignOut: () -> Unit) {
+private fun MoreScreen(
+    state: AuthUiState,
+    onSignOut: () -> Unit,
+    fastLoadEnabled: Boolean,
+    onFastLoadChanged: (Boolean) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -527,6 +838,10 @@ private fun MoreScreen(state: AuthUiState, onSignOut: () -> Unit) {
         item {
             SectionCard("Preferences", "Tune the app") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FastLoadRow(
+                        enabled = fastLoadEnabled,
+                        onCheckedChange = onFastLoadChanged
+                    )
                     PreferenceRow("Compact layout", "Better for small Android screens")
                     PreferenceRow("Dark accent", "Keeps the native look close to the brand")
                     PreferenceRow("Sync on launch", "Refreshes the auth context when the app opens")
@@ -544,19 +859,47 @@ private fun MoreScreen(state: AuthUiState, onSignOut: () -> Unit) {
 }
 
 @Composable
+private fun FastLoadRow(
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+                Text("FastLoad", fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                Text(
+                    "Open the app directly on Sales for faster checkout startup.",
+                    color = Color(0xFF64748B)
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = onCheckedChange)
+        }
+    }
+}
+
+@Composable
 private fun SectionCard(
     title: String,
     subtitle: String,
     content: @Composable () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                Text(subtitle, color = Color(0xFF475569))
             }
             content()
         }
@@ -566,12 +909,17 @@ private fun SectionCard(
 @Composable
 private fun SummaryRow(title: String, subtitle: String) {
     Card(
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A))
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            Text(subtitle, color = Color(0xFFE2E8F0))
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, color = Color(0xFF0F172A), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+            Text(subtitle, color = Color(0xFF475569))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Pill(text = "Native")
+                Pill(text = "Synced")
+                Pill(text = "Ready")
+            }
         }
     }
 }
@@ -588,8 +936,8 @@ private fun StatGrid(
                 row.forEach { stat ->
                     Card(
                         modifier = Modifier.width(itemWidth),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
@@ -600,8 +948,8 @@ private fun StatGrid(
                             ) {
                                 Text(stat.label, color = stat.accent, fontWeight = FontWeight.Bold)
                             }
-                            Text(stat.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                            Text(stat.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stat.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                            Text(stat.subtitle, color = Color(0xFF475569))
                         }
                     }
                 }
@@ -730,8 +1078,8 @@ private fun QuickAction(
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5EE))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
         Row(
             modifier = Modifier
@@ -743,7 +1091,7 @@ private fun QuickAction(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF10B981))
+                    .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -751,7 +1099,7 @@ private fun QuickAction(
             }
             Text(
                 label,
-                color = Color(0xFF065F46),
+                color = Color(0xFF0F172A),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -768,15 +1116,15 @@ private fun ProductCard(
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(product, fontWeight = FontWeight.Bold)
-            Text("In stock", color = Color(0xFF6B7280))
+            Text(product, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+            Text("In stock", color = Color(0xFF475569))
         }
     }
 }
@@ -785,8 +1133,8 @@ private fun ProductCard(
 private fun ActivityRow(item: ActivityItem, onClick: () -> Unit) {
     Card(
         modifier = Modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = item.tone)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
         Row(
             modifier = Modifier
@@ -796,10 +1144,10 @@ private fun ActivityRow(item: ActivityItem, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.fillMaxWidth(0.78f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(item.title, fontWeight = FontWeight.Bold)
-                Text(item.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(item.title, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                Text(item.detail, color = Color(0xFF475569))
             }
-            Text(item.amount, fontWeight = FontWeight.Black)
+            Text(item.amount, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
         }
     }
 }
@@ -813,14 +1161,38 @@ private fun InfoChip(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(label, color = Color(0xFF64748B), fontWeight = FontWeight.Bold)
-            Text(value, fontWeight = FontWeight.Black)
+            Text(value, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+        }
+    }
+}
+
+@Composable
+private fun MobileInsightCard(
+    label: String,
+    value: String,
+    tone: String,
+    modifier: Modifier = Modifier
+) {
+    val accent = when (tone) {
+        "emerald" -> Color(0xFF10B981)
+        "blue" -> Color(0xFF2563EB)
+        else -> Color(0xFF0F172A)
+    }
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, color = Color(0xFF64748B), fontWeight = FontWeight.Bold)
+            Text(value, color = accent, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -834,7 +1206,7 @@ private fun Pill(
 ) {
     val baseModifier = modifier
         .clip(RoundedCornerShape(999.dp))
-        .background(if (selected) Color(0xFFE8F5EE) else Color(0xFFF1F5F9))
+        .background(if (selected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
 
     val finalModifier = if (onClick != null) {
         baseModifier.clickable(onClick = onClick)
@@ -878,6 +1250,34 @@ private fun SettingsRow(label: String, value: String) {
 }
 
 @Composable
+private fun PortalGridCard(
+    title: String,
+    subtitle: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.14f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(title, color = accent, fontWeight = FontWeight.Black)
+            }
+            Text(subtitle, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold)
+            Text("Open", color = Color(0xFF64748B))
+        }
+    }
+}
+
+@Composable
 private fun PreferenceRow(label: String, detail: String) {
     var enabled by rememberSaveable { mutableStateOf(true) }
     Row(
@@ -886,11 +1286,27 @@ private fun PreferenceRow(label: String, detail: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.fillMaxWidth(0.80f)) {
-            Text(label, fontWeight = FontWeight.Bold)
+            Text(label, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
             Text(detail, color = Color(0xFF64748B))
         }
         Switch(checked = enabled, onCheckedChange = { enabled = it })
     }
+}
+
+private fun isFastLoadEnabled(context: Context): Boolean {
+    return context.getSharedPreferences("khataplus_android_shell", Context.MODE_PRIVATE)
+        .getBoolean("fastload_enabled", false)
+}
+
+private fun setFastLoadEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences("khataplus_android_shell", Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean("fastload_enabled", enabled)
+        .apply()
+}
+
+private fun initialShellTab(context: Context): ShellTab {
+    return if (isFastLoadEnabled(context)) ShellTab.Sales else ShellTab.Home
 }
 
 @Composable
@@ -917,4 +1333,14 @@ private fun BarLine(label: String, fraction: Float, color: Color) {
         }
     }
 }
+
+private fun webBackdrop() = Brush.verticalGradient(
+    listOf(Color(0xFFC9EFDD), Color(0xFFDEEFFF), Color(0xFFD3E7FB))
+)
+
+private fun backgroundOrbs() = Brush.radialGradient(
+    colors = listOf(Color(0x3310B981), Color.Transparent),
+    center = Offset(0.2f, 0.2f),
+    radius = 900f
+)
 
