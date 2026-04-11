@@ -1,59 +1,77 @@
-import { AlertCircle, CheckCircle, Info, Megaphone, X } from "lucide-react";
+"use client"
 
-export const revalidate = 300 // Cache for 5 minutes
+import type { ReactNode } from "react"
+import { useEffect, useState } from "react"
+import { AlertCircle, CheckCircle, Info, Megaphone } from "lucide-react"
 
-export async function SystemAnnouncement() {
-    try {
-        const { getProductionSql } = await import("@/lib/db");
-        const db = getProductionSql();
+type AnnouncementPayload = {
+    message: string
+    type: "info" | "warning" | "success" | "urgent"
+} | null
 
-        const tableExists = await db`
-            SELECT EXISTS (
-                SELECT 1
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                AND table_name = 'system_announcements'
-            ) as exists
-        ` as any[];
+export function SystemAnnouncement() {
+    const [announcement, setAnnouncement] = useState<AnnouncementPayload>(null)
 
-        if (!tableExists?.[0]?.exists) return null;
+    useEffect(() => {
+        let cancelled = false
 
-        // Fetch most recent active announcement
-        const announcements = await db`
-            SELECT * FROM system_announcements 
-            WHERE is_active = true 
-            ORDER BY created_at DESC 
-            LIMIT 1
-        ` as any[];
+        const loadAnnouncement = async () => {
+            try {
+                const response = await fetch("/api/system-announcement", {
+                    credentials: "same-origin",
+                    cache: "force-cache",
+                })
+                if (!response.ok) return
+                const payload = await response.json().catch(() => null)
+                if (!cancelled) {
+                    setAnnouncement(payload?.announcement ?? null)
+                }
+            } catch {
+                // Non-blocking enhancement: silently skip if the fetch fails.
+            }
+        }
 
-        if (!announcements || announcements.length === 0) return null;
+        if ("requestIdleCallback" in window) {
+            const idleId = (window as Window & {
+                requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number
+                cancelIdleCallback?: (id: number) => void
+            }).requestIdleCallback(loadAnnouncement, { timeout: 1500 })
 
-        const ann = announcements[0];
+            return () => {
+                cancelled = true
+                window.cancelIdleCallback?.(idleId)
+            }
+        }
 
-        const styles: Record<string, string> = {
-            info: "bg-blue-600 text-white",
-            warning: "bg-amber-500 text-white",
-            success: "bg-emerald-600 text-white",
-            urgent: "bg-red-600 text-white animate-pulse",
-        };
+        const timeoutId = globalThis.setTimeout(loadAnnouncement, 250)
+        return () => {
+            cancelled = true
+            globalThis.clearTimeout(timeoutId)
+        }
+    }, [])
 
-        const icons: Record<string, any> = {
-            info: <Info className="w-4 h-4" />,
-            warning: <AlertCircle className="w-4 h-4" />,
-            success: <CheckCircle className="w-4 h-4" />,
-            urgent: <Megaphone className="w-4 h-4" />,
-        };
+    if (!announcement?.message) return null
 
-        return (
-            <div className={`w-full py-2 px-4 flex items-center justify-center gap-3 text-sm font-medium z-[100] relative shadow-md ${styles[ann.type] || styles.info}`}>
-                <span className="flex-shrink-0">
-                    {icons[ann.type] || icons.info}
-                </span>
-                <p className="text-center">{ann.message}</p>
-            </div>
-        );
-    } catch (error) {
-        // Table probably doesn't exist or DB error
-        return null;
+    const styles: Record<NonNullable<AnnouncementPayload>["type"], string> = {
+        info: "bg-blue-600 text-white",
+        warning: "bg-amber-500 text-white",
+        success: "bg-emerald-600 text-white",
+        urgent: "bg-red-600 text-white animate-pulse",
     }
+
+    const icons: Record<NonNullable<AnnouncementPayload>["type"], ReactNode> = {
+        info: <Info className="w-4 h-4" />,
+        warning: <AlertCircle className="w-4 h-4" />,
+        success: <CheckCircle className="w-4 h-4" />,
+        urgent: <Megaphone className="w-4 h-4" />,
+    }
+
+    return (
+        <div className={`relative z-[100] flex w-full items-center justify-center gap-3 px-4 py-2 text-sm font-medium shadow-md ${styles[announcement.type] || styles.info}`}>
+            <span className="flex-shrink-0">
+                {icons[announcement.type] || icons.info}
+            </span>
+            <p className="text-center">{announcement.message}</p>
+        </div>
+    )
 }

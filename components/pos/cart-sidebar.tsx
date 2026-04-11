@@ -66,7 +66,7 @@ export function CartSidebar({
                                 </div>
                                 <button
                                     onClick={() => onRemove(cartItem.item.id)}
-                                    className="p-2 -mt-1 -mr-1 rounded-xl text-zinc-300 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100"
+                                    className="flex h-11 w-11 items-center justify-center -mt-1 -mr-1 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -76,7 +76,7 @@ export function CartSidebar({
                                 <div className="flex items-center gap-1 p-1 bg-white border border-zinc-100 rounded-[1.25rem] shadow-sm">
                                     <button
                                         onClick={() => onUpdateQty(cartItem.item.id, -1)}
-                                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-all active:scale-90"
+                                        className="h-11 w-11 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-all active:scale-90"
                                     >
                                         <Minus size={14} strokeWidth={3} />
                                     </button>
@@ -85,7 +85,7 @@ export function CartSidebar({
                                     </span>
                                     <button
                                         onClick={() => onUpdateQty(cartItem.item.id, 1)}
-                                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-all active:scale-90"
+                                        className="h-11 w-11 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-all active:scale-90"
                                     >
                                         <Plus size={14} strokeWidth={3} />
                                     </button>
@@ -169,10 +169,10 @@ export function CartSidebar({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <button className="h-10 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <button className="h-11 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
                         Apply Discount
                     </button>
-                    <button className="h-10 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <button className="h-11 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors">
                         Hold Order
                     </button>
                 </div>

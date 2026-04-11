@@ -312,7 +312,7 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
   }, [theme])
 
   return (
-    <header className="app-topbar sticky top-0 z-40 border-b border-zinc-100 bg-zinc-50/80 backdrop-blur-xl dark:border-white/8 dark:bg-[rgba(17,24,39,0.72)]">
+    <header className="app-topbar sticky top-0 z-40 border-b border-zinc-100 bg-zinc-50/80 pt-safe backdrop-blur-xl dark:border-white/8 dark:bg-[rgba(17,24,39,0.72)]">
       <div className="flex h-[var(--topbar-height)] items-center justify-between px-4 sm:px-6 lg:px-10">
         <div className="min-w-0 flex flex-1 items-center gap-2 overflow-hidden">
           <DropdownMenu open={orgMenuOpen} onOpenChange={setOrgMenuOpen}>
@@ -449,7 +449,7 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-9 w-9 rounded-xl border border-zinc-100 bg-white text-zinc-400 shadow-sm transition-all hover:bg-zinc-50 hover:text-zinc-950 dark:border-white/8 dark:bg-[rgba(30,41,59,0.88)] dark:text-zinc-300 dark:shadow-[0_10px_26px_rgba(0,0,0,0.24)] dark:hover:bg-[rgba(51,65,85,0.96)] dark:hover:text-white"
+                className="relative h-10 w-10 rounded-xl border border-zinc-100 bg-white text-zinc-400 shadow-sm transition-all hover:bg-zinc-50 hover:text-zinc-950 dark:border-white/8 dark:bg-[rgba(30,41,59,0.88)] dark:text-zinc-300 dark:shadow-[0_10px_26px_rgba(0,0,0,0.24)] dark:hover:bg-[rgba(51,65,85,0.96)] dark:hover:text-white"
               >
                 <Bell size={16} />
                 {unreadCount > 0 && (
@@ -535,7 +535,7 @@ export function AppHeader({ profile, orgName, role: currentRole, pathPrefix = ""
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-9 w-9 rounded-xl border border-zinc-200 bg-emerald-600 p-0 text-xs font-black text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500 dark:text-zinc-950 dark:shadow-[0_14px_32px_rgba(16,185,129,0.24)] dark:hover:bg-emerald-400"
+                className="h-10 w-10 rounded-xl border border-zinc-200 bg-emerald-600 p-0 text-xs font-black text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500 dark:text-zinc-950 dark:shadow-[0_14px_32px_rgba(16,185,129,0.24)] dark:hover:bg-emerald-400"
               >
                 {displayName.charAt(0).toUpperCase()}
               </Button>

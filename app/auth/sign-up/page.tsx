@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useLocale } from "@/components/locale-provider"
@@ -24,6 +24,8 @@ export default function SignUpPage() {
   }, [searchParams])
 
   const loginHref = `/auth/login${next ? `?next=${encodeURIComponent(next)}` : ""}`
+  const pendingRegistrationStorageKey = "kp_registration_pending"
+  const pendingRegistrationMaxAgeMs = 1000 * 60 * 15
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -31,11 +33,79 @@ export default function SignUpPage() {
   const [phase, setPhase] = useState<"email" | "verify">("email")
   const [verifyLoginId, setVerifyLoginId] = useState("")
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement | null>(null)
+  const codeInputRef = useRef<HTMLInputElement | null>(null)
+
+  const clearPendingRegistration = () => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.removeItem(pendingRegistrationStorageKey)
+  }
+
+  const savePendingRegistration = (pendingName: string, pendingEmail: string) => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.setItem(
+      pendingRegistrationStorageKey,
+      JSON.stringify({
+        name: pendingName,
+        email: pendingEmail,
+        createdAt: Date.now(),
+      })
+    )
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const raw = window.sessionStorage.getItem(pendingRegistrationStorageKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as { name?: string; email?: string; createdAt?: number }
+      const pendingName = String(parsed?.name || "").trim()
+      const pendingEmail = String(parsed?.email || "").trim().toLowerCase()
+      const createdAt = Number(parsed?.createdAt || 0)
+      if (!pendingName || !pendingEmail || !createdAt || Date.now() - createdAt > pendingRegistrationMaxAgeMs) {
+        clearPendingRegistration()
+        return
+      }
+      setName(pendingName)
+      setEmail(pendingEmail)
+      setVerifyLoginId(pendingEmail)
+      setPhase("verify")
+    } catch {
+      clearPendingRegistration()
+    }
+  }, [])
+
+  useEffect(() => {
+    fetch("/api/auth/register", { method: "GET", cache: "no-store" }).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    const activeInput = phase === "verify" ? codeInputRef.current : emailInputRef.current
+    if (!activeInput) return
+
+    const timer = window.setTimeout(() => {
+      activeInput.focus()
+      if (phase === "verify") {
+        activeInput.select()
+      }
+    }, 120)
+
+    return () => window.clearTimeout(timer)
+  }, [phase])
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError("")
+    setInfo("")
+    const normalizedEmail = email.trim().toLowerCase()
+    const requestingOtp = phase === "email"
+    if (requestingOtp && normalizedEmail) {
+      setPhase("verify")
+      setVerifyLoginId(normalizedEmail)
+      setInfo(copy.signUp.verificationPlaceholder)
+    }
     setLoading(true)
     try {
       const res = await fetch("/api/auth/register", {
@@ -43,7 +113,7 @@ export default function SignUpPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          email: phase === "verify" ? verifyLoginId || email : email,
+          email: phase === "verify" ? verifyLoginId || normalizedEmail : normalizedEmail,
           code: phase === "verify" ? code : "",
           next,
         }),
@@ -52,7 +122,9 @@ export default function SignUpPage() {
       if (!res.ok) throw new Error(data?.error || copy.signUp.registrationFailed)
       if (data?.phase === "verify") {
         setPhase("verify")
-        setVerifyLoginId(email.trim().toLowerCase())
+        setVerifyLoginId(normalizedEmail)
+        savePendingRegistration(name.trim(), normalizedEmail)
+        setInfo(copy.signUp.verifyEmailContinue)
         return
       }
       let target = data?.next || next || "/app/dashboard"
@@ -71,9 +143,14 @@ export default function SignUpPage() {
           target = target.replace(/^\/app\/dashboard/, `/app/${resolvedSlug}/dashboard`)
         }
       }
+      clearPendingRegistration()
       router.replace(target)
       router.refresh()
     } catch (err: any) {
+      if (requestingOtp) {
+        setPhase("email")
+        setVerifyLoginId("")
+      }
       setError(err?.message || copy.signUp.couldNotCreateAccount)
     } finally {
       setLoading(false)
@@ -124,6 +201,9 @@ export default function SignUpPage() {
                     onChange={(e) => setName(e.target.value)}
                     className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
                     placeholder={copy.signUp.yourName}
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    enterKeyHint="next"
                     readOnly={phase === "verify"}
                     aria-readonly={phase === "verify"}
                     required
@@ -136,11 +216,18 @@ export default function SignUpPage() {
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
+                    ref={emailInputRef}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
                     placeholder={copy.signUp.emailPlaceholder}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="email"
+                    enterKeyHint="next"
                     readOnly={phase === "verify"}
                     aria-readonly={phase === "verify"}
                     required
@@ -152,14 +239,25 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{copy.signUp.verificationCode}</label>
                   <Input
+                    ref={codeInputRef}
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
                     className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl"
                     placeholder={copy.signUp.verificationPlaceholder}
+                    autoComplete="one-time-code"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="numeric"
+                    enterKeyHint="done"
+                    maxLength={6}
+                    pattern="[0-9]*"
                     required
                   />
                 </div>
               )}
+
+              {info && <div className="rounded-xl border border-emerald-400/40 bg-emerald-50 p-3 text-sm text-emerald-800">{info}</div>}
 
               {error && (
                 <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-200 flex items-start gap-2">
@@ -194,7 +292,9 @@ export default function SignUpPage() {
                     setPhase("email")
                     setCode("")
                     setError("")
+                    setInfo("")
                     setVerifyLoginId("")
+                    clearPendingRegistration()
                   }}
                 >
                   {copy.signUp.changeEmail}

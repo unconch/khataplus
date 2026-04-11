@@ -61,7 +61,7 @@ export function PwaInstallPrompt() {
     if (!isVisible) return null
 
     return (
-        <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-[100] max-w-[320px] w-full animate-in fade-in slide-up duration-500">
+        <div className="fixed inset-x-4 z-[100] animate-in fade-in slide-up duration-500 bottom-[calc(env(safe-area-inset-bottom)+6rem)] md:inset-x-auto md:right-8 md:w-full md:max-w-[320px] md:bottom-8">
             <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 p-5 rounded-3xl shadow-xl">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-start justify-between">
@@ -70,7 +70,7 @@ export function PwaInstallPrompt() {
                         </div>
                         <button
                             aria-label="Dismiss install prompt"
-                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                            className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-zinc-100/80 hover:text-foreground dark:hover:bg-zinc-800/80"
                             onClick={handleDismiss}
                         >
                             <X className="h-4 w-4" />

@@ -217,19 +217,19 @@ export function DailyReportForm({ initialData, onSuccess, orgId }: DailyReportFo
                         <Receipt className="h-3 w-3 text-primary/60" />
                         <h3 className={sectionTitleClasses}>Operational Overhead (₹{totals.expenses.toLocaleString()})</h3>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={addExpenseRow} className="h-8 text-xs font-medium text-primary hover:bg-primary/10 px-3 rounded-lg">
+                    <Button type="button" variant="ghost" size="sm" onClick={addExpenseRow} className="h-10 text-xs font-medium text-primary hover:bg-primary/10 px-3 rounded-lg">
                         <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Expense
                     </Button>
                 </div>
                 <div className="bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl p-4 border border-zinc-200 dark:border-white/5 space-y-3">
                     {expenseList.map((expense) => (
-                        <div key={expense.id} className="grid grid-cols-12 gap-3 group/item">
-                            <div className="col-span-7 bg-white dark:bg-zinc-800 rounded-xl flex items-center h-10 border border-zinc-100 dark:border-white/5 focus-within:border-primary/40 transition-all">
+                        <div key={expense.id} className="grid grid-cols-1 gap-3 group/item sm:grid-cols-12 sm:items-center">
+                            <div className="bg-white dark:bg-zinc-800 rounded-xl flex items-center h-11 border border-zinc-100 dark:border-white/5 focus-within:border-primary/40 transition-all sm:col-span-7">
                                 <Select
                                     value={expense.category}
                                     onValueChange={(val) => updateExpense(expense.id, 'category', val)}
                                 >
-                                    <SelectTrigger className="w-full border-none h-full bg-transparent focus:ring-0">
+                                    <SelectTrigger className="w-full border-none h-full bg-transparent focus:ring-0 text-sm">
                                         <SelectValue placeholder="Select Category" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -238,24 +238,29 @@ export function DailyReportForm({ initialData, onSuccess, orgId }: DailyReportFo
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="col-span-4 bg-white dark:bg-zinc-800 rounded-xl px-3 flex items-center h-10 border border-zinc-100 dark:border-white/5 focus-within:border-primary/40 transition-all">
+                            <div className="bg-white dark:bg-zinc-800 rounded-xl px-3 flex items-center h-11 border border-zinc-100 dark:border-white/5 focus-within:border-primary/40 transition-all sm:col-span-4">
                                 <span className="text-muted-foreground/40 mr-1.5 text-[10px] font-black">₹</span>
                                 <input
                                     type="number"
                                     inputMode="decimal"
                                     placeholder="0"
-                                    className="bg-transparent border-none w-full text-xs font-black focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-white/5 font-mono"
+                                    className="bg-transparent border-none w-full text-sm font-black focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-white/5 font-mono"
                                     value={expense.amount}
                                     onChange={(e) => updateExpense(expense.id, 'amount', e.target.value)}
                                 />
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => removeExpenseRow(expense.id)}
-                                className="col-span-1 flex items-center justify-center text-muted-foreground/20 hover:text-rose-500 transition-colors"
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </button>
+                            <div className="sm:col-span-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeExpenseRow(expense.id)}
+                                    className="h-11 w-full rounded-xl text-muted-foreground/20 hover:text-rose-500 hover:bg-rose-500/10 sm:w-11"
+                                    aria-label="Remove expense row"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -324,7 +329,7 @@ export function DailyReportForm({ initialData, onSuccess, orgId }: DailyReportFo
 
             {/* Submission Section */}
             {/* Sticky Mobile Footer / Static Desktop Footer */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-200 dark:border-white/10 md:static md:bg-transparent md:p-0 md:border-none md:pt-4 z-50 flex justify-end">
+            <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-end border-t border-zinc-200 bg-white/80 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/80 md:static md:bg-transparent md:p-0 md:border-none md:pt-4">
                 <Button
                     type="submit"
                     disabled={loading}

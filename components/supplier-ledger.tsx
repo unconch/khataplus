@@ -26,7 +26,7 @@ export function SupplierLedger({ supplier, transactions: initialTransactions, or
     }
 
     return (
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-[calc(env(safe-area-inset-bottom)+10rem)] md:pb-28">
             {/* Balance Card */}
             <Card className={cn(
                 "border-none shadow-lg overflow-hidden",
@@ -71,28 +71,28 @@ export function SupplierLedger({ supplier, transactions: initialTransactions, or
                     </div>
                 ) : (
                     transactions.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border-b border-muted">
-                            <div className="flex items-center gap-3">
+                        <div key={tx.id} className="rounded-xl bg-muted/20 border-b border-muted p-4">
+                            <div className="flex items-start gap-3">
                                 <div className={cn(
-                                    "h-10 w-10 rounded-full flex items-center justify-center",
+                                    "h-11 w-11 rounded-full flex items-center justify-center shrink-0",
                                     tx.type === "purchase" ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"
                                 )}>
                                     {tx.type === "purchase" ? <Minus className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                                 </div>
-                                <div>
+                                <div className="min-w-0 flex-1">
                                     <p className="font-bold text-sm">
                                         {tx.type === "purchase" ? "Purchase (Unpaid)" : "Payment (Sent)"}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground font-medium">
+                                    <p className="text-xs text-muted-foreground font-medium">
                                         {new Date(tx.created_at).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </p>
-                                    {tx.note && <p className="text-[10px] text-muted-foreground mt-0.5 italic flex items-center gap-1">
-                                        <Info className="h-2 w-2" /> {tx.note}
+                                    {tx.note && <p className="mt-1 flex items-center gap-1 text-xs italic text-muted-foreground">
+                                        <Info className="h-3 w-3 shrink-0" /> <span className="truncate">{tx.note}</span>
                                     </p>}
                                 </div>
                             </div>
                             <div className={cn(
-                                "font-bold text-lg",
+                                "mt-3 pl-14 text-right font-bold text-lg md:mt-0 md:pl-0",
                                 tx.type === "purchase" ? "text-rose-500" : "text-emerald-500"
                             )}>
                                 {tx.type === "purchase" ? "-" : "+"}
@@ -105,7 +105,7 @@ export function SupplierLedger({ supplier, transactions: initialTransactions, or
             </div>
 
             {/* Floating Action Buttons */}
-            <div className="fixed bottom-20 left-4 right-4 flex gap-4 z-40 bg-background/80 backdrop-blur-md p-2 rounded-2xl border shadow-xl">
+            <div className="fixed bottom-0 left-4 right-4 z-40 flex flex-col gap-3 rounded-2xl border bg-background/80 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md shadow-xl md:bottom-20 md:flex-row md:gap-4 md:p-2 md:pb-2">
                 <AddSupplierTransactionDialog
                     type="payment"
                     supplierId={supplier.id}

@@ -8,19 +8,32 @@ const withPWA = withPWAInit({
   disable: !enablePwa, // enable in CI/Vercel or when explicitly set
   register: true,
   skipWaiting: true,
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
   reloadOnOnline: false, // prevent jarring reload when coming back online
   workboxOptions: {
     navigateFallbackDenylist: [/^\/api\//],
     disableDevLogs: true,
     runtimeCaching: [
       {
+        urlPattern: ({ request, url }) => request.mode === "navigate" && url.pathname.startsWith("/"),
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "app-pages",
+          networkTimeoutSeconds: 2,
+          expiration: {
+            maxEntries: 30,
+            maxAgeSeconds: 60 * 60 * 12,
+          },
+        },
+      },
+      {
         // Cache API routes for dashboard data
-        urlPattern: /^https:\/\/khataplus\.online\/api\/.*/i,
+        urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
         handler: "NetworkFirst",
         options: {
           cacheName: "api-cache",
+          networkTimeoutSeconds: 2,
           expiration: {
             maxEntries: 50,
             maxAgeSeconds: 60 * 5, // 5 minutes

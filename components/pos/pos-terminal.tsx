@@ -176,14 +176,14 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
   }
 
   return (
-    <div className="h-svh w-full overflow-hidden bg-gradient-to-b from-emerald-50/60 via-white to-sky-50/60 text-zinc-900">
+    <div className="min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-gradient-to-b from-emerald-50/60 via-white to-sky-50/60 text-zinc-900 md:h-dvh md:overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-[-80px] h-[420px] w-[420px] rounded-full bg-emerald-200/45 blur-[140px]" />
         <div className="absolute right-[-140px] top-10 h-[520px] w-[520px] rounded-full bg-sky-200/45 blur-[170px]" />
         <div className="absolute left-1/2 bottom-[-220px] h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-violet-200/35 blur-[220px]" />
       </div>
 
-      <div className="relative h-svh grid grid-rows-[auto_1fr]">
+      <div className="relative grid min-h-dvh grid-rows-[auto_1fr] md:h-dvh">
         <header className="px-4 sm:px-6 py-3 border-b border-white/70 bg-white/70 backdrop-blur-xl">
           <div className="mx-auto w-full max-w-[1600px] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -209,13 +209,13 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
               <button
                 type="button"
                 onClick={resetSale}
-                className="hidden sm:inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-[11px] font-black uppercase tracking-widest text-zinc-800 hover:bg-zinc-50"
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-[11px] font-black uppercase tracking-widest text-zinc-800 hover:bg-zinc-50"
               >
                 New Sale
               </button>
               <Link
                 href="/dashboard"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-[11px] font-black uppercase tracking-widest text-white hover:bg-zinc-800"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-[11px] font-black uppercase tracking-widest text-white hover:bg-zinc-800"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Dashboard
@@ -242,7 +242,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                       <button
                         type="button"
                         onClick={() => setQuery("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center justify-center"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-11 w-11 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center justify-center"
                         aria-label="Clear search"
                       >
                         <X className="h-4 w-4 text-zinc-500" />
@@ -292,7 +292,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                             <div className="text-xl font-black text-zinc-950">{formatINR(price)}</div>
                           </div>
                           <div className={cn(
-                            "h-10 px-4 rounded-2xl inline-flex items-center justify-center text-[11px] font-black uppercase tracking-widest",
+                            "h-11 px-4 rounded-2xl inline-flex items-center justify-center text-[11px] font-black uppercase tracking-widest",
                             disabled ? "bg-zinc-200 text-zinc-500" : "bg-zinc-950 text-white group-hover:bg-emerald-700"
                           )}>
                             Add
@@ -314,7 +314,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                 <button
                   type="button"
                   onClick={resetSale}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-[11px] font-black uppercase tracking-widest text-zinc-800 hover:bg-zinc-50"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-[11px] font-black uppercase tracking-widest text-zinc-800 hover:bg-zinc-50"
                 >
                   Clear
                 </button>
@@ -346,7 +346,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                         <button
                           type="button"
                           onClick={() => changeQty(item.id, item.qty - 1)}
-                          className="h-10 w-10 rounded-2xl bg-zinc-950 text-white hover:bg-zinc-800 flex items-center justify-center"
+                          className="h-11 w-11 rounded-2xl bg-zinc-950 text-white hover:bg-zinc-800 flex items-center justify-center"
                           aria-label="Decrease quantity"
                         >
                           <Minus className="h-4 w-4" />
@@ -355,7 +355,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                         <button
                           type="button"
                           onClick={() => changeQty(item.id, item.qty + 1)}
-                          className="h-10 w-10 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center"
+                          className="h-11 w-11 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center"
                           aria-label="Increase quantity"
                         >
                           <Plus className="h-4 w-4" />
@@ -364,7 +364,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                       <button
                         type="button"
                         onClick={() => changeQty(item.id, 0)}
-                        className="h-10 px-4 rounded-2xl border border-zinc-200 bg-white text-[11px] font-black uppercase tracking-widest text-zinc-700 hover:bg-zinc-50"
+                        className="h-11 px-4 rounded-2xl border border-zinc-200 bg-white text-[11px] font-black uppercase tracking-widest text-zinc-700 hover:bg-zinc-50"
                       >
                         Remove
                       </button>
@@ -389,7 +389,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                   />
                 </div>
 
-                <div className="mt-3 grid grid-cols-4 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { label: "Cash", icon: BadgeIndianRupee },
                     { label: "UPI", icon: Smartphone },
@@ -401,7 +401,7 @@ export function PosTerminal({ inventory, orgId, gstEnabled }: PosTerminalProps) 
                       type="button"
                       onClick={() => setPaymentMethod(m.label as PaymentMethod)}
                       className={cn(
-                        "h-11 rounded-2xl border text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2",
+                        "h-12 rounded-2xl border text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2",
                         paymentMethod === m.label
                           ? "border-emerald-200 bg-emerald-600 text-white"
                           : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"

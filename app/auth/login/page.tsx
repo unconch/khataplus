@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { startAuthentication } from "@simplewebauthn/browser"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -39,6 +39,8 @@ export default function LoginPage() {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [otpSendPending, setOtpSendPending] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement | null>(null)
+  const codeInputRef = useRef<HTMLInputElement | null>(null)
   const maskForUi = (raw: string) => {
     const value = String(raw || "").trim().toLowerCase()
     const [local, domain] = value.split("@")
@@ -102,6 +104,20 @@ export default function LoginPage() {
     const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000)
     return () => clearTimeout(timer)
   }, [resendCooldown])
+
+  useEffect(() => {
+    const activeInput = phase === "verify" ? codeInputRef.current : emailInputRef.current
+    if (!activeInput) return
+
+    const timer = window.setTimeout(() => {
+      activeInput.focus()
+      if (phase === "verify") {
+        activeInput.select()
+      }
+    }, 120)
+
+    return () => window.clearTimeout(timer)
+  }, [phase])
 
   useEffect(() => {
     // Warm up the auth route to reduce first-submit cold start delay.
@@ -354,11 +370,18 @@ export default function LoginPage() {
                 <div className="relative">
                   <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
+                    ref={emailInputRef}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9 h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 rounded-xl read-only:bg-white read-only:text-zinc-900 read-only:opacity-100 read-only:cursor-default"
                     placeholder={dictionary.login.emailPlaceholder}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="email"
+                    enterKeyHint="next"
                     readOnly={phase === "verify"}
                     aria-readonly={phase === "verify"}
                     required
@@ -370,10 +393,19 @@ export default function LoginPage() {
                 <div className="space-y-1.5">
                   <label className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-bold">{dictionary.login.verificationCode}</label>
                   <Input
+                    ref={codeInputRef}
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").replace(/^#/, ""))}
                     className="h-12 bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 tracking-[0.22em] font-black rounded-xl"
                     placeholder={dictionary.login.verificationPlaceholder}
+                    autoComplete="one-time-code"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="numeric"
+                    enterKeyHint="done"
+                    maxLength={6}
+                    pattern="[0-9]*"
                     required
                   />
                   <div className="flex items-center justify-between text-[11px]">

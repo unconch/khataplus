@@ -349,11 +349,13 @@ export function SalesFormPos(props: SalesFormProps) {
         gridTemplateColumns: isCompact ? "1fr" : "minmax(0,1fr) minmax(340px,36vw)",
         gridTemplateRows: isCompact ? "minmax(0,1fr) minmax(260px,42dvh)" : "1fr",
         width: "100vw",
-        height: "100dvh",
+        minHeight: "100dvh",
+        height: isCompact ? "auto" : "100dvh",
         fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
         background: t.bg,
         color: t.text,
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: isCompact ? "auto" : "hidden",
       }}
     >
       <section style={{ minHeight: 0, display: "flex", flexDirection: "column", borderRight: isCompact ? "none" : `1px solid ${t.border}` }}>

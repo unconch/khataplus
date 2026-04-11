@@ -98,8 +98,8 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     return (
       <PWAProvider>
         <PWABadgeManager isAdmin={isAdmin} />
-        <div className="min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
-          <main className="h-svh w-full overflow-hidden">
+        <div className="min-h-dvh bg-background text-foreground overflow-x-hidden selection:bg-primary/10 selection:text-primary">
+          <main className="min-h-dvh w-full overflow-x-hidden overflow-y-auto md:h-dvh md:overflow-hidden">
             {children}
           </main>
         </div>
@@ -111,7 +111,7 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
     <PWAProvider>
       <PWABadgeManager isAdmin={isAdmin} />
 
-      <div className="flex min-h-svh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
+      <div className="flex min-h-dvh bg-background text-foreground overflow-hidden selection:bg-primary/10 selection:text-primary">
 
         {/* Desktop Sidebar: Visible only on lg+ */}
         <DesktopSidebar
@@ -124,11 +124,11 @@ export function AppShell({ children, profile, role, settings, orgId, orgName, or
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-svh overflow-hidden relative z-0">
+        <div className="relative z-0 flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden md:h-dvh">
           <AppHeader profile={profile} orgName={orgName} role={role} pathPrefix={pathPrefix} />
 
           <main
-            className={`app-main-shell flex-1 pb-24 lg:pb-12 px-3 sm:px-4 lg:px-6 xl:px-8 2xl:px-10 pt-0 overflow-y-auto overflow-x-hidden relative ${enableMotion ? "scroll-smooth" : ""}`}
+            className={`app-main-shell relative flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:px-4 lg:px-6 lg:pb-12 xl:px-8 2xl:px-10 ${enableMotion ? "scroll-smooth" : ""}`}
             style={{ contentVisibility: "auto" }}
           >
             {pendingNavigationHref && (

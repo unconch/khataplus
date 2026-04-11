@@ -40,7 +40,7 @@ export default async function PosSalesPage() {
     .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <div className="h-svh w-full overflow-hidden">
+    <div className="min-h-dvh w-full overflow-x-hidden overflow-y-auto md:h-dvh md:overflow-hidden">
       <PosTerminal
         inventory={availableInventory}
         userId={user.userId || ""}
