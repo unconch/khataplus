@@ -1,22 +1,10 @@
 package online.khataplus.app
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import online.khataplus.app.ui.KhataPlusNativeApp
-import online.khataplus.app.ui.theme.KhataPlusTheme
+import android.net.Uri
+import com.google.androidbrowserhelper.trusted.LauncherActivity
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            KhataPlusTheme {
-                KhataPlusNativeApp(
-                    appContainer = (application as KhataPlusApplication).container
-                )
-            }
-        }
+class MainActivity : LauncherActivity() {
+    override fun getLaunchingUrl(): Uri {
+        return Uri.parse(BuildConfig.PWA_LAUNCH_URL)
     }
 }
