@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Download } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { Navbar } from "./Navbar"
 
@@ -58,6 +58,13 @@ export function HeroSection({ isAuthenticated, orgSlug, isGuest }: HeroSectionPr
                             <Link href={demoDashboardUrl} className="w-full sm:w-auto mt-4 px-4">
                                 <button className="w-full sm:w-auto h-18 px-10 bg-white/88 backdrop-blur-md text-zinc-950 text-xl border border-white/80 hover:bg-white rounded-full transition-all font-black uppercase tracking-tighter hover:border-zinc-200 shadow-[0_18px_35px_-24px_rgba(15,23,42,0.22)]">
                                     {dictionary.hero.instantDemo}
+                                </button>
+                            </Link>
+
+                            <Link href="/android" className="w-full sm:w-auto mt-4 px-4">
+                                <button className="w-full sm:w-auto h-18 px-10 bg-emerald-600 text-white text-xl border border-emerald-500/80 hover:bg-emerald-700 rounded-full transition-all font-black uppercase tracking-tighter shadow-[0_18px_35px_-24px_rgba(5,150,105,0.35)] flex items-center justify-center gap-3">
+                                    <Download className="h-5 w-5" />
+                                    Android APK
                                 </button>
                             </Link>
                         </div>

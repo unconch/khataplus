@@ -15,6 +15,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: "./KhataPlus Android"
@@ -39,8 +41,26 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Prepare release APK
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p ../android-release
+          cp app/build/outputs/apk/debug/app-debug.apk ../android-release/khataplus-native-debug.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: khataplus-native-debug
           path: "./KhataPlus Android/app/build/outputs/apk/debug/*.apk"
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Android Native Latest
+          body: Latest native Android APK built from the android branch.
+          draft: false
+          prerelease: true
+          make_latest: true
+          files: android-release/khataplus-native-debug.apk
