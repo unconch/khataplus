@@ -2,7 +2,16 @@
 
 import android.content.Context
 import android.widget.Toast
-import online.khataplus.app.BuildConfig
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CurrencyRupee
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,29 +21,31 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,10 +59,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import online.khataplus.app.BuildConfig
+import online.khataplus.app.R
 
 private enum class ShellTab(val label: String) {
     Home("Home"),
@@ -59,7 +73,7 @@ private enum class ShellTab(val label: String) {
     Inventory("Inventory"),
     Khata("Khata"),
     Reports("Reports"),
-    More("More")
+    Settings("Settings")
 }
 
 private data class ShellStat(
@@ -97,77 +111,42 @@ fun NativeShell(
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isTablet = maxWidth >= 840.dp
-            val contentHeight = if (maxHeight > 270.dp) maxHeight - 270.dp else 0.dp
-            val tabletContentWidth = (maxWidth - 272.dp).coerceAtLeast(0.dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(shellBg)
-            ) {
-                Box(modifier = Modifier.fillMaxSize().background(backgroundOrbs()))
-                if (isTablet) {
-                    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                        ShellTopBar(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(shellBg)
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(backgroundOrbs()))
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                ShellTopBar(
+                    state = state,
+                    onSignOut = onSignOut,
+                    hasUpdateNotification = hasUpdateNotification,
+                    onOpenNotifications = onOpenNotifications
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    when (selectedTab) {
+                        ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
+                        ShellTab.Sales -> SalesScreen()
+                        ShellTab.Inventory -> InventoryScreen()
+                        ShellTab.Khata -> KhataScreen()
+                        ShellTab.Reports -> ReportsScreen()
+                        ShellTab.Settings -> SettingsScreen(
                             state = state,
-                            selectedTab = selectedTab,
                             onSignOut = onSignOut,
-                            hasUpdateNotification = hasUpdateNotification,
-                            onOpenNotifications = onOpenNotifications
-                        )
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            TabletRailNav(
-                                selectedTab = selectedTab,
-                                onTabSelected = { selectedTab = it },
-                                onSignOut = onSignOut,
-                                modifier = Modifier.width(240.dp)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .width(tabletContentWidth)
-                                    .padding(end = 16.dp, bottom = 16.dp)
-                            ) {
-                                when (selectedTab) {
-                                    ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
-                                    ShellTab.Sales -> SalesScreen()
-                                    ShellTab.Inventory -> InventoryScreen()
-                                    ShellTab.Khata -> KhataScreen()
-                                    ShellTab.Reports -> ReportsScreen()
-                                    ShellTab.More -> MoreScreen(state = state, onSignOut = onSignOut, fastLoadEnabled = fastLoadEnabled, onFastLoadChanged = { enabled ->
-                                        fastLoadEnabled = enabled
-                                        setFastLoadEnabled(context, enabled)
-                                    })
-                                }
+                            fastLoadEnabled = fastLoadEnabled,
+                            onFastLoadChanged = { enabled ->
+                                fastLoadEnabled = enabled
+                                setFastLoadEnabled(context, enabled)
                             }
-                        }
-                    }
-                } else {
-                    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                        ShellTopBar(
-                            state = state,
-                            selectedTab = selectedTab,
-                            onSignOut = onSignOut,
-                            hasUpdateNotification = hasUpdateNotification,
-                            onOpenNotifications = onOpenNotifications
                         )
-                        Box(modifier = Modifier.fillMaxWidth().height(contentHeight)) {
-                            when (selectedTab) {
-                                ShellTab.Home -> HomeDashboard(state, onTabSelected = { selectedTab = it })
-                                ShellTab.Sales -> SalesScreen()
-                                ShellTab.Inventory -> InventoryScreen()
-                                ShellTab.Khata -> KhataScreen()
-                                ShellTab.Reports -> ReportsScreen()
-                                ShellTab.More -> MoreScreen(state = state, onSignOut = onSignOut, fastLoadEnabled = fastLoadEnabled, onFastLoadChanged = { enabled ->
-                                    fastLoadEnabled = enabled
-                                    setFastLoadEnabled(context, enabled)
-                                })
-                            }
-                        }
-                        BottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
                     }
                 }
+                BottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
             }
         }
     }
@@ -176,16 +155,12 @@ fun NativeShell(
 @Composable
 private fun ShellTopBar(
     state: AuthUiState,
-    selectedTab: ShellTab,
     onSignOut: () -> Unit,
     hasUpdateNotification: Boolean,
     onOpenNotifications: () -> Unit
 ) {
-    val context = LocalContext.current
-    val toast: (String) -> Unit = { message ->
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-    }
-    var newMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var profileMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val profileInitial = state.loginEmail.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "K"
 
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -197,71 +172,64 @@ private fun ShellTopBar(
                 BrandBadge(size = 42.dp)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "KhataPlus Android",
+                        text = "KhataPlus",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${state.orgName ?: "Your workspace"} • ${selectedTab.label}",
+                        text = state.orgName ?: "Your workspace",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF475569),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                OutlinedButton(onClick = onOpenNotifications) {
-                    Text(if (hasUpdateNotification) "Notifications (1)" else "Notifications")
-                }
-                OutlinedButton(onClick = onSignOut) { Text("Logout") }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { toast("Search is ready on the web app; native search can be added next.") },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(18.dp)
+                Button(
+                    onClick = onOpenNotifications,
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Search")
+                    Box {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = "Notifications",
+                            tint = Color.White
+                        )
+                        if (hasUpdateNotification) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF10B981))
+                            )
+                        }
+                    }
                 }
-                Box(modifier = Modifier.weight(1f)) {
+                Box {
                     Button(
-                        onClick = { newMenuExpanded = true },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(18.dp)
+                        onClick = { profileMenuExpanded = true },
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("New")
+                        Text(profileInitial)
                     }
                     DropdownMenu(
-                        expanded = newMenuExpanded,
-                        onDismissRequest = { newMenuExpanded = false }
+                        expanded = profileMenuExpanded,
+                        onDismissRequest = { profileMenuExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Record Sale") },
+                            text = { Text("Logout") },
                             onClick = {
-                                newMenuExpanded = false
-                                toast("Open the Sales tab to record a sale")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Stock In") },
-                            onClick = {
-                                newMenuExpanded = false
-                                toast("Open the Inventory tab to add stock")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Khata Entry") },
-                            onClick = {
-                                newMenuExpanded = false
-                                toast("Open the Khata tab to log ledger entries")
+                                profileMenuExpanded = false
+                                onSignOut()
                             }
                         )
                     }
                 }
             }
-
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
@@ -284,50 +252,11 @@ private fun ShellTopBar(
 
 @Composable
 private fun BrandBadge(size: androidx.compose.ui.unit.Dp = 40.dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * 0.14f))
-            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF059669))))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(size * 0.11f)
-                .clip(RoundedCornerShape(size * 0.08f))
-                .background(Color(0xFFF1F5F9))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.44f, top = size * 0.26f, end = size * 0.08f, bottom = size * 0.05f)
-                .background(Color(0xFFE2E8F0))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.32f, top = size * 0.14f, end = size * 0.05f, bottom = size * 0.10f)
-                .background(Color(0xFFF8FAFC))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.08f, top = size * 0.16f, end = size * 0.68f, bottom = size * 0.12f)
-                .background(Color(0xFF059669))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.18f, top = size * 0.47f, end = size * 0.20f, bottom = size * 0.43f)
-                .background(Color.White, RoundedCornerShape(size * 0.06f))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.38f, top = size * 0.20f, end = size * 0.40f, bottom = size * 0.22f)
-                .background(Color.White, RoundedCornerShape(size * 0.06f))
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.ic_launcher_foreground),
+        contentDescription = "KhataPlus logo",
+        modifier = Modifier.size(size)
+    )
 }
 
 @Composable
@@ -342,129 +271,58 @@ private fun BottomNav(
         tonalElevation = 0.dp,
         shadowElevation = 12.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ShellTab.entries.forEach { tab ->
-                val isSelected = selectedTab == tab
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(if (isSelected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
-                        .clickable { onTabSelected(tab) }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
+        BoxWithConstraints {
+            val navItems = listOf(ShellTab.Home, ShellTab.Sales, ShellTab.Inventory, ShellTab.Khata, ShellTab.Settings)
+            val itemWidth = maxWidth / navItems.size
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                navItems.forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    val icon = when (tab) {
+                        ShellTab.Home -> Icons.Filled.Dashboard
+                        ShellTab.Sales -> Icons.Filled.CurrencyRupee
+                        ShellTab.Inventory -> Icons.Filled.Inventory2
+                        ShellTab.Khata -> Icons.Filled.People
+                        ShellTab.Settings -> Icons.Filled.Settings
+                        ShellTab.Reports -> Icons.Filled.Dashboard
+                    }
+                    Column(
                         modifier = Modifier
-                            .clip(CircleShape)
-                            .background(if (isSelected) Color(0xFF10B981) else Color(0xFFE5E7EB))
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                            .width(itemWidth)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(if (isSelected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
+                            .clickable { onTabSelected(tab) }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) Color(0xFF10B981) else Color(0xFFE5E7EB)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = tab.label,
+                                tint = if (isSelected) Color.White else Color(0xFF334155),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                         Text(
-                            text = tab.label.take(1),
-                            color = if (isSelected) Color.White else Color(0xFF0F172A),
-                            fontWeight = FontWeight.Black
+                            text = tab.label,
+                            color = if (isSelected) Color(0xFF065F46) else Color(0xFF334155),
+                            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Text(
-                        text = tab.label,
-                        color = if (isSelected) Color(0xFF065F46) else Color(0xFF334155),
-                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TabletRailNav(
-    selectedTab: ShellTab,
-    onTabSelected: (ShellTab) -> Unit,
-    onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.padding(start = 16.dp, bottom = 16.dp, end = 8.dp),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    BrandBadge(size = 42.dp)
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("KhataPlus", color = Color(0xFF0F172A), fontWeight = FontWeight.Black)
-                        Text("Tablet workspace", color = Color(0xFF475569))
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShellTab.entries.forEach { tab ->
-                        val isSelected = selectedTab == tab
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(if (isSelected) Color(0xFFE8F5EE) else Color(0xFFF8FAFC))
-                                .clickable { onTabSelected(tab) }
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))) else Brush.linearGradient(listOf(Color(0xFFE5E7EB), Color(0xFFE5E7EB))))
-                                    .padding(horizontal = 9.dp, vertical = 7.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = tab.label.take(1),
-                                    color = if (isSelected) Color.White else Color(0xFF0F172A),
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = tab.label,
-                                    color = if (isSelected) Color(0xFF065F46) else Color(0xFF0F172A),
-                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium
-                                )
-                                Text(
-                                    text = when (tab) {
-                                        ShellTab.Home -> "Dashboard"
-                                        ShellTab.Sales -> "Billing"
-                                        ShellTab.Inventory -> "Stock"
-                                        ShellTab.Khata -> "Ledger"
-                                        ShellTab.Reports -> "Insights"
-                                        ShellTab.More -> "Settings"
-                                    },
-                                    color = Color(0xFF64748B),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
-                Text("Logout")
             }
         }
     }
@@ -477,6 +335,9 @@ private fun HomeDashboard(state: AuthUiState, onTabSelected: (ShellTab) -> Unit)
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
     var timeRange by rememberSaveable { mutableStateOf("month") }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var newMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val stats = listOf(
         ShellStat("Product Range", "184", "Active SKUs", Color(0xFF64748B)),
@@ -496,16 +357,87 @@ private fun HomeDashboard(state: AuthUiState, onTabSelected: (ShellTab) -> Unit)
         else -> listOf(40, 70, 45, 90, 65, 80, 55, 95, 40, 60, 85, 30, 75, 50, 90, 60, 40, 70, 50)
     }
 
+    if (searchOpen) {
+        AlertDialog(
+            onDismissRequest = { searchOpen = false },
+            title = { Text("Search") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search customers, items, sales") },
+                        singleLine = true
+                    )
+                    Text(
+                        "The PWA search opens a quick lookup. This native screen follows the same flow.",
+                        color = Color(0xFF64748B)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { searchOpen = false }) {
+                    Text("Done")
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            SummaryRow(
-                title = "Good to see you back",
-                subtitle = "Everything is synced for ${state.orgName ?: "your workspace"}"
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { searchOpen = true },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Search")
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    Button(
+                        onClick = { newMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("New")
+                    }
+                    DropdownMenu(
+                        expanded = newMenuExpanded,
+                        onDismissRequest = { newMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Record Sale") },
+                            onClick = {
+                                newMenuExpanded = false
+                                onTabSelected(ShellTab.Sales)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Stock In") },
+                            onClick = {
+                                newMenuExpanded = false
+                                onTabSelected(ShellTab.Inventory)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Khata Entry") },
+                            onClick = {
+                                newMenuExpanded = false
+                                onTabSelected(ShellTab.Khata)
+                            }
+                        )
+                    }
+                }
+            }
         }
         item {
             BoxWithConstraints {
@@ -530,31 +462,37 @@ private fun HomeDashboard(state: AuthUiState, onTabSelected: (ShellTab) -> Unit)
                             )
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        MobileInsightCard(label = "Revenue", value = "₹2.8L", tone = "blue", modifier = Modifier.weight(1f))
-                        MobileInsightCard(label = "Profit", value = "₹42,480", tone = "emerald", modifier = Modifier.weight(1f))
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(170.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color(0xFFF8FAFC))
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            chartBars.forEach { value ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height((value * 1.2f).dp)
-                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                        .background(Brush.verticalGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
-                                )
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        if (maxWidth < 840.dp) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                MobileInsightCard(label = "Revenue", value = "₹2.8L", tone = "blue", modifier = Modifier.fillMaxWidth())
+                                MobileInsightCard(label = "Profit", value = "₹42,480", tone = "emerald", modifier = Modifier.fillMaxWidth())
+                                MobileInsightCard(label = "Stock Alerts", value = "09", tone = "orange", modifier = Modifier.fillMaxWidth())
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(170.dp)
+                                    .clip(RoundedCornerShape(22.dp))
+                                    .background(Color(0xFFF8FAFC))
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    chartBars.forEach { value ->
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height((value * 1.2f).dp)
+                                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                                .background(Brush.verticalGradient(listOf(Color(0xFF10B981), Color(0xFF0EA5E9))))
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -579,7 +517,7 @@ private fun HomeDashboard(state: AuthUiState, onTabSelected: (ShellTab) -> Unit)
                     onTabSelected(ShellTab.Reports)
                 }
                 PortalGridCard("Migration", "Import Hub", Color(0xFFF59E0B), Modifier.weight(1f)) {
-                    onTabSelected(ShellTab.More)
+                    onTabSelected(ShellTab.Settings)
                 }
             }
         }
@@ -823,7 +761,7 @@ private fun ReportsScreen() {
 }
 
 @Composable
-private fun MoreScreen(
+private fun SettingsScreen(
     state: AuthUiState,
     onSignOut: () -> Unit,
     fastLoadEnabled: Boolean,
@@ -850,9 +788,6 @@ private fun MoreScreen(
                         enabled = fastLoadEnabled,
                         onCheckedChange = onFastLoadChanged
                     )
-                    PreferenceRow("Compact layout", "Better for small Android screens")
-                    PreferenceRow("Dark accent", "Keeps the native look close to the brand")
-                    PreferenceRow("Sync on launch", "Refreshes the auth context when the app opens")
                 }
             }
         }

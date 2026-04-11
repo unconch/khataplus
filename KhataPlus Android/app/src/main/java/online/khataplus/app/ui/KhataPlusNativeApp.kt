@@ -2,9 +2,11 @@ package online.khataplus.app.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,12 +42,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -56,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import online.khataplus.app.data.AppContainer
 import online.khataplus.app.data.push.AndroidPushStore
+import online.khataplus.app.R
 
 @Composable
 fun KhataPlusNativeApp(appContainer: AppContainer) {
@@ -78,7 +82,6 @@ fun KhataPlusNativeApp(appContainer: AppContainer) {
         }
     }
 
-
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when {
             state.checkingSession -> LoadingScreen()
@@ -90,35 +93,39 @@ fun KhataPlusNativeApp(appContainer: AppContainer) {
             )
             else -> AuthScreen(
                 state = state,
-                viewModel = viewModel,
-                hasUpdateNotification = hasUpdateNotification,
-                onOpenNotifications = { notificationCenterOpen = true }
+                viewModel = viewModel
             )
         }
     }
 
-    if (notificationCenterOpen && activeNotification != null) {
-        UpdateAvailableDialog(
-            version = activeNotification.version,
-            date = activeNotification.date,
-            title = activeNotification.title,
-            summary = activeNotification.summary,
-            notes = activeNotification.highlights,
-            onLater = {
-                AndroidPushStore.dismissActiveNotification()
-                notificationCenterOpen = false
-            },
-            onUpdateNow = {
-                val url = activeNotification.downloadUrl
-                if (!url.isNullOrBlank()) {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    )
+    if (notificationCenterOpen) {
+        if (activeNotification != null) {
+            UpdateAvailableDialog(
+                version = activeNotification.version,
+                date = activeNotification.date,
+                title = activeNotification.title,
+                summary = activeNotification.summary,
+                notes = activeNotification.highlights,
+                onLater = {
+                    AndroidPushStore.dismissActiveNotification()
+                    notificationCenterOpen = false
+                },
+                onUpdateNow = {
+                    val url = activeNotification.downloadUrl
+                    if (!url.isNullOrBlank()) {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        )
+                    }
+                    AndroidPushStore.dismissActiveNotification()
+                    notificationCenterOpen = false
                 }
-                AndroidPushStore.dismissActiveNotification()
-                notificationCenterOpen = false
-            }
-        )
+            )
+        } else {
+            NoNotificationsDialog(
+                onDismiss = { notificationCenterOpen = false }
+            )
+        }
     }
 }
 
@@ -178,6 +185,24 @@ private fun NotificationCenterButton(
 }
 
 @Composable
+private fun NoNotificationsDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Notifications") },
+        text = {
+            Text("No new update notifications right now.")
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
+}
+
+@Composable
 private fun LoadingScreen() {
     Box(
         modifier = Modifier
@@ -195,9 +220,7 @@ private fun LoadingScreen() {
 @Composable
 private fun AuthScreen(
     state: AuthUiState,
-    viewModel: AuthViewModel,
-    hasUpdateNotification: Boolean,
-    onOpenNotifications: () -> Unit
+    viewModel: AuthViewModel
 ) {
     Box(
         modifier = Modifier
@@ -207,83 +230,48 @@ private fun AuthScreen(
         Box(modifier = Modifier.fillMaxSize().background(authBackdropGlowTopLeft()))
         Box(modifier = Modifier.fillMaxSize().background(authBackdropGlowBottomRight()))
         Box(modifier = Modifier.fillMaxSize().background(authBackdropWarmWash()))
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
+            val cardWidth = if (maxWidth > 480.dp) 480.dp else maxWidth
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Center
             ) {
-                Card(
-                    modifier = Modifier.widthIn(max = 560.dp),
-                    shape = RoundedCornerShape(34.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F7FF))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 18.dp),
+                    contentAlignment = Alignment.TopStart
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 28.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            NotificationCenterButton(
-                                hasUpdateNotification = hasUpdateNotification,
-                                onOpenNotifications = onOpenNotifications
-                            )
-                        }
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        BrandBadge(size = 24.dp)
+                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text("KhataPlus", fontWeight = FontWeight.Black, color = Color(0xFF111827))
                             Text(
-                                text = "SECURE LOGIN",
-                                color = Color(0xFF4F46E5),
-                                fontWeight = FontWeight.Black,
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    letterSpacing = 3.4.sp
-                                )
-                            )
-                            Text(
-                                text = if (state.mode == AuthMode.LOGIN) "Sign in" else "Create account",
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFF171923)
-                            )
-                            Text(
-                                text = if (state.mode == AuthMode.LOGIN) "Continue to your dashboard" else "Join your dashboard",
-                                style = MaterialTheme.typography.bodyLarge,
+                                if (state.mode == AuthMode.LOGIN) "Secure login" else "Create account",
                                 color = Color(0xFF64748B)
                             )
                         }
+                    }
+                }
 
-                        Card(
-                            shape = RoundedCornerShape(28.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.84f))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                if (state.mode == AuthMode.LOGIN) {
-                                    LoginCardFields(
-                                        state = state,
-                                        viewModel = viewModel
-                                    )
-                                } else {
-                                    SignupCardFields(
-                                        state = state,
-                                        viewModel = viewModel
-                                    )
-                                }
-                            }
-                        }
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.widthIn(max = cardWidth),
+                        shape = RoundedCornerShape(34.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F7FF))
+                    ) {
+                        AuthForm(state = state, viewModel = viewModel)
                     }
                 }
             }
@@ -292,10 +280,65 @@ private fun AuthScreen(
 }
 
 @Composable
+private fun AuthForm(
+    state: AuthUiState,
+    viewModel: AuthViewModel
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "SECURE LOGIN",
+                color = Color(0xFF4F46E5),
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.4.sp)
+            )
+            Text(
+                text = if (state.mode == AuthMode.LOGIN) "Sign in" else "Create account",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF111827)
+            )
+            Text(
+                text = if (state.mode == AuthMode.LOGIN) "Continue to your dashboard" else "Join your workspace",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF64748B)
+            )
+        }
+
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (state.mode == AuthMode.LOGIN) {
+                    LoginCardFields(state = state, viewModel = viewModel)
+                } else {
+                    SignupCardFields(state = state, viewModel = viewModel)
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
 private fun LoginCardFields(
     state: AuthUiState,
     viewModel: AuthViewModel
 ) {
+    val context = LocalContext.current
     Text(
         text = "EMAIL",
         color = Color(0xFF64748B),
@@ -335,7 +378,7 @@ private fun LoginCardFields(
         Text(if (state.loading) "Please wait..." else if (state.loginPhase == AuthPhase.ENTRY) "Continue" else "Continue")
     }
     OutlinedButton(
-        onClick = { /* passkey placeholder on native */ },
+        onClick = { Toast.makeText(context, "Passkey sign-in is not enabled on Android yet.", Toast.LENGTH_SHORT).show() },
         enabled = !state.loading,
         modifier = Modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(18.dp)
@@ -486,50 +529,11 @@ private fun FeedbackCard(message: String, isError: Boolean) {
 
 @Composable
 private fun BrandBadge(size: androidx.compose.ui.unit.Dp = 40.dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * 0.14f))
-            .background(Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF059669))))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(size * 0.11f)
-                .clip(RoundedCornerShape(size * 0.08f))
-                .background(Color(0xFFF1F5F9))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.44f, top = size * 0.26f, end = size * 0.08f, bottom = size * 0.05f)
-                .background(Color(0xFFE2E8F0))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.32f, top = size * 0.14f, end = size * 0.05f, bottom = size * 0.10f)
-                .background(Color(0xFFF8FAFC))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.08f, top = size * 0.16f, end = size * 0.68f, bottom = size * 0.12f)
-                .background(Color(0xFF059669))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.18f, top = size * 0.47f, end = size * 0.20f, bottom = size * 0.43f)
-                .background(Color.White, RoundedCornerShape(size * 0.06f))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = size * 0.38f, top = size * 0.20f, end = size * 0.40f, bottom = size * 0.22f)
-                .background(Color.White, RoundedCornerShape(size * 0.06f))
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.ic_launcher_foreground),
+        contentDescription = "KhataPlus logo",
+        modifier = Modifier.size(size)
+    )
 }
 
 private fun webBackdrop() = Brush.verticalGradient(listOf(Color(0xFFC9EFDD), Color(0xFFDEEFFF), Color(0xFFD3E7FB)))
