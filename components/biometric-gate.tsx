@@ -7,6 +7,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import { toast } from "sonner"
 
+declare global {
+    interface Window {
+        KhataPlusBiometric?: {
+            isAvailable?: () => boolean
+            verifyIdentity?: () => void
+        }
+    }
+}
+
 interface BiometricGateProps {
     isRequired: boolean
     children: React.ReactNode
@@ -26,11 +35,45 @@ export function BiometricGate({ isRequired, children }: BiometricGateProps) {
         }
     }, [isRequired])
 
+    const hasNativeBiometricBridge = () => {
+        if (typeof window === "undefined") return false
+        return typeof window.KhataPlusBiometric?.isAvailable === "function" && Boolean(window.KhataPlusBiometric.isAvailable())
+    }
+
+    const handleNativeAuthentication = async () => {
+        if (typeof window === "undefined" || typeof window.KhataPlusBiometric?.verifyIdentity !== "function") {
+            throw new Error("Native biometric bridge unavailable")
+        }
+
+        return await new Promise<void>((resolve, reject) => {
+            const handleResult = (event: Event) => {
+                const detail = (event as CustomEvent<{ success?: boolean; message?: string | null }>).detail || {}
+                window.removeEventListener("kp-native-biometric-result", handleResult as EventListener)
+                if (detail.success) {
+                    resolve()
+                } else {
+                    reject(new Error(detail.message || "Fingerprint verification failed"))
+                }
+            }
+
+            window.addEventListener("kp-native-biometric-result", handleResult as EventListener, { once: true })
+            window.KhataPlusBiometric.verifyIdentity()
+        })
+    }
+
     if (!isMounted) return null
 
     const handleRegistration = async () => {
         setIsLoading(true)
         try {
+            if (hasNativeBiometricBridge()) {
+                await handleNativeAuthentication()
+                setNeedsRegistration(false)
+                setIsVerified(true)
+                toast.success("Identity Verified")
+                return
+            }
+
             const resp = await fetch('/api/auth/webauthn/register/options')
             if (!resp.ok) throw new Error('Failed to get registration options')
 
@@ -61,6 +104,13 @@ export function BiometricGate({ isRequired, children }: BiometricGateProps) {
     const handleAuthentication = async () => {
         setIsLoading(true)
         try {
+            if (hasNativeBiometricBridge()) {
+                await handleNativeAuthentication()
+                setIsVerified(true)
+                toast.success("Identity Verified")
+                return
+            }
+
             const resp = await fetch('/api/auth/webauthn/authenticate/options')
             if (!resp.ok) {
                 const data = await resp.json()
