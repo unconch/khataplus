@@ -22,6 +22,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# android native app
+/KhataPlus Android/.gradle/
+/KhataPlus Android/app/build/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

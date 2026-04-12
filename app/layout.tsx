@@ -86,7 +86,7 @@ export default async function RootLayout({
       price: "0",
       priceCurrency: "INR",
     },
-    downloadUrl: "https://play.google.com/store/apps/details?id=YOUR_APP_ID",
+    downloadUrl: "https://khataplus.online/android",
     screenshot: "https://khataplus.online/og-image.png",
   }
 

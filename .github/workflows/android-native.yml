@@ -1,0 +1,84 @@
+name: Android Native
+
+on:
+  push:
+    branches:
+      - android
+    paths:
+      - "KhataPlus Android/**"
+      - ".github/workflows/android-native.yml"
+  pull_request:
+    paths:
+      - "KhataPlus Android/**"
+      - ".github/workflows/android-native.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: "./KhataPlus Android"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Prepare release APK
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p ../android-release
+          cp app/build/outputs/apk/debug/app-debug.apk ../android-release/khataplus-native-debug.apk
+
+      - name: Prepare release manifest
+        if: github.event_name == 'push'
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
+          RELEASE_DATE=$(date +'%B %-d, %Y')
+          cat > ../android-release/android-release.json <<EOF
+          {
+            "version": "$VERSION_NAME",
+            "versionCode": $VERSION_CODE,
+            "date": "$RELEASE_DATE",
+            "downloadUrl": "https://github.com/unconch/khataplus/releases/download/android-latest/khataplus-native-debug.apk",
+            "releaseUrl": "https://github.com/unconch/khataplus/releases/tag/android-latest"
+          }
+          EOF
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: khataplus-native-debug
+          path: "./KhataPlus Android/app/build/outputs/apk/debug/*.apk"
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Android Native Latest
+          body: Latest native Android APK built from the android branch.
+          draft: false
+          prerelease: true
+          make_latest: true
+          files: |
+            android-release/khataplus-native-debug.apk
+            android-release/android-release.json

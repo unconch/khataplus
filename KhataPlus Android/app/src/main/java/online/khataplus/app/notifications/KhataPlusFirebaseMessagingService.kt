@@ -1,0 +1,3 @@
+package online.khataplus.app.notifications
+
+class KhataPlusFirebaseMessagingService
