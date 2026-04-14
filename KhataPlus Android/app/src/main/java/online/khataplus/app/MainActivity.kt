@@ -11,8 +11,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.view.ViewCompat
@@ -22,11 +22,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.content.ContextCompat
 import org.json.JSONObject
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private var biometricPromptInFlight = false
 
-    private val biometricPrompt by lazy {
+    private val biometricPrompt: BiometricPrompt by lazy {
         BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private val biometricPromptInfo by lazy {
+    private val biometricPromptInfo: BiometricPrompt.PromptInfo by lazy {
         BiometricPrompt.PromptInfo.Builder()
             .setTitle("Verify identity")
             .setSubtitle("Use fingerprint or device unlock to continue in KhataPlus")
