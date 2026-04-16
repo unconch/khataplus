@@ -3,6 +3,16 @@ import { getSession } from '@/lib/session';
 import { getWebAuthnAuthenticationOptions } from '@/lib/webauthn';
 import { cookies } from 'next/headers';
 
+function resolveWebAuthnContext(request: NextRequest) {
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.trim()
+    const forwardedHost = request.headers.get("x-forwarded-host")?.trim()
+    const rawHost = forwardedHost || request.headers.get("host") || "localhost:3000"
+    const host = rawHost.split(",")[0].trim()
+    const rpID = host.replace(/:\d+$/, "")
+    const protocol = forwardedProto || (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https")
+    return { origin: `${protocol}://${host}`, rpID }
+}
+
 export async function GET(request: NextRequest) {
     const session = await getSession();
     if (!session?.userId) {
@@ -10,15 +20,25 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const options = await getWebAuthnAuthenticationOptions(session.userId);
+        const { origin, rpID } = resolveWebAuthnContext(request)
+        const options = await getWebAuthnAuthenticationOptions(session.userId, rpID);
 
         // Store challenge for verification
-        (await cookies()).set('auth_challenge', options.challenge, {
+        const cookieStore = await cookies()
+        cookieStore.set('auth_challenge', options.challenge, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'strict',
-            maxAge: 60000 // 1 minute
+            secure: process.env.NODE_ENV === "production",
+            sameSite: 'lax',
+            path: "/",
+            maxAge: 60 * 10
         });
+        cookieStore.set('auth_context', JSON.stringify({ origin, rpID }), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: 'lax',
+            path: "/",
+            maxAge: 60 * 10
+        })
 
         return NextResponse.json(options);
     } catch (error: any) {

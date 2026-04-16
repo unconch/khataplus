@@ -6,9 +6,13 @@ import {
 } from '@simplewebauthn/server';
 import { sql } from './db';
 
-const RP_ID = process.env.NEXT_PUBLIC_RP_ID || process.env.NEXT_PUBLIC_ORIGIN?.replace(/^https?:\/\//, '').replace(/:\d+$/, '') || 'localhost';
+const APP_ORIGIN =
+    process.env.NEXT_PUBLIC_ORIGIN ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'http://localhost:3000';
+const RP_ID = process.env.NEXT_PUBLIC_RP_ID || APP_ORIGIN.replace(/^https?:\/\//, '').replace(/:\d+$/, '') || 'localhost';
 const RP_NAME = 'KhataPlus';
-const ORIGIN = process.env.NEXT_PUBLIC_ORIGIN || 'http://localhost:3000';
+const ORIGIN = APP_ORIGIN;
 
 export async function getWebAuthnRegistrationOptions(userId: string, userEmail: string, rpID: string = RP_ID) {
     // Fetch existing credentials to prevent re-registration of same authenticator
