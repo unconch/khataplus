@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'strict',
-                maxAge: 3600 // 1 hour
+                maxAge: 900 // 15 minutes
             });
 
             // Clean up challenge cookie

@@ -59,8 +59,8 @@ export async function verifyWebAuthnRegistration(
 
         // Save credential to DB
         await sql`
-            INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter)
-            VALUES (${userId}, ${credential.id}, ${Buffer.from(credential.publicKey)}, ${credential.counter})
+            INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter, transports)
+            VALUES (${userId}, ${credential.id}, ${Buffer.from(credential.publicKey)}, ${credential.counter}, ${credential.transports || []})
         `;
     }
 
@@ -69,14 +69,15 @@ export async function verifyWebAuthnRegistration(
 
 export async function getWebAuthnAuthenticationOptions(userId: string, rpID: string = RP_ID) {
     const userCredentials = await sql`
-        SELECT credential_id FROM webauthn_credentials WHERE user_id = ${userId}
+        SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ${userId}
     `;
 
     const options = await generateAuthenticationOptions({
         rpID,
         allowCredentials: userCredentials.map((cred: any) => ({
-            id: cred.credential_id,
+            id: cred.id || cred.credential_id,
             type: 'public-key',
+            transports: cred.transports || [],
         })),
         userVerification: 'required',
     });
@@ -125,4 +126,11 @@ export async function verifyWebAuthnAuthentication(
     }
 
     return verification;
+}
+
+export async function hasWebAuthn(userId: string): Promise<boolean> {
+    const result = await sql`
+        SELECT 1 FROM webauthn_credentials WHERE user_id = ${userId} LIMIT 1
+    `;
+    return result.length > 0;
 }

@@ -85,7 +85,9 @@ export async function authorize(action: string, requiredRole?: string, orgId?: s
         return { ...user, orgRole }; // Return user with org context
     }
 
-    if (requiredRole && user.role !== "owner" && !secureCompare(user.role, requiredRole)) {
+    // MISSION-CRITICAL: Remove global bypass. Role must match exactly.
+    // To allow a "Super Admin", add a dedicated is_system_admin flag to the profile.
+    if (requiredRole && !secureCompare(user.role, requiredRole)) {
         throw new Error(`Forbidden: Required role ${requiredRole}`);
     }
 

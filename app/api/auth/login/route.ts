@@ -3,6 +3,7 @@ export const maxDuration = 10
 
 import { NextResponse } from "next/server"
 import { requestLoginOtp, verifyLoginOtp } from "@/lib/data/auth"
+import { hasWebAuthn } from "@/lib/webauthn"
 import { rateLimit, getIP, RateLimitError } from "@/lib/rate-limit"
 
 function toSafePath(next: unknown): string {
@@ -54,11 +55,17 @@ export async function POST(request: Request) {
       ? next.replace(/^\/app\/dashboard/, `/app/${orgSlug}/dashboard`)
       : (result.redirectTo || next)
 
+    const requireBiometrics = result.user?.id ? await hasWebAuthn(result.user.id) : false
+
     const response = NextResponse.json({
       ok: true,
       phase: "done",
       next: resolvedNext,
       orgSlug: orgSlug || undefined,
+      requireBiometrics,
+      accessToken: result.session?.accessToken,
+      refreshToken: result.session?.refreshToken,
+      redirectTo: resolvedNext
     })
 
     const slugMatch = resolvedNext.match(/^\/app\/([^/]+)\/dashboard(?:\/|$)/)

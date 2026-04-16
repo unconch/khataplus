@@ -13,8 +13,11 @@ export const ACTIVE_ORG_COOKIE = "kp_org_slug"
 const PASSKEY_SESSION_SECRET =
   process.env.AUTH_SESSION_SECRET ||
   process.env.NEXTAUTH_SECRET ||
-  process.env.SUPABASE_JWT_SECRET ||
-  "khataplus-passkey-session"
+  process.env.SUPABASE_JWT_SECRET;
+
+if (!PASSKEY_SESSION_SECRET && process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+  throw new Error("CRITICAL: AUTH_SESSION_SECRET is not defined in environment variables.");
+}
 
 export const AUTH_STATE_COOKIE_NAMES = ["guest_mode", "biometric_verified", "kp_auth_next"] as const
 
@@ -77,6 +80,10 @@ export type AuthVerifyOtpResult = {
   user?: {
     email: string
     id: string
+  }
+  session?: {
+    accessToken: string
+    refreshToken: string
   }
 }
 
@@ -307,9 +314,7 @@ function normalizeAuthErrorMessage(message: string, mode: AuthFlowMode) {
   }
 
   if (lower.includes("invalid login credentials") || lower.includes("signups not allowed")) {
-    return mode === "login"
-      ? "No account found for this email. Please sign up first."
-      : "This email address cannot be used to create an account right now."
+    return "No account found. Please sign up!"
   }
 
   if (lower.includes("rate limit") || lower.includes("over_email_send_rate_limit")) {
@@ -549,6 +554,12 @@ async function verifyOtp(input: AuthVerifyOtpInput): Promise<AuthVerifyOtpResult
     redirectTo,
     org: metadataSlug ? { id: "", name: null, role: null, slug: metadataSlug } : null,
     user: { email: user.email || email, id: user.id },
+    session: data.session
+      ? {
+          accessToken: data.session.access_token,
+          refreshToken: data.session.refresh_token,
+        }
+      : undefined,
   }
 }
 

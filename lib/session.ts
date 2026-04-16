@@ -1,5 +1,5 @@
 import "server-only"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { getCurrentUser } from "@/lib/data/auth"
 import { createSessionFingerprint } from "@/lib/session-identity"
@@ -78,6 +78,7 @@ export async function getSession() {
     if (currentUser?.authMethod === "passkey") {
       const passkeySessionCookie = cookieStore.get("kp_passkey_session")?.value || null
       const isBiometricVerified = cookieStore.get("biometric_verified")?.value === "true"
+      const userAgent = (await headers()).get("user-agent") || ""
       return {
         user: {
           id: currentUser.userId,
@@ -88,7 +89,7 @@ export async function getSession() {
         email: currentUser.email || undefined,
         role: null,
         isBiometricVerified,
-        sessionId: createSessionFingerprint(passkeySessionCookie),
+        sessionId: createSessionFingerprint(passkeySessionCookie, userAgent),
         stepUp: { authTime: null, methods: ["passkey"], acr: null },
       }
     }
@@ -115,6 +116,7 @@ export async function getSession() {
         ? user.user_metadata.active_org_role
         : null
 
+    const userAgent = (await headers()).get("user-agent") || ""
     return {
       user: {
         id: user.id,
@@ -125,7 +127,7 @@ export async function getSession() {
       email: user.email || undefined,
       role,
       isBiometricVerified,
-      sessionId: createSessionFingerprint(accessToken),
+      sessionId: createSessionFingerprint(accessToken, userAgent),
       stepUp,
     }
   } catch (e) {

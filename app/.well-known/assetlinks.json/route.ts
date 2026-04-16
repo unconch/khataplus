@@ -1,0 +1,18 @@
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  return NextResponse.json(
+    [
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: "online.khataplus.app",
+          sha256_cert_fingerprints: [
+            "C7:89:51:34:D7:EE:53:55:EF:13:95:71:BF:CF:10:51:D3:29:42:E9:42:FA:19:B0:7C:33:A9:FB:13:9F:4C:D1"
+          ]
+        }
+      }
+    ]
+  );
+}
