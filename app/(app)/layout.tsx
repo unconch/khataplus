@@ -1,7 +1,6 @@
 import type React from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { AppShell } from "@/components/app-shell"
-import { BiometricGate } from "@/components/biometric-gate"
 import type { Profile, Organization } from "@/lib/types"
 import { Suspense } from "react"
 import { AppShellSkeleton } from "@/components/skeletons"
@@ -265,28 +264,26 @@ async function AppLayoutLogic({ children }: { children: React.ReactNode }) {
     return (
       <>
         <RealtimeSyncActivator orgId={orgId} />
-        <BiometricGate isRequired={profile?.biometric_required || false}>
-          <TenantProvider tenant={tenant}>
-            <TrialExpiredGuard
-              trialEndsAt={tenant.trial_ends_at || ""}
-              subscriptionStatus={tenant.subscription_status || "active"}
-              orgName={tenant.name || ""}
+        <TenantProvider tenant={tenant}>
+          <TrialExpiredGuard
+            trialEndsAt={tenant.trial_ends_at || ""}
+            subscriptionStatus={tenant.subscription_status || "active"}
+            orgName={tenant.name || ""}
+          >
+            <AppShell
+              profile={profile}
+              role={orgRole}
+              settings={settings}
+              orgId={orgId}
+              orgName={tenant.name}
+              orgSlug={tenant.slug}
+              orgPlanType={tenant.plan_type}
+              pathPrefix={resolvedPathPrefix}
             >
-              <AppShell
-                profile={profile}
-                role={orgRole}
-                settings={settings}
-                orgId={orgId}
-                orgName={tenant.name}
-                orgSlug={tenant.slug}
-                orgPlanType={tenant.plan_type}
-                pathPrefix={resolvedPathPrefix}
-              >
-                {children}
-              </AppShell>
-            </TrialExpiredGuard>
-          </TenantProvider>
-        </BiometricGate>
+              {children}
+            </AppShell>
+          </TrialExpiredGuard>
+        </TenantProvider>
       </>
     )
 

@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Fingerprint, Key, Loader2, LogOut, Shield, Smartphone, Sparkles, LockKeyhole, Activity, ShieldAlert } from "lucide-react"
+import { Activity, LockKeyhole, LogOut, Shield, ShieldAlert, Smartphone, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -10,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import type { Profile, SystemSettings } from "@/lib/types"
 import type { SessionSnapshot } from "@/lib/session-governance"
-import { startRegistration } from "@simplewebauthn/browser"
 
 interface SecuritySettingsProps {
     profile: Profile
@@ -38,13 +36,10 @@ export function SecuritySettings({
     currentSessionId = "",
     initialSettings,
 }: SecuritySettingsProps) {
-    const router = useRouter()
     const [settings, setSettings] = useState(initialSettings)
-    const [biometricEnabled, setBiometricEnabled] = useState(profile.biometric_required || false)
     const [sessions, setSessions] = useState(initialSessions)
     const [isUpdating, setIsUpdating] = useState(false)
     const [isRevoking, setIsRevoking] = useState<string | null>(null)
-    const [isAddingPasskey, setIsAddingPasskey] = useState(false)
     const governanceRows = useMemo(
         () =>
             [
@@ -112,9 +107,9 @@ export function SecuritySettings({
             enabled,
             total: governanceRows.length,
             sessions: sessions.length,
-            passkeyReady: biometricEnabled,
+            passkeyReady: false,
         }
-    }, [biometricEnabled, governanceRows, sessions.length, settings])
+    }, [governanceRows, sessions.length, settings])
 
     const governanceGroups = useMemo(
         () => ({
@@ -167,55 +162,6 @@ export function SecuritySettings({
         return details.length > 0 ? details.join(" . ") : `Session ID: ${session.id.slice(0, 16)}...`
     }
 
-    const goToLoginForPasskeySetup = () => {
-        const nextPath = typeof window !== "undefined" ? window.location.pathname : "/dashboard/settings"
-        router.push(`/auth/login?next=${encodeURIComponent(nextPath)}&passkey_setup=1`)
-    }
-
-    const addPasskey = async () => {
-        setIsAddingPasskey(true)
-        try {
-            const optionsResp = await fetch("/api/auth/webauthn/register/options", {
-                method: "GET",
-                credentials: "include",
-                cache: "no-store",
-            })
-            const optionsData = await optionsResp.json().catch(() => ({} as any))
-            if (!optionsResp.ok) {
-                throw new Error(optionsData?.error || "Failed to get passkey options")
-            }
-
-            const registration = await startRegistration({ optionsJSON: optionsData })
-
-            const verifyResp = await fetch("/api/auth/webauthn/register/verify", {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(registration),
-            })
-            const verifyData = await verifyResp.json().catch(() => ({} as any))
-            if (!verifyResp.ok) {
-                throw new Error(verifyData?.error || "Failed to save passkey")
-            }
-
-            toast.success("Passkey added successfully")
-        } catch (error: any) {
-            const message = String(error?.message || "")
-            if (/unauthorized|missing challenge|not logged in|session/i.test(message)) {
-                toast.message("Session refresh needed. Continue via login to add passkey")
-                goToLoginForPasskeySetup()
-                return
-            }
-            if (error?.name === "NotAllowedError") {
-                toast.error("Passkey setup cancelled")
-                return
-            }
-            toast.error(error?.message || "Could not add passkey. Please retry")
-        } finally {
-            setIsAddingPasskey(false)
-        }
-    }
-
     const postSecuritySettingsUpdate = async (payload: Record<string, unknown>) => {
         const response = await fetch("/api/security/settings", {
             method: "POST",
@@ -226,24 +172,6 @@ export function SecuritySettings({
         const data = await response.json().catch(() => ({} as any))
         if (!response.ok) throw new Error(data?.error || "Update failed")
         return data
-    }
-
-    const toggleBiometric = async (checked: boolean) => {
-        const previous = biometricEnabled
-        setBiometricEnabled(checked)
-        setIsUpdating(true)
-        try {
-            await postSecuritySettingsUpdate({
-                action: "biometric",
-                biometricRequired: checked,
-            })
-            toast.success(`Biometric protection ${checked ? "enabled" : "disabled"}`)
-        } catch (err: any) {
-            setBiometricEnabled(previous)
-            toast.error(err?.message || "Failed to update biometric status")
-        } finally {
-            setIsUpdating(false)
-        }
     }
 
     const updateGovernanceToggle = async (key: ToggleKey, value: boolean) => {
@@ -310,9 +238,9 @@ export function SecuritySettings({
                     <CardContent className="p-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Security State</p>
                         <p className="mt-2 text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
-                            {biometricEnabled ? "Locked" : "Open"}
+                            Standard
                         </p>
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Biometric gate for this account.</p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Biometric and passkey access are disabled.</p>
                     </CardContent>
                 </Card>
                 <Card className="border-zinc-200/70 dark:border-zinc-800">
@@ -352,7 +280,7 @@ export function SecuritySettings({
                             Access posture
                         </div>
                         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                            Biometric lock and passkey access are managed here for this account.
+                            Device biometrics and passkey sign-in are currently unavailable for this account.
                         </p>
                     </div>
                     <div className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
@@ -380,18 +308,18 @@ export function SecuritySettings({
                 <CardHeader className="border-b border-emerald-100/70 dark:border-emerald-900/40">
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <span className="h-8 w-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                            <Fingerprint className="h-4 w-4" />
+                            <LockKeyhole className="h-4 w-4" />
                         </span>
                         Access Security
                     </CardTitle>
-                    <CardDescription>Manage biometric lock and passkey-based quick sign in.</CardDescription>
+                    <CardDescription>Biometric lock and passkey sign-in have been turned off for now.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Biometric Gate</p>
                             <p className="mt-1 text-sm font-black text-zinc-950 dark:text-zinc-50">
-                                {biometricEnabled ? "Required" : "Optional"}
+                                Disabled
                             </p>
                         </div>
                         <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
@@ -401,43 +329,29 @@ export function SecuritySettings({
                             </p>
                         </div>
                         <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Other Devices</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Passkey Login</p>
                             <p className="mt-1 text-sm font-black text-zinc-950 dark:text-zinc-50">
-                                {externalSessions.length === 0 ? "None" : String(externalSessions.length)}
+                                Disabled
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                    <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                         <div>
                             <Label className="text-sm font-semibold">Biometric app lock</Label>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Require FaceID/Fingerprint before unlocking the app.
+                                FaceID, fingerprint, and WebAuthn app lock are disabled.
                             </p>
                         </div>
-                        <Switch checked={biometricEnabled} onCheckedChange={toggleBiometric} disabled={isUpdating} />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
+                    <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-white/70 dark:bg-zinc-900/40 p-4">
                         <div>
                             <Label className="text-sm font-semibold">Passkey quick login</Label>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Add this device as a passkey for OTP-less sign in.
+                                Passkey registration and OTP-less sign-in are disabled.
                             </p>
                         </div>
-                        <Button
-                            type="button"
-                            onClick={addPasskey}
-                            disabled={isAddingPasskey}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                        >
-                            {isAddingPasskey ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                                <Key className="h-4 w-4 mr-2" />
-                            )}
-                            {isAddingPasskey ? "Adding..." : "Add Passkey"}
-                        </Button>
                     </div>
                 </CardContent>
             </Card>

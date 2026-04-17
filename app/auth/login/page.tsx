@@ -2,13 +2,12 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { startAuthentication } from "@simplewebauthn/browser"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useLocale } from "@/components/locale-provider"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowRight, Loader2, Mail, KeyRound } from "lucide-react"
+import { AlertCircle, ArrowRight, Loader2, Mail } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -37,7 +36,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
-  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [otpSendPending, setOtpSendPending] = useState(false)
   const emailInputRef = useRef<HTMLInputElement | null>(null)
   const codeInputRef = useRef<HTMLInputElement | null>(null)
@@ -123,104 +121,6 @@ export default function LoginPage() {
     // Warm up the auth route to reduce first-submit cold start delay.
     fetch("/api/auth/login", { method: "GET", cache: "no-store" }).catch(() => undefined)
   }, [])
-
-  const openPasskeyFlow = async () => {
-    const loginId = email.trim().toLowerCase()
-    if (!loginId) {
-      setError(dictionary.login.enterEmailFirst)
-      return
-    }
-
-    setError("")
-    setInfo("")
-    setPasskeyLoading(true)
-    let reachedPasskeyPrompt = false
-    try {
-      const startRes = await fetch("/api/auth/passkey/login/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginId }),
-      })
-      const startData = await startRes.json().catch(() => ({} as any))
-      if (!startRes.ok) {
-        throw new Error(startData?.error || dictionary.login.couldNotStartPasskeyLogin)
-      }
-
-      const authOptionsRaw =
-        startData?.options ??
-        startData?.publicKey ??
-        startData?.data?.options ??
-        startData?.data?.publicKey ??
-        null
-      const transactionId =
-        String(
-          startData?.transactionId ??
-            startData?.transactionID ??
-            startData?.data?.transactionId ??
-            startData?.data?.transactionID ??
-            ""
-        ).trim()
-      if (!authOptionsRaw || !transactionId) {
-        throw new Error(dictionary.login.passkeyLoginResponseInvalid)
-      }
-      const authOptions =
-        (typeof authOptionsRaw === "string" ? JSON.parse(authOptionsRaw) : authOptionsRaw?.publicKey || authOptionsRaw) as any
-
-      const passkeyResponse = await startAuthentication({ optionsJSON: authOptions })
-      reachedPasskeyPrompt = true
-
-      const finishRes = await fetch("/api/auth/passkey/login/finish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginId,
-          transactionId,
-          response: passkeyResponse,
-          next,
-        }),
-      })
-      const finishData = await finishRes.json().catch(() => ({} as any))
-      if (!finishRes.ok) {
-        throw new Error(finishData?.error || dictionary.login.passkeyVerificationFailed)
-      }
-      const target = finishData?.next || next || "/app/dashboard"
-      clearPendingLogin()
-      router.replace(target)
-    } catch (err: any) {
-      if (reachedPasskeyPrompt) {
-        setError(err?.message || "Passkey verification failed.")
-        return
-      }
-
-      const fallbackEmail = loginId
-      try {
-        const otpRes = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: fallbackEmail, code: "", next }),
-        })
-        const otpData = await otpRes.json().catch(() => ({} as any))
-        if (otpRes.ok && otpData?.phase === "verify") {
-          setPhase("verify")
-          setMaskedEmail(otpData?.maskedEmail || fallbackEmail)
-          setVerifyLoginId(fallbackEmail)
-          setResendCooldown(resendCooldownSeconds)
-          setInfo(dictionary.login.fallbackOtpInfo)
-          return
-        }
-      } catch {
-        // keep passkey error
-      }
-
-      if (err?.name === "NotAllowedError") {
-        setError(dictionary.login.passkeyCancelled)
-      } else {
-        setError(err?.message || dictionary.login.passkeyFailed)
-      }
-    } finally {
-      setPasskeyLoading(false)
-    }
-  }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -426,18 +326,6 @@ export default function LoginPage() {
                 {loading || otpSendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{phase === "verify" ? dictionary.login.verifyAndSignIn : dictionary.login.continue} <ArrowRight className="h-4 w-4 ml-2" /></>}
               </Button>
 
-              {phase === "email" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12 rounded-lg text-base border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 disabled:!opacity-100 disabled:!bg-white disabled:!text-zinc-800"
-                  onClick={openPasskeyFlow}
-                  disabled={passkeyLoading}
-                >
-                  {passkeyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
-                  {passkeyLoading ? dictionary.login.verifyingPasskey : dictionary.login.usePasskey}
-                </Button>
-              )}
             </form>
 
             <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between text-[11px]">

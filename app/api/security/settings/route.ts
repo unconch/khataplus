@@ -32,12 +32,11 @@ export async function POST(request: Request) {
     const action = String(body?.action || "").trim()
 
     if (action === "biometric") {
-      const biometricRequired = Boolean(body?.biometricRequired)
       await upsertProfile({
         ...profile,
-        biometric_required: biometricRequired,
+        biometric_required: false,
       })
-      return NextResponse.json({ ok: true, biometricRequired })
+      return NextResponse.json({ ok: true, biometricRequired: false, disabled: true })
     }
 
     if (action === "governance") {
